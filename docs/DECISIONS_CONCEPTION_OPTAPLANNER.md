@@ -49,6 +49,11 @@ Ces éléments seront introduits **après stabilisation du modèle conceptuel**.
 
   * Objet de contexte décrivant l’objectif de la demande.
   * Permettra de configurer les poids et l’activation des contraintes.
+  
+* **Paramètres conventionnels**
+  
+  * RegulatoryParameters est porté par le contexte.
+  * les règles de conversion (heures → repos / majorations) sont fournies par le métier (WebDev / paramétrage), le moteur ne fait que scorer / arbitrer.
 
 ---
 
@@ -140,6 +145,7 @@ Les scénarios sont des **tests de capacité du moteur**, pas une configuration 
 Les éléments suivants sont identifiés mais volontairement repoussés :
 
 * gestion fine du temps (heures, chevauchements, pauses) ;
+* Prise en compte décisionnelle des coûts (dette repos, heures sup) : oui, via indicateurs dérivés ; calcul exact potentiellement externalisé ;
 * trajets et distances ;
 * contrats de travail détaillés ;
 * explication utilisateur détaillée (UI).

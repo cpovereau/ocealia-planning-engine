@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<solver>
+    <solutionClass>fr.project.planning.solution.PlanningProblem</solutionClass>
+    <entityClass>fr.project.planning.domain.creneau.Creneau</entityClass>
+
+    <scoreDirectorFactory>
+        <constraintProviderClass>
+            fr.project.planning.constraints.ConstraintProviderImpl
+        </constraintProviderClass>
+    </scoreDirectorFactory>
+
+    <termination>
+        <secondsSpentLimit>1</secondsSpentLimit>
+    </termination>
+</solver>

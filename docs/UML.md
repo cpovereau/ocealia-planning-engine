@@ -1,4 +1,4 @@
-## 📐 Diagramme UML — Modèle métier du moteur de planification
+## 📐 Diagramme UML — Modèle métier du moteur de planification (aligné)
 
 ```plantuml
 @startuml
@@ -9,14 +9,14 @@ skinparam classAttributeIconSize 0
 ' Abstractions
 ' =========================
 
-abstract class Ressource {
+abstract class Ressource <<ProblemFact>> {
 }
 
 ' =========================
 ' Ressources
 ' =========================
 
-class SalarieReel {
+class SalarieReel <<ProblemFact>> {
   +id
   +profilContractuel
   +statut
@@ -25,7 +25,7 @@ class SalarieReel {
   +postesComptablesCompatibles
 }
 
-class PosteVirtuel {
+class PosteVirtuel <<ProblemFact>> {
   +type : POTENTIEL | REVELE
   +capaciteCible
   +activitesAutorisees
@@ -40,7 +40,7 @@ Ressource <|-- PosteVirtuel
 ' Créneau (besoin)
 ' =========================
 
-class Creneau {
+class Creneau <<PlanningEntity>> {
   +date
   +heureDebut
   +heureFin
@@ -50,52 +50,72 @@ class Creneau {
   +posteComptable
   +priorite
   +type : IMPOSE | GENERE
+  +isJourFerie
+  +isReposHebdo
+  +segmentNuit
 }
 
 ' =========================
-' Affectation (décision)
+' Variable de décision
 ' =========================
 
-class Affectation {
-  +etat : AFFECTE | A_AFFECTER
+Creneau : ressourceAffectee <<PlanningVariable>>
+
+' =========================
+' Paramètres réglementaires
+' =========================
+
+class RegulatoryParameters <<ProblemFact>> {
+  +plagesNuit
+  +joursFeries
+  +strategiePaiementVsRecuperation
 }
 
-Creneau "1" --> "1..*" Affectation : propose
-Affectation "0..1" --> Ressource : cible
-
 ' =========================
-' Contraintes
+' Indicateurs dérivés
 ' =========================
 
-class Contrainte {
-  +categorie
-  +severite
+class WorkMetrics <<ProblemFact>> {
+  +periode
+  +heuresNuit
+  +heuresJourFerie
+  +heuresReposHebdoTravaille
+  +heuresSupplementaires
+  +heuresComplementaires
+  +detteReposCompensateur
+  +coutDirect
+  +coutIndirect
 }
 
-class ContraintePhysique
-class ContrainteMetier
-class ContrainteLegale
-class ContrainteService
-class ContraintePersonnelle
+' =========================
+' Contraintes (évaluation)
+' =========================
 
-Contrainte <|-- ContraintePhysique
-Contrainte <|-- ContrainteMetier
-Contrainte <|-- ContrainteLegale
-Contrainte <|-- ContrainteService
-Contrainte <|-- ContraintePersonnelle
-
-Contrainte --> Affectation : evalue
+class ConstraintProvider <<ConstraintProvider>> {
+  +contraintesPhysiques()
+  +contraintesMetier()
+  +contraintesLegales()
+  +contraintesService()
+  +contraintesPersonnelles()
+}
 
 ' =========================
 ' Solution globale
 ' =========================
 
-class PlanningSolution {
+class PlanningSolution <<PlanningSolution>> {
   +score
 }
 
 PlanningSolution "1" o-- "*" Creneau
 PlanningSolution "1" o-- "*" Ressource
-PlanningSolution "1" o-- "*" Contrainte
+PlanningSolution "1" o-- "*" WorkMetrics
+PlanningSolution "1" o-- "1" RegulatoryParameters
+
+ConstraintProvider --> Creneau : evalue
+ConstraintProvider --> Ressource : utilise
+ConstraintProvider --> WorkMetrics : utilise
+ConstraintProvider --> RegulatoryParameters : consulte
 
 @enduml
+```

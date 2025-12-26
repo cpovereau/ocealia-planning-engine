@@ -36,6 +36,11 @@ C’est l’unité centrale du raisonnement.
 - Peut rester **à affecter**
 - N’intègre **aucune règle**
 
+### Qualifiants calendaires / réglementaires
+- Jour ouvré / non ouvré (isReposHebdo)
+- Jour férié (isJourFerie)
+- Nuit / jour (segment nuit)
+
 ---
 
 ## 2. Ressource (abstraction)
@@ -138,6 +143,21 @@ Une affectation est une **proposition** de rattachement :
 
 Les contraintes **n’agissent jamais sur les données**,
 elles **évaluent les affectations**.
+Exemples de contraintes "coût/dette" :
+- pénaliser la création de dette de repos compensateur
+- pénaliser le dépassement d’un contingent (si vous le modélisez)
+- arbitrer payé vs récup (selon stratégie)
+
+## 6bis. Indicateurs dérivés (coûts et dettes)
+Ces indicateurs ne sont pas des décisions : ils sont dérivés et servent au scoring
+- heuresNuit
+- heuresJourFerie
+- heuresSurReposHebdo
+- heuresSupplementaires / heuresComplementaires
+- detteReposCompensateur (et éventuellement par origine : nuit / férié / repos hebdo / HS)
+- coutDirect (si payé) vs coutIndirect (si repos/dette)
+
+## 7. Evaluation globale
 
 ### Catégories de contraintes
 

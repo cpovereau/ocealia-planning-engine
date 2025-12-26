@@ -17,6 +17,7 @@ java {
 repositories {
 	mavenCentral()
 }
+
 dependencyManagement {
 	imports {
 		mavenBom "org.optaplanner:optaplanner-bom:9.44.0.Final"
@@ -31,9 +32,12 @@ dependencies {
     runtimeOnly 'com.h2database:h2'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.junit.jupiter:junit-jupiter-api'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
 }
 
-
-tasks.named('test') {
-	useJUnitPlatform()
+test {
+    useJUnitPlatform()
+    include 'fr/project/**'
+    exclude 'com/**'
 }
