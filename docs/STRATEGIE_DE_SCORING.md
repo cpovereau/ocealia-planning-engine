@@ -9,6 +9,25 @@ Il sert de référence pour :
 * la pondération des règles,
 * l’explicabilité des décisions produites par le moteur.
 
+Le scoring est la résultante des pénalités définies :
+ * Penalites exprime l’importance relative des règles métier.
+ * ScoreWeights traduit ces pénalités en pondérations techniques du score.
+Les deux sont volontairement séparés afin de préserver la lisibilité métier et la stabilité du moteur.
+
+## Rôle du score dans le moteur de planification
+
+Le score produit par le moteur de planification a pour unique objectif
+d’arbitrer entre plusieurs solutions valides.
+
+Il ne constitue pas :
+- une mesure de conformité réglementaire,
+- une évaluation RH,
+- un indicateur de surcharge individuelle,
+- ni un score métier interprétable tel quel.
+
+Toute lecture métier du planning repose sur les WorkMetrics,
+calculées après résolution.
+
 ---
 
 ## 1. Principe fondamental
@@ -41,67 +60,38 @@ Il ne sert pas à :
 
 Les contraintes sont classées selon leur **gravité**.
 
-### 3.1 Contraintes physiques — HARD
+### 3.1 Contraintes HARD
 
-**Rôle** : définir l’espace des solutions possibles.
+Les contraintes HARD représentent des règles impératives :
+- légales,
+- réglementaires,
+- ou structurelles.
+
+Toute solution violant une contrainte HARD est considérée comme invalide
+et éliminée par le solveur.
 
 Exemples :
+- dépassement du nombre maximal de nuits consécutives,
+- non-respect d’un repos obligatoire,
+- incompatibilité ressource / activité.
 
-* chevauchement de créneaux,
-* dépassement des bornes humaines absolues,
-* impossibilité matérielle.
-
-👉 Toute solution qui viole ces contraintes est rejetée.
 
 ---
 
-### 3.2 Contraintes légales — SOFT (très fort)
+### 3.2 Contraintes SOFT
 
-**Rôle** : respecter le droit du travail autant que possible.
+Les contraintes SOFT représentent des préférences ou des objectifs
+d’amélioration de la qualité du planning.
 
-Exemples :
-
-* repos quotidien insuffisant,
-* repos hebdomadaire non respecté,
-* dette de repos compensateur excessive,
-* dépassement de contingent d’heures supplémentaires.
-
-👉 Violables uniquement en dernier recours,
-avec une pénalité élevée et visible.
-
----
-
-### 3.3 Contraintes métier — SOFT (moyen)
-
-**Rôle** : respecter l’organisation interne.
+Elles permettent :
+- d’arbitrer entre plusieurs solutions valides,
+- de favoriser des solutions plus équilibrées,
+- sans jamais invalider une solution légale.
 
 Exemples :
-
-* continuité de service,
-* règles de roulement,
-* contraintes d’activité.
-
----
-
-### 3.4 Contraintes de service — SOFT (faible)
-
-**Rôle** : améliorer la qualité globale du planning.
-
-Exemples :
-
-* équilibrage de charge,
-* limitation des écarts entre salariés.
-
----
-
-### 3.5 Contraintes personnelles — SOFT (très faible)
-
-**Rôle** : améliorer le confort individuel sans bloquer le moteur.
-
-Exemples :
-
-* souhaits ponctuels,
-* préférences personnelles.
+- approche d’un seuil réglementaire,
+- répartition plus équitable des nuits,
+- limitation du recours aux postes virtuels.
 
 ---
 
@@ -111,6 +101,41 @@ Les indicateurs sont des **conséquences des décisions**,
 calculées à partir des affectations retenues.
 
 Ils ne sont jamais des décisions en tant que telles.
+
+## Pondération technique du score (ScoreWeights)
+
+La pondération du score est assurée par le composant `ScoreWeights`.
+
+`ScoreWeights` :
+- est strictement technique,
+- ne porte aucune règle métier,
+- traduit les pénalités métier (`Penalites`) en pondérations du score OptaPlanner.
+
+Il permet notamment :
+- de garantir la domination absolue des contraintes HARD,
+- d’adapter l’importance relative des contraintes SOFT,
+- de faire varier le comportement du solveur selon la `StrategieScoring`.
+
+La relation entre les concepts est volontairement unidirectionnelle :
+
+Penalites → ScoreWeights → Score OptaPlanner
+
+## Score et WorkMetrics : séparation des responsabilités
+
+Le score est utilisé exclusivement par le moteur pour comparer des solutions.
+
+Les WorkMetrics :
+- ne participent pas au calcul du score,
+- ne sont pas modifiées par les contraintes,
+- sont calculées après résolution.
+
+Elles constituent le support unique de :
+- l’explicabilité,
+- l’analyse métier,
+- la restitution RH.
+
+Il n’existe volontairement aucune correspondance directe
+entre une valeur de score et un indicateur métier.
 
 ---
 
@@ -195,3 +220,23 @@ Ce document complète :
 * les décisions de conception.
 
 Il sert de référence pour toute évolution des règles de scoring.
+
+## Évolution progressive de la stratégie de scoring
+
+La stratégie de scoring évolue par paliers, en cohérence avec les WorkMetrics.
+
+### Phase actuelle
+- contraintes HARD stabilisées
+- premières contraintes SOFT
+- ScoreWeights défini mais usage limité
+- aucune interprétation métier du score
+
+### Phase suivante
+- enrichissement des contraintes combinatoires
+- premières contraintes SOFT d’équité
+- utilisation maîtrisée de ScoreWeights
+
+### Phase ultérieure
+- WorkMetrics complètes (séquences, équité, contractuel)
+- analyse métier aval (SurchargeSalarie)
+- scénarios comparatifs

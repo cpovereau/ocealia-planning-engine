@@ -41,26 +41,38 @@ Chaque instance de WorkMetrics est **liée à :**
 
 ### 3.2 Charges horaires
 
-| Champ                       | Type    | Description                           |
-| --------------------------- | ------- | ------------------------------------- |
-| `heuresTravaillees`         | Decimal | Total heures affectées sur la période |
-| `heuresNuit`                | Decimal | Heures en plage de nuit               |
-| `heuresJourFerie`           | Decimal | Heures sur jours fériés               |
-| `heuresReposHebdoTravaille` | Decimal | Travail sur repos hebdomadaire        |
+| Champ                       | Type    | Description                           | Implémenté |
+| --------------------------- | ------- | ------------------------------------- | -----------|
+| `heuresTravaillees`         | Decimal | Total heures affectées sur la période |      V1    |
+| `heuresNuit`                | Decimal | Heures en plage de nuit               |      V1    |
+| `heuresJourFerie`           | Decimal | Heures sur jours fériés               |      V1    |
+| `heuresReposHebdoTravaille` | Decimal | Travail sur repos hebdomadaire        |      V1    |
 
 ---
 
 ### 3.3 Heures contractuelles
 
-| Champ                     | Type    | Description                            |
-| ------------------------- | ------- | -------------------------------------- |
-| `heuresSupplementaires`   | Decimal | Heures au‑delà du contrat              |
-| `heuresComplementaires`   | Decimal | Heures complémentaires (temps partiel) |
-| `depassementContingentHS` | Decimal | Heures au‑delà du contingent           |
+| Champ                            | Type    | Description                                                  | Implémenté |
+| -------------------------------- | ------- | ------------------------------------------------------------ | ---------- |
+| `nbDimanchesTravailles`          | Integer | Nombre de dimanches calendaires travaillés                   |     V2     |
+| `nbCreneauxReposHebdoDetteRepos` | Integer | Nombre de créneaux sur repos hebdomadaire générant une dette |     V2     |
+
+⚠️ Cette section décrit des métriques cibles.
+Elles ne sont pas implémentées à ce stade du moteur et
+nécessitent une définition préalable du temps contractuel côté métier.
+
+| `heuresSupplementaires`          | Decimal | Heures au‑delà du contrat                                    |            |
+| `heuresComplementaires`          | Decimal | Heures complémentaires (temps partiel)                       |            |
+| `depassementContingentHS`        | Decimal | Heures au‑delà du contingent                                 |            |
 
 ---
 
-### 3.4 Dettes et coûts
+### 3.4 Dettes et coûts (cible future)
+
+Ces métriques ne seront introduites qu’après stabilisation :
+– des WorkMetrics de base
+– de la stratégie de scoring
+– et de l’analyse métier aval.
 
 | Champ                    | Type    | Description                         |
 | ------------------------ | ------- | ----------------------------------- |
@@ -72,16 +84,94 @@ Chaque instance de WorkMetrics est **liée à :**
 
 ---
 
-## 4. Champs optionnels (phase 2)
+## 4. WorkMetrics à concevoir (roadmap)
 
-À introduire **après stabilisation**.
+Cette section décrit les métriques prévues, classées par **ordre logique d’introduction**.
+Chaque groupe dépend explicitement de briques préalables du moteur
+(contraintes, scoring, référentiels).
 
-| Champ                        | Type    | Usage                   |
-| ---------------------------- | ------- | ----------------------- |
-| `joursConsecutifsTravailles` | Integer | Fatigue / légalité      |
-| `amplitudeMaxJour`           | Decimal | Confort                 |
-| `variabiliteHoraires`        | Decimal | Qualité planning        |
-| `tauxOccupation`             | Decimal | Aide RH (poste virtuel) |
+Aucune de ces métriques n’est interprétative : elles restent descriptives.
+
+---
+
+### 4.1 Séquences de travail (V3 – priorité haute)
+
+Ces métriques accompagnent directement les contraintes combinatoires légales
+(nuits consécutives, jours consécutifs).
+
+| Champ                              | Type    | Description                                                |
+| ---------------------------------- | ------- | ---------------------------------------------------------- |
+| `maxNuitsConsecutivesObservees`    | Integer | Longueur maximale observée de nuits consécutives           |
+| `maxJoursConsecutifsObservees`     | Integer | Longueur maximale observée de jours travaillés consécutifs |
+
+**Pré-requis :**
+- contraintes combinatoires HARD/ SOFT stabilisées
+- horizon temporel cohérent
+
+**Objectif :**
+- explicabilité du respect (ou non) des seuils
+- comparaison de solutions
+
+---
+
+### 4.2 Répartition et équité (V3 – après stabilisation scoring)
+
+Ces métriques permettent une lecture **comparative**, sans décision.
+
+| Champ                       | Type    | Description                                                      |
+| --------------------------- | ------- | ---------------------------------------------------------------- |
+| `ecartChargeAvecMoyenne`    | Decimal | Écart absolu entre la charge du salarié et la moyenne collective |
+| `ecartNuitsAvecMoyenne`     | Integer | Écart du nombre de nuits travaillées par rapport à la moyenne    |
+
+**Pré-requis :**
+- WorkMetrics V1 et V2 stabilisées
+- stratégie de scoring (`ScoreWeights`) en place
+
+**Objectif :**
+- préparation des contraintes SOFT d’équité
+- aide à la lecture RH ultérieure
+
+---
+
+### 4.3 Référentiel contractuel (V4 – spécifique contexte français)
+
+Ces métriques expriment un **écart relatif au temps contractuel de référence**,
+sans interprétation juridique.
+
+| Champ                                 | Type    | Description                                                        |
+| ------------------------------------- | ------- | ------------------------------------------------------------------ |
+| `deltaMinutesParRapportAuContractuel` | Decimal | Écart entre minutes travaillées et temps contractuel de référence  |
+| `ratioChargeContractuelle`            | Decimal | Rapport charge réelle / charge contractuelle                       |
+
+**Pré-requis :**
+- définition du temps contractuel côté métier (hors moteur)
+- injection de cette information comme fait immuable
+
+**Objectif :**
+- rendre visibles les écarts
+- préparer l’analyse métier (sans statuer sur la légalité)
+
+---
+
+### 4.4 Dettes et coûts abstraits (V5 – cible long terme)
+
+Ces métriques représentent des **coûts abstraits**, non financiers,
+liés à la pénibilité et à la récupération.
+
+| Champ                    | Type    | Description                  |
+| ------------------------ | ------- | ---------------------------- |
+| `detteReposCompensateur` | Decimal | Volume de repos à récupérer  |
+| `detteReposNuit`         | Decimal | Part liée au travail de nuit |
+| `detteReposFerie`        | Decimal | Part liée aux jours fériés   |
+
+**Pré-requis :**
+- WorkMetrics V3 complètes
+- ScoreWeights stabilisés
+- Analyse métier aval définie
+
+**Objectif :**
+- support à la restitution RH
+- aide à la décision, hors moteur
 
 ---
 
@@ -101,12 +191,9 @@ Ces éléments relèvent du métier, hors moteur.
 
 ## 6. Calcul et mise à jour (principe)
 
-* Les champs sont **dérivés des affectations**
-* Calculés **dans les contraintes** (Constraint Streams)
-* Recalcul incrémental recommandé
-
-> Le moteur ne reçoit jamais WorkMetrics « pré‑calculés »
-> en fonction d’une solution figée.
+Les WorkMetrics sont calculés à partir d’un planning résolu,
+dans une phase dédiée de post-traitement.
+Les contraintes n’écrivent pas les WorkMetrics.
 
 ---
 

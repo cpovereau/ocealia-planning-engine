@@ -30,6 +30,13 @@ public final class SeuilsDeTolerance implements Serializable {
      */
     private final int violationsMetierMax;
 
+    /**
+     * Nome de nuit maximale par salarié
+     * dans une solution globale.
+     */
+    private int maxNuitsConsecutives;
+
+
     public SeuilsDeTolerance(
             int surchargeMaxParSalarie,
             int violationsLegalesMax,
@@ -60,5 +67,9 @@ public final class SeuilsDeTolerance implements Serializable {
 
     public int getViolationsMetierMax() {
         return violationsMetierMax;
+    }
+
+    public int getMaxNuitsConsecutives() {
+        return maxNuitsConsecutives;
     }
 }

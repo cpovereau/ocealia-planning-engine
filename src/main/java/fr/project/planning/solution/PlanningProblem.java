@@ -3,6 +3,7 @@ package fr.project.planning.solution;
 import fr.project.planning.domain.contexte.PlanningContext;
 import fr.project.planning.domain.creneau.Creneau;
 import fr.project.planning.domain.ressource.Ressource;
+import fr.project.planning.domain.workmetrics.WorkMetrics;
 import fr.project.planning.domain.metier.ReferentielComptabiliteActivite;
 import org.optaplanner.core.api.domain.solution.PlanningSolution;
 import org.optaplanner.core.api.domain.solution.PlanningEntityCollectionProperty;
@@ -59,8 +60,17 @@ public class PlanningProblem {
     /**
      * Créneaux à affecter.
      */
+    
     @PlanningEntityCollectionProperty
     private List<Creneau> creneaux;
+
+    /* =========================
+        Faits calculés : WorkMetrics
+        ========================= */
+    
+    @ProblemFactCollectionProperty
+    private List<WorkMetrics> workMetrics;
+
 
     /* =========================
        Score

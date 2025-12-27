@@ -62,6 +62,42 @@ Il recense :
 
 ---
 
+#### 📂 score
+
+| Fichier              | Statut | Rôle                                              |
+| -------------------- | ------ | ------------------------------------------------- |
+| `ScoreWeights.java`  | ✅     | Pondération technique du score (non métier)       |
+
+
+### 🧮 ScoreWeights — Pondération technique du score
+
+`ScoreWeights` est un composant **strictement technique**, interne au moteur de planification.
+
+Il a pour rôle de :
+- traduire les pénalités métier (`Penalites`) en pondérations techniques du score OptaPlanner,
+- garantir la hiérarchie entre contraintes HARD et SOFT,
+- adapter le comportement du scoring selon la `StrategieScoring`.
+
+`ScoreWeights` :
+- ne porte **aucune règle métier**,
+- n’est **pas manipulé par le métier**,
+- peut évoluer indépendamment du référentiel métier.
+
+Il constitue une couche d’adaptation entre :
+- le **vocabulaire métier** (pénalités, seuils),
+- et le **mécanisme d’arbitrage** du solveur (score).
+
+La relation entre les concepts est volontairement unidirectionnelle :
+
+Penalites (métier) → ScoreWeights (technique) → Score OptaPlanner
+
+Ce choix garantit :
+- la lisibilité métier,
+- la stabilité du modèle,
+- l’évolutivité de la stratégie de scoring.
+
+---
+
 ## 2️⃣ Couche Solver (`fr.project.planning.solution` / `solver`)
 
 | Fichier                 | Statut | Rôle                                             |
@@ -107,7 +143,7 @@ Il recense :
 | `PosteVirtuelPenalite.java`  | ✅     | Pénalisation du fictif             |
 | `CreneauNuit.java`           | ✅     | Travail de nuit                    |
 | `CreneauJourFerie.java`      | ✅     | Travail jour férié                 |
-| `CompatibiliteActivite.java` | ⏸️     | À implémenter (HARD métier)        |
+| `DetteRepossurRH.java`       | ✅     | Travail sur RH                     |
 
 ---
 
@@ -159,20 +195,45 @@ Ce choix garantit :
    - l’évolutivité des règles métier, 
    - l’absence de logique métier figée dans le moteur.
 
+L’analyse de la surcharge salarié est volontairement différée tant que :
+- les WorkMetrics ne sont pas stabilisés,
+- la stratégie de pondération du score (`ScoreWeights`) n’est pas finalisée.
+
+Cette séparation permet d’éviter toute interprétation prématurée du score
+et garantit la robustesse du moteur de décision.
+
+---
 
 ## 5️⃣ Ordre logique de développement à venir
 
-1. **Ajouter des métriques de sortie**
+1. **Stabilisation des métriques de sortie (WorkMetrics)**
 
-   * `WorkMetrics` (heures nuit, férié, surcharge…)
-   * préparation restitution WebDev
+   * WorkMetrics V1 : volume de travail, nuit, férié, repos hebdomadaire
+   * WorkMetrics V2 : occurrences structurantes (ex. dimanches travaillés)
+   * Aucun usage analytique à ce stade
 
-2. **Tests complémentaires**
+   Les métriques liées à la durée légale ou contractuelle du travail sont exprimées de manière relative au temps contractuel de référence du salarié.
+   Le moteur ne statue pas sur la légalité d’un dépassement, mais mesure un écart observé exploitable par l’analyse métier.
 
-   * non-régression métier
-   * scénarios documentés (1 à 5)
+2. **Consolidation des contraintes combinatoires**
 
-3. **Finalisation documentation**
+   * contraintes légales HARD (nuits consécutives, repos obligatoires…)
+   * variantes SOFT d’approche des seuils
+   * alignement avec `SeuilsDeTolerance`
+
+3. **Stabilisation du scoring**
+
+   * clarification du rôle respectif `Penalites` / `ScoreWeights`
+   * premiers branchements expérimentaux de `ScoreWeights`
+   * comparaison de scénarios
+
+4. **Analyse métier aval (différée)**
+
+   * construction de `SurchargeSalarie`
+   * interprétation via WorkMetrics + seuils
+   * aide à la décision RH
+
+5. **Finalisation documentation**
 
    * delta UML
    * alignement avec `STRATEGIE_DE_SCORING.md`

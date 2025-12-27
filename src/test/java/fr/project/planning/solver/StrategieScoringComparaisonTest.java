@@ -2,8 +2,11 @@ package fr.project.planning.solver;
 
 import fr.project.planning.domain.contexte.*;
 import fr.project.planning.domain.creneau.*;
+import fr.project.planning.domain.metier.ReferentielComptabiliteActivite;
+import fr.project.planning.domain.metier.ComptabiliteActivite;
 import fr.project.planning.domain.ressource.*;
 import fr.project.planning.solution.PlanningProblem;
+
 import org.junit.jupiter.api.Test;
 import org.optaplanner.core.config.solver.SolverConfig;
 import org.optaplanner.core.api.solver.Solver;
@@ -12,6 +15,7 @@ import fr.project.planning.fixtures.TestRessourceFactory;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.Map;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -37,7 +41,8 @@ class StrategieScoringComparisonTest {
                 PrioriteCreneau.NORMALE,
                 TypeCreneau.IMPOSE,
                 TypePlageHoraire.JOUR,
-                false
+                false,
+                QualificationJour.OUVRE
         );
 
         Creneau nuit = new Creneau(
@@ -52,7 +57,8 @@ class StrategieScoringComparisonTest {
                 PrioriteCreneau.NORMALE,
                 TypeCreneau.IMPOSE,
                 TypePlageHoraire.NUIT,
-                false
+                false,
+                QualificationJour.OUVRE
         );
 
         SalarieReel salarie = TestRessourceFactory.salarieStandard("S1");
@@ -61,14 +67,33 @@ class StrategieScoringComparisonTest {
 
         List<Ressource> ressources = List.of(salarie, posteVirtuel, nonAffecte);
 
+        ComptabiliteActivite activiteStandard =
+            new ComptabiliteActivite(
+                "ACTIVITE",
+                true,
+                false,
+                false,
+                false,
+                ComptabiliteActivite.TypeImpactActivite.CHARGE_STANDARD
+            );
+        
+        ReferentielComptabiliteActivite referentiel =
+        new ReferentielComptabiliteActivite(
+                Map.of(
+                        "ACTIVITE", activiteStandard
+                )
+        );
+
         // --------------------
         // Cas 1 : EXPLOITATION
         // --------------------
 
         PlanningContext exploitation = contexte(StrategieScoring.EXPLOITATION);
 
+
         PlanningProblem problemExploitation = new PlanningProblem(
             exploitation,
+            referentiel,    
             ressources,
             List.of(jour, nuit)
         );
@@ -87,7 +112,8 @@ class StrategieScoringComparisonTest {
         PlanningContext analyseRH = contexte(StrategieScoring.ANALYSE_RH);
 
         PlanningProblem problemAnalyse = new PlanningProblem(
-            analyseRH,    
+            analyseRH,
+            referentiel,     
             ressources,
             List.of(jour, nuit)
         );
@@ -145,6 +171,7 @@ class StrategieScoringComparisonTest {
             Integer.MAX_VALUE
         ),
         new Penalites(
+            1,
             1,
             1,
             1,
