@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.org/schema/scenario-sc04.schema.json",
+  "title": "Scenario SC-04 – Optimisation globale",
+  "type": "object",
+  "required": ["scenarioType", "planningContext", "scenarioParameters", "dataSet"],
+  "properties": {
+    "scenarioType": { "const": "SC-04" },
+    "planningContext": { "$ref": "ScenarioContract.schema.json#/properties/planningContext" },
+    "scenarioParameters": {
+      "type": "object",
+      "required": ["degreLiberte"],
+      "additionalProperties": false,
+      "properties": {
+        "degreLiberte": { "type": "string", "enum": ["FAIBLE", "MOYEN", "FORT"] }
+      }
+    },
+    "dataSet": { "$ref": "ScenarioContract.schema.json#/properties/dataSet" }
+  }
+}

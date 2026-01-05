@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.org/schema/scenario-contract.schema.json",
+  "title": "ScenarioContract",
+  "description": "Contrat JSON d'alimentation du moteur de planification",
+  "type": "object",
+  "required": ["scenarioType", "planningContext", "scenarioParameters", "dataSet"],
+  "additionalProperties": false,
+  "properties": {
+    "scenarioType": {
+      "type": "string",
+      "enum": ["SC-01", "SC-02", "SC-03", "SC-04", "SC-05"],
+      "description": "Identifiant du scénario métier"
+    },
+    "planningContext": {
+      "type": "object",
+      "required": ["horizon", "strategieScoring"],
+      "additionalProperties": false,
+      "properties": {
+        "horizon": {
+          "type": "object",
+          "required": ["dateDebut", "dateFin"],
+          "additionalProperties": false,
+          "properties": {
+            "dateDebut": { "type": "string", "format": "date" },
+            "dateFin": { "type": "string", "format": "date" }
+          }
+        },
+        "strategieScoring": {
+          "type": "string",
+          "enum": ["EXPLOITATION", "ANALYSE_RH", "AUDIT"]
+        },
+        "seuils": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      }
+    },
+    "scenarioParameters": {
+      "type": "object",
+      "description": "Paramètres spécifiques au scénario",
+      "additionalProperties": true
+    },
+    "dataSet": {
+      "type": "object",
+      "required": ["creneaux", "ressources"],
+      "additionalProperties": false,
+      "properties": {
+        "creneaux": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Creneau"
+          }
+        },
+        "ressources": {
+          "type": "object",
+          "required": ["salaries"],
+          "additionalProperties": false,
+          "properties": {
+            "salaries": {
+              "type": "array",
+              "items": { "$ref": "#/definitions/Salarie" }
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "Creneau": {
+      "type": "object",
+      "required": ["id", "date", "heureDebut", "heureFin", "lieu", "activite", "type"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "heureDebut": { "type": "string", "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$" },
+        "heureFin": { "type": "string", "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$" },
+        "lieu": { "type": "string" },
+        "activite": { "type": "string" },
+        "type": { "type": "string", "enum": ["IMPOSE", "GENERE"] },
+        "isJourFerie": { "type": "boolean" },
+        "isReposHebdo": { "type": "boolean" },
+        "segmentNuit": { "type": "boolean" }
+      }
+    },
+    "Salarie": {
+      "type": "object",
+      "required": ["id", "statut", "sitesAutorises", "activitesCompatibles"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string" },
+        "statut": { "type": "string" },
+        "sitesAutorises": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "activitesCompatibles": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.org/schema/scenario-sc01.schema.json",
+  "title": "Scenario SC-01 – Nouveau salarié",
+  "type": "object",
+  "required": ["scenarioType", "planningContext", "scenarioParameters", "dataSet"],
+  "properties": {
+    "scenarioType": { "const": "SC-01" },
+    "planningContext": { "$ref": "ScenarioContract.schema.json#/properties/planningContext" },
+    "scenarioParameters": {
+      "type": "object",
+      "required": ["salarieId", "joursTravaillables", "bornesHoraires"],
+      "additionalProperties": false,
+      "properties": {
+        "salarieId": { "type": "string" },
+        "joursTravaillables": {
+          "type": "array",
+          "items": { "enum": ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"] }
+        },
+        "bornesHoraires": {
+          "type": "object",
+          "required": ["minJour", "maxJour"],
+          "properties": {
+            "minJour": { "type": "number" },
+            "maxJour": { "type": "number" }
+          }
+        }
+      }
+    },
+    "dataSet": { "$ref": "ScenarioContract.schema.json#/properties/dataSet" }
+  }
+}

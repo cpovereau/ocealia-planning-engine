@@ -1,0 +1,85 @@
+{
+  "_comment": "Exemples SC-05 — Arbitrage entre deux salariés",
+
+  "EXEMPLE_VALIDE": {
+    "scenarioType": "SC-05",
+    "planningContext": {
+      "horizon": {
+        "dateDebut": "2026-01-01",
+        "dateFin": "2026-01-31"
+      },
+      "strategieScoring": "ANALYSE_RH"
+    },
+    "scenarioParameters": {
+      "salarieAId": "SAL_A",
+      "salarieBId": "SAL_B",
+      "objectif": "EQUITE_CHARGE",
+      "autoriserDesequilibre": false
+    },
+    "dataSet": {
+      "creneaux": [
+        {
+          "id": "CR-001",
+          "date": "2026-01-05",
+          "heureDebut": "08:00",
+          "heureFin": "12:00",
+          "lieu": "SITE_A",
+          "activite": "ACCUEIL",
+          "type": "IMPOSE",
+          "isJourFerie": false,
+          "isReposHebdo": false,
+          "segmentNuit": false
+        },
+        {
+          "id": "CR-002",
+          "date": "2026-01-05",
+          "heureDebut": "13:00",
+          "heureFin": "17:00",
+          "lieu": "SITE_A",
+          "activite": "ACCUEIL",
+          "type": "IMPOSE",
+          "isJourFerie": false,
+          "isReposHebdo": false,
+          "segmentNuit": false
+        }
+      ],
+      "ressources": {
+        "salaries": [
+          {
+            "id": "SAL_A",
+            "statut": "TEMPS_PLEIN",
+            "sitesAutorises": ["SITE_A"],
+            "activitesCompatibles": ["ACCUEIL"]
+          },
+          {
+            "id": "SAL_B",
+            "statut": "TEMPS_PLEIN",
+            "sitesAutorises": ["SITE_A"],
+            "activitesCompatibles": ["ACCUEIL"]
+          }
+        ]
+      }
+    }
+  },
+
+  "EXEMPLE_INVALIDE": {
+    "scenarioType": "SC-05",
+    "planningContext": {
+      "horizon": {
+        "dateDebut": "2026-01-01",
+        "dateFin": "2026-01-31"
+      },
+      "strategieScoring": "ANALYSE_RH"
+    },
+    "scenarioParameters": {
+      "salarieAId": "SAL_A",
+      "objectif": "EQUITE_CHARGE"
+    },
+    "dataSet": {
+      "creneaux": [],
+      "ressources": {
+        "salaries": []
+      }
+    }
+  }
+}

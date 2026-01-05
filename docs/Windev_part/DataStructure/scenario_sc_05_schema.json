@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.org/schema/scenario-sc05.schema.json",
+  "title": "Scenario SC-05 – Arbitrage entre deux salariés",
+  "type": "object",
+  "required": ["scenarioType", "planningContext", "scenarioParameters", "dataSet"],
+  "properties": {
+    "scenarioType": { "const": "SC-05" },
+    "planningContext": { "$ref": "ScenarioContract.schema.json#/properties/planningContext" },
+    "scenarioParameters": {
+      "type": "object",
+      "required": ["salarieAId", "salarieBId", "objectif"],
+      "additionalProperties": false,
+      "properties": {
+        "salarieAId": { "type": "string" },
+        "salarieBId": { "type": "string" },
+        "objectif": {
+          "type": "string",
+          "enum": ["EQUITE_CHARGE", "MIN_SURCHARGE", "RESPECT_PREFERENCES"]
+        },
+        "autoriserDesequilibre": { "type": "boolean" }
+      }
+    },
+    "dataSet": { "$ref": "ScenarioContract.schema.json#/properties/dataSet" }
+  }
+}

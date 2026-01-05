@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.org/schema/scenario-sc02.schema.json",
+  "title": "Scenario SC-02 – Remplacement salarié",
+  "type": "object",
+  "required": ["scenarioType", "planningContext", "scenarioParameters", "dataSet"],
+  "properties": {
+    "scenarioType": { "const": "SC-02" },
+    "planningContext": { "$ref": "ScenarioContract.schema.json#/properties/planningContext" },
+    "scenarioParameters": {
+      "type": "object",
+      "required": ["salarieAbsentId", "periodeAbsence"],
+      "additionalProperties": false,
+      "properties": {
+        "salarieAbsentId": { "type": "string" },
+        "periodeAbsence": {
+          "type": "object",
+          "required": ["dateDebut", "dateFin"],
+          "properties": {
+            "dateDebut": { "type": "string", "format": "date" },
+            "dateFin": { "type": "string", "format": "date" }
+          }
+        }
+      }
+    },
+    "dataSet": { "$ref": "ScenarioContract.schema.json#/properties/dataSet" }
+  }
+}
