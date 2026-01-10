@@ -158,35 +158,42 @@ class StrategieScoringComparisonTest {
     private PlanningContext contexte(StrategieScoring strategieScoring) {
     return new PlanningContext(
         ObjectifResolution.COUVRIR_A_TOUT_PRIX,
-        strategieScoring.EXPLOITATION,
-        new HorizonTemporel(LocalDate.now(), LocalDate.now()),
+        StrategieScoring.EXPLOITATION,
+        ResolutionType.PLANNING_GLOBAL,
+        HypotheseHistorique.NEUTRE,
+        new HorizonTemporel(
+                LocalDate.now(),
+                LocalDate.now()
+        ),
         new StrategieCouverture(
-            true,     
-            true,  
-            true      
+                true,
+                true,
+                true
         ),
         new SeuilsDeTolerance(
-            Integer.MAX_VALUE,
-            Integer.MAX_VALUE,
-            Integer.MAX_VALUE
+                Integer.MAX_VALUE,
+                Integer.MAX_VALUE,
+                Integer.MAX_VALUE
         ),
         new Penalites(
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1,
-            1
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1
         ),
         new OptionsExplicabilite(
-            false, 
-            false, 
-            false
-
+                false,
+                false,
+                false
         )
-    );
+);
+
 }
 
 }

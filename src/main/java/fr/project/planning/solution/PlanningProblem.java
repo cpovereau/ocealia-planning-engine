@@ -144,4 +144,7 @@ public class PlanningProblem {
     public void setScore(HardSoftScore score) {
         this.score = score;
     }
+    
 }
+
+

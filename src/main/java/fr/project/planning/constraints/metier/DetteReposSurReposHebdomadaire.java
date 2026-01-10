@@ -33,7 +33,7 @@ public class DetteReposSurReposHebdomadaire {
 
         // 2) Placés sur un repos hebdomadaire
         .filter(creneau ->
-            creneau.getQualificationJour() == QualificationJour.REPOS_HEBDOMADAIRE
+            creneau.getQualificationJour() == QualificationJour.RHD
         )
 
         // 3) Jointure avec la solution (PlanningProblem)

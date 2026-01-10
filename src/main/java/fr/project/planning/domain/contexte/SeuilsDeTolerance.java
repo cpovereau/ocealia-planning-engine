@@ -37,6 +37,29 @@ public final class SeuilsDeTolerance implements Serializable {
     private int maxNuitsConsecutives;
 
 
+    /**
+     * Nombre minimal de jours calendaires complets
+     * à respecter après une séquence de nuits.
+     */
+    private int reposApresNuitsEnJours;
+
+    /**
+     * Seuils pour le repos hebdomadaire
+     */
+    private int reposHebdoFenetreJours;
+
+    /** 
+     * Nombre minimal de jours non travaillés 
+     */
+    private int reposHebdoMinJoursOffDansFenetre;
+
+    /** 
+     * Nombre maximal de dimanches travaillés 
+     */
+    private int maxDimanchesTravailles;
+
+
+
     public SeuilsDeTolerance(
             int surchargeMaxParSalarie,
             int violationsLegalesMax,
@@ -71,5 +94,21 @@ public final class SeuilsDeTolerance implements Serializable {
 
     public int getMaxNuitsConsecutives() {
         return maxNuitsConsecutives;
+    }
+
+    public int getReposApresNuitsEnJours() {
+    return reposApresNuitsEnJours;
+    } 
+
+    public int getReposHebdoFenetreJours() {
+        return reposHebdoFenetreJours;
+    }
+
+    public int getReposHebdoMinJoursOffDansFenetre() {
+        return reposHebdoMinJoursOffDansFenetre;
+    }
+
+    public int getMaxDimanchesTravailles() {
+        return maxDimanchesTravailles;
     }
 }

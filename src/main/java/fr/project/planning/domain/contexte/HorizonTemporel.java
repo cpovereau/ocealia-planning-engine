@@ -30,4 +30,10 @@ public final class HorizonTemporel implements Serializable {
     public LocalDate getDateFin() {
         return dateFin;
     }
+
+    public boolean contient(LocalDate date) {
+    Objects.requireNonNull(date, "date ne doit pas être null");
+    return !date.isBefore(dateDebut) && !date.isAfter(dateFin);
+    }
+
 }

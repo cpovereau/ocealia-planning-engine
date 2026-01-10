@@ -2,6 +2,7 @@ package fr.project.planning.domain.creneau;
 
 public enum QualificationJour {
         OUVRE,
-        REPOS_HEBDOMADAIRE,
-        FERIE
+        FERIE,
+        RH, // Repos Hebdomadaire
+        RHD // Repos Hebdomadaire Dominical
     }

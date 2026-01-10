@@ -56,6 +56,16 @@ public final class Penalites implements Serializable {
      */
     private final int detteReposSurReposHebdomadaire;
 
+    /** 
+    / *Pénalité associée au nombre de nuits consécutives
+     */
+    private int approcheMaxNuitsConsecutives;
+
+    /**
+     * Pénalité associée au dépassement du nombre de dimanches travaillés.
+     */
+    private int depassementMaxDimanchesTravailles;
+
     public Penalites(
             int violationPhysique,
             int violationLegale,
@@ -64,7 +74,9 @@ public final class Penalites implements Serializable {
             int violationPersonnelle,
             int affectationPosteVirtuel,
             int nonAffectation,
-            int detteReposSurReposHebdomadaire
+            int detteReposSurReposHebdomadaire,
+            int approcheMaxNuitsConsecutives,
+            int depassementMaxDimanchesTravailles
     ) {
         this.violationPhysique = violationPhysique;
         this.violationLegale = violationLegale;
@@ -74,6 +86,8 @@ public final class Penalites implements Serializable {
         this.affectationPosteVirtuel = affectationPosteVirtuel;
         this.nonAffectation = nonAffectation;
         this.detteReposSurReposHebdomadaire = detteReposSurReposHebdomadaire;
+        this.approcheMaxNuitsConsecutives = approcheMaxNuitsConsecutives;
+        this.depassementMaxDimanchesTravailles = depassementMaxDimanchesTravailles;
     }
 
     public int getViolationPhysique() {
@@ -108,4 +122,11 @@ public final class Penalites implements Serializable {
         return detteReposSurReposHebdomadaire;
     }
 
+    public int getApprocheMaxNuitsConsecutives() {
+    return approcheMaxNuitsConsecutives;
+    }
+
+    public int getDepassementMaxDimanchesTravailles() {
+    return depassementMaxDimanchesTravailles;
+    }
 }

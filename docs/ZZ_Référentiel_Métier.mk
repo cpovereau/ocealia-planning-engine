@@ -1,255 +1,186 @@
-# 📌 Référentiel projet — Moteur de planification OptaPlanner
+# 📌 Référentiel métier — Moteur de planification (version clarifiée)
 
-Ce document sert de **fil conducteur unique** pour le développement du moteur de planification.
-Il recense :
+Ce document a pour objectif **d’expliquer clairement où en est le moteur aujourd’hui**,
+ce qu’il fait **déjà**, ce qu’il **ne fait pas**, et **comment lire les fichiers existants**.
 
-* les fichiers **déjà créés et validés** dans ce fil,
-* les fichiers **à créer ou à enrichir**,
-* l’**ordre logique de progression**,
-* les liens explicites avec les documents de conception existants.
+Il ne décrit pas une vision cible abstraite :
+➡️ il décrit **l’état réel du moteur tel qu’il est implémenté**.
 
 ---
 
-## 1️⃣ Architecture globale validée
+## 🎯 Finalité du moteur
 
-### 1.1 Domaine métier (`fr.project.planning.domain`)
+Le moteur de planification a pour rôle de :
 
-#### 📂 contexte
+* proposer une **affectation de créneaux à des ressources**,
+* sous **contraintes physiques, légales et métier**,
+* en produisant une **solution explicable**,
+* même lorsqu’aucune solution parfaite n’existe.
 
-| Fichier                     | Statut | Rôle                                                            |
-| --------------------------- | ------ | --------------------------------------------------------------- |
-| `PlanningContext.java`      | ✅      | Contexte global de résolution (objectif, stratégie, pénalités…) |
-| `ObjectifResolution.java`   | ✅      | Intention principale (ex : couvrir au mieux)                    |
-| `StrategieScoring.java`     | ✅      | Mode d’analyse (`EXPLOITATION`, `ANALYSE_RH`, `AUDIT`)          |
-| `HorizonTemporel.java`      | ✅      | Fenêtre temporelle de résolution                                |
-| `StrategieCouverture.java`  | ✅      | Règles d’autorisation (poste virtuel, non-affecté)              |
-| `SeuilsDeTolerance.java`    | ✅      | Seuils métier (surcharge, dérives acceptables)                  |
-| `Penalites.java`            | ✅      | Pondérations relatives des contraintes                          |
-| `OptionsExplicabilite.java` | ✅      | Paramètres d’explication des résultats                          |
+👉 Le moteur **n’automatise pas la décision métier**.
+👉 Il **met en évidence les compromis**, les tensions et les manques.
 
 ---
 
-#### 📂 creneau
+## 🧱 Principe structurant — Séparation des couches
 
-| Fichier                 | Statut | Rôle                                              |
-| ----------------------- | ------ | ------------------------------------------------- |
-| `Creneau.java`          | ✅      | **PlanningEntity** principale (besoin de travail) |
-| `PrioriteCreneau.java`  | ✅      | Hiérarchisation métier des créneaux               |
-| `TypeCreneau.java`      | ✅      | Typologie (imposé, facultatif…)                   |
-| `TypePlageHoraire.java` | ✅      | Qualification jour / nuit                         |
+Le moteur repose sur une séparation stricte des responsabilités.
 
----
+| Couche            | Rôle                                 |
+| ----------------- | ------------------------------------ |
+| Contraintes       | Interdire (HARD) ou pénaliser (SOFT) |
+| SeuilsDeTolerance | Bornes métier impératives            |
+| Penalites         | Intensité des contraintes SOFT       |
+| ScoreWeights      | Pondération technique interne        |
+| WorkMetrics       | Constats post‑résolution             |
+| Analyse métier    | Interprétation hors moteur           |
 
-#### 📂 metier
-
-| Fichier                      | Statut | Rôle                                              |
-| ---------------------------- | ------ | ------------------------------------------------- |
-| `SurchargeSalarie.java`      | ✅      |  Lecture métier de la surcharge d'un scénario     |
-| `CompatibiliteActivite.java` | ✅      |  Lecture de l'impact des affectations             |
-
+👉 **Aucune couche ne consomme ce qui relève d’une autre.**
 
 ---
 
-#### 📂 ressource
+## 🧩 Ce que le moteur manipule réellement
 
-| Fichier                     | Statut | Rôle                                             |
-| --------------------------- | ------ | ------------------------------------------------ |
-| `Ressource.java`            | ✅      | Abstraction de ressource                         |
-| `SalarieReel.java`          | ✅      | Ressource réelle (compétences, sites, activités) |
-| `PosteVirtuel.java`         | ✅      | Capacité fictive / révélée                       |
-| `RessourceNonAffectee.java` | ✅      | État volontairement pénalisé                     |
-| `TypePosteVirtuel.java`     | ✅      | Typologie des postes virtuels                    |
+### 1️⃣ Le créneau — l’unité de décision
 
----
+Le **créneau** représente un **besoin de travail à couvrir**.
 
-#### 📂 score
+* il existe indépendamment des ressources,
+* il peut être imposé ou généré,
+* il porte **l’unique variable de décision** : `ressourceAffectee`.
 
-| Fichier              | Statut | Rôle                                              |
-| -------------------- | ------ | ------------------------------------------------- |
-| `ScoreWeights.java`  | ✅     | Pondération technique du score (non métier)       |
-
-
-### 🧮 ScoreWeights — Pondération technique du score
-
-`ScoreWeights` est un composant **strictement technique**, interne au moteur de planification.
-
-Il a pour rôle de :
-- traduire les pénalités métier (`Penalites`) en pondérations techniques du score OptaPlanner,
-- garantir la hiérarchie entre contraintes HARD et SOFT,
-- adapter le comportement du scoring selon la `StrategieScoring`.
-
-`ScoreWeights` :
-- ne porte **aucune règle métier**,
-- n’est **pas manipulé par le métier**,
-- peut évoluer indépendamment du référentiel métier.
-
-Il constitue une couche d’adaptation entre :
-- le **vocabulaire métier** (pénalités, seuils),
-- et le **mécanisme d’arbitrage** du solveur (score).
-
-La relation entre les concepts est volontairement unidirectionnelle :
-
-Penalites (métier) → ScoreWeights (technique) → Score OptaPlanner
-
-Ce choix garantit :
-- la lisibilité métier,
-- la stabilité du modèle,
-- l’évolutivité de la stratégie de scoring.
+👉 OptaPlanner **ne décide que sur les créneaux**, jamais sur les salariés.
 
 ---
 
-## 2️⃣ Couche Solver (`fr.project.planning.solution` / `solver`)
+### 2️⃣ Les ressources — faits immuables
 
-| Fichier                 | Statut | Rôle                                             |
-| ----------------------- | ------ | ------------------------------------------------ |
-| `PlanningProblem.java`  | ✅      | **PlanningSolution** (faits + décisions + score) |
-| `solverConfig-test.xml` | ✅      | Configuration OptaPlanner dédiée aux tests       |
+Le moteur manipule deux types de ressources :
 
----
+* **Salarié réel** : personne existante, jamais modifiée par le moteur
+* **Poste virtuel** : capacité manquante ou hypothétique
 
-## 3️⃣ Contraintes OptaPlanner (`fr.project.planning.constraints`)
-
-### 3.1 Provider
-
-| Fichier                       | Statut | Rôle                                  |
-| ----------------------------- | ------ | ------------------------------------- |
-| `ConstraintProviderImpl.java` | ✅     | Point d’entrée unique des contraintes |
+👉 Le salarié réel est un **fait d’entrée**.
+👉 Le poste virtuel est un **outil de révélation du manque**.
 
 ---
 
-### 3.2 Contraintes physiques (HARD)
+### 3️⃣ Les contraintes — ce que le moteur juge
 
-| Fichier                      | Statut | Rôle                  |
-| ---------------------------- | ------ | --------------------- |
-| `ChevauchementCreneaux.java` | ✅     | Interdit les overlaps |
-| `DureeMaxCreneau.java`       | ✅     | Créneau ≤ 12h         |
-| `CumulJournalierMax.java`    | ✅     | Journée ≤ 24h         |
+Les contraintes évaluent les affectations.
+Elles ne modifient **jamais** les données.
 
----
+Deux catégories structurantes :
 
-### 3.3 Contraintes légales (HARD)
+* **HARD** : règles impératives → solution interdite si violées
+* **SOFT** : règles d’optimisation → arbitrage entre solutions valides
 
-| Fichier                              | Statut | Rôle                     |
-| ------------------------------------ | ------ | ------------------------ |
-| `DureeMaximaleLegaleParSalarie.java` | ✅     | Limite légale de travail |
+Exemples actuellement implémentés :
 
----
-
-### 3.4 Contraintes métier (SOFT)
-
-| Fichier                      | Statut | Rôle                               |
-| ---------------------------- | ------ | ---------------------------------- |
-| `NonAffectationCreneau.java` | ✅     | Pénalisation du non-couvert        |
-| `PosteVirtuelPenalite.java`  | ✅     | Pénalisation du fictif             |
-| `CreneauNuit.java`           | ✅     | Travail de nuit                    |
-| `CreneauJourFerie.java`      | ✅     | Travail jour férié                 |
-| `DetteRepossurRH.java`       | ✅     | Travail sur RH                     |
+* nuits consécutives maximales (HARD)
+* repos obligatoire après nuits (HARD)
+* repos hebdomadaire glissant (HARD / SOFT selon variante)
+* dimanches travaillés (SOFT fort)
 
 ---
 
-## 4️⃣ Tests (`src/test/java/fr/project/planning`)
+### 4️⃣ Seuils et pénalités — paramètres métier
 
-| Fichier                               | Statut | Rôle                          |
-| ------------------------------------- | ------ | ----------------------------- |
-| `StrategieScoringComparisonTest.java` | ✅     | Test de référence stratégique |
+* `SeuilsDeTolerance` définit **les bornes métier**
+* `Penalites` définit **l’intensité des violations SOFT**
 
----
-
-### 📂 fixtures
-
-| Fichier                     | Statut | Rôle                           |
-| --------------------------- | ------ | ------------------------------ |
-| `TestRessourceFactory.java` | ✅     | Fabrique de ressources de test |
+👉 Une contrainte HARD **ne consomme jamais de pénalité**.
+👉 Une contrainte SOFT **ne consomme jamais de seuil HARD**.
 
 ---
 
-### 🧾 Surcharge salarié — Décision de conception
+### 5️⃣ Score et ScoreWeights — arbitrage technique
 
-| Élément            | Rôle                     |
-| ------------------ | ------------------------ |
-| Moteur             | Évalue et pénalise       |
-| Score              | Arbitre                  |
-| Résultats          | Exposent les indicateurs |
-| `SurchargeSalarie` | **Interprète**           |
+Le **score** sert uniquement à comparer des solutions valides.
 
-La surcharge salarié ne constitue pas une entité du moteur de planification.
-Elle n’est ni une variable de décision, ni un fait consommé par le solveur.
-La surcharge est une lecture métier dérivée, construite à partir :
-   - des indicateurs de charge (WorkMetrics),
-   - des violations de règles combinatoires,
-   - des seuils définis dans le PlanningContext.
+* il ne représente ni la légalité,
+* ni la conformité RH,
+* ni un jugement individuel.
 
-Le moteur de planification :
-   - évalue les situations de surcharge,
-   - applique des pénalités ou des exclusions,
-   - rend visibles les dépassements dans les résultats.
-
-L’objet métier SurchargeSalarie est construit en aval de la résolution,
-afin de :
-   - qualifier le niveau de surcharge (alerte / SOFT / HARD),
-   - expliciter les causes,
-   - soutenir l’aide à la décision RH.
-
-Ce choix garantit :
-   - la séparation stricte entre décision et interprétation,
-   - l’évolutivité des règles métier, 
-   - l’absence de logique métier figée dans le moteur.
-
-L’analyse de la surcharge salarié est volontairement différée tant que :
-- les WorkMetrics ne sont pas stabilisés,
-- la stratégie de pondération du score (`ScoreWeights`) n’est pas finalisée.
-
-Cette séparation permet d’éviter toute interprétation prématurée du score
-et garantit la robustesse du moteur de décision.
+`ScoreWeights` est une couche **strictement technique**,
+chargée de traduire les pénalités métier vers OptaPlanner.
 
 ---
 
-## 5️⃣ Ordre logique de développement à venir
+### 6️⃣ WorkMetrics — ce que la solution produit
 
-1. **Stabilisation des métriques de sortie (WorkMetrics)**
+Les **WorkMetrics** sont :
 
-   * WorkMetrics V1 : volume de travail, nuit, férié, repos hebdomadaire
-   * WorkMetrics V2 : occurrences structurantes (ex. dimanches travaillés)
-   * Aucun usage analytique à ce stade
+* calculées **après résolution**,
+* strictement descriptives,
+* indépendantes des contraintes.
 
-   Les métriques liées à la durée légale ou contractuelle du travail sont exprimées de manière relative au temps contractuel de référence du salarié.
-   Le moteur ne statue pas sur la légalité d’un dépassement, mais mesure un écart observé exploitable par l’analyse métier.
+Exemples :
 
-2. **Consolidation des contraintes combinatoires**
+* heures travaillées
+* heures de nuit
+* dimanches travaillés
+* travail sur repos hebdomadaire
 
-   * contraintes légales HARD (nuits consécutives, repos obligatoires…)
-   * variantes SOFT d’approche des seuils
-   * alignement avec `SeuilsDeTolerance`
-
-3. **Stabilisation du scoring**
-
-   * clarification du rôle respectif `Penalites` / `ScoreWeights`
-   * premiers branchements expérimentaux de `ScoreWeights`
-   * comparaison de scénarios
-
-4. **Analyse métier aval (différée)**
-
-   * construction de `SurchargeSalarie`
-   * interprétation via WorkMetrics + seuils
-   * aide à la décision RH
-
-5. **Finalisation documentation**
-
-   * delta UML
-   * alignement avec `STRATEGIE_DE_SCORING.md`
-   * gel du modèle V1
+👉 Les métriques **n’interdisent jamais une solution**.
+👉 Elles servent à l’**explicabilité** et à l’analyse aval.
 
 ---
 
-## 6️⃣ Principe directeur à ne jamais perdre
+## 🚫 Ce que le moteur ne fait volontairement pas
+
+Le moteur ne :
+
+* calcule pas la paie,
+* n’applique pas exhaustivement le droit du travail,
+* ne statue pas sur la conformité réglementaire,
+* n’interprète pas la surcharge salarié.
+
+Ces éléments relèvent **exclusivement de l’analyse métier aval**.
+
+---
+
+## 🧾 Surcharge salarié — positionnement clair
+
+La surcharge salarié :
+
+* n’est pas une entité du moteur,
+* n’est pas une variable de décision,
+* n’est pas un fait consommé par le solveur.
+
+Elle est construite **après coup**, à partir :
+
+* des WorkMetrics,
+* des règles combinatoires violées,
+* des seuils définis dans le contexte.
+
+👉 Le moteur **signale**.
+👉 Le métier **interprète**.
+
+---
+
+## 📍 Où en est le moteur aujourd’hui
+
+À ce stade, le moteur :
+
+* sait interdire l’impossible (HARD),
+* sait arbitrer entre des solutions imparfaites (SOFT),
+* rend visibles les tensions et manques,
+* reste explicable et extensible.
+
+👉 Les fondations sont stabilisées.
+👉 L’industrialisation peut démarrer sans dette conceptuelle.
+
+Socle conceptuel V1 — gelé
+
+Les contrats WebDev ↔ moteur sont définis dans des documents dédiés,
+alignés sur le référentiel métier V1, et susceptibles d’évolution contrôlée.
+
+---
+
+## 🧠 Principe directeur
 
 > **Le moteur juge. Il ne calcule pas.**
 
-* Toutes les qualifications (nuit, férié, durée…) sont **faites en amont**.
-* OptaPlanner arbitre selon une intention explicite.
-* Le score reflète un compromis, pas une vérité comptable.
-
----
-
-📍 **Ce document est la référence de suivi du projet.**
-À mettre à jour à chaque évolution structurante.
+Il ne remplace pas le métier.
+Il lui donne les moyens de décider en connaissance de cause.

@@ -117,7 +117,31 @@ Le moteur **ne reconstitue jamais l’historique**.
 
 ---
 
-## 7. Rattachement documentaire
+## 7. Portage explicite de l’horizon et des hypothèses de résolution
+
+L’horizon temporel, le type de résolution et les hypothèses liées à l’historique
+sont des **données d’entrée explicites du moteur**.
+
+Ils sont **portés par le `PlanningContext`** fourni par l’appelant (WebDev / API),
+et **ne sont jamais déduits, recalculés ou interprétés implicitement** par le moteur
+de planification.
+
+En particulier :
+
+- le moteur ne choisit jamais l’horizon de résolution (dates de début / fin) ;
+- le type de résolution (planning global, cycle, remplacement, projection)
+  est fourni explicitement ;
+- les hypothèses d’historique (prise en compte du passé, compteurs initiaux, etc.)
+  sont explicites et non reconstruites.
+
+Cette approche garantit :
+- la traçabilité des décisions de planification ;
+- la reproductibilité des résultats ;
+- l’absence de logique implicite dans le moteur.
+
+---
+
+## 8. Rattachement documentaire
 
 Ce document est transversal et complète :
 

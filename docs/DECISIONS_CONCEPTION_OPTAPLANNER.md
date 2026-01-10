@@ -122,6 +122,11 @@ Les scénarios sont des **tests de capacité du moteur**, pas une configuration 
 > Les scénarios **ne sont pas tous compatibles simultanément**.
 > Ils ont servi à comprendre et classifier les règles.
 
+### Décision – Alignement strict des fixtures sur le modèle métier
+
+Les fixtures de test doivent construire des objets valides au sens du domaine.
+Aucun constructeur ou raccourci ne doit être ajouté au modèle pour faciliter les tests.
+
 ---
 
 ## 6. Décision d’architecture majeure

@@ -14,13 +14,52 @@ pour **évaluer** une solution (scoring), sans jamais devenir des décisions.
 > WorkMetrics rendent visibles les **conséquences** des décisions
 > (coûts, dettes, charges), pas les décisions elles‑mêmes.
 
+> Les WorkMetrics sont calculées **après la résolution complète du planning**
+> et ne sont jamais modifiées pendant l’exécution du solveur. 
+
+-- 
+
+## 1.1 Dépendance au référentiel métier
+
+Les métriques de travail ne déduisent jamais les effets métier
+directement à partir des créneaux.
+
+Toute interprétation (dette repos, charge, criticité)
+passe par `ReferentielComptabiliteActivite`
+et ses `ComptabiliteActivite`.
+
+---
+
+### 1.2 Clarification à renforcer
+
+WorkMetrics sont des constats post-résolution.
+Elles ne participent :
+- ni à la faisabilité,
+- ni aux décisions,
+- ni à l’interdiction d’une solution.
+
+Elles décrivent ce que la solution produit, indépendamment du fait qu’elle soit légale, acceptable ou non du point de vue métier.
+
+---
+
+### 1.3 Alignement HARD / SOFT
+
+❌ Aucune métrique ne correspond directement à une contrainte HARD
+✅ Une contrainte HARD peut expliquer a posteriori une valeur de métrique (ex. séquence observée)
+❌ Une métrique ne déclenche jamais une exclusion
+
+Exemple :
+maxNuitsConsecutivesObservees = 6
+→ ce n’est pas la métrique qui invalide la solution,
+→ c’est la contrainte HARD NuitsConsecutivesMax qui l’interdit.
+
 ---
 
 ## 2. Portée temporelle
 
 Chaque instance de WorkMetrics est **liée à :**
 
-* un **salarié** (ou une ressource virtuelle agrégée),
+* une **ressource** (salarié réel ou ressource virtuelle agrégée),
 * une **période** (issue du `PlanningContext`),
 * un **type de résolution** (planning global, cycle, remplacement).
 
@@ -50,7 +89,7 @@ Chaque instance de WorkMetrics est **liée à :**
 
 ---
 
-### 3.3 Heures contractuelles
+### 3.3 Indicateurs liés au référentiel contractuel (cible)
 
 | Champ                            | Type    | Description                                                  | Implémenté |
 | -------------------------------- | ------- | ------------------------------------------------------------ | ---------- |
@@ -84,6 +123,55 @@ Ces métriques ne seront introduites qu’après stabilisation :
 
 ---
 
+### 3.4 État d’implémentation validé (V2)
+
+Cette section décrit **exclusivement** les règles actuellement
+implémentées et validées par les tests automatisés.
+
+Elle ne remet pas en cause la définition générale de WorkMetrics.
+
+#### 📊 Métriques calculées
+
+##### Travail total
+
+- Somme des durées de tous les créneaux valides.
+
+#####  Travail de nuit
+
+- Somme des durées des créneaux de type `NUIT`.
+
+#####  Travail les jours fériés
+
+- Somme des durées des créneaux qualifiés `FERIE`.
+
+---
+
+#### 🛌 Repos hebdomadaire travaillé
+
+##### Définition
+
+Un créneau qualifié `RH` ou `RHD` est considéré comme un **repos hebdomadaire travaillé**.
+
+##### Calcul
+
+- La durée du créneau est ajoutée aux minutes de repos hebdomadaire travaillé.
+- Une **dette de repos hebdomadaire** peut être générée selon l’activité.
+
+##### Dette de repos
+
+- La génération de dette est pilotée par le `ReferentielComptabiliteActivite`.
+- La dette est comptabilisée **par jour distinct**, indépendamment du nombre de créneaux sur la journée.
+
+---
+
+#### 📆 Dimanches travaillés (V2)
+
+- Un dimanche travaillé correspond à un créneau qualifié `RHD`.
+- Le comptage est effectué **par date distincte**.
+- Plusieurs créneaux `RHD` le même jour ne génèrent **qu’un seul dimanche travaillé**.
+
+---
+
 ## 4. WorkMetrics à concevoir (roadmap)
 
 Cette section décrit les métriques prévues, classées par **ordre logique d’introduction**.
@@ -111,6 +199,9 @@ Ces métriques accompagnent directement les contraintes combinatoires légales
 **Objectif :**
 - explicabilité du respect (ou non) des seuils
 - comparaison de solutions
+
+Ces métriques servent exclusivement à l’explicabilité et à la comparaison de solutions,
+et ne constituent jamais des seuils d’invalidation.
 
 ---
 
@@ -203,6 +294,9 @@ Les contraintes n’écrivent pas les WorkMetrics.
 * Toute dette générée doit être traçable à des affectations
 * Les indicateurs sont bornés à l’horizon transmis
 * Le score doit pouvoir expliquer chaque champ
+* Un créneau associé à une activité absente du référentiel est ignoré
+  par l’ensemble des WorkMetrics.
+
 
 ---
 
