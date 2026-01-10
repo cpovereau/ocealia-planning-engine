@@ -29,8 +29,8 @@ public final class TestReferentielFactory {
                         "ACTIVITE",
                         false,                    // compteDansCharge
                         true,                     // genereDetteRepos
-                        false,                    // estServiceCritique
-                        false,                    // prioritaireSurConfort
+                        false,                  // estServiceCritique
+                        false,               // prioritaireSurConfort
                         TypeImpactActivite.DETTE_REPOS
                 );
 
@@ -54,8 +54,8 @@ public static ReferentielComptabiliteActivite referentielActiviteSansDetteRepos(
                     "ACTIVITE",
                     false,                    // compteDansCharge
                     false,                    // genereDetteRepos
-                    false,                    // estServiceCritique
-                    false,                    // prioritaireSurConfort
+                    false,                  // estServiceCritique
+                    false,               // prioritaireSurConfort
                     TypeImpactActivite.NEUTRE
             );
 
