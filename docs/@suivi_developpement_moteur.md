@@ -133,16 +133,16 @@ Ce document :
 
 ### 3.3 Analyse métier aval
 
-| Sujet | Statut |
-|----|------|
+| Sujet                         | Statut      |
+|-------------------------------|-------------|
 | Construction SurchargeSalarie | Hors moteur |
-| Aide à la décision RH | Hors moteur |
+| Aide à la décision RH         | Hors moteur |
 
 ---
 
 ## 4️⃣ Ordre logique recommandé pour la suite
 
-1. Exploiter WorkMetrics V2 dans le scoring
+1. Exploiter WorkMetrics V2 dans le scoring : se reporter au document : "TEMP_checklist_v_2_stabilisation_scoring_score_weights_work_metrics_v_2.md" pour le suivi de progression.
 2. Finaliser WorkMetrics V3
 3. Stabiliser ScoreWeights
 4. Compléter règles combinatoires
