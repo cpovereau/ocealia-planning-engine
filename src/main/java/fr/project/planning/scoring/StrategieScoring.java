@@ -1,4 +1,4 @@
-package fr.project.planning.domain.contexte;
+package fr.project.planning.scoring;
 
 /**
  * StrategieScoring

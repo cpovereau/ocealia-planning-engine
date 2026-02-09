@@ -12,6 +12,7 @@ import org.optaplanner.core.config.solver.SolverConfig;
 import org.optaplanner.core.api.solver.Solver;
 import org.optaplanner.core.api.solver.SolverFactory;
 import fr.project.planning.fixtures.TestRessourceFactory;
+import fr.project.planning.scoring.StrategieScoring;
 
 import java.time.LocalDate;
 import java.time.LocalTime;

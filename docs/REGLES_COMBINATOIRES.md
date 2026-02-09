@@ -107,7 +107,7 @@ Travailleurs de nuit
 Légale / métier
 
 **Type**
-SOFT (fort)
+HARD
 
 **Priorité relative**
 Très élevée

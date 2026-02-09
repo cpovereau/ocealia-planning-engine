@@ -4,7 +4,6 @@ import fr.project.planning.domain.contexte.HypotheseHistorique;
 import fr.project.planning.domain.contexte.ObjectifResolution;
 import fr.project.planning.domain.contexte.PlanningContext;
 import fr.project.planning.domain.contexte.ResolutionType;
-import fr.project.planning.domain.contexte.StrategieScoring;
 import fr.project.planning.domain.creneau.QualificationJour;
 import fr.project.planning.domain.creneau.TypeCreneau;
 import fr.project.planning.domain.creneau.TypePlageHoraire;
@@ -13,16 +12,16 @@ import fr.project.planning.solution.PlanningProblem;
 import fr.project.planning.domain.creneau.Creneau;
 import fr.project.planning.domain.creneau.PrioriteCreneau;
 import fr.project.planning.domain.ressource.SalarieReel;
-import fr.project.planning.fixtures.TestPlanningContextFactory;
 import fr.project.planning.fixtures.TestReferentielFactory;
 import fr.project.planning.fixtures.TestRessourceFactory;
+import fr.project.planning.scoring.StrategieScoring;
+
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.Map;
 import java.util.List;
-import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 

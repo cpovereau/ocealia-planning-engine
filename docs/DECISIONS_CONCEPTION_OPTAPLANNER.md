@@ -145,6 +145,108 @@ Aucun constructeur ou raccourci ne doit être ajouté au modèle pour faciliter 
 
 ---
 
+## 6 bis. Décision de stabilisation du scoring (V2)
+
+### Contexte
+
+La phase V2 du moteur de planification vise à **stabiliser le scoring** afin de :
+- rendre les arbitrages explicables ;
+- dissocier clairement la **mesure des violations** de leur **pondération** ;
+- préparer les évolutions futures (V3+) sans dette technique.
+
+Cette stabilisation s’appuie sur les retours des scénarios de test et sur l’exploitation des indicateurs de type *WorkMetrics*.
+
+---
+
+### Principe fondamental retenu
+
+> Les contraintes **mesurent des écarts ou des volumes**,  
+> Le scoring **arbitre ces mesures** via des poids centralisés.
+> Les WorkMetrics sont calculées post-résolution et ne participent jamais directement au calcul du score.
+
+En conséquence :
+- aucune contrainte ne porte de coefficient métier ;
+- aucune contrainte ne dépend directement d’un scénario ;
+- toute pondération est centralisée et explicite.
+
+---
+
+### Découpage des responsabilités
+
+Le scoring est structuré selon trois niveaux clairement séparés :
+
+#### 1. Contraintes (mesure)
+
+Les contraintes :
+- détectent une situation (ex. travail de nuit, créneau non couvert) ;
+- produisent une **mesure neutre** :
+  - en **minutes** (nuit, jour férié),
+  - ou en **occurrence** (créneau non couvert, poste virtuel) ;
+- sont identifiées par une clé métier (`PenaliteKey`).
+
+Aucune logique de stratégie ou de priorité n’est portée par les contraintes.
+
+---
+
+#### 2. ScoreWeights (pondération)
+
+La classe `ScoreWeights` :
+- centralise les **poids par type de pénalité** (`PenaliteKey`) ;
+- décline ces poids selon la **stratégie de scoring** (`StrategieScoring`, utilisée comme multiplicateur global) ;
+- constitue la **seule source de vérité** pour l’arbitrage relatif des pénalités.
+
+Les stratégies actuellement définies sont :
+- `EXPLOITATION` (continuité de service),
+- `ANALYSE_RH` (lecture RH et équité),
+- `AUDIT` (signal réglementaire).
+
+---
+
+#### 3. ScoreUtils (construction du score)
+
+`ScoreUtils` est le **point de passage unique** qui :
+- combine une clé de pénalité, une mesure (volume) et une stratégie ;
+- applique les poids définis dans `ScoreWeights` ;
+- construit le score OptaPlanner (`HardSoftScore`).
+
+Aucune règle métier n’est implémentée à ce niveau.
+
+---
+
+### Décisions structurantes associées
+
+Les décisions suivantes sont **explicitement actées** :
+
+- Les pénibilités **Nuit** et **Jour férié** sont comptabilisées en **minutes**.
+- Les situations **Créneau non couvert** et **Poste virtuel** sont comptabilisées en **occurrence**.
+- Les coefficients conditionnels par scénario ont été supprimés des contraintes.
+- La stratégie de scoring est un **contexte de lecture**, pas un algorithme.
+
+---
+
+### Validation par tests (dominance)
+
+Les arbitrages V2 sont validés par des **tests de dominance sans solver**, qui prouvent que :
+- certaines pénalités dominent structurellement d’autres (ex. non couvert ≫ nuit) ;
+- les seuils d’équivalence sont cohérents avec les poids définis ;
+- un changement de stratégie modifie effectivement le score produit.
+
+Ces tests constituent des **preuves d’invariants d’arbitrage**, et non des tests d’optimisation.
+
+---
+
+### Conséquences pour les évolutions futures
+
+Ce découpage permet :
+- d’introduire de nouvelles pénalités sans refonte globale ;
+- de modifier les poids sans toucher aux contraintes ;
+- d’expliquer une solution sous la forme :
+  > (clé de pénalité, unité, volume, poids, stratégie, contribution au score).
+
+Les évolutions V3 (équité, pénibilité par occurrence, préférences) s’appuieront sur ce socle sans en modifier les principes.
+
+---
+
 ## 7. Éléments volontairement différés
 
 Les éléments suivants sont identifiés mais volontairement repoussés :

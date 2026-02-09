@@ -1,6 +1,7 @@
 package fr.project.planning.fixtures;
 
 import fr.project.planning.domain.contexte.*;
+import fr.project.planning.scoring.StrategieScoring;
 
 import java.time.LocalDate;
 

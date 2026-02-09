@@ -4,6 +4,8 @@ import java.io.Serializable;
 import java.time.LocalDate;
 import java.util.Objects;
 
+import fr.project.planning.scoring.StrategieScoring;
+
 /**
  * PlanningContext
  *

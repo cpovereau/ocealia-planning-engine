@@ -16,13 +16,13 @@ Ce document formalise :
 
 ### 1.1 Séparation stricte des couches
 
-| Couche | Rôle | Interdit |
-|---|---|---|
-| **Contraintes** | Interdire (HARD) ou pénaliser (SOFT) une situation | Porter des poids globaux “magiques” |
-| **SeuilsDeTolerance** | Dire **quand** une situation est problématique (bornes) | Porter des poids, des arbitrages |
-| **Penalites** | Dire **quelle pénalité logique** appliquer | Calculer des scores, décider de la hiérarchie |
-| **ScoreWeights** | Dire **à quel point c’est grave** (pondération technique stable) | Porter des règles métier / seuils |
-| **WorkMetrics** | Constats post-résolution pour explicabilité & analyse | Déclencher exclusion / piloter décisions |
+| Couche | Rôle                                                                            | Interdit                                      |
+|-----------------------|------------------------------------------------------------------|-----------------------------------------------|
+| **Contraintes**       | Interdire (HARD) ou pénaliser (SOFT) une situation               | Porter des poids globaux “magiques”           |
+| **SeuilsDeTolerance** | Dire **quand** une situation est problématique (bornes)          | Porter des poids, des arbitrages              |
+| **Penalites**         | Dire **quelle pénalité logique** appliquer                       | Calculer des scores, décider de la hiérarchie |
+| **ScoreWeights**      | Dire **à quel point c’est grave** (pondération technique stable) | Porter des règles métier / seuils             |
+| **WorkMetrics**       | Constats post-résolution pour explicabilité & analyse            | Déclencher exclusion / piloter les décisions  |
 
 Principe directeur :
 > **Le moteur juge. Il ne calcule pas le métier.**
@@ -105,12 +105,12 @@ Clés SOFT **minimales V2**.
 
 ### 4.2 Valeurs
 
-| PenaliteKey | Unité | Poids V2 |
-|---|---:|---:|
-| `METIER_SOFT_CRENEAU_NON_COUVERT` | occurrence | **10 000** |
-| `METIER_SOFT_AFFECTATION_POSTE_VIRTUEL` | occurrence | **2 000** |
-| `LEGAL_SOFT_TRAVAIL_JOUR_FERIE_MINUTES` | minute | **5** |
-| `LEGAL_SOFT_TRAVAIL_NUIT_MINUTES` | minute | **3** |
+| PenaliteKey                             | Unité      | Poids V2   |
+|-----------------------------------------|-----------:|-----------:|
+| `METIER_SOFT_CRENEAU_NON_COUVERT`       | occurrence | **10 000** |
+| `METIER_SOFT_AFFECTATION_POSTE_VIRTUEL` | occurrence | **2 000**  |
+| `LEGAL_SOFT_TRAVAIL_JOUR_FERIE_MINUTES` | minute     | **5**      |
+| `LEGAL_SOFT_TRAVAIL_NUIT_MINUTES`       | minute     | **3**      |
 
 ### 4.3 Lecture (équivalences utiles)
 - 8h férié = 480 min × 5 = 2 400
@@ -141,20 +141,20 @@ Clés SOFT **minimales V2**.
 
 ### 6.1 Contraintes SOFT déjà branchées (actives aujourd’hui)
 
-| Contrainte | PenaliteKey | Unité |
-|---|---|---|
-| `CreneauNonAffecte` | `METIER_SOFT_CRENEAU_NON_COUVERT` | occurrence |
+| Contrainte                | PenaliteKey                             | Unité      |
+|---------------------------|-----------------------------------------|------------|
+| `CreneauNonAffecte`       | `METIER_SOFT_CRENEAU_NON_COUVERT`       | occurrence |
 | `AffectationPosteVirtuel` | `METIER_SOFT_AFFECTATION_POSTE_VIRTUEL` | occurrence |
-| `CreneauDeNuit` | `LEGAL_SOFT_TRAVAIL_NUIT_MINUTES` | minute |
-| `CreneauJourFerie` | `LEGAL_SOFT_TRAVAIL_JOUR_FERIE_MINUTES` | minute |
+| `CreneauDeNuit`           | `LEGAL_SOFT_TRAVAIL_NUIT_MINUTES`       | minute     |
+| `CreneauJourFerie`        | `LEGAL_SOFT_TRAVAIL_JOUR_FERIE_MINUTES` | minute     |
 
 ### 6.2 Contraintes HARD (actives ou candidates)
 
-| Contrainte | PenaliteKey | Unité |
-|---|---|---|
-| `NuitsConsecutivesMax` | `LEGAL_HARD_NUITS_CONSECUTIVES_MAX` | séquence |
-| `ReposObligatoireApresNuits` | `LEGAL_HARD_REPOS_OBLIGATOIRE_APRES_NUITS` | occurrence/minute |
-| `DureeMaximaleLegaleParSalarie` | `LEGAL_HARD_DUREE_MAX_LEGALE_PAR_PERIODE` | minute |
+| Contrainte                      | PenaliteKey                                | Unité             |
+|---------------------------------|--------------------------------------------|-------------------|
+| `NuitsConsecutivesMax`          | `LEGAL_HARD_NUITS_CONSECUTIVES_MAX`        | séquence          |
+| `ReposObligatoireApresNuits`    | `LEGAL_HARD_REPOS_OBLIGATOIRE_APRES_NUITS` | occurrence/minute |
+| `DureeMaximaleLegaleParSalarie` | `LEGAL_HARD_DUREE_MAX_LEGALE_PAR_PERIODE`  | minute            |
 
 ---
 

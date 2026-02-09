@@ -8,7 +8,9 @@ import org.optaplanner.core.api.domain.lookup.PlanningId;
 
 import java.io.Serializable;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.Duration;
 
 /**
  * Creneau
@@ -66,6 +68,41 @@ public class Creneau implements Serializable {
 
     @PlanningVariable(valueRangeProviderRefs = "ressourceRange")
     private Ressource ressourceAffectee;
+
+    /* =========================
+       Calcul des intersections
+       ========================= */
+
+    public long getMinutesDansIntervalle(LocalTime debutPlage, LocalTime finPlage) {
+
+    LocalDateTime creneauDebut = LocalDateTime.of(this.date, this.heureDebut);
+    LocalDateTime creneauFin   = LocalDateTime.of(this.date, this.heureFin);
+
+    if (!creneauFin.isAfter(creneauDebut)) {
+        creneauFin = creneauFin.plusDays(1);
+    }
+
+    LocalDateTime plageDebut = LocalDateTime.of(this.date, debutPlage);
+    LocalDateTime plageFin   = LocalDateTime.of(this.date, finPlage);
+
+    if (!plageFin.isAfter(plageDebut)) {
+        plageFin = plageFin.plusDays(1);
+    }
+
+    LocalDateTime debutIntersection = creneauDebut.isAfter(plageDebut)
+        ? creneauDebut
+        : plageDebut;
+
+    LocalDateTime finIntersection = creneauFin.isBefore(plageFin)
+        ? creneauFin
+        : plageFin;
+
+    if (finIntersection.isAfter(debutIntersection)) {
+        return Duration.between(debutIntersection, finIntersection).toMinutes();
+    }
+
+    return 0;
+    }
 
     /* =========================
        Constructeurs

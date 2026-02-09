@@ -1,9 +1,10 @@
 package fr.project.planning.constraints.metier;
 
 import fr.project.planning.domain.contexte.PlanningContext;
-import fr.project.planning.domain.contexte.StrategieScoring;
 import fr.project.planning.domain.creneau.Creneau;
 import fr.project.planning.domain.ressource.RessourceNonAffectee;
+import fr.project.planning.scoring.StrategieScoring;
+
 import org.optaplanner.core.api.score.buildin.hardsoft.HardSoftScore;
 import org.optaplanner.core.api.score.stream.Constraint;
 import org.optaplanner.core.api.score.stream.ConstraintFactory;
