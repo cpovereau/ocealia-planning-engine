@@ -81,11 +81,13 @@ Ce document :
 
 ### 1.6 Paramétrage et scoring
 
-| Élément           | Statut     | Commentaire          |
-|-------------------|------------|----------------------|
-| SeuilsDeTolerance | ✅         | Bornes métier        |
-| Penalites         | ✅         | Intensité SOFT       |
-| ScoreWeights      | ⚠️ Partiel | Branchage progressif |
+| Élément           | Statut     | Commentaire                                                        |
+|-------------------|------------|--------------------------------------------------------------------|
+| SeuilsDeTolerance | ✅         | Bornes métier                                                      |
+| Penalites         | ✅         | Clés de pénalité (`PenaliteKey`)                                   |
+| ScoreWeights      | ✅         | Pondérations V2 centralisées et stabilisées                        |
+| ScoreUtils        | ✅         | Point de passage unique pour la construction du score              |
+| StrategieScoring  | ✅         | Contexte de lecture du scoring (EXPLOITATION / ANALYSE_RH / AUDIT) |
 
 ---
 
@@ -101,12 +103,10 @@ Ce document :
 
 ## 2️⃣ Capacités partiellement implémentées
 
-| Sujet | Limitation actuelle |
-|-------------------------|---------------------------------------|
-| ScoreWeights            | Pondération encore simplifiée         |
-| WorkMetrics V2          | Implémentées et testées, non encore exploitées par le scoring |
-| Explicabilité détaillée | Résultats bruts uniquement            |
-
+| Sujet                   | Limitation actuelle                          |
+|-------------------------|----------------------------------------------|
+| Explicabilité détaillée | Résultats bruts uniquement                   |
+|                         |(pas encore de lecture pédagogique du score)  |
 ---
 
 ## 3️⃣ Capacités identifiées mais non implémentées
@@ -142,12 +142,11 @@ Ce document :
 
 ## 4️⃣ Ordre logique recommandé pour la suite
 
-1. Exploiter WorkMetrics V2 dans le scoring : se reporter au document : "TEMP_checklist_v_2_stabilisation_scoring_score_weights_work_metrics_v_2.md" pour le suivi de progression.
-2. Finaliser WorkMetrics V3
-3. Stabiliser ScoreWeights
-4. Compléter règles combinatoires
-5. Améliorer explicabilité
-6. Lancer analyse métier aval
+1. Cadrage du scoring V3 (équité, pénibilité, séquences)
+2. Finalisation WorkMetrics V3
+3. Amélioration de l’explicabilité (lecture du score)
+4. Nettoyage technique OptaPlanner (API deprecated)
+5. Analyse métier aval
 
 ---
 
@@ -192,4 +191,32 @@ Ces règles constituent le périmètre fonctionnel définitif de WorkMetrics V2.
     - sont comptés par date distincte,
     - indépendamment du nombre de créneaux sur la journée.
 
+## 🔒 [09/02/2026] — Gel officiel du scoring V2
+
+Le scoring V2 est **considéré comme stabilisé**.
+
+### Périmètre gelé
+- 4 pénalités SOFT V2 stabilisées :
+  - Créneau non couvert (occurrence)
+  - Affectation poste virtuel (occurrence)
+  - Travail de nuit (minutes)
+  - Travail jour férié (minutes)
+- Séparation stricte des responsabilités :
+  - contraintes = mesure
+  - ScoreWeights = pondération
+  - ScoreUtils = construction du score
+- `StrategieScoring` utilisée comme **contexte de lecture**, sans logique algorithmique.
+
+### Preuves
+- Tests de dominance implémentés et validés (`ScoreDominanceTest`).
+- Seuils d’arbitrage cohérents avec les poids V2.
+- Documentation synchronisée :
+  - `DECISIONS_CONCEPTION_OPTAPLANNER.md`
+  - `STRATEGIE_DE_SCORING.md`
+  - `WORKMETRICS.md`
+
+### Règles de non-régression
+- ❌ Pas de modification des poids V2 sans ouverture explicite d’une V3.
+- ❌ Pas de logique de stratégie dans les contraintes.
+- ❌ Pas d’utilisation des WorkMetrics dans le calcul du score.
 
