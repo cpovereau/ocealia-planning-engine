@@ -31,16 +31,24 @@ public class DetteReposSurReposHebdomadaire {
         // 1) Tous les créneaux
         .forEach(Creneau.class)
 
-        // 2) Placés sur un repos hebdomadaire
+        // 2) Placés sur un repos hebdomadaire (samedi ou dimanche)
         .filter(creneau ->
-            creneau.getQualificationJour() == QualificationJour.RHD
+            creneau.getQualificationJour() == QualificationJour.RH
+            || creneau.getQualificationJour() == QualificationJour.RHD
         )
 
         // 3) Jointure avec la solution (PlanningProblem)
         .join(factory.forEach(PlanningProblem.class))
 
-        // 4) Filtre métier : activité générant de la dette
+        // 4) Filtre métier : dans l’horizon + travail réel + activité générant de la dette
         .filter((creneau, problem) -> {
+
+            PlanningContext context = problem.getPlanningContext();
+
+            // borne temporelle (cohérence avec le reste du moteur)
+            if (!context.getHorizonTemporel().contient(creneau.getDate())) {
+                return false;
+            }
 
             ReferentielComptabiliteActivite referentiel =
                 problem.getReferentielComptabiliteActivite();
@@ -48,7 +56,9 @@ public class DetteReposSurReposHebdomadaire {
             ComptabiliteActivite comptabilite =
                 referentiel.getByCode(creneau.getActivite());
 
-            return comptabilite != null && comptabilite.isGenereDetteRepos();
+            return comptabilite != null
+                && comptabilite.isCompteDansCharge()
+                && comptabilite.isGenereDetteRepos();
         })
 
         // 5) Pénalité SOFT

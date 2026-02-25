@@ -34,7 +34,8 @@
 ### 2.1 Protocole
 
 * HTTP REST
-* `POST /api/planning/solve`
+* `POST /scenarios/{scenarioCode}/solve`
+ex : POST /scenarios/sc-01/solve
 
 ### 2.2 Format
 
@@ -97,6 +98,9 @@
   * jour férié ;
   * repos hebdomadaire.
 
+📌 Les jours travaillés (workedDays) sont transmis sous forme ISO (DayOfWeek Java : MONDAY…SUNDAY).
+Aucun format abrégé (MON, TUE…) n’est accepté dans la V1.
+
 **Exemple attendu :**
 
 ```json
@@ -119,6 +123,9 @@
 * un créneau = un besoin ;
 * aucun créneau n’appartient à un salarié ;
 * aucune affectation n’est fournie par WebDev.
+
+📌 Dans SC-01, aucun créneau n’est fourni par WebDev.
+Les créneaux sont générés par le moteur à partir des paramètres du scénario.
 
 ---
 
@@ -167,6 +174,9 @@ Avant toute résolution :
 
 👉 **Aucune donnée invalide n’arrive au solveur**.
 
+SC-01 V1 ne déclenche pas le solveur OptaPlanner.
+Il exécute uniquement une phase de génération déterministe.
+
 ---
 
 ## 7. Restitution (réponse API)
@@ -178,7 +188,11 @@ Avant toute résolution :
   "score": { ... },
   "planning": { ... },
   "workMetrics": { ... },
-  "alerts": [ ... ],
+  "alerts": [ {
+      "code": "SHIFT_END_EXCEEDED",
+      "date": "2026-02-23",
+      "message": "Fin prévue (...)"
+    } ],
   "explanations": [ ... ]
 }
 ```
@@ -202,4 +216,4 @@ Avant toute résolution :
 * le moteur (stabilité) ;
 * WebDev (simplicité) ;
 * le projet (évolutivité) ;
-* vous (maintenance).
+* maintenance.

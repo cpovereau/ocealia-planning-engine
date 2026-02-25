@@ -1,0 +1,41 @@
+{
+  "scenarioType": "SC-01",
+  "planningContext": {
+    "horizon": {
+      "dateDebut": "2026-03-02",
+      "dateFin": "2026-03-15"
+    },
+    "strategieScoring": "EXPLOITATION"
+  },
+  "scenarioParameters": {
+    "resourceRef": {
+      "kind": "POSTE_VIRTUEL",
+      "id": "PV_001"
+    },
+    "dailyAmplitudeHours": 8.0,
+    "shiftStart": "08:00",
+    "shiftEndAlert": "16:00",
+    "lunchBreak": {
+      "start": "12:00",
+      "end": "13:00"
+    },
+    "workedDays": ["MON", "TUE", "WED", "THU", "FRI"],
+    "holidayDates": ["2026-03-08"]
+  },
+  "dataSet": {
+    "creneaux": [],
+    "ressources": {
+      "salaries": [],
+      "postesVirtuels": [
+        {
+          "id": "PV_001",
+          "type": "POTENTIEL",
+          "capaciteCible": 2400,
+          "activitesAutorisees": ["TRAVAIL"],
+          "lieuxAutorises": [],
+          "postesComptablesCompatibles": []
+        }
+      ]
+    }
+  }
+}

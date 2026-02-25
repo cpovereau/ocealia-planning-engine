@@ -18,22 +18,16 @@ public class LimitePhysique {
     return factory
         .forEachUniquePair(
             Creneau.class,
-            // même date (on évite les paires inutiles)
             Joiners.equal(Creneau::getDate),
-            // même ressource affectée
             Joiners.equal(Creneau::getRessourceAffectee)
         )
-        // On ne garde que les salariés réels + chevauchement temporel
         .filter((c1, c2) ->
-            c1.getRessourceAffectee() instanceof SalarieReel
+            c1.getRessourceAffectee() != null
+            && c1.getRessourceAffectee() instanceof SalarieReel
             && chevaucheStrict(c1, c2)
         )
-        .penalize(
-            "Chevauchement de créneaux (physique)",
-            HardSoftScore.ONE_HARD
-        );
-    }
-    
+        .penalize("Pas de chevauchement", HardSoftScore.ONE_HARD);
+    }    
 
     /**
      * 2️⃣ Un créneau ne peut pas dépasser 12h (720 minutes).
@@ -57,7 +51,10 @@ public class LimitePhysique {
 
         return factory
             .forEach(Creneau.class)
-            .filter(creneau -> creneau.getRessourceAffectee() instanceof SalarieReel)
+            .filter(creneau ->
+                creneau.getRessourceAffectee() != null
+                && creneau.getRessourceAffectee() instanceof SalarieReel
+        )
             .groupBy(
                 creneau -> (SalarieReel) creneau.getRessourceAffectee(),
                 Creneau::getDate,

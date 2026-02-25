@@ -3,6 +3,9 @@ package fr.project.planning.constraints.legales;
 import fr.project.planning.domain.contexte.PlanningContext;
 import fr.project.planning.domain.creneau.Creneau;
 import fr.project.planning.domain.ressource.SalarieReel;
+import fr.project.planning.domain.contexte.HorizonTemporel;
+import fr.project.planning.domain.metier.ComptabiliteActivite;
+import fr.project.planning.domain.metier.ReferentielComptabiliteActivite;
 import org.optaplanner.core.api.score.buildin.hardsoft.HardSoftScore;
 import org.optaplanner.core.api.score.stream.*;
 
@@ -18,38 +21,55 @@ public class DimanchesTravaillesMax {
         return factory
             .forEach(SalarieReel.class)
             .join(
-                factory.forEach(Creneau.class),
+                factory.forEach(Creneau.class)
+                    .filter(c -> c.getRessourceAffectee() != null),
                 Joiners.equal(
                     SalarieReel::getId,
                     c -> c.getRessourceAffectee().getId()
                 )
             )
+
             .groupBy(
                 (s, c) -> s,
                 ConstraintCollectors.toList((s, c) -> c)
             )
             .join(factory.forEach(PlanningContext.class))
+            .join(factory.forEach(ReferentielComptabiliteActivite.class))
+
             .penalize(
                 "Dépassement du nombre maximal de dimanches travaillés",
                 HardSoftScore.ONE_SOFT,
-                (salarie, creneaux, context) -> {
+                (salarie, creneaux, context, ref) -> {
 
-                    int max = context.getSeuilsDeTolerance().getMaxDimanchesTravailles();
-                    int base = context.getPenalites().getDepassementMaxDimanchesTravailles();
+                int max = context.getSeuilsDeTolerance().getMaxDimanchesTravailles();
+                int base = context.getPenalites().getDepassementMaxDimanchesTravailles();
 
-                    int dimanches = compterDimanchesDistincts(creneaux);
-                    int excedent = Math.max(0, dimanches - max);
+                HorizonTemporel horizon = context.getHorizonTemporel();
 
-                    return base * excedent; // SOFT fort (base réglée côté métier)
-                }
+                int dimanches = compterDimanchesDistincts(creneaux, horizon, ref);
+                int excedent = Math.max(0, dimanches - max);
+
+                return base * excedent;
+            }
             );
     }
 
-    private static int compterDimanchesDistincts(List<Creneau> creneaux) {
+    private static int compterDimanchesDistincts(
+        List<Creneau> creneaux,
+        HorizonTemporel horizon,
+        ReferentielComptabiliteActivite ref
+    ) {
         Set<LocalDate> dimanches = creneaux.stream()
+            .filter(c -> horizon.contient(c.getDate()))
+            .filter(c -> c.getDate().getDayOfWeek() == DayOfWeek.SUNDAY)
+            .filter(c -> {
+                ComptabiliteActivite ca = ref.getByCode(c.getActivite());
+                return ca != null && ca.isCompteDansCharge();
+            })
             .map(Creneau::getDate)
-            .filter(d -> d.getDayOfWeek() == DayOfWeek.SUNDAY)
             .collect(Collectors.toSet());
+
         return dimanches.size();
     }
+
 }

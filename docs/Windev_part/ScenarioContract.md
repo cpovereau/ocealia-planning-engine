@@ -88,26 +88,33 @@ Construire un **planning de référence** conforme aux règles, sans historique.
 
 #### Paramètres spécifiques
 
-* salarié concerné ;
-* période de planification ;
-* jours travaillables autorisés ;
-* bornes horaires (jour / semaine / mois) ;
-* lieux autorisés ;
-* exclusions horaires ;
-* répartition cible par lieu (optionnel).
+* resourceRef (SALARIE ou POSTE_VIRTUEL) ;
+* période de planification (planningContext.horizon) ;
+* dailyAmplitudeHours (incluant pause réglementaire) ;
+* shiftStart ;
+* shiftEndAlert (borne d’alerte, non bloquante) ;
+* lunchBreak (optionnel, défaut 12:00–13:00) ;
+* workedDays (DayOfWeek ISO : MONDAY…SUNDAY) ;
+* holidayDates (jours non travaillés).
 
 #### Données clés transmises
 
-* créneaux générables ;
-* salarié réel ;
+* aucune affectation transmise ;
+* ressource cible (salarié réel ou poste virtuel fourni) ;
+* génération des créneaux réalisée côté moteur ;
+* jours fériés explicitement transmis ;
 * absence d’historique préalable.
 
 #### Restitution attendue
 
-* planning proposé ;
-* indicateurs de charge ;
-* alertes légales / métier ;
-* créneaux non affectés (le cas échéant).
+* planning généré ;
+* alertes de cohérence (pause, dépassement borne, repos insuffisant) ;
+* aucune optimisation à ce stade (génération déterministe) ;
+* pas encore d’indicateurs de charge.
+
+📌 Statut V1
+SC-01 génère un planning déterministe sans appel au solveur OptaPlanner.
+Les alertes sont produites au niveau du builder, en amont de toute optimisation.
 
 ---
 

@@ -202,7 +202,7 @@ public class Creneau implements Serializable {
     return qualificationJour;
     }   
 
-public void setRessourceAffectee(Ressource ressourceAffectee) {
+    public void setRessourceAffectee(Ressource ressourceAffectee) {
         this.ressourceAffectee = ressourceAffectee;
     }
 }

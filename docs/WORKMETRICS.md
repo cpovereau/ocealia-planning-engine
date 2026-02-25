@@ -150,7 +150,7 @@ Elle ne remet pas en cause la définition générale de WorkMetrics.
 
 ##### Définition
 
-Un créneau qualifié `RH` ou `RHD` est considéré comme un **repos hebdomadaire travaillé**.
+Un créneau qualifié `RH` ou `RHD` est considéré comme un **repos hebdomadaire non travaillé**.
 
 ##### Calcul
 
@@ -166,9 +166,9 @@ Un créneau qualifié `RH` ou `RHD` est considéré comme un **repos hebdomadair
 
 #### 📆 Dimanches travaillés (V2)
 
-- Un dimanche travaillé correspond à un créneau qualifié `RHD`.
+- Un dimanche travaillé correspond à un créneau enregistré sur un dimanche calendaire dont l’activité compte dans la charge.
 - Le comptage est effectué **par date distincte**.
-- Plusieurs créneaux `RHD` le même jour ne génèrent **qu’un seul dimanche travaillé**.
+- Plusieurs créneaux travaillés le même jour ne génèrent **qu’un seul dimanche travaillé**.
 
 ---
 

@@ -6,6 +6,9 @@ import fr.project.planning.domain.ressource.RessourceNonAffectee;
 import org.optaplanner.core.api.score.buildin.hardsoft.HardSoftScore;
 import org.optaplanner.core.api.score.stream.Constraint;
 import org.optaplanner.core.api.score.stream.ConstraintFactory;
+import fr.project.planning.domain.metier.ComptabiliteActivite;
+import fr.project.planning.domain.metier.ReferentielComptabiliteActivite;
+
 
 public class CreneauJourFerie {
 
@@ -14,9 +17,10 @@ public class CreneauJourFerie {
     return factory
         .forEach(Creneau.class)
 
-        // Créneaux réellement affectés
+        // Créneaux réellement affectés (null-safe)
         .filter(creneau ->
-            !(creneau.getRessourceAffectee() instanceof RessourceNonAffectee)
+            creneau.getRessourceAffectee() != null
+            && !(creneau.getRessourceAffectee() instanceof RessourceNonAffectee)
         )
 
         // Créneaux qualifiés jour férié
@@ -24,13 +28,20 @@ public class CreneauJourFerie {
             creneau.getQualificationJour() == QualificationJour.FERIE
         )
 
+        // Jointure référentiel : travail réel uniquement
+        .join(factory.forEach(ReferentielComptabiliteActivite.class))
+        .filter((creneau, ref) -> {
+            ComptabiliteActivite ca = ref.getByCode(creneau.getActivite());
+            return ca != null && ca.isCompteDansCharge();
+        })
+
         // Pénalisation en minutes
         .penalizeLong(
             HardSoftScore.ONE_SOFT,
-            creneau -> (long) creneau.getDuree()
+            (creneau, ref) -> (long) creneau.getDuree()
         )
 
         .asConstraint("Travail jour férié (minutes)");
-    }
 
+    }
 }

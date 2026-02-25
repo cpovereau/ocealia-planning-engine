@@ -81,9 +81,66 @@ Les contraintes sont classées selon **leur nature métier**, indépendamment de
 
 👉 Cette classification est **invariante** et sert de base à toute évolution future.
 
+
+### Seuils de tolérance
+
+Certaines contraintes se basent sur des seuils de tolérance.
+Les seuils de tolérance sont fournis par le logiciel de planning via PlanningContext. Le moteur ne définit pas de valeurs par défaut implicites : toute valeur absente ou incohérente doit être rejetée (ou remplacée par un défaut explicite documenté).
+
 ---
 
-## 4. Règles fondamentales sur les contraintes
+## 4. Invariant fondamental — Définition du travail
+
+Cette définition constitue un invariant d’architecture. Toute règle, contrainte, métrique ou évolution future doit s’y conformer.
+
+### 1. Définition du travail (règle unique)
+
+Un créneau est considéré comme travaillé si et seulement si son activité compte dans la charge (compteDansCharge = true dans le référentiel d’activité).
+
+Conséquences :
+- Nature TRAVAIL → compteDansCharge = true
+- Nature REPOS (RH, RHD) → false
+- Nature FERIE (JF substitutif) → false
+- Nature RECUP → false
+- Nature NON_TRAVAILLE → false
+
+👉 Le moteur ne déduit jamais le travail à partir du code d’activité brut.
+👉 Il s’appuie uniquement sur le référentiel.
+
+### 2. Définition du repos hebdomadaire
+- RH = repos hebdomadaire du samedi (nature REPOS)
+- RHD = repos hebdomadaire du dimanche (nature REPOS)
+
+Ces codes représentent un repos attendu, pas du travail.
+
+### 3. Définitions dérivées
+- Dimanche travaillé
+Dimanche travaillé Un dimanche travaillé est un dimanche calendaire (DayOfWeek.SUNDAY) comportant au moins un créneau dont l’activité compte dans la charge.
+
+- Repos hebdomadaire travaillé
+Minutes de créneaux dont l’activité compte dans la charge positionnées un samedi (Saturday) ou un dimanche (Sunday).
+
+### 4. Principe structurant V2
+- Les contraintes mesurent.
+- Les ScoreWeights pondèrent.
+- Les WorkMetrics constatent post-résolution.
+
+Aucune métrique ne redéfinit la notion de travail.
+
+📌 Cette définition devient la référence pour :
+- les contraintes légales,
+- les métriques V2,
+- les futures métriques V3,
+- et la restitution planning.
+
+🔒 Règle de cohérence transversale
+- Les contraintes n’utilisent jamais directement Nature pour déterminer le travail.
+- Les WorkMetrics n’interprètent jamais QualificationJour comme du travail.
+- Toute évolution V3 ou ultérieure devra s’appuyer exclusivement sur la définition canonique ci-dessus.
+
+---
+
+## 5. Règles fondamentales sur les contraintes
 
 ### Contraintes HARD
 
@@ -105,7 +162,7 @@ Les scénarios ont servi à **révéler** les contraintes, pas à les figer.
 
 ---
 
-## 5. Rôle réel des scénarios de test (1 à 5)
+## 6. Rôle réel des scénarios de test (1 à 5)
 
 Les scénarios sont des **tests de capacité du moteur**, pas une configuration définitive.
 
@@ -129,7 +186,7 @@ Aucun constructeur ou raccourci ne doit être ajouté au modèle pour faciliter 
 
 ---
 
-## 6. Décision d’architecture majeure
+## 7. Décision d’architecture majeure
 
 ### Principe retenu
 
@@ -145,7 +202,7 @@ Aucun constructeur ou raccourci ne doit être ajouté au modèle pour faciliter 
 
 ---
 
-## 6 bis. Décision de stabilisation du scoring (V2)
+## 7 bis. Décision de stabilisation du scoring (V2)
 
 ### Contexte
 
@@ -247,7 +304,7 @@ Les évolutions V3 (équité, pénibilité par occurrence, préférences) s’ap
 
 ---
 
-## 7. Éléments volontairement différés
+## 8. Éléments volontairement différés
 
 Les éléments suivants sont identifiés mais volontairement repoussés :
 
@@ -261,7 +318,7 @@ Ces sujets seront traités **après validation du socle conceptuel**.
 
 ---
 
-## 8. Invariants à respecter pour la suite du projet
+## 9. Invariants à respecter pour la suite du projet
 
 * Pas de `null` pour représenter une absence d’affectation.
 * Toute règle doit être classable (physique / légale / métier / personnelle).
@@ -270,7 +327,7 @@ Ces sujets seront traités **après validation du socle conceptuel**.
 
 ---
 
-## 9. Statut du document
+## 10. Statut du document
 
 * Document vivant.
 * Toute remise en cause d’un invariant doit être **explicitement discutée**.

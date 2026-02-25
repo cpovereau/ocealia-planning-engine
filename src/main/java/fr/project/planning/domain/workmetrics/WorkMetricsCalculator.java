@@ -11,6 +11,7 @@ import fr.project.planning.domain.ressource.Ressource;
 import fr.project.planning.solution.PlanningProblem;
 
 import java.time.LocalDate;
+import java.time.DayOfWeek;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -79,44 +80,49 @@ public class WorkMetricsCalculator {
         // -----------------------------
         // 1) Travail total
         // -----------------------------
-        wm.addTravail(minutes);
+        if (ca.isCompteDansCharge()) {
+            wm.addTravail(minutes);
+        }
 
         // -----------------------------
         // 2) Nuit
         // -----------------------------
-        if (c.getTypePlageHoraire() == TypePlageHoraire.NUIT) {
+        if (c.getTypePlageHoraire() == TypePlageHoraire.NUIT && ca.isCompteDansCharge()) {
             wm.addNuit(minutes);
         }
 
         // -----------------------------
         // 3) Jour férié
         // -----------------------------
-        if (qj == QualificationJour.FERIE) {
+        if (qj == QualificationJour.FERIE && ca.isCompteDansCharge()) {
             wm.addJourFerie(minutes);
         }
 
         // -----------------------------
         // 4) Repos hebdomadaire travaillé / dette
         // -----------------------------
-        if (qj == QualificationJour.RH || qj == QualificationJour.RHD) {
+        DayOfWeek dow = c.getDate().getDayOfWeek();
+        boolean estWeekend = (dow == DayOfWeek.SATURDAY || dow == DayOfWeek.SUNDAY);
 
+        if (estWeekend && ca.isCompteDansCharge()) {
             wm.addReposHebdoTravaille(minutes);
 
-            // Dette = par jour distinct + pilotée par référentiel
-            if (ca.isGenereDetteRepos()) {
-                detteReposParRessourceId
-                        .computeIfAbsent(ressourceId, x -> new HashSet<>())
-                        .add(c.getDate().toString());
-            }
+        // Dette = par jour distinct + pilotée par référentiel
+        if (ca.isGenereDetteRepos()) {
+            detteReposParRessourceId
+                .computeIfAbsent(ressourceId, x -> new HashSet<>())
+                .add(c.getDate().toString());
+        }
         }
 
         // -----------------------------
-        // 5) Dimanches travaillés (V2)
+        // 5) Dimanches travaillés (V2 corrigée)
+        // Dimanche travaillé = un créneau un dimanche calendaire dont l’activité compte dans la charge
         // -----------------------------
-        if (qj == QualificationJour.RHD) {
+        if (c.getDate().getDayOfWeek() == DayOfWeek.SUNDAY && ca.isCompteDansCharge()) {
             rhdParRessourceId
-                    .computeIfAbsent(ressourceId, x -> new HashSet<>())
-                    .add(c.getDate().toString());
+                .computeIfAbsent(ressourceId, x -> new HashSet<>())
+                .add(c.getDate().toString());
         }
     }
 

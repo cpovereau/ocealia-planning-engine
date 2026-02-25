@@ -9,9 +9,13 @@ import org.optaplanner.core.api.score.stream.Constraint;
 import org.optaplanner.core.api.score.stream.ConstraintFactory;
 import org.optaplanner.core.api.score.stream.ConstraintCollectors;
 import org.optaplanner.core.api.score.stream.Joiners;
+import fr.project.planning.domain.contexte.HorizonTemporel;
+import fr.project.planning.domain.metier.ComptabiliteActivite;
+import fr.project.planning.domain.metier.ReferentielComptabiliteActivite;
 
+import java.util.Set;
+import java.util.TreeSet;
 import java.time.LocalDate;
-import java.util.Comparator;
 import java.util.List;
 
 public class NuitsConsecutivesMax {
@@ -22,36 +26,45 @@ public class NuitsConsecutivesMax {
             // 1) Salariés réels
             .forEach(SalarieReel.class)
 
-            // 2) Jointure STRUCTURELLE avec les créneaux
+            // 2) Jointure STRUCTURELLE avec les créneaux (null-safe)
             .join(
-                factory.forEach(Creneau.class),
+                factory.forEach(Creneau.class)
+                    .filter(c -> c.getRessourceAffectee() != null),
                 Joiners.equal(
                     SalarieReel::getId,
                     c -> c.getRessourceAffectee().getId()
                 )
             )
 
-            // 3) Filtre LOGIQUE : uniquement les nuits
-            .filter((salarie, creneau) ->
-                creneau.getTypePlageHoraire() == TypePlageHoraire.NUIT
-            )
+            // 3) Jointure avec le référentiel d’activité (travail réel)
+            .join(factory.forEach(ReferentielComptabiliteActivite.class))
 
-            // 4) Groupement par salarié
+            // 4) Filtre LOGIQUE : uniquement les nuits travaillées
+        .filter((salarie, creneau, ref) -> {
+            if (creneau.getTypePlageHoraire() != TypePlageHoraire.NUIT) {
+                return false;
+            }
+            ComptabiliteActivite ca = ref.getByCode(creneau.getActivite());
+            return ca != null && ca.isCompteDansCharge();
+            })
+
+            // 5) Groupement par salarié (liste des créneaux de nuit travaillée)
             .groupBy(
-                (salarie, creneau) -> salarie,
-                ConstraintCollectors.toList((s, c) -> c)
+                (salarie, creneau, ref) -> salarie,
+                ConstraintCollectors.toList((s, c, ref) -> c)
+            
             )
-
-            // 5) Jointure avec le contexte (pour le seuil)
+            // 6) Jointure avec le contexte (pour le seuil)
             .join(factory.forEach(PlanningContext.class))
 
-            // 6) Violation HARD
+            // 7) Violation HARD
             .filter((salarie, nuits, context) ->
                 depasseMaxNuitsConsecutives(
                     nuits,
+                    context.getHorizonTemporel(),
                     context.getSeuilsDeTolerance().getMaxNuitsConsecutives()
                 )
-            )
+        )
 
             .penalize(
                 "Dépassement du nombre maximal de nuits consécutives",
@@ -60,20 +73,29 @@ public class NuitsConsecutivesMax {
     }
 
     private static boolean depasseMaxNuitsConsecutives(
-            List<Creneau> nuits,
-            int maxAutorise
+        List<Creneau> nuits,
+        HorizonTemporel horizon,
+        int maxAutorise
     ) {
         if (nuits.isEmpty()) return false;
 
-        nuits.sort(Comparator.comparing(Creneau::getDate));
+        // 1) Dates distinctes, triées, bornées à l’horizon
+        Set<LocalDate> datesTriees = new TreeSet<>();
+        for (Creneau n : nuits) {
+            LocalDate d = n.getDate();
+            if (horizon.contient(d)) {
+                datesTriees.add(d);
+            }
+        }
 
+        if (datesTriees.isEmpty()) return false;
+
+        // 2) Calcul de la plus longue séquence consécutive
         int consecutives = 1;
-        LocalDate precedente = nuits.get(0).getDate();
+        LocalDate precedente = null;
 
-        for (int i = 1; i < nuits.size(); i++) {
-            LocalDate courante = nuits.get(i).getDate();
-
-            if (courante.equals(precedente.plusDays(1))) {
+        for (LocalDate courante : datesTriees) {
+            if (precedente != null && courante.equals(precedente.plusDays(1))) {
                 consecutives++;
                 if (consecutives > maxAutorise) {
                     return true;
@@ -81,7 +103,6 @@ public class NuitsConsecutivesMax {
             } else {
                 consecutives = 1;
             }
-
             precedente = courante;
         }
 

@@ -1,0 +1,39 @@
+{
+	"scenarioType": "SC-01",
+	"planningContext": {
+		"horizon": {
+			"dateDebut": "2026-02-22",
+			"dateFin": "2026-02-26"
+		},
+		"strategieScoring": "EXPLOITATION"
+	},
+	"scenarioParameters": {
+		"resourceRef": {
+			"kind": "SALARIE",
+			"id": "1041"
+		},
+		"dailyAmplitudeHours": 3.0,
+		"shiftStart": "08:00",
+		"shiftEndAlert": "11:00",
+		"lunchBreak": {
+			"start":"",
+			"end":""
+		},
+		"workedDays": ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"],
+		"holidayDates": []
+	},
+	"dataSet": {
+		"ressources": {
+			"salaries": [
+				{
+				"id": "1041",
+				"type": "SALARIE",
+				"capaciteCible": 2400,
+				"activitesAutorisees": ["TRAVAIL"],
+				"lieuxAutorises": [],
+				"postesComptablesCompatibles": []
+				}],
+			"postesVirtuels": []
+		}
+	}
+}

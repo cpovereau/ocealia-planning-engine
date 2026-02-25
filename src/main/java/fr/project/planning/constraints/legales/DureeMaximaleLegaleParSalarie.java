@@ -6,6 +6,8 @@ import org.optaplanner.core.api.score.buildin.hardsoft.HardSoftScore;
 import org.optaplanner.core.api.score.stream.Constraint;
 import org.optaplanner.core.api.score.stream.ConstraintCollectors;
 import org.optaplanner.core.api.score.stream.ConstraintFactory;
+import fr.project.planning.domain.metier.ComptabiliteActivite;
+import fr.project.planning.domain.metier.ReferentielComptabiliteActivite;
 
 public class DureeMaximaleLegaleParSalarie {
 
@@ -20,31 +22,36 @@ public class DureeMaximaleLegaleParSalarie {
     public static Constraint dureeMaximaleLegaleParSalarie(ConstraintFactory factory) {
 
         return factory
-            // 1️⃣ On part des créneaux
-            .forEach(Creneau.class)
+  // 1️⃣ On part des créneaux
+        .forEach(Creneau.class)
 
-            // 2️⃣ On ne garde que ceux affectés à un salarié réel
-            .filter(creneau ->
-                creneau.getRessourceAffectee() instanceof SalarieReel
-            )
+        // 2️⃣ On ne garde que ceux affectés
+        .filter(c -> c.getRessourceAffectee() != null)
+        .filter(c -> c.getRessourceAffectee() instanceof SalarieReel)
 
-            // 3️⃣ Agrégation par salarié
-            .groupBy(
-                creneau -> (SalarieReel) creneau.getRessourceAffectee(),
-                ConstraintCollectors.sum(Creneau::getDuree)
-            )
+        // 3️⃣ On joint le référentiel (problem fact)
+        .join(factory.forEach(ReferentielComptabiliteActivite.class))
 
-            // 4️⃣ Détection du dépassement légal
-            .filter((salarie, dureeTotale) ->
-                dureeTotale > DUREE_MAX_LEGALE
-            )
+        // 4️⃣ On ne garde que le TRAVAIL (au sens "compte dans la charge")
+        .filter((creneau, ref) -> {
+            ComptabiliteActivite ca = ref.getByCode(creneau.getActivite());
+            return ca != null && ca.isCompteDansCharge();
+        })
 
-            // 5️⃣ Pénalité HARD
-            .penalize(
-                "Dépassement durée maximale légale par salarié",
-                HardSoftScore.ONE_HARD,
-                (salarie, dureeTotale) ->
-                    dureeTotale - DUREE_MAX_LEGALE
-            );
+        // 5️⃣ Agrégation par salarié (si vous voulez strictement Salarié réel)
+        .groupBy(
+            (creneau, ref) -> (SalarieReel) creneau.getRessourceAffectee(),
+            ConstraintCollectors.sum((creneau, ref) -> creneau.getDuree())
+        )
+
+        // 6️⃣ Détection du dépassement légal
+        .filter((salarie, dureeTotale) -> dureeTotale > DUREE_MAX_LEGALE)
+
+        // 7️⃣ Pénalité HARD
+        .penalize(
+            "Dépassement durée maximale légale par salarié",
+            HardSoftScore.ONE_HARD,
+            (salarie, dureeTotale) -> dureeTotale - DUREE_MAX_LEGALE
+        );
     }
 }

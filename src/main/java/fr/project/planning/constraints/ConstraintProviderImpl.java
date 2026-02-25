@@ -8,7 +8,14 @@ import org.optaplanner.core.api.score.stream.Constraint;
 import org.optaplanner.core.api.score.stream.ConstraintFactory;
 import org.optaplanner.core.api.score.stream.ConstraintProvider;
 import fr.project.planning.constraints.metier.CreneauDeNuit;
-import fr.project.planning.constraints.metier.CreneauJourFerie;  
+import fr.project.planning.constraints.metier.CreneauJourFerie; 
+import fr.project.planning.constraints.legales.NuitsConsecutivesMax;
+import fr.project.planning.constraints.legales.ReposObligatoireApresNuits;
+import fr.project.planning.constraints.legales.ReposHebdomadaireMin;
+import fr.project.planning.constraints.legales.ReposHebdomadaireGlissant;
+import fr.project.planning.constraints.legales.DimanchesTravaillesMax;
+
+import fr.project.planning.constraints.metier.DetteReposSurReposHebdomadaire;
 
 /**
  * ConstraintProviderImpl
@@ -40,8 +47,16 @@ public class ConstraintProviderImpl implements ConstraintProvider {
                Contraintes légales (HARD)
                ========================= */
 
-            DureeMaximaleLegaleParSalarie
-                    .dureeMaximaleLegaleParSalarie(factory),
+            DureeMaximaleLegaleParSalarie.dureeMaximaleLegaleParSalarie(factory),
+            NuitsConsecutivesMax.maxNuitsConsecutives(factory),
+            ReposObligatoireApresNuits.reposObligatoireApresNuits(factory),
+            ReposHebdomadaireMin.reposHebdomadaireMin(factory),
+
+           /* =========================
+               Contraintes légales (SOFT)
+               ========================= */
+            ReposHebdomadaireGlissant.reposHebdoGlissant(factory),
+            DimanchesTravaillesMax.maxDimanchesTravailles(factory),
 
             /* =========================
                Contraintes métier
@@ -51,7 +66,7 @@ public class ConstraintProviderImpl implements ConstraintProvider {
             AffectationPosteVirtuel.affectationPosteVirtuel(factory),
             CreneauDeNuit.creneauDeNuit(factory),
             CreneauJourFerie.creneauJourFerie(factory),
-
+            DetteReposSurReposHebdomadaire.penaliser(factory),
 
             /* =========================
                Contraintes de service

@@ -220,3 +220,85 @@ Le scoring V2 est **considéré comme stabilisé**.
 - ❌ Pas de logique de stratégie dans les contraintes.
 - ❌ Pas d’utilisation des WorkMetrics dans le calcul du score.
 
+## ✅ [24/02/2026] — SC-01 — Génération de planning
+
+### État
+SC-01 est désormais exposé via : `POST /scenarios/sc-01/solve`
+
+### Implémentation actuelle
+Le scénario :
+1. valide le contrat JSON ;
+2. résout la ressource cible (salarié ou poste virtuel fourni) ;
+3. exécute ScenarioDatasetBuilderSc01 ;
+4. génère les créneaux journaliers (matin / après-midi) ;
+5. produit des alertes de cohérence ;
+6. retourne une réponse REST structurée.
+
+📌 Le solveur OptaPlanner n’est pas encore appelé dans SC-01.
+
+### Fonctionnement actuel
+SC-01 réalise une génération déterministe, basée sur :
+- dailyAmplitudeHours (incluant pause) ;
+- shiftStart ;
+- shiftEndAlert (borne d’alerte non bloquante) ;
+- lunchBreak (optionnel, défaut 12:00–13:00) ;
+- workedDays (ISO DayOfWeek) ;
+- holidayDates.
+Les règles RH / RHD sont appliquées par bloc hebdomadaire (lun→dim).
+
+### Alertes actuellement produites
+- SHIFT_END_EXCEEDED
+- LUNCH_BREAK_OUTSIDE_AMPLITUDE
+- INSUFFICIENT_WEEKLY_REST
+- TOO_MANY_NON_WORKED_DAYS
+
+📌 Ces alertes sont calculées en phase pré-solveur (builder).
+Elles ne proviennent pas du score OptaPlanner.
+
+### Points non encore implémentés
+- aucune optimisation ;
+- aucun scoring ;
+- aucun équilibrage ;
+- aucun calcul de surcharge ;
+- aucune contrainte légale intégrée dans le solveur.
+
+### Prochaine étape identifiée
+- Brancher SC-01 sur :
+- un modèle PlanningSolution minimal ;
+- un appel SolverManager ;
+- un ConstraintProvider initial ;
+- un timeout contrôlé.
+
+## ✅ [25/02/2026] — Statut de branchement solveur – SC-0
+
+🧩 État actuel
+Le moteur de contraintes est désormais :
+- Aligné sur la définition canonique du travail réel (compteDansCharge)
+- Cohérent entre :
+  - Contraintes légales
+  - Contraintes métier
+  - Limites physiques
+  - WorkMetrics
+- Paramétré via PlanningContext / SeuilsDeTolerance
+- Documenté dans DECISIONS_CONCEPTION_OPTAPLANNER.md
+
+⚠️ Le scénario SC-01 n’est pas encore branché au solveur en exécution réelle.
+
+🎯 Décision technique
+Le branchement du solveur (appel réel à OptaPlanner + restitution planning) est volontairement différé jusqu’à :
+1. Validation complète :
+   - des contraintes
+   - des WorkMetrics
+   - du paramétrage référentiel
+2. Stabilisation documentaire
+3. Vérification de cohérence “doc ↔ code”
+
+📌 Justification
+Éviter :
+- Débogage fonctionnel pendant que la structure métier évolue
+- Faux diagnostics liés à des contraintes partiellement activées
+- Effets de bord dans les scénarios de test
+
+Le solveur sera branché uniquement lorsque :
+- le périmètre V2 stabilisé est officiellement figé,
+- la liste des contraintes activées dans ConstraintProviderImpl est définitive.

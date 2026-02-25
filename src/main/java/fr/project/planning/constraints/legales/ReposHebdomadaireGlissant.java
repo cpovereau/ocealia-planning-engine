@@ -5,6 +5,9 @@ import fr.project.planning.domain.creneau.Creneau;
 import fr.project.planning.domain.ressource.SalarieReel;
 import org.optaplanner.core.api.score.buildin.hardsoft.HardSoftScore;
 import org.optaplanner.core.api.score.stream.*;
+import fr.project.planning.domain.contexte.HorizonTemporel;
+import fr.project.planning.domain.metier.ComptabiliteActivite;
+import fr.project.planning.domain.metier.ReferentielComptabiliteActivite;
 
 import java.time.LocalDate;
 import java.util.*;
@@ -16,26 +19,48 @@ public class ReposHebdomadaireGlissant {
 
         return factory
             .forEach(SalarieReel.class)
+
+            // Join créneaux (null-safe)
             .join(
-                factory.forEach(Creneau.class),
+                factory.forEach(Creneau.class)
+                    .filter(c -> c.getRessourceAffectee() != null),
                 Joiners.equal(
                     SalarieReel::getId,
                     c -> c.getRessourceAffectee().getId()
                 )
             )
-            // groupBy salarié -> liste de tous ses créneaux
-            .groupBy(
-                (s, c) -> s,
-                ConstraintCollectors.toList((s, c) -> c)
-            )
+
+            // Join context (horizon + seuils)
             .join(factory.forEach(PlanningContext.class))
-            .filter((salarie, creneaux, context) -> {
-                int fenetre = context.getSeuilsDeTolerance().getReposHebdoFenetreJours();          // ex 7
-                int minOff  = context.getSeuilsDeTolerance().getReposHebdoMinJoursOffDansFenetre(); // ex 1
-                return violeReposHebdoGlissant(creneaux, fenetre, minOff);
+
+            // Join référentiel (travail réel)
+            .join(factory.forEach(ReferentielComptabiliteActivite.class))
+
+            // Filtre : horizon + activité qui compte dans la charge
+            .filter((salarie, creneau, context, ref) -> {
+                HorizonTemporel h = context.getHorizonTemporel();
+                if (!h.contient(creneau.getDate())) return false;
+
+                ComptabiliteActivite ca = ref.getByCode(creneau.getActivite());
+                return ca != null && ca.isCompteDansCharge();
             })
+
+            // Groupement : salarié + context + liste de créneaux TRAVAIL
+            .groupBy(
+                (s, c, context, ref) -> s,
+                (s, c, context, ref) -> context,
+                ConstraintCollectors.toList((s, c, context, ref) -> c)
+            )
+
+            // Violation HARD
+            .filter((salarie, context, creneauxTravail) -> {
+                int fenetre = context.getSeuilsDeTolerance().getReposHebdoFenetreJours();
+                int minOff  = context.getSeuilsDeTolerance().getReposHebdoMinJoursOffDansFenetre();
+                return violeReposHebdoGlissant(creneauxTravail, fenetre, minOff);
+            })
+
             .penalize("Repos hebdomadaire glissant non respecté", HardSoftScore.ONE_HARD);
-    }
+        }
 
     private static boolean violeReposHebdoGlissant(List<Creneau> creneaux, int fenetreJours, int minJoursOff) {
         if (fenetreJours <= 0) return false;
