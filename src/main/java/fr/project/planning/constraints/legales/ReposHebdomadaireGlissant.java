@@ -14,6 +14,9 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class ReposHebdomadaireGlissant {
+    private ReposHebdomadaireGlissant() {
+        // Utility class
+    }
 
     public static Constraint reposHebdoGlissant(ConstraintFactory factory) {
 
@@ -59,7 +62,8 @@ public class ReposHebdomadaireGlissant {
                 return violeReposHebdoGlissant(creneauxTravail, fenetre, minOff);
             })
 
-            .penalize("Repos hebdomadaire glissant non respecté", HardSoftScore.ONE_HARD);
+            .penalize(HardSoftScore.ONE_HARD)
+            .asConstraint("Repos hebdomadaire insuffisant");
         }
 
     private static boolean violeReposHebdoGlissant(List<Creneau> creneaux, int fenetreJours, int minJoursOff) {

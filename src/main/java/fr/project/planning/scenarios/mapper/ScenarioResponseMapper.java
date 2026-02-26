@@ -12,7 +12,6 @@ import java.util.stream.Collectors;
 import fr.project.planning.domain.creneau.Creneau;
 import fr.project.planning.domain.creneau.QualificationJour;
 import fr.project.planning.domain.creneau.TypeCreneau;
-import fr.project.planning.domain.ressource.Ressource;
 
 public class ScenarioResponseMapper {
 
@@ -77,8 +76,7 @@ public class ScenarioResponseMapper {
             switch (q) {
                 case FERIE:
                     return CreneauNature.FERIE;
-                case RH:
-                case RHD:
+                case RH, RHD:
                     return CreneauNature.REPOS;
                 case OUVRE:
                 default:

@@ -14,12 +14,13 @@ import fr.project.planning.domain.metier.ComptabiliteActivite;
 import fr.project.planning.domain.metier.ReferentielComptabiliteActivite;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class ReposObligatoireApresNuits {
+    private ReposObligatoireApresNuits() {
+        // Utility class
+    }   
 
     public static Constraint reposObligatoireApresNuits(ConstraintFactory factory) {
 
@@ -68,9 +69,9 @@ public class ReposObligatoireApresNuits {
             )
 
             .penalize(
-                "Repos obligatoire non respecté après nuits",
                 HardSoftScore.ONE_HARD
-            );
+            )
+            .asConstraint("Repos obligatoire après séquence de nuits insuffisant");
     }
 
     /**

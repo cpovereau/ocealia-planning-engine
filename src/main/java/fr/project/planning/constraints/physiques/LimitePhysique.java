@@ -9,6 +9,9 @@ import org.optaplanner.core.api.score.stream.ConstraintFactory;
 import org.optaplanner.core.api.score.stream.Joiners;
 
 public class LimitePhysique {
+    private LimitePhysique() {
+        // Utility class
+    }
 
     /**
      * 1️⃣ Un salarié réel ne peut pas avoir deux créneaux qui se chevauchent.
@@ -26,7 +29,8 @@ public class LimitePhysique {
             && c1.getRessourceAffectee() instanceof SalarieReel
             && chevaucheStrict(c1, c2)
         )
-        .penalize("Pas de chevauchement", HardSoftScore.ONE_HARD);
+        .penalize(HardSoftScore.ONE_HARD)
+        .asConstraint("Chevauchement de créneaux (physique)");
     }    
 
     /**
@@ -38,10 +42,10 @@ public class LimitePhysique {
             .forEach(Creneau.class)
             .filter(creneau -> creneau.getDuree() > 720)
             .penalize(
-                "Créneau supérieur à 12h (physique)",
                 HardSoftScore.ONE_HARD,
                 creneau -> creneau.getDuree() - 720
-            );
+            )
+            .asConstraint("Durée de créneau > 12h (physique)");
     }
 
     /**
@@ -62,10 +66,10 @@ public class LimitePhysique {
             )
             .filter((salarie, date, dureeTotale) -> dureeTotale > 1440)
             .penalize(
-                "Cumul journalier > 24h (physique)",
                 HardSoftScore.ONE_HARD,
                 (salarie, date, dureeTotale) -> dureeTotale - 1440
-            );
+            )
+            .asConstraint("Cumul journalier > 24h (physique)");
     }
 
     /* =========================

@@ -6,16 +6,13 @@ import fr.project.planning.domain.creneau.QualificationJour;
 import fr.project.planning.domain.creneau.TypePlageHoraire;
 import fr.project.planning.domain.metier.ComptabiliteActivite;
 import fr.project.planning.domain.metier.ReferentielComptabiliteActivite;
-import fr.project.planning.domain.ressource.SalarieReel;
 import fr.project.planning.domain.ressource.Ressource;
 import fr.project.planning.solution.PlanningProblem;
 
-import java.time.LocalDate;
 import java.time.DayOfWeek;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 
 /**

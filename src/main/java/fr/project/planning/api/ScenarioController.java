@@ -1,27 +1,22 @@
 package fr.project.planning.api;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 
 import fr.project.planning.domain.creneau.Creneau;
 import fr.project.planning.domain.ressource.Ressource;
-import fr.project.planning.domain.ressource.SalarieReel;
-import fr.project.planning.domain.ressource.PosteVirtuel;
 import fr.project.planning.scenarios.builder.ScenarioDatasetBuilderSc01;
 import fr.project.planning.scenarios.dto.ScenarioRequestDTO;
 import fr.project.planning.scenarios.dto.ScenarioResponseDTO;
 import fr.project.planning.scenarios.dto.request.ResourceKind;
 import fr.project.planning.scenarios.dto.request.Sc01ScenarioParametersDTO;
 import fr.project.planning.scenarios.dto.ScenarioAlertDTO;
-import java.util.stream.Collectors;
 import fr.project.planning.scenarios.mapper.ScenarioResponseMapper;
 
 import org.springframework.web.bind.annotation.*;
 
-import java.time.DayOfWeek;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -88,7 +83,7 @@ public class ScenarioController {
 
         List<ScenarioAlertDTO> alerts = buildResult.alerts().stream()
             .map(a -> new ScenarioAlertDTO(a.code().name(), a.date(), a.message()))
-            .collect(Collectors.toList());
+            .toList();
 
         ScenarioResponseDTO response = responseMapper.toResponse(
             params.getResourceRef().getId(),
@@ -110,10 +105,15 @@ public class ScenarioController {
                 request.getPlanningContext().getHorizon().getDateDebut() + "-" +
                 request.getPlanningContext().getHorizon().getDateFin() + ".json";
 
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(response);
+        return ResponseEntity
+        .ok()
+        .contentType(MediaType.APPLICATION_JSON)
+        .header(HttpHeaders.CONTENT_DISPOSITION,
+                ContentDisposition.attachment()
+                        .filename(filename)
+                        .build()
+                        .toString())
+        .body(response);
     }
 
     // ====================================================

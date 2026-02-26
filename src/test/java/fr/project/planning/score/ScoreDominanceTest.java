@@ -6,6 +6,7 @@ import fr.project.planning.scoring.StrategieScoring;
 import org.junit.jupiter.api.Test;
 import org.optaplanner.core.api.score.buildin.hardsoft.HardSoftScore;
 
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -36,7 +37,7 @@ class ScoreDominanceTest {
             3000
         );
 
-        assertTrue(nonCouvert.getSoftScore() < nuit.getSoftScore(),
+        assertTrue(nonCouvert.hardScore() < nuit.hardScore(),
             "1 non couvert doit dominer 3000 minutes de nuit en EXPLOITATION");
     }
 
@@ -59,8 +60,10 @@ class ScoreDominanceTest {
             399
         );
 
-        assertTrue(posteVirtuel.getSoftScore() < ferie399.getSoftScore(),
-            "1 poste virtuel doit dominer 399 minutes férié en EXPLOITATION");
+        assertTrue(
+            posteVirtuel.softScore() < ferie399.softScore(),
+            "1 poste virtuel doit dominer 399 minutes férié en EXPLOITATION"
+        );
     }
 
     @Test
@@ -80,7 +83,7 @@ class ScoreDominanceTest {
             401
         );
 
-        assertTrue(posteVirtuel.getSoftScore() > ferie401.getSoftScore(),
+        assertTrue(posteVirtuel.softScore() > ferie401.softScore(),
             "401 minutes férié doivent dominer 1 poste virtuel en EXPLOITATION");
     }
 
@@ -101,7 +104,7 @@ class ScoreDominanceTest {
             120
         );
 
-        assertTrue(ferie.getSoftScore() < nuit.getSoftScore(),
+        assertTrue(ferie.softScore() < nuit.softScore(),
             "À volume égal, FÉRIÉ doit dominer NUIT en EXPLOITATION");
     }
 
@@ -122,7 +125,10 @@ class ScoreDominanceTest {
             120
         );
 
-        assertTrue(s1.getSoftScore() != s2.getSoftScore(),
-            "Le score doit varier quand StrategieScoring change, à pénalité identique");
+        assertNotEquals(
+            s1.softScore(),
+            s2.softScore(),
+            "Le score doit varier quand StrategieScoring change, à pénalité identique"
+        );
     }
 }

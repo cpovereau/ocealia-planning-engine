@@ -10,20 +10,19 @@ import org.optaplanner.core.api.score.stream.Constraint;
 import org.optaplanner.core.api.score.stream.ConstraintFactory;
 
 public class AffectationPosteVirtuel {
+    private AffectationPosteVirtuel() {
+        // Utility class
+    }
 
     public static Constraint affectationPosteVirtuel(ConstraintFactory factory) {
 
         return factory
             .forEach(Creneau.class)
-            .filter(creneau ->
-                creneau.getRessourceAffectee() instanceof PosteVirtuel
-            )
+            .filter(creneau -> creneau.getRessourceAffectee() instanceof PosteVirtuel)
             .join(factory.forEach(PlanningContext.class))
             .penalize(
-                "Affectation à un poste virtuel",
                 HardSoftScore.ONE_SOFT,
                 (creneau, context) -> {
-
                     int base = context.getPenalites().getAffectationPosteVirtuel();
 
                     // Interdiction stricte
@@ -34,7 +33,8 @@ public class AffectationPosteVirtuel {
                     // Ajustement selon la stratégie de scoring
                     return base * coefficient(context.getStrategieScoring());
                 }
-            );
+        )
+        .asConstraint("Affectation à un poste virtuel");
     }
 
     private static int coefficient(StrategieScoring strategieScoring) {

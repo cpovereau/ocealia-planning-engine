@@ -10,6 +10,9 @@ import org.optaplanner.core.api.score.stream.Constraint;
 import org.optaplanner.core.api.score.stream.ConstraintFactory;
 
 public class CreneauNonAffecte {
+    private CreneauNonAffecte() {
+        // Utility class
+    }   
 
     public static Constraint creneauNonAffecte(ConstraintFactory factory) {
 
@@ -20,10 +23,8 @@ public class CreneauNonAffecte {
             )
             .join(factory.forEach(PlanningContext.class))
             .penalize(
-                "Créneau non affecté",
                 HardSoftScore.ONE_SOFT,
                 (creneau, context) -> {
-
                     int base = context.getPenalites().getNonAffectation();
 
                     // Interdiction stricte
@@ -34,7 +35,8 @@ public class CreneauNonAffecte {
                     // Ajustement selon la stratégie de scoring
                     return base * coefficient(context.getStrategieScoring());
                 }
-            );
+            )
+            .asConstraint("Créneau non affecté");
     }
 
     private static int coefficient(StrategieScoring strategieScoring) {

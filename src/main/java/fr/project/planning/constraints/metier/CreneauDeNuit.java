@@ -10,6 +10,9 @@ import org.optaplanner.core.api.score.stream.Constraint;
 import org.optaplanner.core.api.score.stream.ConstraintFactory;
 
 public class CreneauDeNuit {
+    private CreneauDeNuit() {
+        // Utility class
+    }   
 
     public static Constraint creneauDeNuit(ConstraintFactory factory) {
 

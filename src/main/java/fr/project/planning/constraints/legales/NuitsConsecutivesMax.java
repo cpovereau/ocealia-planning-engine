@@ -19,6 +19,9 @@ import java.time.LocalDate;
 import java.util.List;
 
 public class NuitsConsecutivesMax {
+    private NuitsConsecutivesMax() {
+    // Utility class
+    }
 
     public static Constraint maxNuitsConsecutives(ConstraintFactory factory) {
 
@@ -67,9 +70,9 @@ public class NuitsConsecutivesMax {
         )
 
             .penalize(
-                "Dépassement du nombre maximal de nuits consécutives",
                 HardSoftScore.ONE_HARD
-            );
+            )
+            .asConstraint("Nombre de nuits consécutives > seuil (légal)");
     }
 
     private static boolean depasseMaxNuitsConsecutives(

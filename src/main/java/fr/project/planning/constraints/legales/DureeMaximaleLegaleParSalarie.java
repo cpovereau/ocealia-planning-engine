@@ -10,6 +10,9 @@ import fr.project.planning.domain.metier.ComptabiliteActivite;
 import fr.project.planning.domain.metier.ReferentielComptabiliteActivite;
 
 public class DureeMaximaleLegaleParSalarie {
+    private DureeMaximaleLegaleParSalarie() {
+    // Utility class
+    }
 
     /**
      * Durée maximale légale absolue sur la période de résolution.
@@ -49,9 +52,9 @@ public class DureeMaximaleLegaleParSalarie {
 
         // 7️⃣ Pénalité HARD
         .penalize(
-            "Dépassement durée maximale légale par salarié",
             HardSoftScore.ONE_HARD,
             (salarie, dureeTotale) -> dureeTotale - DUREE_MAX_LEGALE
-        );
+        )
+        .asConstraint("Durée totale par salarié > maximum légal");
     }
 }

@@ -1,7 +1,6 @@
 package fr.project.planning.domain.contexte;
 
 import java.io.Serializable;
-import java.util.Objects;
 
 /**
  * SeuilsDeTolerance

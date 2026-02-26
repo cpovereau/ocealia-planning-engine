@@ -11,6 +11,9 @@ import fr.project.planning.domain.metier.ReferentielComptabiliteActivite;
 
 
 public class CreneauJourFerie {
+    private CreneauJourFerie() {
+        // Utility class
+    }   
 
     public static Constraint creneauJourFerie(ConstraintFactory factory) {
 

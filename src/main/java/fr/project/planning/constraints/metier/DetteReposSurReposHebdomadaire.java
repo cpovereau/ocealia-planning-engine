@@ -23,6 +23,9 @@ import org.optaplanner.core.api.score.stream.ConstraintFactory;
  * - Le poids dépend du contexte de résolution
  */
 public class DetteReposSurReposHebdomadaire {
+    private DetteReposSurReposHebdomadaire() {
+        // Utility class
+    }
 
     public static Constraint penaliser(ConstraintFactory factory) {
 
@@ -63,7 +66,6 @@ public class DetteReposSurReposHebdomadaire {
 
         // 5) Pénalité SOFT
         .penalize(
-            "Dette de repos sur repos hebdomadaire",
             HardSoftScore.ONE_SOFT,
             (creneau, context, referentiel) -> {
 
@@ -73,6 +75,7 @@ public class DetteReposSurReposHebdomadaire {
 
                 return base * creneau.getDuree();
             }
-        );
+        )
+        .asConstraint("Dette de repos sur repos hebdomadaire");
     }
 }

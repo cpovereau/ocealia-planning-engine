@@ -15,6 +15,9 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class DimanchesTravaillesMax {
+    private DimanchesTravaillesMax() {
+    // Utility class
+    }
 
     public static Constraint maxDimanchesTravailles(ConstraintFactory factory) {
 
@@ -37,7 +40,6 @@ public class DimanchesTravaillesMax {
             .join(factory.forEach(ReferentielComptabiliteActivite.class))
 
             .penalize(
-                "Dépassement du nombre maximal de dimanches travaillés",
                 HardSoftScore.ONE_SOFT,
                 (salarie, creneaux, context, ref) -> {
 
@@ -51,7 +53,8 @@ public class DimanchesTravaillesMax {
 
                 return base * excedent;
             }
-            );
+            )
+            .asConstraint("Nombre de dimanches travaillés > seuil (légal)");
     }
 
     private static int compterDimanchesDistincts(

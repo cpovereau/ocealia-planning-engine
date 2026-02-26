@@ -26,6 +26,9 @@ import java.util.stream.Collectors;
  * - On se base sur la notion "compte dans la charge".
  */
 public class ReposHebdomadaireMin {
+    private ReposHebdomadaireMin() {
+        // Utility class
+    }
 
     private static final int FENETRE_JOURS = 7;
     private static final int MIN_JOURS_OFF = 1;
@@ -58,9 +61,9 @@ public class ReposHebdomadaireMin {
             )
 
             .penalize(
-                "Repos hebdomadaire minimal non respecté",
                 HardSoftScore.ONE_HARD
-            );
+            )
+            .asConstraint("Repos hebdomadaire insuffisant");
     }
 
     private static boolean violeReposHebdoMin(
