@@ -30,6 +30,37 @@ et ses `ComptabiliteActivite`.
 
 ---
 
+### 1.1.1 Identification d’activité (contrat d’entrée)
+
+Les créneaux transportent **deux informations distinctes** sur l’activité :
+
+- `codeActiviteId` : **identifiant d’activité du logiciel de planning** (ex. `10101`, `101478`).  
+  C’est la **clé de jointure** utilisée pour retrouver la `ComptabiliteActivite` dans le `ReferentielComptabiliteActivite`.
+- `activite` : **libellé** (affichage / lisibilité), non utilisé comme clé.
+
+En intégration, le logiciel de planning est responsable de fournir un référentiel dont les clés correspondent à `codeActiviteId`.
+Le moteur ne déduit pas ces correspondances à partir du libellé.
+
+### 1.1.2 Champs déductibles vs champs optionnels
+
+Certaines propriétés de `ComptabiliteActivite` peuvent être **déduites automatiquement** côté logiciel de planning (selon sous-type d’activité) :
+- `compteDansCharge`
+- `genereDetteRepos` (ex. sous-type « Récupérable »)
+
+D’autres restent des **choix client** et peuvent être absentes dans de nombreux scénarios :
+- `estServiceCritique`
+- `prioritaireSurConfort`
+
+Dans ce cas, la valeur par défaut doit être considérée comme `false` (absence de sur-critère).
+
+### 1.1.3 Mode dev (Option B) : référentiel absent ou incomplet
+
+En phase de développement, le moteur **tolère** un référentiel absent/incomplet :
+- si l’activité n’est pas trouvée dans le référentiel, le créneau est traité comme **neutre** (aucun compteur),
+- un diagnostic de synthèse est affiché (compteurs : hors horizon / sans ressource / activité inconnue).
+
+⚠️ En production, l’intégration doit viser un référentiel complet pour éviter des métriques à zéro « silencieuses ».
+
 ### 1.2 Clarification à renforcer
 
 WorkMetrics sont des constats post-résolution.

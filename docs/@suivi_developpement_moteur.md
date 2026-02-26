@@ -302,3 +302,24 @@ Le branchement du solveur (appel réel à OptaPlanner + restitution planning) es
 Le solveur sera branché uniquement lorsque :
 - le périmètre V2 stabilisé est officiellement figé,
 - la liste des contraintes activées dans ConstraintProviderImpl est définitive.
+
+## ✅ [26/02/2026] – Activités : ajout du code planning + diagnostics WorkMetrics (dev)
+
+### Objectif
+Améliorer la réintégration des résultats côté logiciel de planning en transportant l’identifiant d’activité (base planning) dans les créneaux.
+
+### Évolutions
+- Modèle `Creneau` :
+  - ajout de `codeActiviteId` (ex. `10101`, `101478`) en complément de `activite` (libellé).
+- WorkMetrics (post-solve) :
+  - `WorkMetricsCalculator` résout l’activité en **priorisant** `codeActiviteId`, avec **fallback** sur `activite` pour compatibilité.
+  - Mode dev (Option B) : si activité inconnue / référentiel manquant ou incomplet, le créneau reste **neutre**.
+  - Ajout de diagnostics de synthèse (affichage console) :
+    - créneaux sans ressource,
+    - créneaux hors horizon,
+    - créneaux ignorés car activité inconnue / non mappée.
+
+### Intégration attendue
+- Le logiciel de planning doit fournir un `ReferentielComptabiliteActivite` dont les clés correspondent à `codeActiviteId`.
+- Les champs `compteDansCharge` et `genereDetteRepos` peuvent être dérivés automatiquement (sous-type d’activité).
+- `estServiceCritique` et `prioritaireSurConfort` restent des paramètres client, souvent optionnels.

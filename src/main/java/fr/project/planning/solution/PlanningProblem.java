@@ -14,6 +14,7 @@ import org.optaplanner.core.api.domain.valuerange.ValueRangeProvider;
 import org.optaplanner.core.api.score.buildin.hardsoft.HardSoftScore;
 
 import java.util.List;
+import java.util.ArrayList;
 
 /**
  * PlanningProblem
@@ -23,6 +24,8 @@ import java.util.List;
  */
 @PlanningSolution
 public class PlanningProblem {
+
+    
 
     /* =========================
        Faits immuables
@@ -44,6 +47,18 @@ public class PlanningProblem {
     @ValueRangeProvider(id = "ressourceRange")
     public List<Ressource> getRessourceRange() {
         return ressources;
+    }
+
+    /* =========================
+       Faits immuables fournis par les tests
+       ========================= */
+    @ProblemFactCollectionProperty
+    public List<WorkMetrics> getWorkMetrics() {
+        return (workMetrics != null) ? workMetrics : List.of();
+    }
+
+    public void setWorkMetrics(List<WorkMetrics> workMetrics) {
+        this.workMetrics = (workMetrics != null) ? workMetrics : new ArrayList<>();
     }
 
     /**
@@ -68,8 +83,7 @@ public class PlanningProblem {
         Faits calculés : WorkMetrics
         ========================= */
     
-    @ProblemFactCollectionProperty
-    private List<WorkMetrics> workMetrics;
+    private List<WorkMetrics> workMetrics = new ArrayList<>();
 
 
     /* =========================

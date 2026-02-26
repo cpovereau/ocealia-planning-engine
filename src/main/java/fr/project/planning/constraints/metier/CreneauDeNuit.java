@@ -28,13 +28,17 @@ public class CreneauDeNuit {
             // référentiel : travail réel uniquement
             .join(factory.forEach(ReferentielComptabiliteActivite.class))
             .filter((c, ref) -> {
-                ComptabiliteActivite ca = ref.getByCode(c.getActivite());
+                String codeActivite = (c.getCodeActiviteId() != null && !c.getCodeActiviteId().isBlank())
+                    ? c.getCodeActiviteId()
+                    : c.getActivite();
+
+                ComptabiliteActivite ca = ref.getByCode(codeActivite);
                 return ca != null && ca.isCompteDansCharge();
             })
 
-        .penalizeLong(
+        .penalize(
             HardSoftScore.ONE_SOFT,
-            (c, ref) -> (long) c.getDuree()
+            (c, ref) -> c.getDuree()
         )
 
         .asConstraint("Travail de nuit (minutes)");

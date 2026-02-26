@@ -50,6 +50,7 @@ class WorkMetricsCalculatorTest {
                 LocalTime.of(10, 0),
                 60,
                 "SITE",
+                TestReferentielFactory.ID_ACTIVITE_PLANNING_TRAVAIL_DETTE_REPOS,
                 "ACTIVITE",
                 "PC",
                 PrioriteCreneau.NORMALE,
@@ -122,7 +123,7 @@ class WorkMetricsCalculatorTest {
             LocalTime.of(9, 0),
             LocalTime.of(10, 0),
             60,
-            "SITE",
+            "SITE", 
             "ACTIVITE",
             "PC",
             PrioriteCreneau.NORMALE,
@@ -190,6 +191,7 @@ void deuxRhdSurDeuxDimanchesGenerentDeuxDettesReposHebdo() {
             LocalTime.of(10, 0),
             60,
             "SITE",
+            TestReferentielFactory.ID_ACTIVITE_PLANNING_TRAVAIL_DETTE_REPOS,
             "ACTIVITE",
             "PC",
             PrioriteCreneau.NORMALE,
@@ -207,6 +209,7 @@ void deuxRhdSurDeuxDimanchesGenerentDeuxDettesReposHebdo() {
             LocalTime.of(10, 0),
             60,
             "SITE",
+            TestReferentielFactory.ID_ACTIVITE_PLANNING_TRAVAIL_DETTE_REPOS,
             "ACTIVITE",
             "PC",
             PrioriteCreneau.NORMALE,
@@ -280,7 +283,8 @@ void deuxRhdLeMemeDimancheNeComptentQuUneSeuleDetteReposHebdo() {
             LocalTime.of(10, 0),
             60,
             "SITE",
-            "ACTIVITE",
+            TestReferentielFactory.ID_ACTIVITE_PLANNING_TRAVAIL_DETTE_REPOS,
+            "Travail du dimanche matin",
             "PC",
             PrioriteCreneau.NORMALE,
             TypeCreneau.IMPOSE,
@@ -297,7 +301,8 @@ void deuxRhdLeMemeDimancheNeComptentQuUneSeuleDetteReposHebdo() {
             LocalTime.of(15, 0),
             60,
             "SITE",
-            "ACTIVITE",
+            TestReferentielFactory.ID_ACTIVITE_PLANNING_TRAVAIL_DETTE_REPOS,
+            "Travail du dimanche après-midi",
             "PC",
             PrioriteCreneau.NORMALE,
             TypeCreneau.IMPOSE,
@@ -363,7 +368,7 @@ void lesWorkMetricsSontIsolesParSalarie() {
                     LocalDate.of(2026, 1, 11)
             );
 
-    ReferentielComptabiliteActivite referentiel =
+     ReferentielComptabiliteActivite referentiel =
             TestReferentielFactory.referentielActiviteDetteRepos();
 
     Creneau rhdPourA = new Creneau(
@@ -373,6 +378,7 @@ void lesWorkMetricsSontIsolesParSalarie() {
             LocalTime.of(10, 0),
             60,
             "SITE",
+            TestReferentielFactory.ID_ACTIVITE_PLANNING_TRAVAIL_DETTE_REPOS,
             "ACTIVITE",
             "PC",
             PrioriteCreneau.NORMALE,
@@ -529,7 +535,7 @@ void unCreneauHorsHorizonEstIgnoreParWorkMetrics() {
             );
 
     ReferentielComptabiliteActivite referentiel =
-            TestReferentielFactory.referentielActiviteDetteRepos();
+            TestReferentielFactory.referentielActiviteSansDetteRepos();
 
     // Créneau en dehors de l'horizon (dimanche précédent)
     Creneau creneauHorsHorizon = new Creneau(

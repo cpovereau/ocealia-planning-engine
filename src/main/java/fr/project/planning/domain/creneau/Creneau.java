@@ -43,6 +43,16 @@ public class Creneau implements Serializable {
     private int duree;
 
     private String lieu;
+
+    /**
+     * Identifiant du code activité (clé stable pour les restitutions / jointures référentiel).
+     * Optionnel pendant la phase de transition : si null, on peut se replier sur {@link #activite}.
+     */
+    private String codeActiviteId;
+
+    /**
+     * Libellé de l'activité (affichage / compatibilité).
+     */
     private String activite;
     private String posteComptable;
 
@@ -127,12 +137,47 @@ public class Creneau implements Serializable {
             boolean jourFerie,
             QualificationJour qualificationJour
     ) {
+        this(
+                id,
+                date,
+                heureDebut,
+                heureFin,
+                duree,
+                lieu,
+                null,
+                activite,
+                posteComptable,
+                priorite,
+                type,
+                typePlageHoraire,
+                jourFerie,
+                qualificationJour
+        );
+    }
+
+    public Creneau(
+            String id,
+            LocalDate date,
+            LocalTime heureDebut,
+            LocalTime heureFin,
+            int duree,
+            String lieu,
+            String codeActiviteId,
+            String activite,
+            String posteComptable,
+            PrioriteCreneau priorite,
+            TypeCreneau type,
+            TypePlageHoraire typePlageHoraire,
+            boolean jourFerie,
+            QualificationJour qualificationJour
+    ) {
         this.id = id;
         this.date = date;
         this.heureDebut = heureDebut;
         this.heureFin = heureFin;
         this.duree = duree;
         this.lieu = lieu;
+        this.codeActiviteId = codeActiviteId;
         this.activite = activite;
         this.posteComptable = posteComptable;
         this.priorite = priorite;
@@ -170,6 +215,10 @@ public class Creneau implements Serializable {
         return lieu;
     }
 
+    public String getCodeActiviteId() {
+        return codeActiviteId;
+    }
+
     public String getActivite() {
         return activite;
     }
@@ -199,9 +248,13 @@ public class Creneau implements Serializable {
     }
 
     public QualificationJour getQualificationJour() {
-    return qualificationJour;
-    }   
-
+        return qualificationJour;
+    }
+    
+     /* =========================
+       Setters
+       ========================= */
+       
     public void setRessourceAffectee(Ressource ressourceAffectee) {
         this.ressourceAffectee = ressourceAffectee;
     }

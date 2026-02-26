@@ -79,23 +79,24 @@ class WorkMetricsCalculatorSmokeTest {
         HypotheseHistorique.NEUTRE
         );
    
-     ReferentielComptabiliteActivite referentiel =
-        TestReferentielFactory.referentielActiviteSansDetteRepos();
+    ReferentielComptabiliteActivite referentiel =
+        TestReferentielFactory.referentielActiviteDetteRepos();
 
-    Creneau rhdMatin = new Creneau(
-        "C1",
-        LocalDate.of(2026, 1, 11), // dimanche
-        LocalTime.of(9, 0),
-        LocalTime.of(10, 0),
-        60,
-        "SITE",
-        "ACTIVITE",
-        "PC",
-        PrioriteCreneau.NORMALE,
-        TypeCreneau.IMPOSE,
-        TypePlageHoraire.JOUR,
-        false,
-        QualificationJour.RHD
+        Creneau rhdMatin = new Creneau(
+            "C1",
+            LocalDate.of(2026, 1, 11), // dimanche
+            LocalTime.of(9, 0),
+            LocalTime.of(10, 0),
+            60,
+            "SITE",
+            TestReferentielFactory.ID_ACTIVITE_PLANNING_TRAVAIL,
+            "Travail",
+            "PC",
+            PrioriteCreneau.NORMALE,
+            TypeCreneau.IMPOSE,
+            TypePlageHoraire.JOUR,
+            false,
+            QualificationJour.RHD
         );
         rhdMatin.setRessourceAffectee(salarie);
 

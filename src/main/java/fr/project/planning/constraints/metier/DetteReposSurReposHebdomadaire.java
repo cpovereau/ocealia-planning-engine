@@ -5,7 +5,6 @@ import fr.project.planning.domain.creneau.Creneau;
 import fr.project.planning.domain.creneau.QualificationJour;
 import fr.project.planning.domain.metier.ComptabiliteActivite;
 import fr.project.planning.domain.metier.ReferentielComptabiliteActivite;
-import fr.project.planning.solution.PlanningProblem;
 
 import org.optaplanner.core.api.score.buildin.hardsoft.HardSoftScore;
 import org.optaplanner.core.api.score.stream.Constraint;
@@ -37,24 +36,25 @@ public class DetteReposSurReposHebdomadaire {
             || creneau.getQualificationJour() == QualificationJour.RHD
         )
 
-        // 3) Jointure avec la solution (PlanningProblem)
-        .join(factory.forEach(PlanningProblem.class))
+        // 3) Jointure avec les facts (singleton)
+            .join(factory.forEach(PlanningContext.class))
+            .join(factory.forEach(ReferentielComptabiliteActivite.class))
 
-        // 4) Filtre métier : dans l’horizon + travail réel + activité générant de la dette
-        .filter((creneau, problem) -> {
-
-            PlanningContext context = problem.getPlanningContext();
+        // 4) Filtre métier : dans l’horizon + activité générant de la dette
+        .filter((creneau, context, referentiel) -> {
 
             // borne temporelle (cohérence avec le reste du moteur)
             if (!context.getHorizonTemporel().contient(creneau.getDate())) {
                 return false;
             }
 
-            ReferentielComptabiliteActivite referentiel =
-                problem.getReferentielComptabiliteActivite();
+            // priorité à l'id activité planning, fallback sur l'ancien champ
+            String codeActivite = (creneau.getCodeActiviteId() != null && !creneau.getCodeActiviteId().isBlank())
+                    ? creneau.getCodeActiviteId()
+                    : creneau.getActivite();
 
             ComptabiliteActivite comptabilite =
-                referentiel.getByCode(creneau.getActivite());
+                referentiel.getByCode(codeActivite);
 
             return comptabilite != null
                 && comptabilite.isCompteDansCharge()
@@ -65,16 +65,14 @@ public class DetteReposSurReposHebdomadaire {
         .penalize(
             "Dette de repos sur repos hebdomadaire",
             HardSoftScore.ONE_SOFT,
-            (creneau, problem) -> {
+            (creneau, context, referentiel) -> {
 
                 int base =
-                    problem.getPlanningContext()
-                           .getPenalites()
+                    context.getPenalites()
                            .getDetteReposSurReposHebdomadaire();
 
                 return base * creneau.getDuree();
             }
         );
-}
-
+    }
 }

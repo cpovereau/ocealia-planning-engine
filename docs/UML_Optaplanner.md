@@ -79,6 +79,7 @@ class Creneau <<PlanningEntity>> {
   heureFin
   duree
   lieu
+  codeActiviteId
   activite
   posteComptable
   priorite

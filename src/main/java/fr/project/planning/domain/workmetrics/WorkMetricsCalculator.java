@@ -32,6 +32,11 @@ public class WorkMetricsCalculator {
     ReferentielComptabiliteActivite ref = solution.getReferentielComptabiliteActivite();
     HorizonTemporel horizon = solution.getPlanningContext().getHorizonTemporel();
 
+    // Diagnostics (mode dev - A changer lors du passage en prod)
+    int nbCreneauxSansRessource = 0;
+    int nbCreneauxHorsHorizon = 0;
+    int nbCreneauxActiviteInconnue = 0;
+
     // Vérité métier (par id)
     Map<String, WorkMetrics> metricsParRessourceId = new HashMap<>();
     Map<String, Ressource> ressourceParId = new HashMap<>();
@@ -51,6 +56,7 @@ public class WorkMetricsCalculator {
 
         Ressource r = c.getRessourceAffectee();
         if (r == null) {
+            nbCreneauxSansRessource++; // contournement temporaire pour diagnostic (mode dev)
             continue;
         }
 
@@ -62,15 +68,20 @@ public class WorkMetricsCalculator {
 
         // 1) Filtre horizon : ignore le créneau pour les compteurs
         if (!horizon.contient(c.getDate())) {
+            nbCreneauxHorsHorizon++; // contournement temporaire pour diagnostic (mode dev)
             continue;
         }
 
         // 2) Filtre activité connue : si inconnue => créneau neutre V2 (aucun compteur)
-        // ⚠️ IMPORTANT : vérifiez que c.getActivite() est bien le code attendu par le référentiel
-        ComptabiliteActivite ca = ref.getByCode(c.getActivite());
-        boolean activiteConnue = (ca != null);
-        if (!activiteConnue) {
-            continue;
+        // Priorité à l'id (stable) ; fallback sur le libellé/code historique
+        String codeActivite = (c.getCodeActiviteId() != null && !c.getCodeActiviteId().isBlank())
+            ? c.getCodeActiviteId()
+            : c.getActivite();
+
+        ComptabiliteActivite ca = (ref != null) ? ref.getByCode(codeActivite) : null;
+        if (ca == null) {
+            nbCreneauxActiviteInconnue++;
+            continue; // créneau neutre si référentiel absent/incomplet ou activité non mappée
         }
 
         WorkMetrics wm = metricsParRessourceId.get(ressourceId);
@@ -153,6 +164,14 @@ public class WorkMetricsCalculator {
         if (r != null) {
             result.put(r, entry.getValue());
         }
+    }
+
+    // Diagnostics (mode dev - A changer lors du passage en prod)    
+    if (nbCreneauxSansRessource > 0 || nbCreneauxHorsHorizon > 0 || nbCreneauxActiviteInconnue > 0) {
+        System.out.println("[WorkMetricsCalculator] Diagnostics (dev/Option B) : "
+            + "sansRessource=" + nbCreneauxSansRessource
+            + ", horsHorizon=" + nbCreneauxHorsHorizon
+            + ", activiteInconnueOuReferentielManquant=" + nbCreneauxActiviteInconnue);
     }
 
     return result;

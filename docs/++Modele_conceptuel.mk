@@ -72,7 +72,8 @@ Représente une personne existante et contractualisée.
 - Profil contractuel
 - Statut (temps plein, temps partiel…)
 - Sites autorisés
-- Activités compatibles
+- Activités compatibles, avec un code activité si besoin qui permet de faire le lien 
+    avec le code activté dans le logiciel de planning si nécessaire
 - Postes comptables compatibles
 
 ### Contraintes associées (dérivées)
