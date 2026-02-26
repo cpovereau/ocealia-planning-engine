@@ -25,7 +25,48 @@ Ces éléments seront introduits **après stabilisation du modèle conceptuel**.
 
 ---
 
-## 2. Modèle conceptuel stabilisé
+## 2. Référentiel d’activités – responsabilité et gouvernance
+
+Le moteur de planification ne construit pas le référentiel métier des activités.
+
+Le référentiel (ComptabiliteActivite) est fourni par le logiciel de planning amont.
+
+### Principes
+
+- `codeActiviteId` = idActivitePlanning (clé technique).
+- `activite` = libellé d’affichage uniquement.
+
+### Champs déductibles (non paramétrés dans le moteur)
+
+Les propriétés suivantes sont déterminées automatiquement à partir du sous-type d’activité du logiciel amont :
+
+- `compteDansCharge`
+- `genereDetteRepos`
+
+Le moteur ne décide pas ces valeurs.
+
+### Champs paramétrables (choix client)
+
+Les propriétés suivantes relèvent d’un choix métier client et peuvent être absentes :
+
+- `estServiceCritique`
+- `prioritaireSurConfort`
+
+En l’absence de configuration, ces champs sont considérés à `false`.
+
+### Mode développement
+
+En environnement de développement :
+- une activité inconnue du référentiel est tolérée,
+- le créneau est considéré neutre,
+- un diagnostic peut être émis.
+
+En environnement cible (à définir V3) :
+- un seuil ou un échec explicite pourra être activé.
+
+---
+
+## 3. Modèle conceptuel stabilisé
 
 ### Entités principales
 
@@ -57,7 +98,7 @@ Ces éléments seront introduits **après stabilisation du modèle conceptuel**.
 
 ---
 
-## 3. Typologie des contraintes (décision structurante)
+## 4. Typologie des contraintes (décision structurante)
 
 Les contraintes sont classées selon **leur nature métier**, indépendamment de leur implémentation technique.
 
@@ -89,7 +130,7 @@ Les seuils de tolérance sont fournis par le logiciel de planning via PlanningCo
 
 ---
 
-## 4. Invariant fondamental — Définition du travail
+## 5. Invariant fondamental — Définition du travail
 
 Cette définition constitue un invariant d’architecture. Toute règle, contrainte, métrique ou évolution future doit s’y conformer.
 
@@ -140,7 +181,7 @@ Aucune métrique ne redéfinit la notion de travail.
 
 ---
 
-## 5. Règles fondamentales sur les contraintes
+## 6. Règles fondamentales sur les contraintes
 
 ### Contraintes HARD
 
@@ -162,7 +203,7 @@ Les scénarios ont servi à **révéler** les contraintes, pas à les figer.
 
 ---
 
-## 6. Rôle réel des scénarios de test (1 à 5)
+## 7. Rôle réel des scénarios de test (1 à 5)
 
 Les scénarios sont des **tests de capacité du moteur**, pas une configuration définitive.
 
@@ -186,7 +227,7 @@ Aucun constructeur ou raccourci ne doit être ajouté au modèle pour faciliter 
 
 ---
 
-## 7. Décision d’architecture majeure
+## 8. Décision d’architecture majeure
 
 ### Principe retenu
 
@@ -202,7 +243,7 @@ Aucun constructeur ou raccourci ne doit être ajouté au modèle pour faciliter 
 
 ---
 
-## 7 bis. Décision de stabilisation du scoring (V2)
+## 8 bis. Décision de stabilisation du scoring (V2)
 
 ### Contexte
 
@@ -304,7 +345,7 @@ Les évolutions V3 (équité, pénibilité par occurrence, préférences) s’ap
 
 ---
 
-## 8. Éléments volontairement différés
+## 9. Éléments volontairement différés
 
 Les éléments suivants sont identifiés mais volontairement repoussés :
 
@@ -318,7 +359,7 @@ Ces sujets seront traités **après validation du socle conceptuel**.
 
 ---
 
-## 9. Invariants à respecter pour la suite du projet
+## 10. Invariants à respecter pour la suite du projet
 
 * Pas de `null` pour représenter une absence d’affectation.
 * Toute règle doit être classable (physique / légale / métier / personnelle).
@@ -327,7 +368,7 @@ Ces sujets seront traités **après validation du socle conceptuel**.
 
 ---
 
-## 10. Statut du document
+## 11. Statut du document
 
 * Document vivant.
 * Toute remise en cause d’un invariant doit être **explicitement discutée**.
