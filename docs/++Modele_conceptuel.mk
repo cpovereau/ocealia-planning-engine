@@ -39,7 +39,7 @@ C’est l’unité centrale du raisonnement.
 ### Qualifiants calendaires / réglementaires
 - Jour ouvré / non ouvré (isReposHebdo)
 - Jour férié (isJourFerie)
-- Nuit / jour (segment nuit)
+- Nuit / jour (intersection plage nuit)
 
 ---
 
@@ -155,6 +155,8 @@ Ces indicateurs ne sont pas des décisions : ils sont dérivés et servent au sc
 - heuresJourFerie
 - heuresSurReposHebdo
 - heuresSupplementaires / heuresComplementaires
+- minutesDimanche
+- minutesIntersection
 - detteReposCompensateur (et éventuellement par origine : nuit / férié / repos hebdo / HS)
 - coutDirect (si payé) vs coutIndirect (si repos/dette)
 

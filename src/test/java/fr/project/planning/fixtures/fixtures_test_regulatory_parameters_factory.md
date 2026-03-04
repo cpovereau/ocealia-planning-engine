@@ -111,12 +111,12 @@ Chaque variante :
 ## 🔢 Niveaux de test autorisés
 
 | Niveau | Autorisé |
-|------|----------|
-| V1 | ❌ |
-| V2 | ✅ |
-| V3 | ✅ |
-| V4 | ✅ |
-| V5 | ❌ |
+|--------|----------|
+| V1     | ❌      |
+| V2     | ✅      |
+| V3     | ✅      |
+| V4     | ✅      |
+| V5     | ❌      |
 
 ---
 

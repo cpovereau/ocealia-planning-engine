@@ -4,6 +4,9 @@ import java.io.Serializable;
 import java.time.LocalDate;
 import java.util.Objects;
 
+import fr.project.planning.scoring.PenibiliteType;
+import java.util.List;
+
 import fr.project.planning.scoring.StrategieScoring;
 
 /**
@@ -27,6 +30,7 @@ public final class PlanningContext implements Serializable {
     private final StrategieCouverture strategieCouverture;
     private final SeuilsDeTolerance seuilsDeTolerance;
     private final Penalites penalites;
+    private final DominancePenibilites dominancePenibilites;
     private final OptionsExplicabilite optionsExplicabilite;
 
     public PlanningContext(
@@ -38,6 +42,7 @@ public final class PlanningContext implements Serializable {
             StrategieCouverture strategieCouverture,
             SeuilsDeTolerance seuilsDeTolerance,
             Penalites penalites,
+            DominancePenibilites dominancePenibilites,
             OptionsExplicabilite optionsExplicabilite
     ) {
         this.objectif = Objects.requireNonNull(objectif);
@@ -48,6 +53,7 @@ public final class PlanningContext implements Serializable {
         this.strategieCouverture = Objects.requireNonNull(strategieCouverture);
         this.seuilsDeTolerance = Objects.requireNonNull(seuilsDeTolerance);
         this.penalites = Objects.requireNonNull(penalites);
+        this.dominancePenibilites = Objects.requireNonNull(dominancePenibilites);
         this.optionsExplicabilite = Objects.requireNonNull(optionsExplicabilite);
     }
 
@@ -83,6 +89,10 @@ public final class PlanningContext implements Serializable {
         return penalites;
     }
 
+    public DominancePenibilites getDominancePenibilites() {
+    return dominancePenibilites;
+    }   
+
     public OptionsExplicabilite getOptionsExplicabilite() {
         return optionsExplicabilite;
     }
@@ -112,16 +122,22 @@ private static SeuilsDeTolerance defaultSeuilsDeTolerance() {
 private static Penalites defaultPenalites() {
     // Ordres de grandeur neutres, sans écraser le score
     return new Penalites(
-            1,        // violationPhysique
-            10_000,   // violationLegale
-            1_000,    // violationMetier
-            100,      // violationService
-            10,       // violationPersonnelle
-            500,      // affectationPosteVirtuel
-            2_000,    // nonAffectation
-            5_000,    // detteRepos
-            5_000,    // nuitsConsecutives
-            5_000     // dimanchesTravailles
+            1,                         // violationPhysique
+            10_000,                      // violationLegale
+            1_000,                       // violationMetier
+            100,                        // violationService
+            10,                     // violationPersonnelle
+            500,                 // affectationPosteVirtuel
+            2_000,                        // nonAffectation
+            5_000,        // detteRepos
+            5_000,          // nuitsConsecutives
+            5_000      // dimanchesTravailles
+    );
+}
+
+private static DominancePenibilites defaultDominancePenibilites() {
+    return new DominancePenibilites(
+            List.of(PenibiliteType.NUIT, PenibiliteType.DIMANCHE, PenibiliteType.FERIE) // Ordre de dominance par défaut
     );
 }
 
@@ -139,14 +155,14 @@ private static OptionsExplicabilite defaultOptionsExplicabilite() {
     // ============================================================
 
 public PlanningContext(
-        ObjectifResolution objectif,
-        StrategieScoring strategieScoring,
-        LocalDate dateDebut,
-        LocalDate dateFin,
-        ResolutionType resolutionType,
-        HypotheseHistorique hypotheseHistorique
-) {
-    this(
+            ObjectifResolution objectif,
+            StrategieScoring strategieScoring,
+            LocalDate dateDebut,
+            LocalDate dateFin,
+            ResolutionType resolutionType,
+            HypotheseHistorique hypotheseHistorique
+        ) {
+        this(
             objectif,
             strategieScoring,
             resolutionType,
@@ -155,7 +171,8 @@ public PlanningContext(
             defaultStrategieCouverture(),
             defaultSeuilsDeTolerance(),
             defaultPenalites(),
+            defaultDominancePenibilites(),
             defaultOptionsExplicabilite()
-    );
-}
+        );
+    }
 }

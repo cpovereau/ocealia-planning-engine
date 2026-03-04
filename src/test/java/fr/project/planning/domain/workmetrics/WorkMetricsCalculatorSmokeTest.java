@@ -8,11 +8,13 @@ import fr.project.planning.domain.creneau.QualificationJour;
 import fr.project.planning.domain.creneau.TypeCreneau;
 import fr.project.planning.domain.creneau.TypePlageHoraire;
 import fr.project.planning.domain.metier.ReferentielComptabiliteActivite;
+import fr.project.planning.domain.reglementaire.RegulatoryParameters;
 import fr.project.planning.solution.PlanningProblem;
 import fr.project.planning.domain.creneau.Creneau;
 import fr.project.planning.domain.creneau.PrioriteCreneau;
 import fr.project.planning.domain.ressource.SalarieReel;
 import fr.project.planning.fixtures.TestReferentielFactory;
+import fr.project.planning.fixtures.TestRegulatoryParametersFactory;
 import fr.project.planning.fixtures.TestRessourceFactory;
 import fr.project.planning.scoring.StrategieScoring;
 
@@ -41,9 +43,11 @@ class WorkMetricsCalculatorSmokeTest {
         ResolutionType.PLANNING_GLOBAL,
         HypotheseHistorique.NEUTRE
         );
+        RegulatoryParameters rp = TestRegulatoryParametersFactory.neutre();
 
         PlanningProblem problem = new PlanningProblem(
                 context,
+                rp,
                 /* creneaux */ null,
                 /* ressources */ java.util.List.of(salarie),
                 /* referentiel */ List.of() 
@@ -99,9 +103,12 @@ class WorkMetricsCalculatorSmokeTest {
             QualificationJour.RHD
         );
         rhdMatin.setRessourceAffectee(salarie);
+        
+        RegulatoryParameters rp = TestRegulatoryParametersFactory.neutre();
 
     PlanningProblem problem = new PlanningProblem(
         context,
+        rp,
         referentiel,
         List.of(salarie),
         List.of(rhdMatin)

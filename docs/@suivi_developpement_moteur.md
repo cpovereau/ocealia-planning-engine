@@ -60,22 +60,34 @@ Ce document :
 
 ### 1.4 Contraintes légales (SOFT)
 
-| Règle                       | Statut | Fichier                   |
-|-----------------------------|--------|---------------------------|
-| Repos hebdomadaire glissant | ✅     | ReposHebdomadaireGlissant |
-| Dimanches travaillés max    | ✅     | DimanchesTravaillesMax    |
+| Règle                                        | Statut | Fichier                   |
+|----------------------------------------------|--------|---------------------------|
+| Repos hebdomadaire glissant                  | ✅     | ReposHebdomadaireGlissant |
+| Dimanches travaillés max                     | ✅     | DimanchesTravaillesMax    |
+| Pénibilités minutes nuit / dimanche / férié  | ✅     | PenibilitesLegalesMinutes |
+| Dominance des pénibilités                    | ✅     | ScoreUtils                |
+| Calcul d’intersection temporelle             | ✅     | TimeBreakdownCalculator   |
+
+
+**Commentaires :**
+- Les pénibilités sont désormais calculées par minutes réelles et non par type de créneau.
+- Les anciennes contraintes `CreneauDeNuit` et `CreneauJourFerie` ont été remplacées par une contrainte unifiée.
+- Le moteur utilise un calcul par intersection temporelle afin de représenter correctement les cas :
+  - nuit partielle,
+  - nuit + dimanche,
+  - nuit + jour férié.
 
 ---
 
 ### 1.5 Contraintes métier (SOFT)
 
-| Règle                      | Statut | Fichier                        |
-|----------------------------|--------|--------------------------------|
-| Créneau non couvert        | ✅     | NonAffectationCreneau          |
-| Pénalisation poste virtuel | ✅     | PosteVirtuelPenalite           |
-| Travail de nuit            | ✅     | CreneauNuit                    |
-| Travail jour férié         | ✅     | CreneauJourFerie               |
-| Travail sur repos hebdo    | ✅     | DetteReposSurReposHebdomadaire |
+| Règle                      | Statut  | Fichier                        |
+|----------------------------|---------|--------------------------------|
+| Créneau non couvert        | ✅      | NonAffectationCreneau          |
+| Pénalisation poste virtuel | ✅      | PosteVirtuelPenalite           |
+| Travail de nuit            | obsolète | CreneauNuit                    |
+| Travail jour férié         | obsolète | CreneauJourFerie               |
+| Travail sur repos hebdo    | ✅      | DetteReposSurReposHebdomadaire |
 
 ---
 
@@ -323,3 +335,82 @@ Améliorer la réintégration des résultats côté logiciel de planning en tran
 - Le logiciel de planning doit fournir un `ReferentielComptabiliteActivite` dont les clés correspondent à `codeActiviteId`.
 - Les champs `compteDansCharge` et `genereDetteRepos` peuvent être dérivés automatiquement (sous-type d’activité).
 - `estServiceCritique` et `prioritaireSurConfort` restent des paramètres client, souvent optionnels.
+
+## ✅ [04/03/2026] – Historique d’évolution — V2 → V3 (Scoring des pénibilités)
+
+### Contexte V2
+Dans la version V2 du moteur, certaines pénibilités étaient détectées directement à partir des caractéristiques du créneau :
+- créneau de nuit (TypePlageHoraire == NUIT)
+- créneau de jour férié (QualificationJour == FERIE)
+- créneau de dimanche
+
+Les contraintes associées étaient notamment :
+- CreneauDeNuit
+- CreneauJourFerie
+
+Cette approche présentait plusieurs limites :
+1. elle ne permettait pas de représenter correctement des créneaux partiellement concernés
+exemple : 18h–23h contenant seulement une heure de nuit ;
+2. elle ne permettait pas de traiter correctement les chevauchements de pénibilités
+exemple : samedi 22h → dimanche 06h ;
+3. elle introduisait des doubles pénalités (nuit + dimanche, nuit + férié).
+
+### Décision V3
+La V3 adopte un modèle basé sur l’intersection temporelle réelle.
+Chaque créneau est décomposé en minutes appartenant aux intervalles réglementaires via : `TimeBreakdownCalculator`
+
+Ce calcul produit :
+- minutes de nuit
+- minutes de dimanche
+- minutes de jour férié
+- ainsi que leurs intersections.
+
+### Nouvelle architecture de scoring
+Les pénibilités sont désormais traitées par une contrainte unique :
+`PenibilitesLegalesMinutes`
+
+Cette contrainte :
+1. calcule les intersections via TimeBreakdownCalculator
+2. applique la logique de dominance
+3. applique les poids définis dans le contexte de résolution
+
+La logique de dominance est implémentée dans :
+`ScoreUtils.penalitesLegalesAvecDominance(...)`
+
+### Règle de dominance
+Pour éviter toute double pénalité, un ordre de dominance est appliqué :
+- NUIT > DIMANCHE > FERIE
+
+Les minutes appartenant à plusieurs catégories sont attribuées à la pénibilité dominante uniquement.
+
+Source réglementaire
+
+### La définition des intervalles réglementaires est externalisée dans :
+`RegulatoryParameters`
+
+Ce composant contient :
+- l’intervalle réglementaire de nuit
+- la liste des jours fériés
+
+Il est injecté dans le solveur comme ProblemFact via `PlanningProblem`.
+
+### Conséquence sur les contraintes
+Les contraintes suivantes ne sont plus utilisées pour le scoring :
+- CreneauDeNuit
+- CreneauJourFerie
+
+Elles sont remplacées par une contrainte unique plus précise et plus robuste.
+
+### Bénéfices de la V3
+La nouvelle architecture permet :
+- une modélisation fidèle des situations réelles
+- l’élimination des doubles pénalités
+- une extensibilité vers d’autres pénibilités temporelles
+- une meilleure explicabilité des décisions du moteur
+
+### Compatibilité avec V2
+Les règles métier HARD et les contraintes de couverture ne sont pas affectées par cette évolution.
+
+La V3 modifie uniquement :
+- le calcul des pénibilités légales SOFT
+- la façon dont les minutes de pénibilité sont calculées.

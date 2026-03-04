@@ -63,7 +63,7 @@ public class ReposHebdomadaireMin {
             .penalize(
                 HardSoftScore.ONE_HARD
             )
-            .asConstraint("Repos hebdomadaire insuffisant");
+            .asConstraint("Repos hebdomadaire insuffisant (min 1 OFF/7j)");
     }
 
     private static boolean violeReposHebdoMin(

@@ -10,6 +10,7 @@ import org.optaplanner.core.api.score.stream.ConstraintProvider;
 import fr.project.planning.constraints.metier.CreneauDeNuit;
 import fr.project.planning.constraints.metier.CreneauJourFerie; 
 import fr.project.planning.constraints.legales.NuitsConsecutivesMax;
+import fr.project.planning.constraints.legales.PenibilitesLegalesMinutes;
 import fr.project.planning.constraints.legales.ReposObligatoireApresNuits;
 import fr.project.planning.constraints.legales.ReposHebdomadaireMin;
 import fr.project.planning.constraints.legales.ReposHebdomadaireGlissant;
@@ -64,8 +65,7 @@ public class ConstraintProviderImpl implements ConstraintProvider {
 
             CreneauNonAffecte.creneauNonAffecte(factory),
             AffectationPosteVirtuel.affectationPosteVirtuel(factory),
-            CreneauDeNuit.creneauDeNuit(factory),
-            CreneauJourFerie.creneauJourFerie(factory),
+            PenibilitesLegalesMinutes.penaliser(factory),
             DetteReposSurReposHebdomadaire.penaliser(factory),
 
             /* =========================

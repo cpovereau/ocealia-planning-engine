@@ -37,8 +37,10 @@ class ScoreDominanceTest {
             3000
         );
 
-        assertTrue(nonCouvert.hardScore() < nuit.hardScore(),
-            "1 non couvert doit dominer 3000 minutes de nuit en EXPLOITATION");
+        assertTrue(
+            nonCouvert.softScore() < nuit.softScore(),
+            "1 non couvert doit dominer 3000 minutes de nuit en EXPLOITATION"
+            );
     }
 
     @Test

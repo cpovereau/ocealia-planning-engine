@@ -51,9 +51,11 @@ La factory **doit garantir** :
 
 ### 1️⃣ Cohérence temporelle
 
-- `heureDebut < heureFin`
-- durée calculable et positive
-- absence d’ambiguïté jour / nuit
+- `heureDebut != heureFin`
+- et durée calculable et strictement positive
+- si heureFin < heureDebut, le créneau traverse minuit
+- aucune ambiguïté sur l’intervalle temporel (début/fin explicites)
+- la nuit est mesurée par TimeBreakdownCalculator, jamais déduite par la factory
 
 👉 Aucune création de créneau ne doit violer ces invariants.
 
@@ -75,7 +77,14 @@ Chaque créneau doit être explicitement typé :
 La factory doit rendre explicite :
 
 - travail de nuit (`segmentNuit`),
+  - segmentNuit peut rester comme indicateur d’entrée
+  - mais ne constitue plus une source de vérité réglementaire
+  
 - jour férié (`isJourFerie`),
+  - jour férié : ne doit pas être une source de vérité sur Creneau
+  - si le champ existe encore dans Creneau, il doit rester neutre (ex: false) ou être traité comme indicatif non réglementaire
+  - la vérité est fournie par RegulatoryParameters via la fixture correspondante
+  
 - repos hebdomadaire (`isReposHebdo`).
 
 👉 Aucun qualifiant ne doit être implicite ou déduit par le test.

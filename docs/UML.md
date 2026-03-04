@@ -51,9 +51,7 @@ class Creneau <<PlanningEntity>> {
   +posteComptable
   +priorite
   +type : IMPOSE | GENERE
-  +isJourFerie
   +isReposHebdo
-  +segmentNuit
 }
 
 ' =========================

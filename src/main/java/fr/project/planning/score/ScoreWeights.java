@@ -26,6 +26,7 @@ public class ScoreWeights {
         exploitation.put(PenaliteKey.METIER_SOFT_AFFECTATION_POSTE_VIRTUEL, 2_000);
         exploitation.put(PenaliteKey.LEGAL_SOFT_TRAVAIL_NUIT_MINUTES, 3);
         exploitation.put(PenaliteKey.LEGAL_SOFT_TRAVAIL_JOUR_FERIE_MINUTES, 5);
+        exploitation.put(PenaliteKey.LEGAL_SOFT_TRAVAIL_DIMANCHE_MINUTES, 4);
 
         weights.put(StrategieScoring.EXPLOITATION, exploitation);
 
@@ -38,6 +39,7 @@ public class ScoreWeights {
         analyseRH.put(PenaliteKey.METIER_SOFT_AFFECTATION_POSTE_VIRTUEL, 500);
         analyseRH.put(PenaliteKey.LEGAL_SOFT_TRAVAIL_NUIT_MINUTES, 1);
         analyseRH.put(PenaliteKey.LEGAL_SOFT_TRAVAIL_JOUR_FERIE_MINUTES, 1);
+        analyseRH.put(PenaliteKey.LEGAL_SOFT_TRAVAIL_DIMANCHE_MINUTES, 1);
 
         weights.put(StrategieScoring.ANALYSE_RH, analyseRH);
 
@@ -50,6 +52,7 @@ public class ScoreWeights {
         audit.put(PenaliteKey.METIER_SOFT_AFFECTATION_POSTE_VIRTUEL, 1_000);
         audit.put(PenaliteKey.LEGAL_SOFT_TRAVAIL_NUIT_MINUTES, 2);
         audit.put(PenaliteKey.LEGAL_SOFT_TRAVAIL_JOUR_FERIE_MINUTES, 2);
+        audit.put(PenaliteKey.LEGAL_SOFT_TRAVAIL_DIMANCHE_MINUTES, 2);
 
         weights.put(StrategieScoring.AUDIT, audit);
     }

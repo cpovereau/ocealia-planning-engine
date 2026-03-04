@@ -179,6 +179,114 @@ Aucune métrique ne redéfinit la notion de travail.
 - Les WorkMetrics n’interprètent jamais QualificationJour comme du travail.
 - Toute évolution V3 ou ultérieure devra s’appuyer exclusivement sur la définition canonique ci-dessus.
 
+### 5. Décision — Gestion des chevauchements temporels sans découpage de créneaux (V3)
+
+**Constat**
+
+Dans les domaines comportant des horaires “frontières” (veille de nuit, astreintes, interventions), un même créneau peut chevaucher :
+- la plage de nuit (ex. 22:00–06:00),
+- un changement de jour calendaire (samedi → dimanche),
+- un jour férié,
+- un repos hebdomadaire attendu (RH/RHD selon la modélisation amont).
+
+Dans ces cas, une qualification globale du créneau (ex. TypePlageHoraire = NUIT) est insuffisante :
+- elle ne permet pas de comptabiliser les minutes de nuit de manière précise (ex. 18:00–23:00 contient 60 minutes de nuit),
+- elle ne permet pas de distinguer “minutes sur dimanche” dans un créneau samedi 22:00 → dimanche 06:00.
+
+**Décision**
+
+Le moteur ne découpe jamais un créneau pour matérialiser des sous-segments (nuit/jour, samedi/dimanche, férié/non férié, etc.).
+À la place, il calcule des volumes partiels de façon déterministe, par intersection temporelle entre :
+- l’intervalle réel du créneau,
+- et les fenêtres temporelles réglementaires/calendaires (plages de nuit, jours fériés, jour “dimanche”, etc.).
+
+Le créneau reste un objet unique :
+- stable pour le solveur,
+- stable pour l’API,
+- stable pour la restitution UI.
+
+**Conséquences**
+
+1. Aucune reconstitution n’est nécessaire en sortie : on ne fragmente rien.
+2. Les contraintes consomment des mesures (minutes) plutôt qu’une qualification globale.
+3. Les WorkMetrics consomment les mêmes volumes, en post-résolution, pour garantir la cohérence “mesure ↔ constats”.
+4. Les attributs de type “qualifiant” (ex. TypePlageHoraire) peuvent subsister comme indicateurs, mais ne constituent pas une source de vérité suffisante en présence de chevauchements.
+
+**Règle de cohérence**
+
+Toute pénalité exprimée “en minutes” (nuit, dimanche, férié, etc.) doit être dérivée de ces volumes partiels calculés par intersection temporelle, et non d’une qualification globale.
+
+**Dominance sur chevauchements (anti double-pondération)**
+
+Une minute peut appartenir à plusieurs catégories (ex. nuit + dimanche).
+Les volumes partiels sont calculés séparément à des fins de mesure et d’explicabilité.
+
+Cependant, le scoring ne doit pas appliquer une “double peine” par défaut.
+
+- Décision retenue :
+  - le système calcule explicitement des volumes d’intersection :
+  - minutesNuitEtDimanche
+  - minutesNuitEtFerie
+  - (optionnel) minutesDimancheEtFerie
+- et le scoring applique une dominance (via PenaliteKey / ScoreWeights) de façon à ce que :
+  - une minute chevauchante soit pénalisée selon une règle unique maîtrisée,
+  - plutôt que par addition naïve de toutes les pénalités.
+
+Une analyse d’impact V2 est requise pour aligner toutes les contraintes en minutes sur ce mécanisme.
+
+**Statut / périmètre**
+
+Décision structurante V3.
+Une analyse d’impact sur V2 sera menée afin :
+- d’identifier les écarts de mesure introduits,
+- d’adapter les tests,
+- de préserver les invariants de dominance et de pondération.
+
+**Principe**
+Le moteur ne découpe jamais les créneaux. Les volumes (nuit, dimanche, férié) sont calculés par intersection temporelle à la minute.
+
+**Primitive**
+minutesIntersect(A, B) renvoie la durée d’intersection de deux intervalles [start, end).
+
+**Volumes**
+Pour tout créneau travaillé (compteDansCharge=true), le moteur calcule :
+- minutesNuit
+- minutesDimanche
+- minutesFerie
+
+**Chevauchements**
+Une minute peut appartenir à plusieurs catégories (ex. nuit et dimanche). Les volumes sont indépendants et explicatifs.
+Les règles de non-double-pondération relèvent du scoring (ScoreWeights / PenaliteKey), pas de la mesure.
+
+---
+
+### 6. Séparation “mesure de restitution” vs “mesure d’arbitrage” (V3)
+
+Le moteur calcule deux familles de compteurs :
+
+**A. Compteurs de restitution (hors scoring)**
+Ils servent uniquement à :
+- restituer un planning lisible,
+- produire des tableaux de charge (jour/hebdo/mois),
+- alimenter l’analyse aval.
+
+Ils ne sont jamais utilisés pour l’arbitrage du solveur.
+
+Exemples :
+- minutes/heures travaillées par jour calendaire,
+- agrégations hebdomadaires / mensuelles,
+- agrégations par lieu, activité, poste comptable.
+
+**B. Compteurs d’arbitrage (scoring)**
+Ils servent à mesurer les pénibilités / coûts d’organisation utilisés dans le score.
+
+En V2/V3, l’arbitrage repose exclusivement sur :
+- minutes de nuit
+- minutes de dimanche
+- minutes de jour férié
+
+Ces compteurs sont calculés par intersection temporelle (sans découpage de créneaux).
+
 ---
 
 ## 6. Règles fondamentales sur les contraintes
@@ -227,7 +335,33 @@ Aucun constructeur ou raccourci ne doit être ajouté au modèle pour faciliter 
 
 ---
 
-## 8. Décision d’architecture majeure
+8. Décision — Dominance configurable “plus favorable au salarié” (V3)
+
+**Objectif**
+
+En cas de chevauchement de catégories temporelles (ex. nuit + dimanche, nuit + férié), le moteur applique une dominance afin d’éviter la double-pondération d’une même minute.
+
+**Principe directeur**
+
+La dominance doit être la plus favorable au salarié, mais cette notion dépend potentiellement :
+- du secteur,
+- de la convention,
+- ou des règles internes du client.
+
+**Décision retenue**
+
+L’ordre de dominance n’est pas figé dans le moteur.
+Il est fourni par l’appelant via le PlanningContext / paramètres réglementaires.
+
+**Conséquences**
+
+- Les volumes bruts (minutesNuit, minutesDimanche, minutesFerie, intersections) sont toujours calculés pour l’explicabilité.
+- Le scoring choisit la pénalité applicable selon l’ordre de dominance transmis.
+- Toute absence de paramètre doit conduire à un ordre par défaut explicite et documenté (jamais implicite silencieux).
+
+---
+
+## 9. Décision d’architecture majeure
 
 ### Principe retenu
 
@@ -243,7 +377,7 @@ Aucun constructeur ou raccourci ne doit être ajouté au modèle pour faciliter 
 
 ---
 
-## 8 bis. Décision de stabilisation du scoring (V2)
+## 9 bis. Décision de stabilisation du scoring (V2)
 
 ### Contexte
 
@@ -311,6 +445,89 @@ Aucune règle métier n’est implémentée à ce niveau.
 
 ---
 
+### Décision — Calcul des pénibilités légales par intersection temporelle
+
+#### Contexte
+Les premières versions du moteur distinguaient certains types de créneaux :
+- créneau de nuit
+- créneau de dimanche
+- créneau de jour férié
+
+Cette approche ne permettait pas de représenter correctement des situations réelles telles que :
+- un créneau 18h–23h contenant une heure de nuit,
+- un créneau samedi 22h → dimanche 06h combinant nuit et dimanche,
+- un créneau 00h–02h un jour férié.
+
+#### Décision
+Le moteur adopte une approche par intersection temporelle.
+Les pénibilités ne sont plus associées à un type de créneau mais à des minutes réellement travaillées dans des intervalles réglementaires.
+
+Le calcul est réalisé par : `TimeBreakdownCalculator`
+
+Ce calcul décompose chaque créneau en minutes appartenant aux catégories :
+- minutes de nuit
+- minutes de dimanche
+- minutes de jour férié
+
+ainsi que leurs intersections :
+- nuit + dimanche
+- nuit + férié
+- dimanche + férié
+- nuit + dimanche + férié
+
+#### Conséquence
+
+Les anciennes contraintes :
+- CreneauDeNuit
+- CreneauJourFerie
+ne sont plus utilisées pour le scoring des pénibilités.
+
+Elles sont remplacées par une contrainte unique : `PenibilitesLegalesMinutes`
+
+---
+
+### Décision — Dominance des pénibilités
+
+Lorsque plusieurs pénibilités s’appliquent simultanément, une dominance configurable est utilisée.
+
+Exemple : NUIT > DIMANCHE > FERIE
+
+Les minutes appartenant à plusieurs catégories sont attribuées à la pénibilité dominante uniquement.
+
+La logique est implémentée dans : `ScoreUtils.penalitesLegalesAvecDominance(...)`
+
+Cette méthode :
+1. reconstruit les volumes exclusifs par inclusion/exclusion,
+2. applique l’ordre de dominance,
+3. applique les poids de scoring.
+
+### Décision — Source réglementaire des jours fériés
+
+Les jours fériés ne sont plus déduits des créneaux.
+
+La source de vérité est : `RegulatoryParameters`
+
+Ce composant contient :
+- l’intervalle réglementaire de nuit
+- la liste des jours fériés
+
+Il est injecté comme ProblemFact dans : `PlanningProblem`
+
+---
+
+### Décision — Type d’impact utilisé par les contraintes
+
+Le score utilisé par le moteur est : `HardSoftScore`
+
+Ce score utilise un ScoreImpacter basé sur des entiers.
+
+Par conséquent : `penalizeLong(...)` ne peut pas être utilisé.
+
+Toutes les contraintes doivent utiliser : `penalize(...)` 
+avec conversion explicite : `Math.toIntExact(...)`si nécessaire.
+
+---
+
 ### Décisions structurantes associées
 
 Les décisions suivantes sont **explicitement actées** :
@@ -345,7 +562,7 @@ Les évolutions V3 (équité, pénibilité par occurrence, préférences) s’ap
 
 ---
 
-## 9. Éléments volontairement différés
+## 10. Éléments volontairement différés
 
 Les éléments suivants sont identifiés mais volontairement repoussés :
 
@@ -359,7 +576,7 @@ Ces sujets seront traités **après validation du socle conceptuel**.
 
 ---
 
-## 10. Invariants à respecter pour la suite du projet
+## 11. Invariants à respecter pour la suite du projet
 
 * Pas de `null` pour représenter une absence d’affectation.
 * Toute règle doit être classable (physique / légale / métier / personnelle).
@@ -368,7 +585,7 @@ Ces sujets seront traités **après validation du socle conceptuel**.
 
 ---
 
-## 11. Statut du document
+## 12. Statut du document
 
 * Document vivant.
 * Toute remise en cause d’un invariant doit être **explicitement discutée**.

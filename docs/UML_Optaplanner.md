@@ -86,7 +86,6 @@ class Creneau <<PlanningEntity>> {
   type : IMPOSE | GENERE
   isJourFerie
   isReposHebdo
-  segmentNuit
   ressourceAffectee
 }
 

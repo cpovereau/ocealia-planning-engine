@@ -139,7 +139,75 @@ entre une valeur de score et un indicateur métier.
 
 ---
 
-### 4.1 Indicateurs indispensables (socle)
+### 4.1 Séparation “restitution” vs “arbitrage” (décision V3)
+
+Le moteur calcule plusieurs familles d’indicateurs temporels (WorkMetrics), mais tous ne servent pas au scoring.
+
+**A. Compteurs de restitution (hors scoring)**
+
+Les compteurs de “travail” (ex. minutes/heures travaillées par jour, par semaine, par mois, par lieu, par activité) sont strictement destinés à la restitution et au reporting.
+
+Ils servent à :
+- afficher des tableaux de charge,
+- expliquer un planning,
+- alimenter l’analyse aval.
+
+Ils ne participent jamais à l’arbitrage du solveur (aucune pénalité, aucun poids, aucune dominance).
+
+**B. Compteurs d’arbitrage (scoring)**
+
+Le scoring du moteur repose exclusivement sur des compteurs de pénibilité / coût organisationnel, exprimés en minutes.
+
+En V2/V3, les axes d’arbitrage sont :
+- travail de nuit (minutes)
+- travail du dimanche (minutes)
+- travail de jour férié (minutes)
+
+Ces volumes sont calculés par intersection temporelle (sans découpage de créneaux), puis pondérés via ScoreWeights.
+
+---
+
+#### 4.1.1 Chevauchements et dominance (anti double-pondération)
+
+Une minute peut appartenir à plusieurs catégories (ex. nuit + dimanche, nuit + férié).
+Les volumes sont mesurés séparément à des fins d’explicabilité.
+
+**Décision :**
+Le scoring ne doit pas appliquer une “double peine” par addition naïve.
+
+Le moteur calcule explicitement des volumes d’intersection :
+- minutesNuitEtDimanche
+- minutesNuitEtFerie
+- (optionnel) minutesDimancheEtFerie
+
+Puis le scoring applique une règle de dominance (via PenaliteKey / ScoreWeights) afin que :
+- une minute chevauchante soit pénalisée selon une règle unique maîtrisée,
+- avec des ordres de grandeur cohérents,
+- et une explicabilité stable.
+
+---
+
+#### 4.1.2 Principe général de dominance — “Plus favorable au salarié”
+
+En cas de chevauchement de catégories temporelles (ex. nuit + dimanche, nuit + férié, dimanche + férié), le moteur applique une règle de dominance fondée sur le principe suivant :
+- La pénalité retenue est celle correspondant à la situation la plus favorable au salarié.
+
+Cette règle vise à :
+- éviter la double-pondération d’une même minute,
+- rester cohérent avec l’esprit protecteur du droit du travail,
+- maintenir un arbitrage lisible et stable.
+
+L’ordre de dominance est fourni explicitement par le contexte (`PlanningContext` / paramètres réglementaires).
+Il représente la règle “la plus favorable au salarié” dans le cadre client.
+
+En l’absence de paramètre, un ordre par défaut documenté est appliqué (ex. NUIT > DIMANCHE > FERIE), mais ce comportement doit rester une option contrôlée.
+
+Ce principe s’applique exclusivement au scoring.
+Les volumes bruts (minutesNuit, minutesDimanche, minutesFerie) restent disponibles à des fins d’explicabilité.
+
+---
+
+### 4.2 Indicateurs indispensables (socle)
 
 Ces indicateurs sont **nécessaires** pour un moteur réaliste.
 
@@ -155,7 +223,7 @@ Ces indicateurs sont **nécessaires** pour un moteur réaliste.
 
 ---
 
-### 4.2 Indicateurs utiles mais non bloquants
+### 4.3 Indicateurs utiles mais non bloquants
 
 Ces indicateurs améliorent l’arbitrage mais peuvent être introduits plus tard.
 
@@ -168,7 +236,7 @@ Ces indicateurs améliorent l’arbitrage mais peuvent être introduits plus tar
 
 ---
 
-### 4.3 Indicateurs volontairement exclus
+### 4.4 Indicateurs volontairement exclus
 
 Ces éléments sont **hors périmètre** du moteur :
 

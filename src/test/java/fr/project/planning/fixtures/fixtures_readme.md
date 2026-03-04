@@ -190,14 +190,14 @@ Les objets fournis doivent être valides au sens du domaine.
 
 ## 🔢 Correspondance factories ↔ niveaux de test
 
-| Factory | V1 | V2 | V3 | V4 | V5 |
-|------|----|----|----|----|----|
-| TestRessourceFactory | ✅ | ✅ | ✅ | ✅ | ❌ |
-| TestPlanningContextFactory | ❌ | ✅ | ✅ | ✅ | ❌ |
+| Factory                         | V1  | V2 | V3  | V4 | V5  |
+|---------------------------------|-----|----|-----|----|-----|
+| TestRessourceFactory            | ✅ | ✅ | ✅ | ✅ | ❌ |
+| TestPlanningContextFactory      | ❌ | ✅ | ✅ | ✅ | ❌ |
 | TestRegulatoryParametersFactory | ❌ | ✅ | ✅ | ✅ | ❌ |
-| TestCreneauFactory | ✅ | ✅ | ✅ | ✅ | ❌ |
-| TestPlanningSolutionFactory | ❌ | ✅ | ✅ | ✅ | ❌ |
-| TestWorkMetricsFactory | ❌ | ✅ | ❌ | ❌ | ❌ |
+| TestCreneauFactory              | ✅ | ✅ | ✅ | ✅ | ❌ |
+| TestPlanningSolutionFactory     | ❌ | ✅ | ✅ | ✅ | ❌ |
+| TestWorkMetricsFactory          | ❌ | ✅ | ❌ | ❌ | ❌ |
 
 ---
 

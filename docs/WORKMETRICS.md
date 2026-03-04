@@ -9,7 +9,12 @@ pour **évaluer** une solution (scoring), sans jamais devenir des décisions.
 
 * **Statut** : `ProblemFact` (lu par le solveur, jamais modifié par lui)
 * **Nature** : agrégats dérivés des affectations
-* **Usage exclusif** : scoring et explicabilité
+* **Usage** : 
+  - explicabilité
+  - scoring (uniquement pour certains compteurs de pénibilité)
+  - restitution / reporting (compteurs de travail agrégés)
+
+Les compteurs de “travail” (ex. heures travaillées par jour/semaine/mois, par lieu, par activité) sont strictement destinés à la restitution et ne participent pas à l’arbitrage.
 
 > WorkMetrics rendent visibles les **conséquences** des décisions
 > (coûts, dettes, charges), pas les décisions elles‑mêmes.
@@ -86,7 +91,42 @@ maxNuitsConsecutivesObservees = 6
 
 ---
 
-## 2. Portée temporelle
+## 2. Calcul des pénibilités temporelles
+
+Les pénibilités liées au temps de travail (nuit, dimanche, jour férié) sont calculées à partir de l’intersection réelle des créneaux avec les intervalles réglementaires.
+
+Le calcul est réalisé par : `TimeBreakdownCalculator`
+
+Pour chaque créneau, le moteur calcule :
+
+| Métrique	                     | Description                                |
+| ------------------------------ | ------------------------------------------ |
+| `minutesTravaillees`	         | durée totale du créneau                    |
+| `minutesNuit`	                 | minutes situées dans l’intervalle de nuit  |
+| `minutesDimanche`	             | minutes situées un dimanche                |
+| `minutesFerie`                 | minutes situées un jour férié              |
+| `minutesNuitEtDimanche`	       | intersection nuit + dimanche               |
+| `minutesNuitEtFerie`	         | intersection nuit + férié                  |
+| `minutesDimancheEtFerie`	     | intersection dimanche + férié              |
+| `minutesNuitEtDimancheEtFerie` | triple intersection                        |
+
+Ces métriques servent uniquement à :
+- alimenter le scoring
+- expliquer les décisions du moteur
+
+Elles ne sont jamais utilisées directement pour modifier le planning.
+
+### Principe de dominance
+
+Les intersections multiples ne produisent pas de double pénalité.
+
+Un ordre de dominance paramétrable est appliqué : NUIT > DIMANCHE > FERIE (par défaut)
+
+Les minutes appartenant à plusieurs catégories sont attribuées à la pénibilité dominante.
+
+---
+
+## 3. Portée temporelle
 
 Chaque instance de WorkMetrics est **liée à :**
 
@@ -96,9 +136,9 @@ Chaque instance de WorkMetrics est **liée à :**
 
 ---
 
-## 3. Champs retenus (socle)
+## 4. Champs retenus (socle)
 
-### 3.1 Identification
+### 4.1 Identification
 
 | Champ            | Type | Description                                         |
 | ---------------- | ---- | --------------------------------------------------- |
@@ -109,7 +149,7 @@ Chaque instance de WorkMetrics est **liée à :**
 
 ---
 
-### 3.2 Charges horaires
+### 4.2 Charges horaires
 
 | Champ                       | Type    | Description                           | Implémenté |
 | --------------------------- | ------- | ------------------------------------- | -----------|
@@ -120,7 +160,7 @@ Chaque instance de WorkMetrics est **liée à :**
 
 ---
 
-### 3.3 Indicateurs liés au référentiel contractuel (cible)
+### 4.3 Indicateurs liés au référentiel contractuel (cible)
 
 | Champ                            | Type    | Description                                                  | Implémenté |
 | -------------------------------- | ------- | ------------------------------------------------------------ | ---------- |
@@ -137,7 +177,7 @@ nécessitent une définition préalable du temps contractuel côté métier.
 
 ---
 
-### 3.4 Dettes et coûts (cible future)
+### 4.4 Dettes et coûts (cible future)
 
 Ces métriques ne seront introduites qu’après stabilisation :
 – des WorkMetrics de base
@@ -154,7 +194,7 @@ Ces métriques ne seront introduites qu’après stabilisation :
 
 ---
 
-### 3.4 État d’implémentation validé (V2)
+### 4.5 État d’implémentation validé (V2)
 
 Cette section décrit **exclusivement** les règles actuellement
 implémentées et validées par les tests automatisés.
@@ -203,7 +243,7 @@ Un créneau qualifié `RH` ou `RHD` est considéré comme un **repos hebdomadair
 
 ---
 
-## 4. WorkMetrics à concevoir (roadmap)
+## 5. WorkMetrics à concevoir (roadmap)
 
 Cette section décrit les métriques prévues, classées par **ordre logique d’introduction**.
 Chaque groupe dépend explicitement de briques préalables du moteur
@@ -213,7 +253,7 @@ Aucune de ces métriques n’est interprétative : elles restent descriptives.
 
 ---
 
-### 4.1 Séquences de travail (V3 – priorité haute)
+### 5.1 Séquences de travail (V3 – priorité haute)
 
 Ces métriques accompagnent directement les contraintes combinatoires légales
 (nuits consécutives, jours consécutifs).
@@ -231,12 +271,137 @@ Ces métriques accompagnent directement les contraintes combinatoires légales
 - explicabilité du respect (ou non) des seuils
 - comparaison de solutions
 
-Ces métriques servent exclusivement à l’explicabilité et à la comparaison de solutions,
-et ne constituent jamais des seuils d’invalidation.
+Ces métriques ont un rôle strictement descriptif :
+- elles sont post-résolution ;
+- elles n’interviennent pas dans la faisabilité ;
+- elles ne déclenchent aucune contrainte HARD ;
+- elles ne produisent aucune pénalité directe ;
+- elles ne constituent jamais un seuil d’invalidation.
+
+Elles servent exclusivement :
+- à l’explicabilité,
+- à la comparaison de solutions,
+- à la préparation d’analyses aval (RH, audit).
 
 ---
 
-### 4.2 Répartition et équité (V3 – après stabilisation scoring)
+#### 5.1.1 Principe de calcul sans découpage de créneaux (V3)
+
+Le moteur ne découpe jamais les créneaux.
+Lorsque qu’un créneau chevauche une frontière (plage de nuit, changement de jour, dimanche, férié…), les volumes sont calculés par intersection temporelle afin d’obtenir des minutes partielles.
+
+Ces minutes partielles sont ensuite utilisées :
+- par les contraintes (mesure),
+- et par les WorkMetrics (constats).
+
+Les volumes partiels utilisés par les contraintes et ceux utilisés par WorkMetrics doivent être strictement identiques (même algorithme d’intersection).
+
+---
+
+#### 5.1.2 Volumes d’intersection
+
+Pour permettre un scoring maîtrisé en cas de chevauchements, le moteur calcule également :
+- minutesNuitEtDimanche
+- minutesNuitEtFerie
+
+Ces volumes sont des mesures neutres issues de la même primitive d’intersection temporelle.
+
+Ils servent :
+- au scoring,
+- à l’explicabilité.
+
+L’ordre de dominance appliqué au scoring est fourni par le PlanningContext ; les volumes d’intersection restent disponibles à des fins d’explicabilité, indépendamment de l’ordre choisi.
+
+---
+
+#### 5.1.3 Définition canonique du travail
+
+Un créneau contribue aux WorkMetrics si et seulement si son activité est considérée comme du travail au sens du moteur (compteDansCharge=true via référentiel).
+Toute minute issue d’un calcul d’intersection est ignorée si l’activité ne compte pas dans la charge.
+
+Une journée ou une nuit est considérée comme travaillée si et seulement si :
+- le créneau associé possède une activité dont
+- compteDansCharge = true dans le référentiel d’activité.
+
+Le moteur ne déduit jamais le travail :
+- du code d’activité brut,
+- du type de créneau,
+- d’un qualifiant calendaire.
+
+Cette règle est un invariant d’architecture : DECISIONS_CONCEPTION_OPTAPLANNER
+
+---
+
+#### 5.1.4 maxJoursConsecutifsObservees
+
+**Définition :**
+Représente la longueur maximale d’une séquence de jours calendaires consécutifs travaillés pour une ressource donnée.
+
+**Méthode de calcul :**
+
+Pour chaque ressource :
+1. Identifier les dates de l’horizon comportant au moins un créneau tel que :
+    compteDansCharge = true
+2. Dédupliquer par date (plusieurs créneaux le même jour comptent pour 1).
+3. Trier les dates.
+4. Calculer la plus longue suite de dates consécutives.
+
+**Cas limites**
+- Aucune journée travaillée → valeur = 0
+- Créneaux hors horizon → ignorés
+- Activité absente du référentiel → ignorée
+- Plusieurs créneaux le même jour → 1 seul jour
+
+---
+
+#### 5.1.5 maxNuitsConsecutivesObservees
+
+**Définition :**
+Représente la longueur maximale d’une séquence de nuits travaillées consécutives pour une ressource donnée.
+
+**Qualification d’une nuit travaillée**
+Une date est considérée comme contenant une “nuit travaillée” si la ressource a, sur cette date, un volume :
+- minutesNuit > 0
+où minutesNuit est calculé par intersection temporelle entre :
+- l’intervalle réel du créneau,
+- et les fenêtres “plage de nuit” définies par les paramètres réglementaires.
+
+Ce volume est pris en compte uniquement si :
+- l’activité du créneau compteDansCharge = true (référentiel d’activité).
+
+TypePlageHoraire et segmentNuit peuvent exister comme indicateurs d’entrée, mais ne sont pas des sources de vérité suffisantes en présence de chevauchements.
+
+**Méthode de calcul**
+Pour chaque ressource :
+1. Identifier les dates comportant au moins un créneau :
+- de type NUIT
+- et comptant dans la charge.
+2. Dédupliquer par date.
+3. Trier les dates.
+4. Calculer la plus longue suite consécutive.
+
+**Cas limites**
+- Aucune nuit travaillée → valeur = 0
+- Plusieurs créneaux de nuit le même jour → 1 seule nuit
+- Nuit non comptée dans la charge → ignorée
+
+---
+
+#### 5.1.6 Alignement HARD / SOFT
+
+Ces métriques :
+- peuvent expliquer a posteriori une violation de contrainte combinatoire ;
+- ne remplacent jamais la contrainte ;
+- ne déclenchent jamais d’exclusion.
+
+Exemple : maxNuitsConsecutivesObservees = 6
+
+Ce n’est pas la métrique qui invalide la solution.
+C’est la contrainte combinatoire correspondante (HARD ou SOFT) qui s’applique indépendamment.
+
+---
+
+### 5.2 Répartition et équité (V3 – après stabilisation scoring)
 
 Ces métriques permettent une lecture **comparative**, sans décision.
 
@@ -255,7 +420,7 @@ Ces métriques permettent une lecture **comparative**, sans décision.
 
 ---
 
-### 4.3 Référentiel contractuel (V4 – spécifique contexte français)
+### 5.3 Référentiel contractuel (V4 – spécifique contexte français)
 
 Ces métriques expriment un **écart relatif au temps contractuel de référence**,
 sans interprétation juridique.
@@ -275,7 +440,7 @@ sans interprétation juridique.
 
 ---
 
-### 4.4 Dettes et coûts abstraits (V5 – cible long terme)
+### 5.4 Dettes et coûts abstraits (V5 – cible long terme)
 
 Ces métriques représentent des **coûts abstraits**, non financiers,
 liés à la pénibilité et à la récupération.
@@ -297,7 +462,7 @@ liés à la pénibilité et à la récupération.
 
 ---
 
-## 5. Champs explicitement exclus
+## 6. Champs explicitement exclus
 
 WorkMetrics **n’incluent pas** :
 
@@ -311,7 +476,7 @@ Ces éléments relèvent du métier, hors moteur.
 
 ---
 
-## 6. Calcul et mise à jour (principe)
+## 7. Calcul et mise à jour (principe)
 
 Les WorkMetrics sont calculés à partir d’un planning résolu,
 dans une phase dédiée de post-traitement.
@@ -319,7 +484,7 @@ Les contraintes n’écrivent pas les WorkMetrics.
 
 ---
 
-## 7. Invariants
+## 8. Invariants
 
 * Aucun champ de WorkMetrics n’est une décision
 * Toute dette générée doit être traçable à des affectations
@@ -331,7 +496,7 @@ Les contraintes n’écrivent pas les WorkMetrics.
 
 ---
 
-## 8. Lien documentaire
+## 9. Lien documentaire
 
 WorkMetrics est référencé par :
 

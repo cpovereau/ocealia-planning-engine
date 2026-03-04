@@ -7,9 +7,11 @@ import fr.project.planning.domain.creneau.QualificationJour;
 import fr.project.planning.domain.creneau.TypeCreneau;
 import fr.project.planning.domain.creneau.TypePlageHoraire;
 import fr.project.planning.domain.metier.ReferentielComptabiliteActivite;
+import fr.project.planning.domain.reglementaire.RegulatoryParameters;
 import fr.project.planning.domain.ressource.SalarieReel;
 import fr.project.planning.fixtures.TestPlanningContextFactory;
 import fr.project.planning.fixtures.TestReferentielFactory;
+import fr.project.planning.fixtures.TestRegulatoryParametersFactory;
 import fr.project.planning.fixtures.TestRessourceFactory;
 import fr.project.planning.solution.PlanningProblem;
 
@@ -61,8 +63,11 @@ class WorkMetricsCalculatorTest {
         );
         rhd.setRessourceAffectee(salarie);
 
+        RegulatoryParameters rp = TestRegulatoryParametersFactory.neutre();
+
         PlanningProblem problem = new PlanningProblem(
                 context,
+                rp,
                 referentiel,
                 List.of(salarie),
                 List.of(rhd)
@@ -134,8 +139,11 @@ class WorkMetricsCalculatorTest {
     );
     creneau.setRessourceAffectee(salarie);
 
+    RegulatoryParameters rp = TestRegulatoryParametersFactory.neutre();
+
     PlanningProblem problem = new PlanningProblem(
             context,
+            rp,
             referentiel,
             List.of(salarie),
             List.of(creneau)
@@ -220,8 +228,11 @@ void deuxRhdSurDeuxDimanchesGenerentDeuxDettesReposHebdo() {
     );
     rhdDimanche2.setRessourceAffectee(salarie);
 
+    RegulatoryParameters rp = TestRegulatoryParametersFactory.neutre();
+
     PlanningProblem problem = new PlanningProblem(
             context,
+            rp,
             referentiel,
             List.of(salarie),
             List.of(rhdDimanche1, rhdDimanche2)
@@ -312,8 +323,11 @@ void deuxRhdLeMemeDimancheNeComptentQuUneSeuleDetteReposHebdo() {
     );
     rhdApresMidi.setRessourceAffectee(salarie);
 
+    RegulatoryParameters rp = TestRegulatoryParametersFactory.neutre();
+
     PlanningProblem problem = new PlanningProblem(
             context,
+            rp,
             referentiel,
             List.of(salarie),
             List.of(rhdMatin, rhdApresMidi)
@@ -389,10 +403,13 @@ void lesWorkMetricsSontIsolesParSalarie() {
     );
     rhdPourA.setRessourceAffectee(salarieA);
 
+    RegulatoryParameters rp = TestRegulatoryParametersFactory.neutre();
+
     // Aucun créneau pour le salarié B
 
     PlanningProblem problem = new PlanningProblem(
             context,
+            rp,
             referentiel,
             List.of(salarieA, salarieB),
             List.of(rhdPourA)
@@ -480,8 +497,11 @@ void uneActiviteAbsenteDuReferentielEstIgnoreeParWorkMetrics() {
     );
     creneauInconnu.setRessourceAffectee(salarie);
 
+    RegulatoryParameters rp = TestRegulatoryParametersFactory.neutre();
+
     PlanningProblem problem = new PlanningProblem(
             context,
+            rp,
             referentiel,
             List.of(salarie),
             List.of(creneauInconnu)
@@ -555,8 +575,11 @@ void unCreneauHorsHorizonEstIgnoreParWorkMetrics() {
     );
     creneauHorsHorizon.setRessourceAffectee(salarie);
 
+    RegulatoryParameters rp = TestRegulatoryParametersFactory.neutre();
+
     PlanningProblem problem = new PlanningProblem(
             context,
+            rp,
             referentiel,
             List.of(salarie),
             List.of(creneauHorsHorizon)

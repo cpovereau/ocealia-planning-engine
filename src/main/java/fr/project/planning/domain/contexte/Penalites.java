@@ -57,14 +57,14 @@ public final class Penalites implements Serializable {
     private final int detteReposSurReposHebdomadaire;
 
     /** 
-    / *Pénalité associée au nombre de nuits consécutives
+     *Pénalité associée au nombre de nuits consécutives
      */
-    private int approcheMaxNuitsConsecutives;
+    private final int approcheMaxNuitsConsecutives;
 
     /**
      * Pénalité associée au dépassement du nombre de dimanches travaillés.
      */
-    private int depassementMaxDimanchesTravailles;
+    private final int depassementMaxDimanchesTravailles;
 
     public Penalites(
             int violationPhysique,

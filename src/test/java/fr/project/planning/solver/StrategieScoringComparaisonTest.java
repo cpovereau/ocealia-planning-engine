@@ -3,6 +3,7 @@ package fr.project.planning.solver;
 import fr.project.planning.domain.contexte.*;
 import fr.project.planning.domain.creneau.*;
 import fr.project.planning.domain.metier.ReferentielComptabiliteActivite;
+import fr.project.planning.domain.reglementaire.RegulatoryParameters;
 import fr.project.planning.domain.metier.ComptabiliteActivite;
 import fr.project.planning.domain.ressource.*;
 import fr.project.planning.solution.PlanningProblem;
@@ -13,6 +14,8 @@ import org.optaplanner.core.api.solver.Solver;
 import org.optaplanner.core.api.solver.SolverFactory;
 import fr.project.planning.fixtures.TestRessourceFactory;
 import fr.project.planning.scoring.StrategieScoring;
+import fr.project.planning.scoring.PenibiliteType;   
+import fr.project.planning.fixtures.TestRegulatoryParametersFactory;      
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -85,16 +88,18 @@ class StrategieScoringComparisonTest {
                 )
         );
 
+        RegulatoryParameters rp = TestRegulatoryParametersFactory.neutre();
+
         // --------------------
         // Cas 1 : EXPLOITATION
         // --------------------
 
         PlanningContext exploitation = contexte(StrategieScoring.EXPLOITATION);
 
-
         PlanningProblem problemExploitation = new PlanningProblem(
             exploitation,
-            referentiel,    
+            rp,
+            referentiel,
             ressources,
             List.of(jour, nuit)
         );
@@ -114,6 +119,7 @@ class StrategieScoringComparisonTest {
 
         PlanningProblem problemAnalyse = new PlanningProblem(
             analyseRH,
+            rp,
             referentiel,     
             ressources,
             List.of(jour, nuit)
@@ -159,7 +165,7 @@ class StrategieScoringComparisonTest {
     private PlanningContext contexte(StrategieScoring strategieScoring) {
     return new PlanningContext(
         ObjectifResolution.COUVRIR_A_TOUT_PRIX,
-        StrategieScoring.EXPLOITATION,
+        strategieScoring,
         ResolutionType.PLANNING_GLOBAL,
         HypotheseHistorique.NEUTRE,
         new HorizonTemporel(
@@ -187,6 +193,9 @@ class StrategieScoringComparisonTest {
                 1,
                 1,
                 1
+        ),
+        new DominancePenibilites(
+                List.of(PenibiliteType.NUIT, PenibiliteType.DIMANCHE, PenibiliteType.FERIE)
         ),
         new OptionsExplicabilite(
                 false,

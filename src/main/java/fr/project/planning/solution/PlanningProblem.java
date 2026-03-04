@@ -12,6 +12,7 @@ import org.optaplanner.core.api.domain.solution.ProblemFactProperty;
 import org.optaplanner.core.api.domain.solution.PlanningScore;
 import org.optaplanner.core.api.domain.valuerange.ValueRangeProvider;
 import org.optaplanner.core.api.score.buildin.hardsoft.HardSoftScore;
+import fr.project.planning.domain.reglementaire.RegulatoryParameters;
 
 import java.util.List;
 import java.util.ArrayList;
@@ -37,6 +38,13 @@ public class PlanningProblem {
      */
     @ProblemFactProperty
     private PlanningContext planningContext;
+    
+    /**
+     * Paramètres réglementaires (durées maximales, repos obligatoires, etc.).
+     * Unique et partagé par toutes les contraintes.
+     */
+    @ProblemFactProperty
+    private RegulatoryParameters regulatoryParameters;
 
     /**
      * Ressources disponibles (salariés réels, postes virtuels, non affecté).
@@ -59,6 +67,14 @@ public class PlanningProblem {
 
     public void setWorkMetrics(List<WorkMetrics> workMetrics) {
         this.workMetrics = (workMetrics != null) ? workMetrics : new ArrayList<>();
+    }
+
+    public RegulatoryParameters getRegulatoryParameters() {
+        return regulatoryParameters;
+    }
+
+    public void setRegulatoryParameters(RegulatoryParameters regulatoryParameters) {
+        this.regulatoryParameters = regulatoryParameters;
     }
 
     /**
@@ -103,11 +119,14 @@ public class PlanningProblem {
 
     public PlanningProblem(
             PlanningContext planningContext,
+            RegulatoryParameters regulatoryParameters,
             ReferentielComptabiliteActivite referentielComptabiliteActivite,
             List<Ressource> ressources,
             List<Creneau> creneaux
+            
     ) {
         this.planningContext = planningContext;
+        this.regulatoryParameters = regulatoryParameters;
         this.referentielComptabiliteActivite = referentielComptabiliteActivite;
         this.ressources = ressources;
         this.creneaux = creneaux;
