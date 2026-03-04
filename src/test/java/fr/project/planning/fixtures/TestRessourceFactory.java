@@ -6,6 +6,10 @@ import java.util.Set;
 
 public final class TestRessourceFactory {
 
+    // Valeurs "canon" côté tests (doivent matcher les créneaux de test par défaut)
+    public static final String SITE_CANON = "SITE";
+    public static final String POSTE_COMPTABLE_CANON = "PC";
+
     private TestRessourceFactory() {
         // utilitaire
     }
@@ -19,9 +23,14 @@ public final class TestRessourceFactory {
                 id,
                 "CDI",
                 "ACTIF",
-                Set.of("SITE"),
-                Set.of("ACTIVITE"),
-                Set.of("PC")
+                Set.of(SITE_CANON),
+                // IMPORTANT : aligné sur le référentiel (clé = idActivitePlanning)
+                Set.of(
+                        TestReferentielFactory.ID_ACTIVITE_PLANNING_TRAVAIL,
+                        TestReferentielFactory.ID_ACTIVITE_PLANNING_SYNDICAT,
+                        TestReferentielFactory.ID_ACTIVITE_PLANNING_TRAVAIL_DETTE_REPOS
+                ),
+                Set.of(POSTE_COMPTABLE_CANON)
         );
     }
 
@@ -33,10 +42,15 @@ public final class TestRessourceFactory {
         return new PosteVirtuel(
                 id,
                 TypePosteVirtuel.POTENTIEL,
-                480,                 // capacité "journée"
-                Set.of("ACTIVITE"),
-                Set.of("SITE"),
-                Set.of("PC")
+                480, // capacité "journée"
+                // IMPORTANT : aligné sur le référentiel (clé = idActivitePlanning)
+                Set.of(
+                        TestReferentielFactory.ID_ACTIVITE_PLANNING_TRAVAIL,
+                        TestReferentielFactory.ID_ACTIVITE_PLANNING_SYNDICAT,
+                        TestReferentielFactory.ID_ACTIVITE_PLANNING_TRAVAIL_DETTE_REPOS
+                ),
+                Set.of(SITE_CANON),
+                Set.of(POSTE_COMPTABLE_CANON)
         );
     }
 }

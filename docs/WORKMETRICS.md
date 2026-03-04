@@ -5,6 +5,21 @@ pour **évaluer** une solution (scoring), sans jamais devenir des décisions.
 
 ---
 
+## 0. Tableau de suivi
+
+|Domaine                            |	Livré  | Où (code)                     |	Où (tests)        |	Doc                   |
+| --------------------------------- |------- | ----------------------------- | ------------------ |---------------------- |
+| Pénibilités minutes	              | 	✅   | TimeBreakdownCalculator       | tests existants    |	section 2            |
+|                                   |        |   + PenibilitesLegalesMinutes |	                  |                       |
+| Dominance	                        | 	✅   | ScoreUtils	                  | ScoreDominanceTest |	section 2            |
+| Séquences (contraintes)           | 	✅   | ReposHebdomadaireMin/Glissant	| tests contraintes  |	REGLES_COMBINATOIRES |
+| Séquences (WorkMetrics observées) | 	❌   | –                   	        | –	                 |  section 5.1          |
+| Équité (WorkMetrics)              | 	❌   | –	                            | –	                 |  section 5.2          |
+| Contractuel                       | 	❌   | –	                            | –	                 |  section 5.3          |
+| Dettes & coûts abstraits          | 	❌   | –	                            | –	                 |  section 5.4          |
+
+---
+
 ## 1. Rôle et statut
 
 * **Statut** : `ProblemFact` (lu par le solveur, jamais modifié par lui)
@@ -110,9 +125,13 @@ Pour chaque créneau, le moteur calcule :
 | `minutesDimancheEtFerie`	     | intersection dimanche + férié              |
 | `minutesNuitEtDimancheEtFerie` | triple intersection                        |
 
-Ces métriques servent uniquement à :
-- alimenter le scoring
-- expliquer les décisions du moteur
+Les volumes calculés par TimeBreakdownCalculator constituent
+des primitives utilisées :
+
+- par les contraintes pour le scoring
+- par certaines WorkMetrics pour l’explicabilité
+
+Ces volumes ne sont pas des WorkMetrics en eux-mêmes.
 
 Elles ne sont jamais utilisées directement pour modifier le planning.
 
@@ -136,7 +155,7 @@ Chaque instance de WorkMetrics est **liée à :**
 
 ---
 
-## 4. Champs retenus (socle)
+## 4. Champs retenus (V3-A socle)
 
 ### 4.1 Identification
 
@@ -209,11 +228,13 @@ Elle ne remet pas en cause la définition générale de WorkMetrics.
 
 #####  Travail de nuit
 
-- Somme des durées des créneaux de type `NUIT`.
+- Somme des minutes appartenant à la plage réglementaire de nuit,
+calculées par intersection temporelle via `TimeBreakdownCalculator`.
 
 #####  Travail les jours fériés
 
-- Somme des durées des créneaux qualifiés `FERIE`.
+- Somme des minutes appartenant à un jour férié,
+calculées par intersection temporelle via `TimeBreakdownCalculator`.
 
 ---
 
@@ -253,7 +274,7 @@ Aucune de ces métriques n’est interprétative : elles restent descriptives.
 
 ---
 
-### 5.1 Séquences de travail (V3 – priorité haute)
+### 5.1 Séquences observées (V3-B – priorité haute)
 
 Ces métriques accompagnent directement les contraintes combinatoires légales
 (nuits consécutives, jours consécutifs).
@@ -285,7 +306,7 @@ Elles servent exclusivement :
 
 ---
 
-#### 5.1.1 Principe de calcul sans découpage de créneaux (V3)
+#### 5.1.1 Principe de calcul sans découpage de créneaux
 
 Le moteur ne découpe jamais les créneaux.
 Lorsque qu’un créneau chevauche une frontière (plage de nuit, changement de jour, dimanche, férié…), les volumes sont calculés par intersection temporelle afin d’obtenir des minutes partielles.
@@ -401,7 +422,7 @@ C’est la contrainte combinatoire correspondante (HARD ou SOFT) qui s’appliqu
 
 ---
 
-### 5.2 Répartition et équité (V3 – après stabilisation scoring)
+### 5.2 Répartition et équité (V3-C – après stabilisation scoring)
 
 Ces métriques permettent une lecture **comparative**, sans décision.
 

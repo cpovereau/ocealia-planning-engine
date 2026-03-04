@@ -74,20 +74,16 @@ Chaque créneau doit être explicitement typé :
 
 ### 3️⃣ Qualifiants calendaires explicites
 
-La factory doit rendre explicite :
+Certains champs peuvent exister dans le modèle de créneau
+(ex : `segmentNuit`, `isJourFerie`, `isReposHebdo`).
 
-- travail de nuit (`segmentNuit`),
-  - segmentNuit peut rester comme indicateur d’entrée
-  - mais ne constitue plus une source de vérité réglementaire
-  
-- jour férié (`isJourFerie`),
-  - jour férié : ne doit pas être une source de vérité sur Creneau
-  - si le champ existe encore dans Creneau, il doit rester neutre (ex: false) ou être traité comme indicatif non réglementaire
-  - la vérité est fournie par RegulatoryParameters via la fixture correspondante
-  
-- repos hebdomadaire (`isReposHebdo`).
+Ces champs doivent être considérés comme **indicatifs uniquement**.
 
-👉 Aucun qualifiant ne doit être implicite ou déduit par le test.
+Ils ne constituent pas une source de vérité réglementaire.
+
+La qualification réelle (nuit, dimanche, jour férié) est déterminée par :
+- `RegulatoryParameters`
+- et les calculs d’intersection temporelle effectués par le moteur.
 
 ---
 

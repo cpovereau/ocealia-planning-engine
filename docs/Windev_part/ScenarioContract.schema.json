@@ -14,48 +14,26 @@
   "properties": {
     "scenarioType": {
       "type": "string",
-      "enum": [
-        "SC-01",
-        "SC-02",
-        "SC-03",
-        "SC-04",
-        "SC-05"
-      ],
+      "enum": ["SC-01", "SC-02", "SC-03", "SC-04", "SC-05"],
       "description": "Identifiant du scénario métier"
     },
     "planningContext": {
       "type": "object",
-      "required": [
-        "horizon",
-        "strategieScoring"
-      ],
+      "required": ["horizon", "strategieScoring"],
       "additionalProperties": false,
       "properties": {
         "horizon": {
           "type": "object",
-          "required": [
-            "dateDebut",
-            "dateFin"
-          ],
+          "required": ["dateDebut", "dateFin"],
           "additionalProperties": false,
           "properties": {
-            "dateDebut": {
-              "type": "string",
-              "format": "date"
-            },
-            "dateFin": {
-              "type": "string",
-              "format": "date"
-            }
+            "dateDebut": { "type": "string", "format": "date" },
+            "dateFin": { "type": "string", "format": "date" }
           }
         },
         "strategieScoring": {
           "type": "string",
-          "enum": [
-            "EXPLOITATION",
-            "ANALYSE_RH",
-            "AUDIT"
-          ]
+          "enum": ["EXPLOITATION", "ANALYSE_RH", "AUDIT"]
         },
         "seuils": {
           "type": "object",
@@ -70,36 +48,25 @@
     },
     "dataSet": {
       "type": "object",
-      "required": [
-        "creneaux",
-        "ressources"
-      ],
+      "required": ["creneaux", "ressources"],
       "additionalProperties": false,
       "properties": {
         "creneaux": {
           "type": "array",
-          "items": {
-            "$ref": "#/definitions/Creneau"
-          }
+          "items": { "$ref": "#/definitions/Creneau" }
         },
         "ressources": {
           "type": "object",
-          "required": [
-            "salaries"
-          ],
+          "required": ["salaries"],
           "additionalProperties": false,
           "properties": {
             "salaries": {
               "type": "array",
-              "items": {
-                "$ref": "#/definitions/Salarie"
-              }
+              "items": { "$ref": "#/definitions/Salarie" }
             },
             "postesVirtuels": {
               "type": "array",
-              "items": {
-                "$ref": "#/definitions/PosteVirtuel"
-              },
+              "items": { "$ref": "#/definitions/PosteVirtuel" },
               "description": "Liste de postes virtuels fournis par l'utilisateur (ex: POTENTIEL) ou par le système."
             }
           }
@@ -120,76 +87,91 @@
         "type"
       ],
       "additionalProperties": false,
+      "description": "Créneau à affecter. Les vérités réglementaires (nuit/dimanche/férié) proviennent de RegulatoryParameters et du calcul d'intersection temporelle, pas des flags indicatifs du créneau.",
       "properties": {
         "id": {
-          "type": "string"
+          "type": "string",
+          "description": "Identifiant unique du créneau"
         },
         "date": {
           "type": "string",
-          "format": "date"
+          "format": "date",
+          "description": "Date de référence du créneau (jour de début si traversée de minuit)."
         },
         "heureDebut": {
           "type": "string",
-          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+          "description": "Heure de début (HH:MM)."
         },
         "heureFin": {
           "type": "string",
-          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+          "description": "Heure de fin (HH:MM). Si heureFin < heureDebut, le créneau traverse minuit."
         },
         "lieu": {
-          "type": "string"
+          "type": "string",
+          "description": "Code site/lieu. Sert aux compatibilités ressource/lieu si utilisées par le moteur."
+        },
+
+        "codeActiviteId": {
+          "type": "string",
+          "description": "Identifiant d'activité du logiciel de planning (clé de jointure). Recommandé. Si absent, le moteur peut utiliser un fallback sur 'activite' (mode dev/compat)."
         },
         "activite": {
-          "type": "string"
+          "type": "string",
+          "description": "Libellé d'affichage de l'activité (non utilisé comme clé de jointure si codeActiviteId est fourni)."
         },
+
+        "posteComptable": {
+          "type": "string",
+          "description": "Code poste comptable (optionnel). Sert aux compatibilités ressource/poste comptable si utilisées."
+        },
+        "priorite": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Priorité du créneau (optionnel). 0 = neutre."
+        },
+
         "type": {
           "type": "string",
-          "enum": [
-            "IMPOSE",
-            "GENERE"
-          ]
+          "enum": ["IMPOSE", "GENERE"],
+          "description": "Type de créneau (imposé ou généré)."
         },
+
         "isJourFerie": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "INDICATIF (non réglementaire). La vérité 'jour férié' provient de RegulatoryParameters. À conserver uniquement pour compatibilité amont."
         },
         "isReposHebdo": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "INDICATIF (non réglementaire). Peut être utile pour des restitutions/diagnostics, mais ne remplace pas les règles moteur."
         },
         "segmentNuit": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "INDICATIF (non réglementaire). La vérité 'nuit' est calculée par intersection temporelle avec la plage de nuit de RegulatoryParameters."
         }
       }
     },
+
     "Salarie": {
       "type": "object",
-      "required": [
-        "id",
-        "statut",
-        "sitesAutorises",
-        "activitesCompatibles"
-      ],
+      "required": ["id", "statut", "sitesAutorises", "activitesCompatibles"],
       "additionalProperties": false,
       "properties": {
-        "id": {
-          "type": "string"
-        },
-        "statut": {
-          "type": "string"
-        },
+        "id": { "type": "string" },
+        "statut": { "type": "string" },
         "sitesAutorises": {
           "type": "array",
-          "items": {
-            "type": "string"
-          }
+          "items": { "type": "string" }
         },
         "activitesCompatibles": {
           "type": "array",
-          "items": {
-            "type": "string"
-          }
+          "items": { "type": "string" },
+          "description": "Liste des idActivitePlanning compatibles (ex: 10101...). Doit être cohérente avec 'codeActiviteId' des créneaux."
         }
       }
     },
+
     "PosteVirtuel": {
       "type": "object",
       "required": [
@@ -202,15 +184,10 @@
       ],
       "additionalProperties": false,
       "properties": {
-        "id": {
-          "type": "string"
-        },
+        "id": { "type": "string" },
         "type": {
           "type": "string",
-          "enum": [
-            "POTENTIEL",
-            "REVELE"
-          ]
+          "enum": ["POTENTIEL", "REVELE"]
         },
         "capaciteCible": {
           "type": "integer",
@@ -219,21 +196,16 @@
         },
         "activitesAutorisees": {
           "type": "array",
-          "items": {
-            "type": "string"
-          }
+          "items": { "type": "string" },
+          "description": "Liste des idActivitePlanning autorisés (ex: 10101...)."
         },
         "lieuxAutorises": {
           "type": "array",
-          "items": {
-            "type": "string"
-          }
+          "items": { "type": "string" }
         },
         "postesComptablesCompatibles": {
           "type": "array",
-          "items": {
-            "type": "string"
-          }
+          "items": { "type": "string" }
         }
       }
     }

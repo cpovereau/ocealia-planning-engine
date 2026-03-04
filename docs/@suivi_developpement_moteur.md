@@ -24,6 +24,26 @@ Ce document :
 
 ---
 
+## 📌 État & Cap (source de vérité)
+
+### A. Livré (fait, prouvé)
+- WorkMetrics V3 (pénibilités minutes + dominance) ✅
+    - Preuves : .\gradlew test OK + grep OK (isNuit/isJourFerie/TypeCreneau.NUIT)
+    - Fichiers clés : TimeBreakdownCalculator, PenibilitesLegalesMinutes, ScoreUtils, RegulatoryParameters, fixtures
+
+## B. En cours (fait partiellement)
+- Contrôles combinatoires (repos hebdo, dimanches max, etc.) ✅ côté contraintes
+    - ⚠️ pas encore exposés en WorkMetrics “observées”
+
+## C. Prochain jalon (ce qu’on fait ensuite)
+- WorkMetrics “Séquences observées” (max jours consécutifs, max nuits consécutives)
+- WorkMetrics “Équité” (écarts vs moyenne)
+
+## D. Hors périmètre (assumé)
+- surcharge salarié, aide RH décisionnelle (analyse aval)
+
+---
+
 ## 1️⃣ Capacités actuellement implémentées
 
 ### 1.1 Modèle de décision
@@ -105,11 +125,15 @@ Ce document :
 
 ### 1.7 WorkMetrics
 
-| Version | Statut | Contenu                   |
-|---------|--------|---------------------------|
-| V1      | ✅     | Volumes horaires de base  |
-| V2      | ✅     | Occurrences structurantes |
-| V3      | ⏳     | Séquences et équité       |
+| Version | Statut | Contenu                                   |
+|---------|--------|-------------------------------------------|
+| V1      | ✅     | Volumes horaires de base                  |
+| V2      | ✅     | Occurrences structurantes                 |
+| V3-A    | ✅     | Pénibilités légales (minutes + dominance) |
+| V3-B    | ⏳     | Séquences                                 |
+| V3-C    | ⏳     | Equité                                    |
+| V4      | ⏳     | référentiel contractuel                   |
+| V5      | ⏳     | dettes abstraites                         |
 
 ---
 
@@ -154,11 +178,9 @@ Ce document :
 
 ## 4️⃣ Ordre logique recommandé pour la suite
 
-1. Cadrage du scoring V3 (équité, pénibilité, séquences)
-2. Finalisation WorkMetrics V3
-3. Amélioration de l’explicabilité (lecture du score)
-4. Nettoyage technique OptaPlanner (API deprecated)
-5. Analyse métier aval
+1. Amélioration de l’explicabilité (lecture du score)
+2. Nettoyage technique OptaPlanner (API deprecated)
+3. Analyse métier aval
 
 ---
 
