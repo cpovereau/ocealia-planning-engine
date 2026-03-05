@@ -1,6 +1,8 @@
 package fr.project.planning.domain.metier;
 
 import java.util.Map;
+import java.util.Collections;
+import java.util.Map;
 
 public class ReferentielComptabiliteActivite {
 
@@ -18,5 +20,9 @@ public class ReferentielComptabiliteActivite {
 
     public boolean contient(String codeActivite) {
         return comptabilitesParCode.containsKey(codeActivite);
+    }
+
+    public static ReferentielComptabiliteActivite neutre() {
+        return new ReferentielComptabiliteActivite(Collections.emptyMap());
     }
 }

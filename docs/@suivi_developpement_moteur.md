@@ -27,20 +27,35 @@ Ce document :
 ## 📌 État & Cap (source de vérité)
 
 ### A. Livré (fait, prouvé)
+
 - WorkMetrics V3 (pénibilités minutes + dominance) ✅
     - Preuves : .\gradlew test OK + grep OK (isNuit/isJourFerie/TypeCreneau.NUIT)
     - Fichiers clés : TimeBreakdownCalculator, PenibilitesLegalesMinutes, ScoreUtils, RegulatoryParameters, fixtures
 
-## B. En cours (fait partiellement)
+- Branchement du solveur OptaPlanner sur SC-01 ✅
+    - Pipeline validé : ScenarioController → PlanningRequest → PlanningService → SolverLauncher → OptaPlanner
+    - Score vérifié en exécution : `0hard/-40000soft → 0hard/0soft`
+    - Affectations confirmées via logs (`creneau → ressource`)
+    - Solution récupérée via `solved.solution().getCreneaux()`
+
+### B. En cours (fait partiellement)
+
 - Contrôles combinatoires (repos hebdo, dimanches max, etc.) ✅ côté contraintes
     - ⚠️ pas encore exposés en WorkMetrics “observées”
 
-## C. Prochain jalon (ce qu’on fait ensuite)
-- WorkMetrics “Séquences observées” (max jours consécutifs, max nuits consécutives)
-- WorkMetrics “Équité” (écarts vs moyenne)
+### C. Prochain jalon (ce qu’on fait ensuite)
 
-## D. Hors périmètre (assumé)
-- surcharge salarié, aide RH décisionnelle (analyse aval)
+- WorkMetrics “Séquences observées”
+    - max jours consécutifs
+    - max nuits consécutives
+
+- WorkMetrics “Équité”
+    - écarts vs moyenne
+
+### D. Hors périmètre (assumé)
+
+- surcharge salarié
+- aide RH décisionnelle (analyse aval)
 
 ---
 
@@ -289,20 +304,6 @@ Les règles RH / RHD sont appliquées par bloc hebdomadaire (lun→dim).
 📌 Ces alertes sont calculées en phase pré-solveur (builder).
 Elles ne proviennent pas du score OptaPlanner.
 
-### Points non encore implémentés
-- aucune optimisation ;
-- aucun scoring ;
-- aucun équilibrage ;
-- aucun calcul de surcharge ;
-- aucune contrainte légale intégrée dans le solveur.
-
-### Prochaine étape identifiée
-- Brancher SC-01 sur :
-- un modèle PlanningSolution minimal ;
-- un appel SolverManager ;
-- un ConstraintProvider initial ;
-- un timeout contrôlé.
-
 ## ✅ [25/02/2026] — Statut de branchement solveur – SC-0
 
 🧩 État actuel
@@ -332,10 +333,6 @@ Le branchement du solveur (appel réel à OptaPlanner + restitution planning) es
 - Débogage fonctionnel pendant que la structure métier évolue
 - Faux diagnostics liés à des contraintes partiellement activées
 - Effets de bord dans les scénarios de test
-
-Le solveur sera branché uniquement lorsque :
-- le périmètre V2 stabilisé est officiellement figé,
-- la liste des contraintes activées dans ConstraintProviderImpl est définitive.
 
 ## ✅ [26/02/2026] – Activités : ajout du code planning + diagnostics WorkMetrics (dev)
 
@@ -436,3 +433,58 @@ Les règles métier HARD et les contraintes de couverture ne sont pas affectées
 La V3 modifie uniquement :
 - le calcul des pénibilités légales SOFT
 - la façon dont les minutes de pénibilité sont calculées.
+
+## 2026-03-05 — Branchement du solveur OptaPlanner sur SC-01
+
+Le scénario SC-01 est désormais exécuté en passant par le solveur OptaPlanner.
+
+Pipeline complet validé :
+
+SC-01 JSON  
+→ ScenarioController  
+→ ScenarioDatasetBuilderSc01  
+→ PlanningRequest  
+→ PlanningService  
+→ SolverLauncher  
+→ OptaPlanner  
+→ PlanningProblem résolu  
+→ ScenarioResponseDTO
+
+### Vérifications effectuées
+
+1. Le solveur est bien appelé depuis `ScenarioController` via `PlanningService.solve(pr)`.
+2. La solution retournée est récupérée via `solved.solution().getCreneaux()`.
+3. Le scoring OptaPlanner est confirmé via les logs :
+   - Solving started: best score (0hard/-40000soft)
+   - Local Search ended: best score (0hard/0soft)
+   - Solving ended
+4. Vérification explicite dans `ScenarioController` :
+   - [SC-01] Score final OptaPlanner = 0hard/0soft
+   - [SC-01] Affectations = [
+        SC01-2026-02-23-001 -> 1041,
+        SC01-2026-02-24-002 -> 1041,
+        SC01-2026-02-25-003 -> 1041,
+        SC01-2026-02-26-004 -> 1041
+      ]
+
+Ces logs confirment que :
+
+- le scoring est exécuté
+- le solveur modifie l’état initial pour améliorer le score
+- les créneaux sont effectivement affectés par OptaPlanner.
+
+### État actuel de l’API
+
+La réponse HTTP renvoyée par l’API reste pour l’instant basée sur le modèle métier (`ScenarioResponseDTO`).
+
+La structuration complète de la réponse du solveur (score, affectations détaillées, diagnostics) est **différée volontairement** afin de la concevoir proprement lors de la définition du contrat de sortie du moteur.
+
+### Conclusion
+
+Le branchement solveur est considéré comme **validé** :
+
+- génération dataset SC-01 ✔  
+- construction `PlanningProblem` ✔  
+- exécution solveur ✔  
+- amélioration du score ✔  
+- récupération de la solution ✔

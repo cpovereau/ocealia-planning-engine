@@ -1,0 +1,104 @@
+{
+  "scenarioType": "SC-01",
+  "planningContext": {
+    "horizon": {
+      "dateDebut": "2026-02-22",
+      "dateFin": "2026-02-26"
+    },
+    "strategieScoring": "EXPLOITATION"
+  },
+
+  "scenarioParameters": {
+    "resourceRef": {
+      "kind": "SALARIE",
+      "id": "1041"
+    },
+    "dailyAmplitudeHours": 3.0,
+    "shiftStart": "08:00",
+    "shiftEndAlert": "11:00",
+
+    "lunchBreak": {
+      "start": "",
+      "end": ""
+    },
+
+    "workedDays": [
+      "MONDAY",
+      "TUESDAY",
+      "WEDNESDAY",
+      "THURSDAY",
+      "FRIDAY"
+    ],
+
+    "holidayDates": []
+  },
+
+  "dataSet": {
+    "ressources": {
+      "salaries": [
+        {
+          "id": "1041",
+          "type": "SALARIE",
+          "capaciteCible": 2400,
+          "activitesAutorisees": [
+            "TRAVAIL",
+            "REUNION",
+            "PREPARATION"
+          ],
+          "lieuxAutorises": [],
+          "postesComptablesCompatibles": []
+        }
+      ],
+      "postesVirtuels": []
+    },
+
+    "creneaux": [
+
+      {
+        "id": "CR-20260222",
+        "date": "2026-02-22",
+        "heureDebut": "08:00",
+        "heureFin": "11:00",
+        "typeCreneau": "GENERE",
+        "codeActiviteId": 1024
+      },
+
+      {
+        "id": "CR-20260223",
+        "date": "2026-02-23",
+        "heureDebut": "08:00",
+        "heureFin": "11:00",
+        "typeCreneau": "GENERE",
+        "codeActiviteId": 1024
+      },
+
+      {
+        "id": "CR-20260224",
+        "date": "2026-02-24",
+        "heureDebut": "08:00",
+        "heureFin": "11:00",
+        "typeCreneau": "GENERE",
+        "codeActiviteId": 1024
+      },
+
+      {
+        "id": "CR-20260225",
+        "date": "2026-02-25",
+        "heureDebut": "08:00",
+        "heureFin": "11:00",
+        "typeCreneau": "GENERE",
+        "codeActiviteId": 1024
+      },
+
+      {
+        "id": "CR-20260226",
+        "date": "2026-02-26",
+        "heureDebut": "08:00",
+        "heureFin": "11:00",
+        "typeCreneau": "GENERE",
+        "codeActiviteId": 1024
+      }
+
+    ]
+  }
+}

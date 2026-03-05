@@ -562,6 +562,43 @@ Les évolutions V3 (équité, pénibilité par occurrence, préférences) s’ap
 
 ---
 
+## 2026-03-05 — Exécution réelle du solveur OptaPlanner
+
+### Décision
+
+Le moteur de planification appelle désormais le solveur OptaPlanner en exécution réelle dans le scénario SC-01.
+
+L’appel est effectué via la chaîne suivante :
+
+ScenarioController  
+→ PlanningRequest  
+→ PlanningService  
+→ SolverLauncher  
+→ OptaPlanner  
+→ PlanningProblem résolu
+
+La solution retournée par le solveur est récupérée via : `solved.solution().getCreneaux()`
+
+### Validation
+
+Le fonctionnement du solveur et du scoring a été vérifié en exécution.
+Des logs supplémentaires dans `ScenarioController` confirment :
+- le score final calculé par OptaPlanner
+- les affectations des créneaux aux ressources.
+
+### Décision associée
+
+La structuration complète de la réponse du solveur (score, diagnostics, affectations détaillées) n'est **pas exposée pour l’instant dans l’API**.
+
+L’API continue de renvoyer un modèle métier (`ScenarioResponseDTO`) afin de :
+
+- stabiliser d’abord le moteur de planification,
+- concevoir ultérieurement un **contrat de sortie solveur propre et pérenne**.
+
+Cette décision évite d'introduire une structure de réponse provisoire qui devrait être refactorisée plus tard.
+
+---
+
 ## 10. Éléments volontairement différés
 
 Les éléments suivants sont identifiés mais volontairement repoussés :

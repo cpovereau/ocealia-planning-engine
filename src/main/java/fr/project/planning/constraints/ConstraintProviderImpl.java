@@ -7,8 +7,6 @@ import fr.project.planning.constraints.metier.AffectationPosteVirtuel;
 import org.optaplanner.core.api.score.stream.Constraint;
 import org.optaplanner.core.api.score.stream.ConstraintFactory;
 import org.optaplanner.core.api.score.stream.ConstraintProvider;
-import fr.project.planning.constraints.metier.CreneauDeNuit;
-import fr.project.planning.constraints.metier.CreneauJourFerie; 
 import fr.project.planning.constraints.legales.NuitsConsecutivesMax;
 import fr.project.planning.constraints.legales.PenibilitesLegalesMinutes;
 import fr.project.planning.constraints.legales.ReposObligatoireApresNuits;

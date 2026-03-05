@@ -5,6 +5,7 @@ import fr.project.planning.domain.creneau.QualificationJour;
 import fr.project.planning.domain.creneau.TypeCreneau;
 import fr.project.planning.domain.creneau.TypePlageHoraire;
 import fr.project.planning.domain.ressource.Ressource;
+import fr.project.planning.domain.ressource.RessourceNonAffectee;
 
 import java.time.DayOfWeek;
 import java.time.Duration;
@@ -177,7 +178,7 @@ public class ScenarioDatasetBuilderSc01 {
                 qualificationJour
         );
 
-        c.setRessourceAffectee(req.ressource);
+        c.setRessourceAffectee(RessourceNonAffectee.INSTANCE);
         return c;
     }
 

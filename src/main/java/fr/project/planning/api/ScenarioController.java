@@ -5,6 +5,13 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 
+import fr.project.planning.domain.contexte.PlanningContext;
+import fr.project.planning.domain.contexte.ObjectifResolution;
+import fr.project.planning.domain.contexte.ResolutionType;
+import fr.project.planning.domain.contexte.HypotheseHistorique;
+import fr.project.planning.domain.metier.ReferentielComptabiliteActivite;
+import fr.project.planning.domain.reglementaire.RegulatoryParameters;
+import fr.project.planning.domain.ressource.RessourceNonAffectee;
 import fr.project.planning.domain.creneau.Creneau;
 import fr.project.planning.domain.ressource.Ressource;
 import fr.project.planning.scenarios.builder.ScenarioDatasetBuilderSc01;
@@ -14,18 +21,28 @@ import fr.project.planning.scenarios.dto.request.ResourceKind;
 import fr.project.planning.scenarios.dto.request.Sc01ScenarioParametersDTO;
 import fr.project.planning.scenarios.dto.ScenarioAlertDTO;
 import fr.project.planning.scenarios.mapper.ScenarioResponseMapper;
+import fr.project.planning.scoring.StrategieScoring;
 
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Set;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @RestController
 @RequestMapping("/scenarios")
 public class ScenarioController {
 
+    private static final Logger log = LoggerFactory.getLogger(ScenarioController.class);
+
     private final ScenarioResponseMapper responseMapper = new ScenarioResponseMapper();
     private final ScenarioDatasetBuilderSc01 builder = new ScenarioDatasetBuilderSc01();
+    private final PlanningService planningService;
+
+    public ScenarioController(PlanningService planningService) {
+    this.planningService = planningService;
+    }
 
     @GetMapping("/ping")
     public String ping() {
@@ -77,17 +94,61 @@ public class ScenarioController {
 
         List<Creneau> creneauxGeneres = buildResult.creneaux();
 
-        // ⚠ Pour V1 on ne lance pas encore OptaPlanner.
-        // On retourne directement ce qui a été généré.
-        // Plus tard : solveur.solve(solution)
+        // 5️⃣ Construction des facts solveur
+
+        // PlanningContext "neutre" : on prend l'horizon + la stratégie issue du DTO
+        StrategieScoring strategieScoring =
+            StrategieScoring.valueOf(request.getPlanningContext().getStrategieScoring());
+
+
+        PlanningContext planningContext = new PlanningContext(
+            ObjectifResolution.ANALYSER_LE_MANQUE,
+            strategieScoring,
+            br.dateDebut,
+            br.dateFin,
+            ResolutionType.PLANNING_GLOBAL,
+            HypotheseHistorique.NEUTRE
+        );
+
+        // RegulatoryParameters : neutre (22h-6h, pas de fériés) ou à partir de br.holidayDates
+        RegulatoryParameters regulatoryParameters = RegulatoryParameters.neutre();
+
+        // Referentiel : pour l’instant vide/neutre (on branchera plus tard une vraie source)
+        ReferentielComptabiliteActivite referentiel =
+            ReferentielComptabiliteActivite.neutre();
+
+        // Value range des ressources (⚠️ inclure NonAffectee)
+        List<Ressource> ressources = new java.util.ArrayList<>();
+        ressources.addAll(request.getDataSet().getRessources().getSalaries());
+        ressources.addAll(request.getDataSet().getRessources().getPostesVirtuels());
+        ressources.add(RessourceNonAffectee.INSTANCE);
+
+        // 6️⃣ Solve
+        PlanningRequest pr = new PlanningRequest(
+            planningContext,
+            regulatoryParameters,
+            referentiel,
+            ressources,
+            creneauxGeneres
+        );
+
+        PlanningResponse solved = planningService.solve(pr);
+
+        log.info("[SC-01] Score final OptaPlanner = {}", solved.solution().getScore());
+        log.info("[SC-01] Affectations = {}", solved.solution().getCreneaux().stream()
+            .map(c -> c.getId() + " -> " + (c.getRessourceAffectee() != null ? c.getRessourceAffectee().getId() : "null"))
+            .toList()
+        );
+        
+        List<Creneau> creneauxResolus = solved.solution().getCreneaux();
 
         List<ScenarioAlertDTO> alerts = buildResult.alerts().stream()
             .map(a -> new ScenarioAlertDTO(a.code().name(), a.date(), a.message()))
             .toList();
 
         ScenarioResponseDTO response = responseMapper.toResponse(
-            params.getResourceRef().getId(),
-            creneauxGeneres
+        params.getResourceRef().getId(),
+        creneauxResolus
         );
 
         response.setAlerts(alerts);

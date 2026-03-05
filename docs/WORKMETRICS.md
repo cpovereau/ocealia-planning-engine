@@ -517,7 +517,25 @@ Les contraintes n’écrivent pas les WorkMetrics.
 
 ---
 
-## 9. Lien documentaire
+## 9. Utilisation dans le solveur
+
+Les WorkMetrics sont utilisées par le moteur de planification lors de l’évaluation du score OptaPlanner.
+
+Le calcul des métriques est déclenché pendant l’évaluation des contraintes afin de mesurer l'impact d'une affectation de créneau sur :
+- les pénibilités légales (minutes de nuit, minutes fériées, etc.)
+- les dominances de pénibilité
+- les futures métriques d'équité et de séquences.
+
+Le solveur utilise ces métriques pour comparer les solutions candidates et améliorer le score global.
+
+L'intégration effective dans le solveur a été validée lors du branchement du scénario SC-01 (mars 2026), avec une amélioration observée du score :
+- 0hard/-40000soft → 0hard/0soft
+
+Les WorkMetrics constituent ainsi la base analytique du scoring métier du moteur de planification.
+
+---
+
+## 10. Lien documentaire
 
 WorkMetrics est référencé par :
 
