@@ -13,7 +13,7 @@ pour **évaluer** une solution (scoring), sans jamais devenir des décisions.
 |                                   |        |   + PenibilitesLegalesMinutes |	                  |                       |
 | Dominance	                        | 	✅   | ScoreUtils	                  | ScoreDominanceTest |	section 2            |
 | Séquences (contraintes)           | 	✅   | ReposHebdomadaireMin/Glissant	| tests contraintes  |	REGLES_COMBINATOIRES |
-| Séquences (WorkMetrics observées) | 	❌   | –                   	        | –	                 |  section 5.1          |
+| Séquences (WorkMetrics observées) | 	✅   | WorkMetricsCalculator	        | scénario 1         |  section 5.1          |
 | Équité (WorkMetrics)              | 	❌   | –	                            | –	                 |  section 5.2          |
 | Contractuel                       | 	❌   | –	                            | –	                 |  section 5.3          |
 | Dettes & coûts abstraits          | 	❌   | –	                            | –	                 |  section 5.4          |
@@ -145,6 +145,23 @@ Les minutes appartenant à plusieurs catégories sont attribuées à la pénibil
 
 ---
 
+### Séquences observées (V3)
+
+Les séquences de travail sont désormais calculées à partir des créneaux affectés :
+
+- `seqJours` : nombre de jours travaillés consécutifs
+- `seqNuits` : nombre de nuits consécutives
+
+Ces métriques sont calculées par `WorkMetricsCalculator`
+après résolution du solveur.
+
+Elles sont actuellement utilisées pour :
+- explicabilité
+- validation des scénarios
+- préparation des futurs WorkMetrics d’équité
+
+---
+
 ## 3. Portée temporelle
 
 Chaque instance de WorkMetrics est **liée à :**
@@ -264,9 +281,14 @@ Un créneau qualifié `RH` ou `RHD` est considéré comme un **repos hebdomadair
 
 ---
 
-## 5. WorkMetrics à concevoir (roadmap)
+## Principes de conception des WorkMetrics
 
-Cette section décrit les métriques prévues, classées par **ordre logique d’introduction**.
+Cette section décrit les principes de conception des WorkMetrics
+utilisées par le moteur de planification.
+
+L’état d’avancement de leur implémentation est suivi dans le tableau
+récapitulatif en début de document, qui constitue la source de vérité.
+
 Chaque groupe dépend explicitement de briques préalables du moteur
 (contraintes, scoring, référentiels).
 

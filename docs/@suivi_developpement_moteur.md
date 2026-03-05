@@ -41,16 +41,18 @@ Ce document :
 ### B. En cours (fait partiellement)
 
 - Contrôles combinatoires (repos hebdo, dimanches max, etc.) ✅ côté contraintes
-    - ⚠️ pas encore exposés en WorkMetrics “observées”
+    - WorkMetrics “séquences observées” désormais calculées côté moteur
+    - exposition complète des métriques encore à structure
 
 ### C. Prochain jalon (ce qu’on fait ensuite)
 
-- WorkMetrics “Séquences observées”
-    - max jours consécutifs
-    - max nuits consécutives
-
 - WorkMetrics “Équité”
     - écarts vs moyenne
+
+- Exposition complète des WorkMetrics “séquences observées”
+    - max jours consécutifs
+    - max nuits consécutives
+    - stabilisation des compteurs dans l’API scénario
 
 ### D. Hors périmètre (assumé)
 
@@ -145,7 +147,7 @@ Ce document :
 | V1      | ✅     | Volumes horaires de base                  |
 | V2      | ✅     | Occurrences structurantes                 |
 | V3-A    | ✅     | Pénibilités légales (minutes + dominance) |
-| V3-B    | ⏳     | Séquences                                 |
+| V3-B    | ✅     | Séquences                                 |
 | V3-C    | ⏳     | Equité                                    |
 | V4      | ⏳     | référentiel contractuel                   |
 | V5      | ⏳     | dettes abstraites                         |
@@ -158,6 +160,11 @@ Ce document :
 |-------------------------|----------------------------------------------|
 | Explicabilité détaillée | Résultats bruts uniquement                   |
 |                         |(pas encore de lecture pédagogique du score)  |
+
+- Logs de diagnostic du solveur disponibles :
+  - ScoreExplanation (SolutionManager)
+  - WorkMetrics calculées après résolution
+
 ---
 
 ## 3️⃣ Capacités identifiées mais non implémentées
@@ -174,11 +181,15 @@ Ce document :
 
 ### 3.2 WorkMetrics futures
 
-| Version | Sujet                     |
-|---------|---------------------------|
-| V3      | Séquences observées       |
-| V4      | Référentiel contractuel   |
-| V5      | Dettes et coûts abstraits |
+La conception détaillée des WorkMetrics et leur état d’avancement
+sont documentés dans :
+
+`WORKMETRICS.md`
+
+Ce document constitue la source de vérité pour :
+- les métriques existantes
+- les métriques à venir
+- leur rôle dans le scoring et l’analyse RH.
 
 ---
 

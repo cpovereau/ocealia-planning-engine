@@ -15,7 +15,7 @@ public class DureeMaximaleLegaleParSalarie {
     }
 
     /**
-     * Durée maximale légale absolue sur la période de résolution.
+     * Durée maximale légale absolue sur la période de résolution. POINT DE BLOCAGE FORT pour les scénarios de test qui génèrent des durées totales très élevées.
      * (exemple : 13h = 780 minutes)
      *
      * 👉 À externaliser plus tard si besoin.

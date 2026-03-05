@@ -2,178 +2,230 @@ package fr.project.planning.domain.workmetrics;
 
 import fr.project.planning.domain.contexte.HorizonTemporel;
 import fr.project.planning.domain.creneau.Creneau;
-import fr.project.planning.domain.creneau.QualificationJour;
-import fr.project.planning.domain.creneau.TypePlageHoraire;
 import fr.project.planning.domain.metier.ComptabiliteActivite;
 import fr.project.planning.domain.metier.ReferentielComptabiliteActivite;
+import fr.project.planning.domain.reglementaire.RegulatoryParameters;
 import fr.project.planning.domain.ressource.Ressource;
 import fr.project.planning.solution.PlanningProblem;
+import fr.project.planning.time.TimeBreakdown;
+import fr.project.planning.time.TimeBreakdownCalculator;
 
 import java.time.DayOfWeek;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.time.LocalDate;
+import java.util.*;
 
-/**
- * Calculateur des WorkMetrics (V2)
- *
- * - Calcul mécanique post-résolution
- * - Aucune règle juridique
- * - Aucune décision OptaPlanner
- */
 public class WorkMetricsCalculator {
 
-   public Map<Ressource, WorkMetrics> compute(PlanningProblem solution) {
+    public Map<Ressource, WorkMetrics> compute(PlanningProblem solution) {
 
-    ReferentielComptabiliteActivite ref = solution.getReferentielComptabiliteActivite();
-    HorizonTemporel horizon = solution.getPlanningContext().getHorizonTemporel();
+        ReferentielComptabiliteActivite ref = solution.getReferentielComptabiliteActivite();
+        HorizonTemporel horizon = solution.getPlanningContext().getHorizonTemporel();
+        RegulatoryParameters rp = solution.getRegulatoryParameters();
 
-    // Diagnostics (mode dev - A changer lors du passage en prod)
-    int nbCreneauxSansRessource = 0;
-    int nbCreneauxHorsHorizon = 0;
-    int nbCreneauxActiviteInconnue = 0;
+        TimeBreakdownCalculator tbc = new TimeBreakdownCalculator();
 
-    // Vérité métier (par id)
-    Map<String, WorkMetrics> metricsParRessourceId = new HashMap<>();
-    Map<String, Ressource> ressourceParId = new HashMap<>();
+        Map<String, WorkMetrics> metricsParRessourceId = new HashMap<>();
+        Map<String, Ressource> ressourceParId = new HashMap<>();
 
-    // Comptages “par jour distinct”
-    Map<String, Set<String>> rhdParRessourceId = new HashMap<>();
-    Map<String, Set<String>> detteReposParRessourceId = new HashMap<>();
+        Map<String, Set<LocalDate>> rhdParRessourceId = new HashMap<>();
+        Map<String, Set<LocalDate>> detteReposParRessourceId = new HashMap<>();
 
-    // INITIALISATION : tous les salariés ont des WorkMetrics (même sans créneau)
-    for (Ressource r : solution.getRessources()) {
-        String id = r.getId();
-        metricsParRessourceId.putIfAbsent(id, new WorkMetrics(id));
-        ressourceParId.putIfAbsent(id, r);
+        Map<String, Set<LocalDate>> joursTravaillesParRessourceId = new HashMap<>();
+        Map<String, Set<LocalDate>> nuitsTravailleesParRessourceId = new HashMap<>();
+
+        /*
+         * Initialisation avec les ressources connues
+         */
+        for (Ressource r : solution.getRessources()) {
+            String id = r.getId();
+            metricsParRessourceId.putIfAbsent(id, new WorkMetrics(id));
+            ressourceParId.putIfAbsent(id, r);
+        }
+
+        /*
+         * Analyse des créneaux
+         */
+        for (Creneau c : solution.getCreneaux()) {
+
+            Ressource r = c.getRessourceAffectee();
+            if (r == null) continue;
+
+            String ressourceId = r.getId();
+            if (ressourceId == null) continue;
+
+            if (!horizon.contient(c.getDate())) continue;
+
+            /*
+             * Sécurisation ressource (dataset imparfait possible)
+             */
+            metricsParRessourceId.computeIfAbsent(ressourceId, WorkMetrics::new);
+            ressourceParId.putIfAbsent(ressourceId, r);
+
+            /*
+             * Résolution activité
+             */
+            String codeActivite =
+                (c.getCodeActiviteId() != null && !c.getCodeActiviteId().isBlank())
+                    ? c.getCodeActiviteId()
+                    : c.getActivite();
+            
+            /*
+             * Sécurisation dataset : si aucune clé activité exploitable
+             */
+            if (codeActivite == null || codeActivite.isBlank()) {
+                // activité non exploitable → créneau neutre
+                continue;
+            }
+
+           ComptabiliteActivite ca = (ref != null) ? ref.getByCode(codeActivite) : null;
+
+            if (ca == null) {
+                continue;
+            }
+
+            boolean compteDansCharge = ca.isCompteDansCharge();
+
+            WorkMetrics wm = metricsParRessourceId.get(ressourceId);
+
+            TimeBreakdown breakdown = tbc.compute(c, rp, compteDansCharge);
+
+            int minutesTravaillees = Math.toIntExact(breakdown.minutesTravaillees());
+            int minutesNuit = Math.toIntExact(breakdown.minutesNuit());
+            int minutesFerie = Math.toIntExact(breakdown.minutesFerie());
+
+            /*
+             * Travail total
+             */
+            if (compteDansCharge) {
+
+                wm.addTravail(minutesTravaillees);
+
+                joursTravaillesParRessourceId
+                        .computeIfAbsent(ressourceId, x -> new HashSet<>())
+                        .add(c.getDate());
+            }
+
+            /*
+             * Travail de nuit
+             */
+            if (compteDansCharge && minutesNuit > 0) {
+
+                wm.addNuit(minutesNuit);
+
+                nuitsTravailleesParRessourceId
+                        .computeIfAbsent(ressourceId, x -> new HashSet<>())
+                        .add(c.getDate());
+            }
+
+            /*
+             * Jour férié
+             */
+            if (compteDansCharge && minutesFerie > 0) {
+                wm.addJourFerie(minutesFerie);
+            }
+
+            /*
+             * Travail weekend / dette repos
+             */
+            DayOfWeek dow = c.getDate().getDayOfWeek();
+            boolean estWeekend = (dow == DayOfWeek.SATURDAY || dow == DayOfWeek.SUNDAY);
+
+            if (estWeekend && compteDansCharge) {
+
+                wm.addReposHebdoTravaille(minutesTravaillees);
+
+                if (ca.isGenereDetteRepos()) {
+                    detteReposParRessourceId
+                            .computeIfAbsent(ressourceId, x -> new HashSet<>())
+                            .add(c.getDate());
+                }
+            }
+
+            /*
+             * Dimanche travaillé
+             */
+            if (dow == DayOfWeek.SUNDAY && compteDansCharge) {
+
+                rhdParRessourceId
+                        .computeIfAbsent(ressourceId, x -> new HashSet<>())
+                        .add(c.getDate());
+            }
+        }
+
+        /*
+         * Finalisation métriques V2
+         */
+        for (Map.Entry<String, WorkMetrics> entry : metricsParRessourceId.entrySet()) {
+
+            String ressourceId = entry.getKey();
+            WorkMetrics wm = entry.getValue();
+
+            Set<LocalDate> dimanches = rhdParRessourceId.getOrDefault(ressourceId, Set.of());
+            for (int i = 0; i < dimanches.size(); i++) {
+                wm.incDimancheTravaille();
+            }
+
+            Set<LocalDate> dettes = detteReposParRessourceId.getOrDefault(ressourceId, Set.of());
+            for (int i = 0; i < dettes.size(); i++) {
+                wm.incReposHebdoDetteRepos();
+            }
+        }
+
+        /*
+         * Finalisation séquences observées (V3-B)
+         */
+        for (Map.Entry<String, WorkMetrics> entry : metricsParRessourceId.entrySet()) {
+
+            String ressourceId = entry.getKey();
+            WorkMetrics wm = entry.getValue();
+
+            Set<LocalDate> jours = joursTravaillesParRessourceId.getOrDefault(ressourceId, Set.of());
+            Set<LocalDate> nuits = nuitsTravailleesParRessourceId.getOrDefault(ressourceId, Set.of());
+
+            wm.setMaxJoursConsecutifsObservees(longestConsecutiveDates(jours));
+            wm.setMaxNuitsConsecutivesObservees(longestConsecutiveDates(nuits));
+        }
+
+        /*
+         * Projection finale Ressource -> WorkMetrics
+         */
+        Map<Ressource, WorkMetrics> result = new HashMap<>();
+
+        for (Map.Entry<String, WorkMetrics> entry : metricsParRessourceId.entrySet()) {
+
+            Ressource r = ressourceParId.get(entry.getKey());
+
+            if (r != null) {
+                result.put(r, entry.getValue());
+            }
+        }
+
+        return result;
     }
 
-    for (Creneau c : solution.getCreneaux()) {
+    private static int longestConsecutiveDates(Set<LocalDate> dates) {
 
-        Ressource r = c.getRessourceAffectee();
-        if (r == null) {
-            nbCreneauxSansRessource++; // contournement temporaire pour diagnostic (mode dev)
-            continue;
+        if (dates == null || dates.isEmpty()) return 0;
+
+        List<LocalDate> sorted = new ArrayList<>(dates);
+        Collections.sort(sorted);
+
+        int best = 1;
+        int run = 1;
+
+        for (int i = 1; i < sorted.size(); i++) {
+
+            LocalDate prev = sorted.get(i - 1);
+            LocalDate cur = sorted.get(i);
+
+            if (cur.equals(prev.plusDays(1))) {
+                run++;
+                best = Math.max(best, run);
+            } else {
+                run = 1;
+            }
         }
 
-        String ressourceId = r.getId();
-
-        // 0) On “déclare” l’existence du salarié dès qu’il est rencontré
-        ressourceParId.putIfAbsent(ressourceId, r);
-        metricsParRessourceId.computeIfAbsent(ressourceId, id -> new WorkMetrics(id));
-
-        // 1) Filtre horizon : ignore le créneau pour les compteurs
-        if (!horizon.contient(c.getDate())) {
-            nbCreneauxHorsHorizon++; // contournement temporaire pour diagnostic (mode dev)
-            continue;
-        }
-
-        // 2) Filtre activité connue : si inconnue => créneau neutre V2 (aucun compteur)
-        // Priorité à l'id (stable) ; fallback sur le libellé/code historique
-        String codeActivite = (c.getCodeActiviteId() != null && !c.getCodeActiviteId().isBlank())
-            ? c.getCodeActiviteId()
-            : c.getActivite();
-
-        ComptabiliteActivite ca = (ref != null) ? ref.getByCode(codeActivite) : null;
-        if (ca == null) {
-            nbCreneauxActiviteInconnue++;
-            continue; // créneau neutre si référentiel absent/incomplet ou activité non mappée
-        }
-
-        WorkMetrics wm = metricsParRessourceId.get(ressourceId);
-        int minutes = c.getDuree();
-        QualificationJour qj = c.getQualificationJour();
-
-        // -----------------------------
-        // 1) Travail total
-        // -----------------------------
-        if (ca.isCompteDansCharge()) {
-            wm.addTravail(minutes);
-        }
-
-        // -----------------------------
-        // 2) Nuit
-        // -----------------------------
-        if (c.getTypePlageHoraire() == TypePlageHoraire.NUIT && ca.isCompteDansCharge()) {
-            wm.addNuit(minutes);
-        }
-
-        // -----------------------------
-        // 3) Jour férié
-        // -----------------------------
-        if (qj == QualificationJour.FERIE && ca.isCompteDansCharge()) {
-            wm.addJourFerie(minutes);
-        }
-
-        // -----------------------------
-        // 4) Repos hebdomadaire travaillé / dette
-        // -----------------------------
-        DayOfWeek dow = c.getDate().getDayOfWeek();
-        boolean estWeekend = (dow == DayOfWeek.SATURDAY || dow == DayOfWeek.SUNDAY);
-
-        if (estWeekend && ca.isCompteDansCharge()) {
-            wm.addReposHebdoTravaille(minutes);
-
-        // Dette = par jour distinct + pilotée par référentiel
-        if (ca.isGenereDetteRepos()) {
-            detteReposParRessourceId
-                .computeIfAbsent(ressourceId, x -> new HashSet<>())
-                .add(c.getDate().toString());
-        }
-        }
-
-        // -----------------------------
-        // 5) Dimanches travaillés (V2 corrigée)
-        // Dimanche travaillé = un créneau un dimanche calendaire dont l’activité compte dans la charge
-        // -----------------------------
-        if (c.getDate().getDayOfWeek() == DayOfWeek.SUNDAY && ca.isCompteDansCharge()) {
-            rhdParRessourceId
-                .computeIfAbsent(ressourceId, x -> new HashSet<>())
-                .add(c.getDate().toString());
-        }
+        return best;
     }
-
-    // Finalisation : dettes repos hebdo (par date distincte)
-    for (Map.Entry<String, Set<String>> entry : detteReposParRessourceId.entrySet()) {
-        WorkMetrics wm = metricsParRessourceId.get(entry.getKey());
-        if (wm == null) continue;
-        int count = entry.getValue().size();
-        for (int i = 0; i < count; i++) {
-            wm.incReposHebdoDetteRepos();
-        }
-    }
-
-    // Finalisation : dimanches travaillés (par date distincte)
-    for (Map.Entry<String, Set<String>> entry : rhdParRessourceId.entrySet()) {
-        WorkMetrics wm = metricsParRessourceId.get(entry.getKey());
-        if (wm == null) continue;
-        int count = entry.getValue().size();
-        for (int i = 0; i < count; i++) {
-            wm.incDimancheTravaille();
-        }
-    }
-
-    // Projection finale : clé Ressource
-    Map<Ressource, WorkMetrics> result = new HashMap<>();
-    for (Map.Entry<String, WorkMetrics> entry : metricsParRessourceId.entrySet()) {
-        Ressource r = ressourceParId.get(entry.getKey());
-        if (r != null) {
-            result.put(r, entry.getValue());
-        }
-    }
-
-    // Diagnostics (mode dev - A changer lors du passage en prod)    
-    if (nbCreneauxSansRessource > 0 || nbCreneauxHorsHorizon > 0 || nbCreneauxActiviteInconnue > 0) {
-        System.out.println("[WorkMetricsCalculator] Diagnostics (dev/Option B) : "
-            + "sansRessource=" + nbCreneauxSansRessource
-            + ", horsHorizon=" + nbCreneauxHorsHorizon
-            + ", activiteInconnueOuReferentielManquant=" + nbCreneauxActiviteInconnue);
-    }
-
-    return result;
 }
-
-}
-
-

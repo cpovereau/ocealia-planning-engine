@@ -2,7 +2,6 @@ package fr.project.planning.domain.metier;
 
 import java.util.Map;
 import java.util.Collections;
-import java.util.Map;
 
 public class ReferentielComptabiliteActivite {
 

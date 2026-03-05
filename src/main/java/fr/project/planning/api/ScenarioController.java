@@ -9,9 +9,12 @@ import fr.project.planning.domain.contexte.PlanningContext;
 import fr.project.planning.domain.contexte.ObjectifResolution;
 import fr.project.planning.domain.contexte.ResolutionType;
 import fr.project.planning.domain.contexte.HypotheseHistorique;
+import fr.project.planning.domain.metier.ComptabiliteActivite;
 import fr.project.planning.domain.metier.ReferentielComptabiliteActivite;
 import fr.project.planning.domain.reglementaire.RegulatoryParameters;
 import fr.project.planning.domain.ressource.RessourceNonAffectee;
+import fr.project.planning.domain.workmetrics.WorkMetrics;
+import fr.project.planning.domain.workmetrics.WorkMetricsCalculator;
 import fr.project.planning.domain.creneau.Creneau;
 import fr.project.planning.domain.ressource.Ressource;
 import fr.project.planning.scenarios.builder.ScenarioDatasetBuilderSc01;
@@ -25,8 +28,11 @@ import fr.project.planning.scoring.StrategieScoring;
 
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.List;
 import java.util.Set;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -114,14 +120,28 @@ public class ScenarioController {
         RegulatoryParameters regulatoryParameters = RegulatoryParameters.neutre();
 
         // Referentiel : pour l’instant vide/neutre (on branchera plus tard une vraie source)
+       Map<String, ComptabiliteActivite> map = new HashMap<>();
+
+        map.put("travail", new ComptabiliteActivite(
+            "travail",
+            true,   // compteDansCharge
+            false,  // genereDetteRepos
+            false,  // estServiceCritique
+            false,  // prioritaireSurConfort
+            ComptabiliteActivite.TypeImpactActivite.CHARGE_STANDARD
+        ));
+
         ReferentielComptabiliteActivite referentiel =
-            ReferentielComptabiliteActivite.neutre();
+            new ReferentielComptabiliteActivite(map);
 
         // Value range des ressources (⚠️ inclure NonAffectee)
         List<Ressource> ressources = new java.util.ArrayList<>();
         ressources.addAll(request.getDataSet().getRessources().getSalaries());
         ressources.addAll(request.getDataSet().getRessources().getPostesVirtuels());
         ressources.add(RessourceNonAffectee.INSTANCE);
+
+        log.info("Ressources range: {}", ressources.stream().map(Ressource::getId).toList());
+        log.info("1041 present? {}", ressources.stream().anyMatch(r -> "1041".equals(r.getId())));
 
         // 6️⃣ Solve
         PlanningRequest pr = new PlanningRequest(
@@ -133,6 +153,23 @@ public class ScenarioController {
         );
 
         PlanningResponse solved = planningService.solve(pr);
+
+        WorkMetricsCalculator calculator = new WorkMetricsCalculator();
+        var metrics = calculator.compute(solved.solution());
+
+        Map<String, WorkMetrics> byId = new HashMap<>();
+        metrics.forEach((r, wm) -> byId.put(r.getId(), wm));
+
+        byId.forEach((id, wm) -> log.info(
+            "[WorkMetrics] {} -> travail={} nuit={} ferie={} dimanches={} seqJours={} seqNuits={}",
+            id,
+            wm.getMinutesTravaillees(),
+            wm.getMinutesNuit(),
+            wm.getMinutesJourFerie(),
+            wm.getNbDimanchesTravailles(),
+            wm.getMaxJoursConsecutifsObservees(),
+            wm.getMaxNuitsConsecutivesObservees()
+        ));
 
         log.info("[SC-01] Score final OptaPlanner = {}", solved.solution().getScore());
         log.info("[SC-01] Affectations = {}", solved.solution().getCreneaux().stream()

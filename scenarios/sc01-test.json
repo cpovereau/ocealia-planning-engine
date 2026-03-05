@@ -13,8 +13,8 @@
       "kind": "SALARIE",
       "id": "1041"
     },
-    "dailyAmplitudeHours": 3.0,
-    "shiftStart": "08:00",
+    "dailyAmplitudeHours": 8.0,
+    "shiftStart": "22:00",
     "shiftEndAlert": "11:00",
 
     "lunchBreak": {
@@ -27,7 +27,7 @@
       "TUESDAY",
       "WEDNESDAY",
       "THURSDAY",
-      "FRIDAY"
+      "SUNDAY"
     ],
 
     "holidayDates": []

@@ -5,6 +5,7 @@ import fr.project.planning.domain.contexte.PlanningContext;
 import fr.project.planning.scoring.PenaliteKey;
 import fr.project.planning.scoring.PenibiliteType;
 import fr.project.planning.scoring.StrategieScoring;
+
 import org.optaplanner.core.api.score.buildin.hardsoft.HardSoftScore;
 
 import java.util.EnumMap;

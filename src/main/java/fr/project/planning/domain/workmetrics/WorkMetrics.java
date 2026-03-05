@@ -13,6 +13,10 @@ public class WorkMetrics {
     // V1 ciblée : pour explicabilité future (sans analyse RH encore)
     private int nbCreneauxReposHebdoDetteRepos;
 
+    // V3-B : Séquences observées (post-résolution, descriptif)
+    private int maxJoursConsecutifsObservees;
+    private int maxNuitsConsecutivesObservees;
+
     public WorkMetrics(String ressourceId) {
         this.ressourceId = ressourceId;
     }
@@ -41,4 +45,10 @@ public class WorkMetrics {
     this.nbDimanchesTravailles++;
     }
 
+    public int getMaxJoursConsecutifsObservees() { return maxJoursConsecutifsObservees; }
+    public int getMaxNuitsConsecutivesObservees() { return maxNuitsConsecutivesObservees; }
+
+    public void setMaxJoursConsecutifsObservees(int value) { this.maxJoursConsecutifsObservees = value; }
+    public void setMaxNuitsConsecutivesObservees(int value) { this.maxNuitsConsecutivesObservees = value; }
+    
 }
