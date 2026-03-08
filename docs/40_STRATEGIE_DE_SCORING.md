@@ -207,7 +207,7 @@ Les volumes bruts (minutesNuit, minutesDimanche, minutesFerie) restent disponibl
 
 ---
 
-### 4.2 Indicateurs indispensables (socle)
+### 4.2 Indicateurs métier pertinents à terme
 
 Ces indicateurs sont **nécessaires** pour un moteur réaliste.
 
@@ -278,7 +278,42 @@ pas une implémentation chiffrée définitive.
 
 ---
 
-## 7. Lien avec les autres documents
+## 7. Scoring pipeline
+
+```mermaid
+flowchart TD
+
+subgraph MESURE
+A["ConstraintProvider
+(mesure des violations ou volumes)"]
+B["PenaliteKey
+(clé métier de la pénalité)"]
+end
+
+subgraph PONDERATION
+C["StrategieScoring
+(contexte de lecture)"]
+D["ScoreWeights
+(poids techniques)"]
+end
+
+subgraph CONSTRUCTION_DU_SCORE
+E["ScoreUtils
+(application des poids)"]
+F["HardSoftScore
+(score final OptaPlanner)"]
+end
+
+A --> B
+C --> D
+B --> E
+D --> E
+E --> F
+```
+
+---
+
+## 8. Lien avec les autres documents
 
 Ce document complète :
 

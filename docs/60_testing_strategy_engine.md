@@ -16,7 +16,6 @@ Aucun test ne doit être écrit, modifié ou interprété sans se conformer expl
 ### 1.1 Pourquoi on teste
 
 Les tests ont pour objectifs de :
-
 - verrouiller les **capacités réelles du moteur** (et non des implémentations accidentelles),
 - garantir la **stabilité conceptuelle** du modèle dans le temps,
 - détecter toute **régression fonctionnelle ou métier**,
@@ -29,7 +28,6 @@ Les tests sont une **preuve d’aptitude**, pas une démonstration de conformit�
 ### 1.2 Ce que les tests garantissent
 
 Selon leur niveau, les tests garantissent :
-
 - la validité d’une **logique isolée** (V1),
 - la cohérence des **indicateurs dérivés** produits par une solution (V2),
 - la pertinence des **arbitrages de scoring** (V3),
@@ -43,7 +41,6 @@ Un test qui passe garantit **uniquement ce qui relève de son niveau**.
 ### 1.3 Ce que les tests ne garantissent pas
 
 Les tests ne garantissent jamais :
-
 - la conformité juridique exhaustive,
 - la validité RH ou contractuelle d’un planning,
 - la qualité métier finale d’une solution,
@@ -57,7 +54,6 @@ Toute interprétation métier est **hors du périmètre des tests du moteur**.
 ### 1.4 Ce que les tests n’ont pas le droit de faire
 
 Il est strictement interdit qu’un test :
-
 - contourne le modèle métier pour « faire passer » un cas,
 - invente un état impossible du domaine,
 - modifie un `ProblemFact` pour simuler une décision,
@@ -75,13 +71,13 @@ Ils ne sont ni substituables, ni cumulables.
 
 ### 2.1 Tableau contractuel des niveaux
 
-| Niveau | Nom | Question à laquelle il répond | Autorisé | Interdit |
-|------|-----|-------------------------------|----------|----------|
-| V1 | Test unitaire pur | Le calcul est-il correct ? | POJO, utilitaires | PlanningSolution, Solver |
-| V2 | Test métier post-résolution | Les constats sont-ils cohérents ? | PlanningSolution minimale | Solver |
-| V3 | Test de scoring | Les arbitrages sont-ils cohérents ? | Solver + score | API |
-| V4 | Test de résolution | Une solution faisable existe-t-elle ? | Solver complet | WebDev |
-| V5 | Test d’intégration | Le flux bout-en-bout tient-il ? | API | Mock métier |
+| Niveau | Nom                         | Question à laquelle il répond         | Autorisé               | Interdit                 |
+|--------|-----------------------------|---------------------------------------|------------------------|--------------------------|
+| V1     | Test unitaire pur           | Le calcul est-il correct ?            | POJO, utilitaires      | PlanningSolution, Solver |
+| V2     | Test métier post-résolution | Les constats sont-ils cohérents ?     | PlanningSolution mini. | Solver                   |  
+| V3     | Test de scoring             | Les arbitrages sont-ils cohérents ?   | Solver + score         | API                      |
+| V4     | Test de résolution          | Une solution faisable existe-t-elle ? | Solver complet         | WebDev                   |
+| V5     | Test d’intégration          | Le flux bout-en-bout tient-il ?       | API                    | Mock métier              |
 
 ---
 
@@ -117,7 +113,6 @@ Si un test semble devoir franchir une frontière, il est **mal positionné**.
 ### 3.2 Hypothèses autorisées
 
 Les tests peuvent supposer :
-
 - un horizon temporel explicite et borné,
 - des données métier **cohérentes mais minimales**,
 - l’absence d’historique si explicitement déclaré,
@@ -128,7 +123,6 @@ Les tests peuvent supposer :
 ### 3.3 Minimal valide
 
 Un environnement de test est considéré comme **minimal valide** s’il contient :
-
 - au moins un créneau cohérent,
 - au moins une ressource valide,
 - un contexte explicite,
@@ -139,7 +133,6 @@ Un environnement de test est considéré comme **minimal valide** s’il contien
 ### 3.4 Invalide par construction
 
 Est invalide par construction tout test qui :
-
 - instancie un objet métier incomplet,
 - simule une décision via un `ProblemFact`,
 - introduit un `null` décisionnel,

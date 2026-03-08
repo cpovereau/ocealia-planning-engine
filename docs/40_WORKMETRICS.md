@@ -11,7 +11,7 @@ pour **évaluer** une solution (scoring), sans jamais devenir des décisions.
 | --------------------------------- |------- | ----------------------------- | ------------------ |---------------------- |
 | Mesures temporelles ( minutes     | 	✅   | TimeBreakdownCalculator       | tests existants    |	section 2            |
 |   nuit / dimanche / férié )       |        |   + PenibilitesLegalesMinutes |	                  |                       |
-| WorkMetrics de restitution        | ⏳     | WorkMetricsCalculator         | scénarios          | sections 4 et 5       |
+| WorkMetrics de restitution        |   ⏳   | WorkMetricsCalculator         | scénarios          | sections 4 et 5       |
 | Dominance	                        | 	✅   | ScoreUtils	                  | ScoreDominanceTest |	section 2            |
 | Séquences (contraintes)           | 	✅   | ReposHebdomadaireMin/Glissant	| tests contraintes  |	REGLES_COMBINATOIRES |
 | Séquences (WorkMetrics observées) | 	✅   | WorkMetricsCalculator	        | scénario 1         |  section 5.1          |
@@ -21,9 +21,8 @@ pour **évaluer** une solution (scoring), sans jamais devenir des décisions.
 
 ---
 
-## 1. Rôle et statut
+## 1. Rôle
 
-* **Statut** : `ProblemFact` (lu par le solveur, jamais modifié par lui)
 * **Nature** : agrégats dérivés des affectations
 * **Usage** : 
   - explicabilité
@@ -37,6 +36,8 @@ Les compteurs de “travail” (ex. heures travaillées par jour/semaine/mois, p
 
 > Les WorkMetrics sont calculées **après la résolution complète du planning**
 > et ne sont jamais modifiées pendant l’exécution du solveur. 
+
+> Les WorkMetrics ne sont jamais des ProblemFacts du solveur.
 
 -- 
 
@@ -400,35 +401,62 @@ Pour chaque ressource :
 
 ---
 
-#### 5.1.5 maxNuitsConsecutivesObservees
+### 5.1.5 maxNuitsConsecutivesObservees
 
-**Définition :**
-Représente la longueur maximale d’une séquence de nuits travaillées consécutives pour une ressource donnée.
+#### Définition
 
-**Qualification d’une nuit travaillée**
-Une date est considérée comme contenant une “nuit travaillée” si la ressource a, sur cette date, un volume :
-- minutesNuit > 0   où minutesNuit est calculé par intersection temporelle entre :
-  - l’intervalle réel du créneau,
-  - et les fenêtres “plage de nuit” définies par les paramètres réglementaires.
+Nombre maximal de **nuits travaillées consécutivement** par un salarié
+sur l’horizon analysé.
 
-Ce volume est pris en compte uniquement si :
-- l’activité du créneau compteDansCharge = true (référentiel d’activité).
+Une nuit est considérée comme travaillée si **au moins un créneau affecté au salarié satisfait simultanément les deux conditions** :
 
-TypePlageHoraire et segmentNuit peuvent exister comme indicateurs d’entrée, mais ne sont pas des sources de vérité suffisantes en présence de chevauchements.
+- le créneau appartient à une **plage horaire de type NUIT** ;
+- l’activité associée **compte dans la charge de travail**
+  (`compteDansCharge = true` dans le référentiel d’activité).
 
-**Méthode de calcul**
-Pour chaque ressource :
-1. Identifier les dates comportant au moins un créneau :
-- de type NUIT
-- et comptant dans la charge.
-1. Dédupliquer par date.
-2. Trier les dates.
-3. Calculer la plus longue suite consécutive.
+L’indicateur est exprimé **en nombre de nuits calendaires consécutives**.
 
-**Cas limites**
-- Aucune nuit travaillée → valeur = 0
-- Plusieurs créneaux de nuit le même jour → 1 seule nuit
-- Nuit non comptée dans la charge → ignorée
+---
+
+#### Méthode de calcul
+
+1. Sélectionner les créneaux :
+   - affectés au salarié,
+   - appartenant à une plage horaire `NUIT`,
+   - dont l’activité `compteDansCharge = true`.
+
+2. Extraire la **date calendaire** de chaque créneau.
+
+3. Construire l’ensemble des **dates distinctes triées**.
+
+4. Parcourir ces dates pour déterminer la **plus longue séquence de jours consécutifs**.
+
+5. La valeur maximale observée correspond à : `maxNuitsConsecutivesObservees`
+
+#### Exemple
+
+Créneaux de nuit observés :
+
+| Date  | Nuit travaillée |
+|-------|-----------------|
+| 03/03 | oui             |
+| 04/03 | oui             |
+| 05/03 | oui             |
+| 07/03 | oui             |
+
+Séquences détectées :
+03/03 → 04/03 → 05/03 = 3 nuits
+07/03 = 1 nuit
+
+#### Remarques
+
+- L’indicateur est **indépendant du scoring**.
+- Il sert :
+  - à l’analyse RH,
+  - au diagnostic de pénibilité,
+  - à la vérification des contraintes réglementaires.
+
+La contrainte correspondante dans le moteur (`maxNuitsConsecutives`) compare cette valeur au seuil configuré dans le `PlanningContext`.
 
 ---
 

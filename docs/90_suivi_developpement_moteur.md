@@ -52,27 +52,27 @@ Ce document :
 
 - Contrôles combinatoires (repos hebdo, dimanches max, etc.) ✅ côté contraintes
     - WorkMetrics “séquences observées” désormais calculées côté moteur
-    - exposition complète des métriques encore à structure
-
-### C. Prochain jalon (ce qu’on fait ensuite)
-
-- WorkMetrics “Équité”
-    - écarts vs moyenne
+    - exposition complète des métriques encore à structurer
 
 - Exposition complète des WorkMetrics
     - stabilisation des compteurs dans l’API scénario
 
-- Complétion du DataSet amont ou ajout d'une "base" à utiliser pour les scénarios afin d'intégrer :
-   - `groupeBesoinId` ou `blocJourId` (créneaux de besoin/techniques)
-   - `ordreDansBloc` (règles de liason entre créneaux d'une même journée)
-   - `estSegmentDePause` (règle pour gérer les pauses dans la journée de travail)
-   - l'entrepôt des codes d'activités et Id utilisés dans le cadre de la résolution
-   - les contraintes réglémentaires associées aux ressources
+### C. Prochains jalons (ce qu’on fait ensuite)
+
+- WorkMetrics “Équité”
+    - écarts vs moyenne
+
+- Compléter le DataSet amont (ou définir une base de données de référence pour les scénarios) afin d’intégrer les éléments structurels nécessaires à la résolution :
+  - identifiants de groupes de besoins ou de blocs journaliers (`groupeBesoinId`, `blocJourId`) permettant de regrouper les créneaux techniques ou fonctionnels ;
+  - ordre des créneaux au sein d’un bloc (`ordreDansBloc`) afin de formaliser les règles de liaison ou de continuité sur une même journée ;
+  - identification des segments de pause (`estSegmentDePause`) permettant de modéliser explicitement les interruptions dans une journée de travail ;
+  - constitution d’un entrepôt des codes d’activités et identifiants associés utilisés par le moteur lors de la résolution ;
+  - intégration des paramètres réglementaires applicables aux ressources nécessaires au calcul des contraintes légales.
 
 - Amélioration de l’explicabilité du solveur :
-  - Améliorer `scoreBreakdown` : remplacer les `switch` par une logique basée directement sur '`PenaliteKey`
+  - Améliorer `scoreBreakdown` : remplacer les `switch` par une logique basée directement sur `PenaliteKey`
   - Ajouter un niveau "explication détaillée" par créneau ou par ressource
-  - Ajouter un diagnostique d'affectation impossible. Par ex : "Aucun salarié compatible avec ce créneau"
+  - Ajouter un diagnostic d'affectation impossible. Par ex : "Aucun salarié compatible avec ce créneau"
 
 - Améliorer la gestion des contraintes dans le `ScoreExplanation` :
 Faire porter la mesure métier par la contrainte elle-même, au lieu d’essayer de la reconstruire après coup à partir du score :
@@ -362,7 +362,7 @@ Le scoring V2 est **considéré comme stabilisé**.
 ### État
 SC-01 est désormais exposé via : `POST /scenarios/sc-01/solve`
 
-### Implémentation actuelle
+### Implémentation
 Le scénario :
 1. valide le contrat JSON ;
 2. résout la ressource cible (salarié ou poste virtuel fourni) ;
@@ -371,7 +371,7 @@ Le scénario :
 5. produit des alertes de cohérence ;
 6. retourne une réponse REST structurée.
 
-📌 Le solveur OptaPlanner n’est pas encore appelé dans SC-01.
+📌 SC-01 est désormais exécuté via le solveur OptaPlanner.
 
 ### Fonctionnement actuel
 SC-01 réalise une génération déterministe, basée sur :
@@ -393,6 +393,8 @@ Les règles RH / RHD sont appliquées par bloc hebdomadaire (lun→dim).
 Elles ne proviennent pas du score OptaPlanner.
 
 ## ✅ [25/02/2026] — Statut de branchement solveur – SC-0
+
+*Historique de décision à date — remplacé depuis le 05/03/2026*
 
 🧩 État actuel
 Le moteur de contraintes est désormais :
