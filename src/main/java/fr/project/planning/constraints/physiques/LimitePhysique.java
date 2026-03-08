@@ -2,6 +2,8 @@ package fr.project.planning.constraints.physiques;
 
 import fr.project.planning.domain.creneau.Creneau;
 import fr.project.planning.domain.ressource.SalarieReel;
+import fr.project.planning.scoring.PenaliteKey;
+
 import org.optaplanner.core.api.score.buildin.hardsoft.HardSoftScore;
 import org.optaplanner.core.api.score.stream.Constraint;
 import org.optaplanner.core.api.score.stream.ConstraintCollectors;
@@ -30,7 +32,7 @@ public class LimitePhysique {
             && chevaucheStrict(c1, c2)
         )
         .penalize(HardSoftScore.ONE_HARD)
-        .asConstraint("Chevauchement de créneaux (physique)");
+        .asConstraint(PenaliteKey.PHYSIQUE_HARD_CHEVAUCHEMENT_CRENEAUX.name());
     }    
 
     /**
@@ -45,7 +47,7 @@ public class LimitePhysique {
                 HardSoftScore.ONE_HARD,
                 creneau -> creneau.getDuree() - 720
             )
-            .asConstraint("Durée de créneau > 12h (physique)");
+            .asConstraint(PenaliteKey.PHYSIQUE_HARD_DUREE_CRENEAU_MAX.name());
     }
 
     /**
@@ -69,7 +71,7 @@ public class LimitePhysique {
                 HardSoftScore.ONE_HARD,
                 (salarie, date, dureeTotale) -> dureeTotale - 1440
             )
-            .asConstraint("Cumul journalier > 24h (physique)");
+            .asConstraint(PenaliteKey.PHYSIQUE_HARD_CUMUL_JOURNALIER_MAX.name());
     }
 
     /* =========================

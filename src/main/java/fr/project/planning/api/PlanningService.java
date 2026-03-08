@@ -4,6 +4,10 @@ import fr.project.planning.solution.PlanningProblem;
 import fr.project.planning.domain.contexte.PlanningContext;
 import fr.project.planning.domain.reglementaire.RegulatoryParameters;
 import fr.project.planning.domain.ressource.Ressource;
+import fr.project.planning.scenarios.dto.ScoreBreakdownItemDTO;
+import fr.project.planning.scenarios.dto.ScoreBreakdownUnit;
+import org.optaplanner.core.api.score.constraint.ConstraintMatch;
+import org.optaplanner.core.api.score.constraint.ConstraintMatchTotal;
 import fr.project.planning.domain.creneau.Creneau;
 import fr.project.planning.domain.metier.ReferentielComptabiliteActivite;
 import fr.project.planning.solver.SolverLauncher;
@@ -14,6 +18,9 @@ import org.optaplanner.core.api.score.buildin.hardsoft.HardSoftScore;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.Set;
 import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -92,11 +99,62 @@ public class PlanningService {
         PlanningProblem solved = solverLauncher.solve(problem);
 
         ScoreExplanation<PlanningProblem, HardSoftScore> explanation = solutionManager.explain(solved);
+        List<ScoreBreakdownItemDTO> breakdown = buildScoreBreakdown(explanation);
+
         log.info("[ScoreExplanation]\n{}", explanation.getSummary());
 
-         // TODO : construire une réponse plus riche avec les métriques calculées
-         // (extraction des WorkMetrics depuis le solutionManager.explain() ?)
+        return new PlanningResponse(solved, List.of(), breakdown);
+    }
 
-        return new PlanningResponse(solved, List.of());
+    private List<ScoreBreakdownItemDTO> buildScoreBreakdown(
+            ScoreExplanation<PlanningProblem, HardSoftScore> explanation
+    ) {
+        List<ScoreBreakdownItemDTO> items = new ArrayList<>();
+
+        for (ConstraintMatchTotal<HardSoftScore> total : explanation.getConstraintMatchTotalMap().values()) {
+            String penaliteKey = total.getConstraintName();
+            Set<ConstraintMatch<HardSoftScore>> matches = total.getConstraintMatchSet();
+
+            ScoreBreakdownItemDTO item = new ScoreBreakdownItemDTO();
+            item.setPenaliteKey(penaliteKey);
+            item.setUnit(resolveUnit(penaliteKey).name());
+            item.setQuantity(resolveQuantity(penaliteKey, matches));
+            item.setWeightedImpact(total.getScore().softScore());
+
+            items.add(item);
+        }
+
+    items.sort(Comparator.comparing(ScoreBreakdownItemDTO::getPenaliteKey));
+    return items;
+    }
+
+    private ScoreBreakdownUnit resolveUnit(String penaliteKey) {
+        return switch (penaliteKey) {
+            case "METIER_SOFT_CRENEAU_NON_COUVERT" -> ScoreBreakdownUnit.OCCURRENCE;
+            case "LEGAL_SOFT_DIMANCHES_TRAVAILLES_MAX" -> ScoreBreakdownUnit.JOUR;
+            case "LEGAL_SOFT_PENIBILITES_LEGALES_MINUTES" -> ScoreBreakdownUnit.MINUTE_PONDEREE;
+            default -> ScoreBreakdownUnit.UNKNOWN;
+        };
+    }
+
+    private double resolveQuantity(
+        String penaliteKey,
+        Set<ConstraintMatch<HardSoftScore>> matches
+    ) {
+    return switch (penaliteKey) {
+        case "METIER_SOFT_CRENEAU_NON_COUVERT" ->
+                matches.size();
+
+        case "LEGAL_SOFT_DIMANCHES_TRAVAILLES_MAX" ->
+                matches.size();
+
+        case "LEGAL_SOFT_PENIBILITES_LEGALES_MINUTES" ->
+                matches.stream()
+                        .mapToInt(m -> Math.abs(m.getScore().softScore()))
+                        .sum();
+
+        default ->
+                0.0;
+        };
     }
 }

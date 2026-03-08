@@ -9,8 +9,9 @@ pour **évaluer** une solution (scoring), sans jamais devenir des décisions.
 
 |Domaine                            |	Livré  | Où (code)                     |	Où (tests)        |	Doc                   |
 | --------------------------------- |------- | ----------------------------- | ------------------ |---------------------- |
-| Pénibilités minutes	              | 	✅   | TimeBreakdownCalculator       | tests existants    |	section 2            |
-|                                   |        |   + PenibilitesLegalesMinutes |	                  |                       |
+| Mesures temporelles ( minutes     | 	✅   | TimeBreakdownCalculator       | tests existants    |	section 2            |
+|   nuit / dimanche / férié )       |        |   + PenibilitesLegalesMinutes |	                  |                       |
+| WorkMetrics de restitution        | ⏳     | WorkMetricsCalculator         | scénarios          | sections 4 et 5       |
 | Dominance	                        | 	✅   | ScoreUtils	                  | ScoreDominanceTest |	section 2            |
 | Séquences (contraintes)           | 	✅   | ReposHebdomadaireMin/Glissant	| tests contraintes  |	REGLES_COMBINATOIRES |
 | Séquences (WorkMetrics observées) | 	✅   | WorkMetricsCalculator	        | scénario 1         |  section 5.1          |
@@ -126,14 +127,16 @@ Pour chaque créneau, le moteur calcule :
 | `minutesNuitEtDimancheEtFerie` | triple intersection                        |
 
 Les volumes calculés par TimeBreakdownCalculator constituent
-des primitives utilisées :
+des **mesures élémentaires de pénibilité temporelle**.
 
-- par les contraintes pour le scoring
-- par certaines WorkMetrics pour l’explicabilité
+Ces mesures sont utilisées :
+- par certaines contraintes pour le calcul du score
+- par le calcul des WorkMetrics pour produire des indicateurs descriptifs après résolution.
 
-Ces volumes ne sont pas des WorkMetrics en eux-mêmes.
+Ces volumes ne sont **pas des WorkMetrics en eux-mêmes**.
 
-Elles ne sont jamais utilisées directement pour modifier le planning.
+Ils représentent uniquement des **primitives de mesure**
+à partir desquelles les contraintes et les WorkMetrics peuvent effectuer leurs calculs.
 
 ### Principe de dominance
 
@@ -286,11 +289,9 @@ Un créneau qualifié `RH` ou `RHD` est considéré comme un **repos hebdomadair
 Cette section décrit les principes de conception des WorkMetrics
 utilisées par le moteur de planification.
 
-L’état d’avancement de leur implémentation est suivi dans le tableau
-récapitulatif en début de document, qui constitue la source de vérité.
+L’état d’avancement de leur implémentation est suivi dans le tableau récapitulatif en début de document, qui constitue la source de vérité.
 
-Chaque groupe dépend explicitement de briques préalables du moteur
-(contraintes, scoring, référentiels).
+Chaque groupe dépend explicitement de briques préalables du moteur (contraintes, scoring, référentiels).
 
 Aucune de ces métriques n’est interprétative : elles restent descriptives.
 
@@ -334,10 +335,12 @@ Le moteur ne découpe jamais les créneaux.
 Lorsque qu’un créneau chevauche une frontière (plage de nuit, changement de jour, dimanche, férié…), les volumes sont calculés par intersection temporelle afin d’obtenir des minutes partielles.
 
 Ces minutes partielles sont ensuite utilisées :
-- par les contraintes (mesure),
-- et par les WorkMetrics (constats).
+- par certaines contraintes pour mesurer les pénibilités lors du calcul du score ;
+- par le calcul des WorkMetrics pour produire des indicateurs descriptifs après résolution.
 
-Les volumes partiels utilisés par les contraintes et ceux utilisés par WorkMetrics doivent être strictement identiques (même algorithme d’intersection).
+Les volumes partiels utilisés par les contraintes et ceux utilisés pour le calcul des WorkMetrics doivent être strictement identiques (même algorithme d’intersection), afin de garantir la cohérence entre :
+- l’arbitrage effectué par le solveur
+- l’explicabilité fournie par les WorkMetrics.
 
 ---
 
@@ -404,10 +407,9 @@ Représente la longueur maximale d’une séquence de nuits travaillées conséc
 
 **Qualification d’une nuit travaillée**
 Une date est considérée comme contenant une “nuit travaillée” si la ressource a, sur cette date, un volume :
-- minutesNuit > 0
-où minutesNuit est calculé par intersection temporelle entre :
-- l’intervalle réel du créneau,
-- et les fenêtres “plage de nuit” définies par les paramètres réglementaires.
+- minutesNuit > 0   où minutesNuit est calculé par intersection temporelle entre :
+  - l’intervalle réel du créneau,
+  - et les fenêtres “plage de nuit” définies par les paramètres réglementaires.
 
 Ce volume est pris en compte uniquement si :
 - l’activité du créneau compteDansCharge = true (référentiel d’activité).
@@ -419,9 +421,9 @@ Pour chaque ressource :
 1. Identifier les dates comportant au moins un créneau :
 - de type NUIT
 - et comptant dans la charge.
-2. Dédupliquer par date.
-3. Trier les dates.
-4. Calculer la plus longue suite consécutive.
+1. Dédupliquer par date.
+2. Trier les dates.
+3. Calculer la plus longue suite consécutive.
 
 **Cas limites**
 - Aucune nuit travaillée → valeur = 0
@@ -441,6 +443,50 @@ Exemple : maxNuitsConsecutivesObservees = 6
 
 Ce n’est pas la métrique qui invalide la solution.
 C’est la contrainte combinatoire correspondante (HARD ou SOFT) qui s’applique indépendamment.
+
+---
+
+### 5.1.7 Nature des WorkMetrics : individuelles vs comparatives
+
+Les WorkMetrics peuvent être de deux natures différentes.
+
+#### A. Métriques individuelles
+
+La majorité des WorkMetrics décrivent l’activité d’une ressource indépendamment des autres.
+
+Exemples :
+- heuresTravaillees
+- heuresNuit
+- heuresJourFerie
+- nbDimanchesTravailles
+- maxJoursConsecutifsObservees
+- maxNuitsConsecutivesObservees
+
+Ces métriques sont calculées **ressource par ressource** à partir des créneaux affectés.
+
+#### B. Métriques comparatives
+
+Certaines métriques nécessitent une **comparaison entre ressources**.
+
+Exemples :
+- ecartChargeAvecMoyenne
+- ecartNuitsAvecMoyenne
+
+Ces métriques ne peuvent être calculées qu'après avoir calculé les métriques individuelles de toutes les ressources.
+
+Elles doivent donc être produites dans **une seconde phase d’agrégation**, et non pendant le calcul des métriques individuelles.
+
+#### Principe de calcul
+
+Le calcul des WorkMetrics doit donc suivre deux étapes :
+1. calcul des métriques individuelles par ressource ;
+2. calcul éventuel de métriques comparatives sur l’ensemble
+   des ressources.
+
+Cette séparation garantit :
+- la simplicité du calcul,
+- la lisibilité de l’architecture,
+- et la possibilité d’introduire des métriques d’équité sans complexifier les calculs existants.
 
 ---
 
@@ -465,8 +511,7 @@ Ces métriques permettent une lecture **comparative**, sans décision.
 
 ### 5.3 Référentiel contractuel (V4 – spécifique contexte français)
 
-Ces métriques expriment un **écart relatif au temps contractuel de référence**,
-sans interprétation juridique.
+Ces métriques expriment un **écart relatif au temps contractuel de référence**, sans interprétation juridique.
 
 | Champ                                 | Type    | Description                                                        |
 | ------------------------------------- | ------- | ------------------------------------------------------------------ |
@@ -485,8 +530,7 @@ sans interprétation juridique.
 
 ### 5.4 Dettes et coûts abstraits (V5 – cible long terme)
 
-Ces métriques représentent des **coûts abstraits**, non financiers,
-liés à la pénibilité et à la récupération.
+Ces métriques représentent des **coûts abstraits**, non financiers, liés à la pénibilité et à la récupération.
 
 | Champ                    | Type    | Description                  |
 | ------------------------ | ------- | ---------------------------- |
@@ -541,19 +585,57 @@ Les contraintes n’écrivent pas les WorkMetrics.
 
 ## 9. Utilisation dans le solveur
 
-Les WorkMetrics sont utilisées par le moteur de planification lors de l’évaluation du score OptaPlanner.
+Les **WorkMetrics** ne sont pas utilisées par le solveur comme variables de décision et ne pilotent jamais directement l’affectation des créneaux.
 
-Le calcul des métriques est déclenché pendant l’évaluation des contraintes afin de mesurer l'impact d'une affectation de créneau sur :
-- les pénibilités légales (minutes de nuit, minutes fériées, etc.)
-- les dominances de pénibilité
-- les futures métriques d'équité et de séquences.
+Elles restent :
+- des **constats post-résolution**,
+- calculés à partir d’un planning résolu,
+- destinés à l’explicabilité, à la restitution et à l’analyse aval.
 
-Le solveur utilise ces métriques pour comparer les solutions candidates et améliorer le score global.
+### Distinction importante
 
-L'intégration effective dans le solveur a été validée lors du branchement du scénario SC-01 (mars 2026), avec une amélioration observée du score :
-- 0hard/-40000soft → 0hard/0soft
+Il convient de distinguer deux niveaux :
 
-Les WorkMetrics constituent ainsi la base analytique du scoring métier du moteur de planification.
+#### A. Primitives de mesure utilisées pendant l’évaluation
+
+Le moteur utilise, dans certaines contraintes de scoring, des **mesures élémentaires** issues du calcul temporel, notamment :
+- minutes de nuit,
+- minutes de dimanche,
+- minutes de jour férié,
+- minutes d’intersection entre pénibilités.
+
+Ces mesures sont calculées à partir des créneaux affectés, via
+`TimeBreakdownCalculator`, et servent à alimenter le scoring des pénibilités
+légales (`PenibilitesLegalesMinutes`).
+
+Elles constituent des **primitives de mesure**, pas des WorkMetrics de restitution.
+
+#### B. WorkMetrics de restitution
+
+Les WorkMetrics, au sens du présent document, sont des **agrégats descriptifs** produits après résolution, par exemple :
+- `heuresTravaillees`
+- `heuresNuit`
+- `heuresJourFerie`
+- `nbDimanchesTravailles`
+- `maxJoursConsecutifsObservees`
+- `maxNuitsConsecutivesObservees`
+
+Ces indicateurs :
+- n’interviennent pas dans la faisabilité,
+- ne déclenchent aucune contrainte HARD,
+- ne modifient jamais le planning,
+- ne constituent jamais une variable de décision.
+
+### Règle de cohérence
+
+Le solveur peut consommer des **mesures élémentaires** pour scorer certaines contraintes.
+
+En revanche, les **WorkMetrics** exposées par le moteur restent exclusivement des **constats post-résolution**.
+
+Cette séparation garantit :
+- la lisibilité de l’architecture,
+- la stabilité de l’explicabilité,
+- l’absence de confusion entre **arbitrage** et **restitution**.
 
 ---
 

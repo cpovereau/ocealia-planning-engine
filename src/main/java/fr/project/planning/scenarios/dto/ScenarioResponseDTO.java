@@ -1,28 +1,78 @@
 package fr.project.planning.scenarios.dto;
 
-import java.util.List;
-
 public class ScenarioResponseDTO {
 
-    private String status;               // ex: "SOLVED", "ERROR"
-    private ScenarioPlanningDTO planning; // bloc planning SC-01
+    private String scenarioType;
+    private SolverResultDTO solverResult;
+    private ScenarioPlanningDTO planning;
+    private WorkMetricsDTO workMetrics;
+    private SolutionSummaryDTO solutionSummary;
+    private DiagnosticsDTO diagnostics;
 
-    private List<ScenarioAlertDTO> alerts;
-
-    public ScenarioResponseDTO() {}
-
-    public ScenarioResponseDTO(String status, ScenarioPlanningDTO planning, List<ScenarioAlertDTO> alerts) {
-        this.status = status;
-        this.planning = planning;
-        this.alerts = alerts;
+    public ScenarioResponseDTO() {
     }
 
-    public String getStatus() { return status; }
-    public void setStatus(String status) { this.status = status; }
+    public ScenarioResponseDTO(
+            String scenarioType,
+            SolverResultDTO solverResult,
+            ScenarioPlanningDTO planning,
+            WorkMetricsDTO workMetrics,
+            SolutionSummaryDTO solutionSummary,
+            DiagnosticsDTO diagnostics
+    ) {
+        this.scenarioType = scenarioType;
+        this.solverResult = solverResult;
+        this.planning = planning;
+        this.workMetrics = workMetrics;
+        this.solutionSummary = solutionSummary;
+        this.diagnostics = diagnostics;
+    }
 
-    public ScenarioPlanningDTO getPlanning() { return planning; }
-    public void setPlanning(ScenarioPlanningDTO planning) { this.planning = planning; }
+    public String getScenarioType() {
+        return scenarioType;
+    }
 
-    public List<ScenarioAlertDTO> getAlerts() { return alerts; }
-    public void setAlerts(List<ScenarioAlertDTO> alerts) { this.alerts = alerts; }
+    public void setScenarioType(String scenarioType) {
+        this.scenarioType = scenarioType;
+    }
+
+    public SolverResultDTO getSolverResult() {
+        return solverResult;
+    }
+
+    public void setSolverResult(SolverResultDTO solverResult) {
+        this.solverResult = solverResult;
+    }
+
+    public ScenarioPlanningDTO getPlanning() {
+        return planning;
+    }
+
+    public void setPlanning(ScenarioPlanningDTO planning) {
+        this.planning = planning;
+    }
+
+    public WorkMetricsDTO getWorkMetrics() {
+        return workMetrics;
+    }
+
+    public void setWorkMetrics(WorkMetricsDTO workMetrics) {
+        this.workMetrics = workMetrics;
+    }
+
+    public SolutionSummaryDTO getSolutionSummary() {
+        return solutionSummary;
+    }
+
+    public void setSolutionSummary(SolutionSummaryDTO solutionSummary) {
+        this.solutionSummary = solutionSummary;
+    }
+
+    public DiagnosticsDTO getDiagnostics() {
+        return diagnostics;
+    }
+
+    public void setDiagnostics(DiagnosticsDTO diagnostics) {
+        this.diagnostics = diagnostics;
+    }
 }

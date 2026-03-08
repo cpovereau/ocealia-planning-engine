@@ -8,11 +8,20 @@
 
 Le moteur de planification a pour objectif de **proposer une affectation cohérente de créneaux de travail à des ressources**, en tenant compte de contraintes multiples, parfois contradictoires.
 
-Il doit :
+Les caractéristiques temporelles des créneaux (date, heure de début, heure de fin) sont définies en amont par le scénario ou le logiciel de planning.
 
+Le moteur décide uniquement quelle ressource couvre quel créneau, en respectant les contraintes réglementaires, organisationnelles et métier.
+
+Il doit :
 * produire **une solution explicable**, pas seulement optimale mathématiquement ;
 * accepter l’existence de **situations imparfaites** ;
 * mettre en évidence les **manques de ressources** ou les **violations nécessaires**.
+
+## Traitement des besoins
+
+Les besoins de présence continus ou discontinus sont modélisés sous forme de créneaux élémentaires à couvrir.
+Une journée de présence peut ainsi être représentée par plusieurs créneaux liés logiquement entre eux (ex. matin / après-midi).
+Le moteur continue alors d’optimiser uniquement l’affectation des ressources, tandis que les contraintes évaluent la cohérence d’ensemble de la journée (continuité, amplitude, fragmentation, etc.).
 
 ### Hors périmètre volontaire (à ce stade)
 
@@ -39,7 +48,6 @@ Le référentiel (ComptabiliteActivite) est fourni par le logiciel de planning a
 ### Champs déductibles (non paramétrés dans le moteur)
 
 Les propriétés suivantes sont déterminées automatiquement à partir du sous-type d’activité du logiciel amont :
-
 - `compteDansCharge`
 - `genereDetteRepos`
 
@@ -48,7 +56,6 @@ Le moteur ne décide pas ces valeurs.
 ### Champs paramétrables (choix client)
 
 Les propriétés suivantes relèvent d’un choix métier client et peuvent être absentes :
-
 - `estServiceCritique`
 - `prioritaireSurConfort`
 
@@ -562,7 +569,7 @@ Les évolutions V3 (équité, pénibilité par occurrence, préférences) s’ap
 
 ---
 
-## 2026-03-05 — Exécution réelle du solveur OptaPlanner
+## Intégration du solveur OptaPlanner
 
 ### Décision
 
@@ -588,14 +595,116 @@ Des logs supplémentaires dans `ScenarioController` confirment :
 
 ### Décision associée
 
-La structuration complète de la réponse du solveur (score, diagnostics, affectations détaillées) n'est **pas exposée pour l’instant dans l’API**.
+La solution produite par le solveur est désormais exposée via un modèle métier
+stabilisé : `ScenarioResponseDTO`.
 
-L’API continue de renvoyer un modèle métier (`ScenarioResponseDTO`) afin de :
+L’API ne renvoie pas directement les structures internes d’OptaPlanner
+(`PlanningSolution`, `ConstraintMatch`, etc.), mais une représentation
+fonctionnelle conçue pour :
 
-- stabiliser d’abord le moteur de planification,
-- concevoir ultérieurement un **contrat de sortie solveur propre et pérenne**.
+- être lisible par un client API ou une UI,
+- permettre l’analyse du résultat du solveur,
+- rester indépendante de l’implémentation interne du moteur.
 
-Cette décision évite d'introduire une structure de réponse provisoire qui devrait être refactorisée plus tard.
+Le modèle de réponse expose notamment :
+- le **score global** de la solution,
+- un **scoreBreakdown** détaillant les pénalités (clé, unité, volume, impact),
+- le **planning résolu** avec l’affectation des ressources aux créneaux,
+- un **résumé de solution** (créneaux affectés / non affectés),
+- des **workMetrics** permettant l’analyse RH des charges,
+- d’éventuels **diagnostics** ou alertes.
+
+Cette séparation garantit :
+- la stabilité du contrat API,
+- l’indépendance vis-à-vis d’OptaPlanner,
+- la possibilité de faire évoluer le moteur sans casser l’API.
+
+### Décision — Représentation des créneaux non couverts
+
+Un créneau peut rester sans affectation si aucune ressource compatible n’est disponible ou si le solveur privilégie une autre affectation.
+
+Afin d’éviter toute ambiguïté et de respecter l’invariant "pas de null pour représenter une absence d’affectation", un créneau non couvert est représenté explicitement par la pseudo-ressource :
+A_AFFECTER
+
+Conséquences :
+- `ressourceAffectee` n’est jamais `null`.
+- la valeur `"A_AFFECTER"` apparaît dans le planning retourné par l’API.
+- les créneaux non couverts sont également comptabilisés dans :
+  - `solutionSummary.nbCreneauxNonAffectes`
+  - le `scoreBreakdown` via la pénalité `METIER_SOFT_CRENEAU_NON_COUVERT`.
+
+Les métriques RH (`workMetrics.byRessource`) n’incluent pas la pseudo-ressource `A_AFFECTER`, afin de ne représenter que les ressources réelles.
+
+Cette décision garantit :
+- la cohérence des données retournées,
+- la lisibilité du planning,
+- l’absence de cas particuliers liés à `null`.
+
+### Décision — Structure explicable du scoreBreakdown
+
+La contribution des contraintes au score est exposée via une structure normalisée appelée `scoreBreakdown`.
+
+Chaque entrée du breakdown est décrite par :
+
+- `penaliteKey` : clé métier identifiant la contrainte
+- `unit` : unité de mesure de la pénalité
+- `quantity` : volume mesuré
+- `weightedImpact` : contribution finale au score
+
+Exemple :
+(penaliteKey, unit, quantity, weightedImpact)
+
+Cette structure permet de restituer le score sous une forme explicable et indépendante d’OptaPlanner.
+
+Les unités actuellement utilisées sont notamment :
+- `MINUTE`
+- `MINUTE_PONDEREE`
+- `OCCURRENCE`
+
+Le breakdown reflète le principe fondamental du moteur :
+Contraintes → mesurent un volume  
+ScoreWeights → appliquent les poids  
+ScoreBreakdown → expose la contribution finale
+
+Cette structure permet notamment :
+- d’expliquer une solution au métier,
+- d’analyser les arbitrages du solveur,
+- de comparer différentes stratégies de scoring.
+
+Le modèle `scoreBreakdown` constitue donc le **contrat d’explicabilité du moteur de planification**.
+
+### Décision — Séparation solveur / API via ScenarioResponseMapper
+
+Le moteur de planification sépare explicitement :
+- la **solution interne du solveur** (`PlanningProblem`, `PlanningSolution`)
+- et la **représentation exposée par l’API** (`ScenarioResponseDTO`).
+
+Cette séparation est assurée par le composant :
+ScenarioResponseMapper
+
+Ce mapper transforme les objets internes du solveur en un modèle métier stable destiné à l’API.
+
+Objectifs de cette séparation :
+- éviter toute dépendance directe de l’API vis-à-vis d’OptaPlanner ;
+- permettre l’évolution du modèle interne du solveur sans casser l’API ;
+- exposer une représentation compréhensible pour l’utilisateur ou l’UI ;
+- centraliser la logique de restitution (planning, scoreBreakdown, métriques).
+
+Le mapper est responsable notamment de :
+- transformer les créneaux résolus en `CreneauPlanningDTO`,
+- construire le `planning` journalier,
+- produire le `scoreBreakdown`,
+- calculer les `workMetrics`,
+- construire le `solutionSummary`,
+- intégrer les éventuels diagnostics.
+
+Ainsi :
+Solveur interne  
+→ PlanningSolution  
+→ ScenarioResponseMapper  
+→ ScenarioResponseDTO (contrat API)
+
+Cette architecture garantit la stabilité du contrat API et l’indépendance du moteur vis-à-vis des frameworks d’optimisation utilisés.
 
 ---
 

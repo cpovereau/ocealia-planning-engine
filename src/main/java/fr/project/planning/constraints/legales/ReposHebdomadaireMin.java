@@ -2,6 +2,7 @@ package fr.project.planning.constraints.legales;
 
 import fr.project.planning.domain.creneau.Creneau;
 import fr.project.planning.domain.ressource.SalarieReel;
+import fr.project.planning.scoring.PenaliteKey;
 import fr.project.planning.domain.metier.ComptabiliteActivite;
 import fr.project.planning.domain.metier.ReferentielComptabiliteActivite;
 import fr.project.planning.domain.contexte.PlanningContext;
@@ -63,7 +64,7 @@ public class ReposHebdomadaireMin {
             .penalize(
                 HardSoftScore.ONE_HARD
             )
-            .asConstraint("Repos hebdomadaire insuffisant (min 1 OFF/7j)");
+            .asConstraint(PenaliteKey.LEGAL_HARD_REPOS_HEBDOMADAIRE_MIN.name());
     }
 
     private static boolean violeReposHebdoMin(

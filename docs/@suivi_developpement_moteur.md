@@ -38,6 +38,16 @@ Ce document :
     - Affectations confirmées via logs (`creneau → ressource`)
     - Solution récupérée via `solved.solution().getCreneaux()`
 
+- Restitution solveur V1 stabilisée
+  - Intégration complète du solveur OptaPlanner dans SC-01
+  - Mapping de la solution via `ScenarioResponseMapper`
+  - Mise en place du contrat API `ScenarioResponseDTO`
+  - Planning détaillé (créneaux journaliers + ressourceAffecteeId)
+  - Gestion explicite des créneaux non couverts (`A_AFFECTER`)
+  - `solutionSummary` (créneaux affectés / non affectés)
+  - `workMetrics` (par ressource + global)
+  - `scoreBreakdown` explicable (penaliteKey / unité / volume / impact)
+
 ### B. En cours (fait partiellement)
 
 - Contrôles combinatoires (repos hebdo, dimanches max, etc.) ✅ côté contraintes
@@ -49,10 +59,30 @@ Ce document :
 - WorkMetrics “Équité”
     - écarts vs moyenne
 
-- Exposition complète des WorkMetrics “séquences observées”
-    - max jours consécutifs
-    - max nuits consécutives
+- Exposition complète des WorkMetrics
     - stabilisation des compteurs dans l’API scénario
+
+- Complétion du DataSet amont ou ajout d'une "base" à utiliser pour les scénarios afin d'intégrer :
+   - `groupeBesoinId` ou `blocJourId` (créneaux de besoin/techniques)
+   - `ordreDansBloc` (règles de liason entre créneaux d'une même journée)
+   - `estSegmentDePause` (règle pour gérer les pauses dans la journée de travail)
+   - l'entrepôt des codes d'activités et Id utilisés dans le cadre de la résolution
+   - les contraintes réglémentaires associées aux ressources
+
+- Amélioration de l’explicabilité du solveur :
+  - Améliorer `scoreBreakdown` : remplacer les `switch` par une logique basée directement sur '`PenaliteKey`
+  - Ajouter un niveau "explication détaillée" par créneau ou par ressource
+  - Ajouter un diagnostique d'affectation impossible. Par ex : "Aucun salarié compatible avec ce créneau"
+
+- Améliorer la gestion des contraintes dans le `ScoreExplanation` :
+Faire porter la mesure métier par la contrainte elle-même, au lieu d’essayer de la reconstruire après coup à partir du score :
+La contrainte expose aussi une justification typée du genre :
+  - clé de pénalité
+  - unité
+  - quantité
+  - éventuellement ressource / créneau / date
+Puis, récupérer dans `ScoreExplanation` directement ces objets.
+
 
 ### D. Hors périmètre (assumé)
 
@@ -137,6 +167,53 @@ Ce document :
 | ScoreWeights      | ✅         | Pondérations V2 centralisées et stabilisées                        |
 | ScoreUtils        | ✅         | Point de passage unique pour la construction du score              |
 | StrategieScoring  | ✅         | Contexte de lecture du scoring (EXPLOITATION / ANALYSE_RH / AUDIT) |
+
+---
+
+🛠️ [Note technique] — Unification future des unités temporelles et des types numériques
+
+Lors de l’implémentation des contraintes et des WorkMetrics, deux représentations numériques coexistent actuellement :
+- utilisation de long pour certains calculs intermédiaires (minutes calculées, intersections temporelles),
+- conversion en int lors de l’application des pénalités OptaPlanner.
+
+Cette situation provient du fait que le score OptaPlanner utilisé (HardSoftScore) repose sur un ScoreImpacter basé sur des entiers, ce qui impose l’utilisation de penalize(...) avec des valeurs int.
+Une conversion explicite (Math.toIntExact(...)) est donc parfois nécessaire lors de l’application des pénalités.
+
+👉 Cette coexistence long / int est tolérée pour l’instant, mais une unification devra être décidée lors d’un nettoyage technique ultérieur.
+
+Deux stratégies sont envisagées :
+- Utiliser long pour tous les calculs internes, puis convertir en int uniquement au moment du scoring.
+- Normaliser l’ensemble du moteur sur int, si les volumes manipulés restent garantis dans les bornes de ce type.
+
+La première approche est actuellement privilégiée car elle :
+- simplifie les calculs temporels,
+- évite les risques d’overflow lors d’agrégations.
+
+---
+
+🕒 Convention de représentation des heures
+
+Les durées manipulées dans le moteur doivent pouvoir être exprimées sous deux formes complémentaires :
+
+| Format                      | Usage                               |
+|-----------------------------|-------------------------------------|
+| HH:MM	                      | représentation humaine / API / logs |
+| HH,DC (heures en centièmes)	| calculs simplifiés côté moteur      |
+
+Exemples :
+
+| Temps |	HH:MM | HH,DC |
+|-------|-------|-------|
+| 1h30  |	01:30 |	1,50  |
+| 2h15  |	02:15 |	2,25  |
+| 7h45	| 07:45 |	7,75  |
+
+La conversion en heures décimales (centièmes) facilite :
+- certains calculs statistiques,
+- les agrégations RH,
+- les restitutions analytiques.
+
+⚠️ Les calculs internes du moteur restent cependant basés sur les minutes, afin de garantir la précision et d’éviter les effets d’arrondi.
 
 ---
 
@@ -445,7 +522,7 @@ La V3 modifie uniquement :
 - le calcul des pénibilités légales SOFT
 - la façon dont les minutes de pénibilité sont calculées.
 
-## 2026-03-05 — Branchement du solveur OptaPlanner sur SC-01
+## [2026-03-05] — Branchement du solveur OptaPlanner sur SC-01
 
 Le scénario SC-01 est désormais exécuté en passant par le solveur OptaPlanner.
 
@@ -479,7 +556,6 @@ SC-01 JSON
       ]
 
 Ces logs confirment que :
-
 - le scoring est exécuté
 - le solveur modifie l’état initial pour améliorer le score
 - les créneaux sont effectivement affectés par OptaPlanner.
@@ -499,3 +575,25 @@ Le branchement solveur est considéré comme **validé** :
 - exécution solveur ✔  
 - amélioration du score ✔  
 - récupération de la solution ✔
+
+## [2026-03-06] - Contrat de sortie du moteur de planification
+
+**Objectif**
+Le moteur de planification renvoie désormais une structure de réponse normalisée décrivant :
+1. la solution produite (planning résolu),
+2. l’évaluation du solveur (score et pénalités),
+3. les conséquences observées du planning (WorkMetrics),
+4. les diagnostics techniques utiles à l’intégration.
+
+Ce contrat de sortie constitue la référence d’échange entre le moteur de planification et le logiciel de planning.
+
+Il est défini dans le fichier : `ScenarioResponse.schema.json`
+
+Le détail de la conception est définie dans le document : `ScenarioResponseContract.md`
+
+## [2026-03-08] - ScenarioResponseDTO V1 stabilisé
+- scoreBreakdown (unit + quantity)
+- planning avec ressourceAffecteeId
+- solutionSummary
+- workMetrics (byRessource + global)
+- diagnostics

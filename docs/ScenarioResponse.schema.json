@@ -1,0 +1,249 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.org/schema/scenario-response.schema.json",
+  "title": "ScenarioResponse",
+  "description": "Contrat JSON de sortie du moteur de planification",
+  "type": "object",
+  "required": [
+    "scenarioType",
+    "solverResult",
+    "planning",
+    "workMetrics",
+    "solutionSummary",
+    "diagnostics"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "scenarioType": {
+      "type": "string",
+      "enum": ["SC-01", "SC-02", "SC-03", "SC-04", "SC-05"]
+    },
+
+    "solverResult": {
+      "type": "object",
+      "required": ["status", "score"],
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["SOLVED", "PARTIALLY_SOLVED", "UNSOLVABLE", "ERROR"]
+        },
+        "score": {
+          "type": "object",
+          "required": ["hard", "soft"],
+          "additionalProperties": false,
+          "properties": {
+            "hard": { "type": "integer" },
+            "soft": { "type": "integer" }
+          }
+        },
+        "scoreBreakdown": {
+          "type": "array",
+          "description": "Détail agrégé des contributions au score par famille de pénalité.",
+          "items": {
+            "$ref": "#/definitions/ScoreBreakdownItem"
+          }
+        }
+      }
+    },
+
+    "planning": {
+      "type": "object",
+      "required": ["creneaux"],
+      "additionalProperties": false,
+      "properties": {
+        "creneaux": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/CreneauResult"
+          }
+        }
+      }
+    },
+
+    "workMetrics": {
+      "type": "object",
+      "required": ["byRessource"],
+      "additionalProperties": false,
+      "properties": {
+        "byRessource": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/WorkMetricsByRessource"
+          }
+        },
+        "global": {
+          "$ref": "#/definitions/GlobalWorkMetrics"
+        }
+      }
+    },
+
+    "solutionSummary": {
+      "$ref": "#/definitions/SolutionSummary"
+    },
+
+    "diagnostics": {
+      "type": "object",
+      "required": ["alerts", "ignoredCreneaux"],
+      "additionalProperties": false,
+      "properties": {
+        "alerts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Alert"
+          }
+        },
+        "ignoredCreneaux": {
+          "type": "object",
+          "required": ["horsHorizon", "sansRessource", "activiteInconnue"],
+          "additionalProperties": false,
+          "properties": {
+            "horsHorizon": { "type": "integer", "minimum": 0 },
+            "sansRessource": { "type": "integer", "minimum": 0 },
+            "activiteInconnue": { "type": "integer", "minimum": 0 }
+          }
+        }
+      }
+    }
+  },
+
+  "definitions": {
+    "ScoreBreakdownItem": {
+      "type": "object",
+      "required": ["penaliteKey", "unit", "quantity", "weightedImpact"],
+      "additionalProperties": false,
+      "properties": {
+        "penaliteKey": {
+          "type": "string",
+          "description": "Clé métier de pénalité, alignée sur PenaliteKey côté moteur."
+        },
+        "unit": {
+          "type": "string",
+          "enum": ["OCCURRENCE", "MINUTE", "DAY"]
+        },
+        "quantity": {
+          "type": "number"
+        },
+        "weightedImpact": {
+          "type": "integer",
+          "description": "Impact final pondéré sur le score soft ou hard."
+        }
+      }
+    },
+
+    "CreneauResult": {
+      "type": "object",
+      "required": [
+        "id",
+        "date",
+        "heureDebut",
+        "heureFin",
+        "type",
+        "ressourceAffecteeId"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "heureDebut": {
+          "type": "string",
+          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+        },
+        "heureFin": {
+          "type": "string",
+          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["IMPOSE", "GENERE"]
+        },
+        "ressourceAffecteeId": {
+          "type": "string",
+          "description": "Identifiant de la ressource affectée, ou valeur explicite pour NON_AFFECTE si ce concept est exposé."
+        }
+      }
+    },
+
+    "WorkMetricsByRessource": {
+      "type": "object",
+      "required": [
+        "resourceId",
+        "periodeDebut",
+        "periodeFin",
+        "heuresTravaillees",
+        "heuresNuit",
+        "heuresJourFerie",
+        "heuresReposHebdoTravaille",
+        "nbDimanchesTravailles",
+        "maxJoursConsecutifsObservees",
+        "maxNuitsConsecutivesObservees"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "resourceId": { "type": "string" },
+        "periodeDebut": { "type": "string", "format": "date" },
+        "periodeFin": { "type": "string", "format": "date" },
+
+        "heuresTravaillees": { "type": "number", "minimum": 0 },
+        "heuresNuit": { "type": "number", "minimum": 0 },
+        "heuresJourFerie": { "type": "number", "minimum": 0 },
+        "heuresReposHebdoTravaille": { "type": "number", "minimum": 0 },
+
+        "nbDimanchesTravailles": { "type": "integer", "minimum": 0 },
+        "maxJoursConsecutifsObservees": { "type": "integer", "minimum": 0 },
+        "maxNuitsConsecutivesObservees": { "type": "integer", "minimum": 0 }
+      }
+    },
+
+    "GlobalWorkMetrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "nbCreneaux": { "type": "integer", "minimum": 0 },
+        "nbCreneauxNonAffectes": { "type": "integer", "minimum": 0 },
+        "heuresTravailleesTotales": { "type": "number", "minimum": 0 },
+        "heuresNuitTotales": { "type": "number", "minimum": 0 },
+        "heuresJourFerieTotales": { "type": "number", "minimum": 0 }
+      }
+    },
+
+    "SolutionSummary": {
+      "type": "object",
+      "required": [
+        "nbCreneaux",
+        "nbCreneauxAffectes",
+        "nbCreneauxNonAffectes",
+        "nbRessourcesMobilisees",
+        "heuresTravailleesTotales",
+        "heuresNuitTotales",
+        "heuresJourFerieTotales",
+        "heuresReposHebdoTravailleTotales",
+        "nbDimanchesTravaillesTotal"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "nbCreneaux": { "type": "integer", "minimum": 0 },
+        "nbCreneauxAffectes": { "type": "integer", "minimum": 0 },
+        "nbCreneauxNonAffectes": { "type": "integer", "minimum": 0 },
+        "nbRessourcesMobilisees": { "type": "integer", "minimum": 0 },
+
+        "heuresTravailleesTotales": { "type": "number", "minimum": 0 },
+        "heuresNuitTotales": { "type": "number", "minimum": 0 },
+        "heuresJourFerieTotales": { "type": "number", "minimum": 0 },
+        "heuresReposHebdoTravailleTotales": { "type": "number", "minimum": 0 },
+
+        "nbDimanchesTravaillesTotal": { "type": "integer", "minimum": 0 }
+      }
+    },
+
+    "Alert": {
+      "type": "object",
+      "required": ["code", "message"],
+      "additionalProperties": false,
+      "properties": {
+        "code": { "type": "string" },
+        "message": { "type": "string" }
+      }
+    }
+  }
+}

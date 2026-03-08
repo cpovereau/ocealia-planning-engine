@@ -4,6 +4,8 @@ import fr.project.planning.domain.contexte.PlanningContext;
 import fr.project.planning.domain.creneau.Creneau;
 import fr.project.planning.domain.creneau.TypePlageHoraire;
 import fr.project.planning.domain.ressource.SalarieReel;
+import fr.project.planning.scoring.PenaliteKey;
+
 import org.optaplanner.core.api.score.buildin.hardsoft.HardSoftScore;
 import org.optaplanner.core.api.score.stream.Constraint;
 import org.optaplanner.core.api.score.stream.ConstraintFactory;
@@ -72,7 +74,7 @@ public class NuitsConsecutivesMax {
             .penalize(
                 HardSoftScore.ONE_HARD
             )
-            .asConstraint("Nombre de nuits consécutives > seuil (légal)");
+            .asConstraint(PenaliteKey.LEGAL_HARD_NUITS_CONSECUTIVES_MAX.name());
     }
 
     private static boolean depasseMaxNuitsConsecutives(

@@ -4,7 +4,7 @@
 
 ---
 
-## 1. Principe général (non négociable)
+## 1. Principe général
 
 ### Règles absolues
 

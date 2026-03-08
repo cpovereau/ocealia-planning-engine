@@ -5,6 +5,7 @@ import fr.project.planning.domain.creneau.Creneau;
 import fr.project.planning.domain.creneau.QualificationJour;
 import fr.project.planning.domain.metier.ComptabiliteActivite;
 import fr.project.planning.domain.metier.ReferentielComptabiliteActivite;
+import fr.project.planning.scoring.PenaliteKey;
 
 import org.optaplanner.core.api.score.buildin.hardsoft.HardSoftScore;
 import org.optaplanner.core.api.score.stream.Constraint;
@@ -76,6 +77,6 @@ public class DetteReposSurReposHebdomadaire {
                 return base * creneau.getDuree();
             }
         )
-        .asConstraint("Dette de repos sur repos hebdomadaire");
+        .asConstraint(PenaliteKey.METIER_SOFT_DETTE_REPOS_SUR_REPOS_HEBDOMADAIRE.name());
     }
 }

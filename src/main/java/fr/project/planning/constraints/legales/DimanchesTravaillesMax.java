@@ -3,6 +3,7 @@ package fr.project.planning.constraints.legales;
 import fr.project.planning.domain.contexte.PlanningContext;
 import fr.project.planning.domain.creneau.Creneau;
 import fr.project.planning.domain.ressource.SalarieReel;
+import fr.project.planning.scoring.PenaliteKey;
 import fr.project.planning.domain.contexte.HorizonTemporel;
 import fr.project.planning.domain.metier.ComptabiliteActivite;
 import fr.project.planning.domain.metier.ReferentielComptabiliteActivite;
@@ -54,7 +55,7 @@ public class DimanchesTravaillesMax {
                 return base * excedent;
             }
             )
-            .asConstraint("Nombre de dimanches travaillés > seuil (légal)");
+            .asConstraint(PenaliteKey.LEGAL_SOFT_DIMANCHES_TRAVAILLES_MAX.name());
     }
 
     private static int compterDimanchesDistincts(

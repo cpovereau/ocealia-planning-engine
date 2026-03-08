@@ -3,6 +3,8 @@ package fr.project.planning.constraints.legales;
 import fr.project.planning.domain.contexte.PlanningContext;
 import fr.project.planning.domain.creneau.Creneau;
 import fr.project.planning.domain.ressource.SalarieReel;
+import fr.project.planning.scoring.PenaliteKey;
+
 import org.optaplanner.core.api.score.buildin.hardsoft.HardSoftScore;
 import org.optaplanner.core.api.score.stream.*;
 import fr.project.planning.domain.contexte.HorizonTemporel;
@@ -63,7 +65,7 @@ public class ReposHebdomadaireGlissant {
             })
 
             .penalize(HardSoftScore.ONE_HARD)
-            .asConstraint("Repos hebdomadaire insuffisant");
+            .asConstraint(PenaliteKey.LEGAL_HARD_REPOS_HEBDOMADAIRE_GLISSANT.name());
         }
 
     private static boolean violeReposHebdoGlissant(List<Creneau> creneaux, int fenetreJours, int minJoursOff) {

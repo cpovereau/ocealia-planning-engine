@@ -4,6 +4,8 @@ import fr.project.planning.domain.contexte.PlanningContext;
 import fr.project.planning.domain.creneau.Creneau;
 import fr.project.planning.domain.creneau.TypePlageHoraire;
 import fr.project.planning.domain.ressource.SalarieReel;
+import fr.project.planning.scoring.PenaliteKey;
+
 import org.optaplanner.core.api.score.buildin.hardsoft.HardSoftScore;
 import org.optaplanner.core.api.score.stream.Constraint;
 import org.optaplanner.core.api.score.stream.ConstraintCollectors;
@@ -71,7 +73,7 @@ public class ReposObligatoireApresNuits {
             .penalize(
                 HardSoftScore.ONE_HARD
             )
-            .asConstraint("Repos obligatoire après séquence de nuits insuffisant");
+            .asConstraint(PenaliteKey.LEGAL_HARD_REPOS_OBLIGATOIRE_APRES_NUITS.name());
     }
 
     /**

@@ -3,6 +3,7 @@ package fr.project.planning.constraints.metier;
 import fr.project.planning.domain.contexte.PlanningContext;
 import fr.project.planning.domain.creneau.Creneau;
 import fr.project.planning.domain.ressource.PosteVirtuel;
+import fr.project.planning.scoring.PenaliteKey;
 import fr.project.planning.scoring.StrategieScoring;
 
 import org.optaplanner.core.api.score.buildin.hardsoft.HardSoftScore;
@@ -34,7 +35,7 @@ public class AffectationPosteVirtuel {
                     return base * coefficient(context.getStrategieScoring());
                 }
         )
-        .asConstraint("Affectation à un poste virtuel");
+        .asConstraint(PenaliteKey.METIER_SOFT_AFFECTATION_POSTE_VIRTUEL.name());
     }
 
     private static int coefficient(StrategieScoring strategieScoring) {

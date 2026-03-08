@@ -6,6 +6,7 @@ import fr.project.planning.domain.metier.ComptabiliteActivite;
 import fr.project.planning.domain.metier.ReferentielComptabiliteActivite;
 import fr.project.planning.domain.reglementaire.RegulatoryParameters;
 import fr.project.planning.score.ScoreUtils;
+import fr.project.planning.scoring.PenaliteKey;
 import fr.project.planning.time.TimeBreakdown;
 import fr.project.planning.time.TimeBreakdownCalculator;
 
@@ -71,6 +72,6 @@ public final class PenibilitesLegalesMinutes {
                     return Math.toIntExact(penaliteLong);
                 }
             )
-            .asConstraint("Pénibilités légales (minutes avec dominance)");
+            .asConstraint(PenaliteKey.LEGAL_SOFT_PENIBILITES_LEGALES_MINUTES.name());
     }
 }

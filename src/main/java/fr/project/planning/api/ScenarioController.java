@@ -183,15 +183,19 @@ public class ScenarioController {
             .map(a -> new ScenarioAlertDTO(a.code().name(), a.date(), a.message()))
             .toList();
 
-        ScenarioResponseDTO response = responseMapper.toResponse(
-        params.getResourceRef().getId(),
-        creneauxResolus
+        return responseMapper.toResponse(
+            request.getScenarioType(),
+            "SOLVED",
+            solved.solution().getScore().hardScore(),
+            solved.solution().getScore().softScore(),
+            solved.scoreBreakdown(),
+            params.getResourceRef().getId(),
+            creneauxResolus,
+            byId,
+            alerts
         );
 
-        response.setAlerts(alerts);
-
-        return response;
-    }
+        }
 
     // Endpoint pour télécharger le résultat de SC-01 en JSON
    @PostMapping(value = "/sc-01/solve/file", produces = MediaType.APPLICATION_JSON_VALUE)

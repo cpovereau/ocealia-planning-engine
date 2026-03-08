@@ -2,6 +2,8 @@ package fr.project.planning.constraints.legales;
 
 import fr.project.planning.domain.creneau.Creneau;
 import fr.project.planning.domain.ressource.SalarieReel;
+import fr.project.planning.scoring.PenaliteKey;
+
 import org.optaplanner.core.api.score.buildin.hardsoft.HardSoftScore;
 import org.optaplanner.core.api.score.stream.Constraint;
 import org.optaplanner.core.api.score.stream.ConstraintCollectors;
@@ -55,6 +57,6 @@ public class DureeMaximaleLegaleParSalarie {
             HardSoftScore.ONE_HARD,
             (salarie, dureeTotale) -> dureeTotale - DUREE_MAX_LEGALE
         )
-        .asConstraint("Durée totale par salarié > maximum légal");
+        .asConstraint(PenaliteKey.LEGAL_HARD_DUREE_MAX_LEGALE_PAR_PERIODE.name());
     }
 }

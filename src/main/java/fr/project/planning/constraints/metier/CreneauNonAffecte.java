@@ -3,6 +3,7 @@ package fr.project.planning.constraints.metier;
 import fr.project.planning.domain.contexte.PlanningContext;
 import fr.project.planning.domain.creneau.Creneau;
 import fr.project.planning.domain.ressource.RessourceNonAffectee;
+import fr.project.planning.scoring.PenaliteKey;
 import fr.project.planning.scoring.StrategieScoring;
 
 import org.optaplanner.core.api.score.buildin.hardsoft.HardSoftScore;
@@ -36,7 +37,7 @@ public class CreneauNonAffecte {
                     return base * coefficient(context.getStrategieScoring());
                 }
             )
-            .asConstraint("Créneau non affecté");
+            .asConstraint(PenaliteKey.METIER_SOFT_CRENEAU_NON_COUVERT.name());
     }
 
     private static int coefficient(StrategieScoring strategieScoring) {
