@@ -1,9 +1,9 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://example.org/schema/scenario-response.schema.json",
+  "$id": "ScenarioResponse.schema.json",
   "title": "ScenarioResponse",
-  "description": "Contrat JSON de sortie du moteur de planification",
   "type": "object",
+  "additionalProperties": false,
   "required": [
     "scenarioType",
     "solverResult",
@@ -12,160 +12,192 @@
     "solutionSummary",
     "diagnostics"
   ],
-  "additionalProperties": false,
   "properties": {
     "scenarioType": {
-      "type": "string",
-      "enum": ["SC-01", "SC-02", "SC-03", "SC-04", "SC-05"]
+      "type": "string"
     },
-
     "solverResult": {
+      "$ref": "#/$defs/SolverResult"
+    },
+    "planning": {
+      "$ref": "#/$defs/ScenarioPlanning"
+    },
+    "workMetrics": {
+      "$ref": "#/$defs/WorkMetrics"
+    },
+    "solutionSummary": {
+      "$ref": "#/$defs/SolutionSummary"
+    },
+    "diagnostics": {
+      "$ref": "#/$defs/Diagnostics"
+    }
+  },
+  "$defs": {
+    "SolverResult": {
       "type": "object",
-      "required": ["status", "score"],
       "additionalProperties": false,
+      "required": [
+        "status",
+        "score",
+        "scoreBreakdown"
+      ],
       "properties": {
         "status": {
           "type": "string",
-          "enum": ["SOLVED", "PARTIALLY_SOLVED", "UNSOLVABLE", "ERROR"]
+          "enum": ["SOLVED", "UNSOLVED", "ERROR"]
         },
         "score": {
-          "type": "object",
-          "required": ["hard", "soft"],
-          "additionalProperties": false,
-          "properties": {
-            "hard": { "type": "integer" },
-            "soft": { "type": "integer" }
-          }
+          "$ref": "#/$defs/Score"
         },
         "scoreBreakdown": {
           "type": "array",
-          "description": "Détail agrégé des contributions au score par famille de pénalité.",
           "items": {
-            "$ref": "#/definitions/ScoreBreakdownItem"
+            "$ref": "#/$defs/ScoreBreakdownItem"
           }
         }
       }
     },
 
-    "planning": {
+    "Score": {
       "type": "object",
-      "required": ["creneaux"],
       "additionalProperties": false,
+      "required": ["hard", "soft"],
       "properties": {
-        "creneaux": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/CreneauResult"
-          }
-        }
-      }
-    },
-
-    "workMetrics": {
-      "type": "object",
-      "required": ["byRessource"],
-      "additionalProperties": false,
-      "properties": {
-        "byRessource": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/WorkMetricsByRessource"
-          }
+        "hard": {
+          "type": "integer"
         },
-        "global": {
-          "$ref": "#/definitions/GlobalWorkMetrics"
+        "soft": {
+          "type": "integer"
         }
       }
     },
 
-    "solutionSummary": {
-      "$ref": "#/definitions/SolutionSummary"
-    },
-
-    "diagnostics": {
-      "type": "object",
-      "required": ["alerts", "ignoredCreneaux"],
-      "additionalProperties": false,
-      "properties": {
-        "alerts": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/Alert"
-          }
-        },
-        "ignoredCreneaux": {
-          "type": "object",
-          "required": ["horsHorizon", "sansRessource", "activiteInconnue"],
-          "additionalProperties": false,
-          "properties": {
-            "horsHorizon": { "type": "integer", "minimum": 0 },
-            "sansRessource": { "type": "integer", "minimum": 0 },
-            "activiteInconnue": { "type": "integer", "minimum": 0 }
-          }
-        }
-      }
-    }
-  },
-
-  "definitions": {
     "ScoreBreakdownItem": {
       "type": "object",
-      "required": ["penaliteKey", "unit", "quantity", "weightedImpact"],
       "additionalProperties": false,
+      "required": [
+        "penaliteKey",
+        "unit",
+        "quantity",
+        "weightedImpact"
+      ],
       "properties": {
         "penaliteKey": {
-          "type": "string",
-          "description": "Clé métier de pénalité, alignée sur PenaliteKey côté moteur."
+          "type": "string"
         },
         "unit": {
           "type": "string",
-          "enum": ["OCCURRENCE", "MINUTE", "DAY"]
+          "enum": [
+            "OCCURRENCE",
+            "JOUR",
+            "MINUTE_PONDEREE"
+          ]
         },
         "quantity": {
           "type": "number"
         },
         "weightedImpact": {
-          "type": "integer",
-          "description": "Impact final pondéré sur le score soft ou hard."
+          "type": "integer"
         }
       }
     },
 
-    "CreneauResult": {
+    "ScenarioPlanning": {
       "type": "object",
+      "additionalProperties": false,
       "required": [
-        "id",
+        "idSalarie",
+        "jours"
+      ],
+      "properties": {
+        "idSalarie": {
+          "type": "string"
+        },
+        "jours": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/JourPlanning"
+          }
+        }
+      }
+    },
+
+    "JourPlanning": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
         "date",
+        "creneaux"
+      ],
+      "properties": {
+        "date": {
+          "type": "string",
+          "format": "date"
+        },
+        "creneaux": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CreneauPlanning"
+          }
+        }
+      }
+    },
+
+    "CreneauPlanning": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "activite",
         "heureDebut",
         "heureFin",
-        "type",
+        "duree",
         "ressourceAffecteeId"
       ],
-      "additionalProperties": false,
       "properties": {
-        "id": { "type": "string" },
-        "date": { "type": "string", "format": "date" },
+        "activite": {
+          "type": "string"
+        },
         "heureDebut": {
-          "type": "string",
-          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+          "type": "string"
         },
         "heureFin": {
-          "type": "string",
-          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+          "type": "string"
         },
-        "type": {
-          "type": "string",
-          "enum": ["IMPOSE", "GENERE"]
+        "duree": {
+          "type": "string"
+        },
+        "nature": {
+          "type": ["string", "null"]
         },
         "ressourceAffecteeId": {
-          "type": "string",
-          "description": "Identifiant de la ressource affectée, ou valeur explicite pour NON_AFFECTE si ce concept est exposé."
+          "type": "string"
+        }
+      }
+    },
+
+    "WorkMetrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "byRessource",
+        "global"
+      ],
+      "properties": {
+        "byRessource": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/WorkMetricsByRessource"
+          }
+        },
+        "global": {
+          "$ref": "#/$defs/GlobalWorkMetrics"
         }
       }
     },
 
     "WorkMetricsByRessource": {
       "type": "object",
+      "additionalProperties": false,
       "required": [
         "resourceId",
         "periodeDebut",
@@ -178,71 +210,219 @@
         "maxJoursConsecutifsObservees",
         "maxNuitsConsecutivesObservees"
       ],
-      "additionalProperties": false,
       "properties": {
-        "resourceId": { "type": "string" },
-        "periodeDebut": { "type": "string", "format": "date" },
-        "periodeFin": { "type": "string", "format": "date" },
-
-        "heuresTravaillees": { "type": "number", "minimum": 0 },
-        "heuresNuit": { "type": "number", "minimum": 0 },
-        "heuresJourFerie": { "type": "number", "minimum": 0 },
-        "heuresReposHebdoTravaille": { "type": "number", "minimum": 0 },
-
-        "nbDimanchesTravailles": { "type": "integer", "minimum": 0 },
-        "maxJoursConsecutifsObservees": { "type": "integer", "minimum": 0 },
-        "maxNuitsConsecutivesObservees": { "type": "integer", "minimum": 0 }
+        "resourceId": {
+          "type": "string"
+        },
+        "periodeDebut": {
+          "type": "string",
+          "format": "date"
+        },
+        "periodeFin": {
+          "type": "string",
+          "format": "date"
+        },
+        "heuresTravaillees": {
+          "type": "number"
+        },
+        "heuresNuit": {
+          "type": "number"
+        },
+        "heuresJourFerie": {
+          "type": "number"
+        },
+        "heuresReposHebdoTravaille": {
+          "type": "number"
+        },
+        "nbDimanchesTravailles": {
+          "type": "integer"
+        },
+        "maxJoursConsecutifsObservees": {
+          "type": "integer"
+        },
+        "maxNuitsConsecutivesObservees": {
+          "type": "integer"
+        }
       }
     },
 
     "GlobalWorkMetrics": {
       "type": "object",
       "additionalProperties": false,
+      "required": [
+        "nbCreneaux",
+        "nbCreneauxNonAffectes",
+        "heuresTravailleesTotales",
+        "heuresNuitTotales",
+        "heuresJourFerieTotales"
+      ],
       "properties": {
-        "nbCreneaux": { "type": "integer", "minimum": 0 },
-        "nbCreneauxNonAffectes": { "type": "integer", "minimum": 0 },
-        "heuresTravailleesTotales": { "type": "number", "minimum": 0 },
-        "heuresNuitTotales": { "type": "number", "minimum": 0 },
-        "heuresJourFerieTotales": { "type": "number", "minimum": 0 }
+        "nbCreneaux": {
+          "type": "integer"
+        },
+        "nbCreneauxNonAffectes": {
+          "type": "integer"
+        },
+        "heuresTravailleesTotales": {
+          "type": "number"
+        },
+        "heuresNuitTotales": {
+          "type": "number"
+        },
+        "heuresJourFerieTotales": {
+          "type": "number"
+        }
       }
     },
 
     "SolutionSummary": {
       "type": "object",
+      "additionalProperties": false,
       "required": [
         "nbCreneaux",
         "nbCreneauxAffectes",
         "nbCreneauxNonAffectes",
         "nbRessourcesMobilisees",
-        "heuresTravailleesTotales",
-        "heuresNuitTotales",
-        "heuresJourFerieTotales",
-        "heuresReposHebdoTravailleTotales",
-        "nbDimanchesTravaillesTotal"
+        "heuresTravailleesTotales"
       ],
-      "additionalProperties": false,
       "properties": {
-        "nbCreneaux": { "type": "integer", "minimum": 0 },
-        "nbCreneauxAffectes": { "type": "integer", "minimum": 0 },
-        "nbCreneauxNonAffectes": { "type": "integer", "minimum": 0 },
-        "nbRessourcesMobilisees": { "type": "integer", "minimum": 0 },
+        "nbCreneaux": {
+          "type": "integer"
+        },
+        "nbCreneauxAffectes": {
+          "type": "integer"
+        },
+        "nbCreneauxNonAffectes": {
+          "type": "integer"
+        },
+        "nbRessourcesMobilisees": {
+          "type": "integer"
+        },
+        "heuresTravailleesTotales": {
+          "type": "number"
+        }
+      }
+    },
 
-        "heuresTravailleesTotales": { "type": "number", "minimum": 0 },
-        "heuresNuitTotales": { "type": "number", "minimum": 0 },
-        "heuresJourFerieTotales": { "type": "number", "minimum": 0 },
-        "heuresReposHebdoTravailleTotales": { "type": "number", "minimum": 0 },
-
-        "nbDimanchesTravaillesTotal": { "type": "integer", "minimum": 0 }
+    "Diagnostics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "alerts",
+        "assignmentDiagnostics",
+        "ignoredCreneaux"
+      ],
+      "properties": {
+        "alerts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Alert"
+          }
+        },
+        "assignmentDiagnostics": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AssignmentDiagnostic"
+          }
+        },
+        "ignoredCreneaux": {
+          "$ref": "#/$defs/IgnoredCreneaux"
+        }
       }
     },
 
     "Alert": {
       "type": "object",
-      "required": ["code", "message"],
       "additionalProperties": false,
+      "required": [
+        "code",
+        "date",
+        "message"
+      ],
       "properties": {
-        "code": { "type": "string" },
-        "message": { "type": "string" }
+        "code": {
+          "type": "string"
+        },
+        "date": {
+          "type": "string",
+          "format": "date"
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+
+    "AssignmentDiagnostic": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "creneauId",
+        "date",
+        "heureDebut",
+        "heureFin",
+        "activite",
+        "status",
+        "reasonCode",
+        "message"
+      ],
+      "properties": {
+        "creneauId": {
+          "type": "string"
+        },
+        "date": {
+          "type": "string",
+          "format": "date"
+        },
+        "heureDebut": {
+          "type": "string"
+        },
+        "heureFin": {
+          "type": "string"
+        },
+        "activite": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "UNCOVERED",
+            "IMPOSSIBLE_TO_ASSIGN",
+            "VIRTUAL_ASSIGNED"
+          ]
+        },
+        "reasonCode": {
+          "type": "string",
+          "enum": [
+            "NO_RESOURCE_ASSIGNED",
+            "NO_COMPATIBLE_RESOURCE",
+            "POSTE_VIRTUEL_ASSIGNED"
+          ]
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+
+    "IgnoredCreneaux": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "horsHorizon",
+        "sansRessource",
+        "activiteInconnue"
+      ],
+      "properties": {
+        "horsHorizon": {
+          "type": "integer"
+        },
+        "sansRessource": {
+          "type": "integer"
+        },
+        "activiteInconnue": {
+          "type": "integer"
+        }
       }
     }
   }

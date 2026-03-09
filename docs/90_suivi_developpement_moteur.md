@@ -48,6 +48,22 @@ Ce document :
   - `workMetrics` (par ressource + global)
   - `scoreBreakdown` explicable (penaliteKey / unité / volume / impact)
 
+- Explicabilité solveur V2 (scoreBreakdown + diagnostics d’affectation) ✅
+    - `PenaliteKey` devient la source de vérité pour l’unité du `scoreBreakdown`
+    - suppression des `switch` de résolution d’unité dans la restitution
+    - centralisation de la construction des `ScoreBreakdownItemDTO`
+    - ajout du bloc `diagnostics.assignmentDiagnostics`
+    - exposition des créneaux non couverts avec :
+        - creneauId
+        - date / heureDebut / heureFin
+        - activite
+        - status
+        - reasonCode
+        - message
+    - diagnostics implémentés :
+        UNCOVERED / NO_RESOURCE_ASSIGNED
+        IMPOSSIBLE_TO_ASSIGN
+
 ### B. En cours (fait partiellement)
 
 - Contrôles combinatoires (repos hebdo, dimanches max, etc.) ✅ côté contraintes
@@ -69,10 +85,9 @@ Ce document :
   - constitution d’un entrepôt des codes d’activités et identifiants associés utilisés par le moteur lors de la résolution ;
   - intégration des paramètres réglementaires applicables aux ressources nécessaires au calcul des contraintes légales.
 
-- Amélioration de l’explicabilité du solveur :
-  - Améliorer `scoreBreakdown` : remplacer les `switch` par une logique basée directement sur `PenaliteKey`
-  - Ajouter un niveau "explication détaillée" par créneau ou par ressource
-  - Ajouter un diagnostic d'affectation impossible. Par ex : "Aucun salarié compatible avec ce créneau"
+- Améliorer l’explicabilité détaillée du solveur :
+  - exposer les raisons d’incompatibilité ressource / créneau
+  - étudier l’intégration de justifications typées via `ScoreExplanation`
 
 - Améliorer la gestion des contraintes dans le `ScoreExplanation` :
 Faire porter la mesure métier par la contrainte elle-même, au lieu d’essayer de la reconstruire après coup à partir du score :
@@ -599,3 +614,38 @@ Le détail de la conception est définie dans le document : `ScenarioResponseCon
 - solutionSummary
 - workMetrics (byRessource + global)
 - diagnostics
+
+## [2026-03-09] – Explicabilité solveur V2 (scoreBreakdown + diagnostics d’affectation)
+
+### Objectif
+Renforcer l’explicabilité de la réponse solveur sans ouvrir à ce stade un chantier complet autour de `ScoreExplanation`.
+
+### Évolutions réalisées
+- `PenaliteKey` devient la source de vérité de l’unité de restitution du `scoreBreakdown`.
+- La construction des `ScoreBreakdownItemDTO` est centralisée via une factory dédiée.
+- La résolution d’unité par `switch` dans `PlanningService` est supprimée au profit d’une logique pilotée par `PenaliteKey`.
+- Le bloc `diagnostics` est enrichi avec `assignmentDiagnostics`.
+- Chaque diagnostic d’affectation remonte :
+  - `creneauId`
+  - `date`
+  - `heureDebut`
+  - `heureFin`
+  - `activite`
+  - `status`
+  - `reasonCode`
+  - `message`
+- Les cas actuellement implémentés sont :
+  - `UNCOVERED` / `NO_RESOURCE_ASSIGNED` / `IMPOSSIBLE_TO_ASSIGN`
+
+### Effet sur le contrat de sortie
+Le contrat API expose désormais explicitement les créneaux non couverts, en complément de :
+- `planning` (`ressourceAffecteeId = A_AFFECTER`)
+- `solutionSummary.nbCreneauxNonAffectes`
+- `scoreBreakdown` (`METIER_SOFT_CRENEAU_NON_COUVERT`)
+
+### Validation observée sur SC-01
+- 5 créneaux générés
+- 1 créneau affecté
+- 4 créneaux non couverts
+- `assignmentDiagnostics.size() = 4`
+- cohérence avec `solutionSummary.nbCreneauxNonAffectes = 4`

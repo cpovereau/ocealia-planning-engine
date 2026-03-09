@@ -6,14 +6,15 @@ Ce document sert de **description du contenu du fichier `ScenarioResponse.schema
 
 ## Principe de conception
 
-La réponse du moteur est structurée en quatre blocs fonctionnels indépendants.
+La réponse du moteur est structurée en cinq blocs fonctionnels indépendants.
 
-| Bloc          | Rôle                                                                   |
-|---------------|------------------------------------------------------------------------|
-| solverResult	| explique comment le solveur évalue la solution                         |
-| planning      |	contient les décisions produites par le moteur                         |
-| workMetrics   |	décrit les conséquences du planning sur les ressources                 |
-| diagnostics   |	fournit des informations techniques utiles pour l’analyse et le debug  |
+| Bloc            | Rôle                                                                  |
+|-----------------|-----------------------------------------------------------------------|
+| solverResult    | explique comment le solveur évalue la solution                        |
+| planning        | contient les décisions produites par le moteur                        |
+| workMetrics     | décrit les conséquences du planning sur les ressources                |
+| solutionSummary | fournit une lecture synthétique et pilotable de la solution produite  |
+| diagnostics     | fournit des informations techniques utiles pour l’analyse et le debug |
 
 Cette séparation garantit que :
 - le moteur reste un moteur d’optimisation,
@@ -29,6 +30,7 @@ Il contient :
 - un détail agrégé des pénalités
 
 Exemple :
+```json
 "solverResult": {
   "status": "SOLVED",
   "score": {
@@ -37,6 +39,7 @@ Exemple :
   },
   "solverDurationMillis": 1850
 }
+```
 
 Le score comporte deux dimensions :
 
@@ -47,6 +50,27 @@ Le score comporte deux dimensions :
 
 Une solution valide doit toujours avoir : hard = 0
 
+### 1.1 scoreBreakdown — détail agrégé des pénalités
+
+Le bloc `solverResult.scoreBreakdown` expose les contributions agrégées des pénalités au score soft.
+
+Chaque entrée contient :
+- `penaliteKey` : identifiant métier de la pénalité
+- `unit` : unité de mesure de la pénalité
+- `quantity` : volume mesuré
+- `weightedImpact` : contribution finale au score
+
+Exemple :
+```json
+{
+  "penaliteKey": "METIER_SOFT_CRENEAU_NON_COUVERT",
+  "unit": "OCCURRENCE",
+  "quantity": 4.0,
+  "weightedImpact": -40000
+}
+```
+L’unité (unit) est portée par `penaliteKey`, afin de garantir une restitution stable et cohérente.
+
 ## 2 planning — Solution produite
 
 Ce bloc contient le planning résultant de la résolution.
@@ -55,6 +79,7 @@ Il correspond à la décision principale du moteur :
   quel salarié est affecté à quel créneau.
 
 Exemple :
+```json
 "planning": {
   "creneaux": [
     {
@@ -63,7 +88,7 @@ Exemple :
     }
   ]
 }
-
+```
 Dans le périmètre actuel du moteur, les caractéristiques temporelles des créneaux (date, heure de début, heure de fin, type) sont considérées comme des données d’entrée figées.
 Le moteur optimise uniquement leur affectation aux ressources.
 
@@ -80,12 +105,14 @@ Elles sont calculées après la résolution et permettent :
 - de préparer les analyses RH futures.
 
 Exemple :
+```json
 {
   "resourceId": "1041",
   "heuresTravaillees": 35.5,
   "heuresNuit": 6,
   "nbDimanchesTravailles": 1
 }
+```
 
 Les WorkMetrics :
 - ne modifient jamais le planning
@@ -105,6 +132,42 @@ Exemples :
 Ces informations sont particulièrement utiles :
 - en phase d’intégration
 - lors de l’analyse d’un scénario.
+
+### 4.1 assignmentDiagnostics — Diagnostics d’affectation
+
+Le bloc `diagnostics.assignmentDiagnostics` expose les créneaux dont l’affectation mérite une explication explicite côté API.
+
+À ce stade, le moteur expose les cas :
+- `status = UNCOVERED`
+- `reasonCode = NO_RESOURCE_ASSIGNED`
+- `status = VIRTUAL_ASSIGNED`
+- `reasonCode = POSTE_VIRTUEL_ASSIGNED`
+- `status = IMPOSSIBLE_TO_ASSIGN`
+- `reasonCode = NO_COMPATIBLE_RESOURCE`
+
+Chaque entrée contient :
+- `creneauId`
+- `date`
+- `heureDebut`
+- `heureFin`
+- `activite`
+- `status`
+- `reasonCode`
+- `message`
+
+Exemple :
+```json
+{
+  "creneauId": "SC01-2026-02-22-001",
+  "date": "2026-02-22",
+  "heureDebut": "22:00",
+  "heureFin": "06:00",
+  "activite": "travail",
+  "status": "UNCOVERED",
+  "reasonCode": "NO_RESOURCE_ASSIGNED",
+  "message": "Créneau non couvert par le solveur"
+}
+```
 
 ## 5 solutionSummary — Lecture synthétique de la solution
 

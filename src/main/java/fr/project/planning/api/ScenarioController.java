@@ -32,6 +32,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -182,6 +183,13 @@ public class ScenarioController {
         List<ScenarioAlertDTO> alerts = buildResult.alerts().stream()
             .map(a -> new ScenarioAlertDTO(a.code().name(), a.date(), a.message()))
             .toList();
+        
+        Set<String> posteVirtuelIds = request.getDataSet()
+        .getRessources()
+        .getPostesVirtuels()
+        .stream()
+        .map(Ressource::getId)
+        .collect(Collectors.toSet());
 
         return responseMapper.toResponse(
             request.getScenarioType(),
@@ -192,11 +200,11 @@ public class ScenarioController {
             params.getResourceRef().getId(),
             creneauxResolus,
             byId,
-            alerts
+            alerts,
+            posteVirtuelIds
         );
-
         }
-
+    
     // Endpoint pour télécharger le résultat de SC-01 en JSON
    @PostMapping(value = "/sc-01/solve/file", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ScenarioResponseDTO> solveSc01File(@RequestBody ScenarioRequestDTO request) {

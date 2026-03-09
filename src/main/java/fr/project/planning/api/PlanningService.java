@@ -5,7 +5,6 @@ import fr.project.planning.domain.contexte.PlanningContext;
 import fr.project.planning.domain.reglementaire.RegulatoryParameters;
 import fr.project.planning.domain.ressource.Ressource;
 import fr.project.planning.scenarios.dto.ScoreBreakdownItemDTO;
-import fr.project.planning.scenarios.dto.ScoreBreakdownUnit;
 import org.optaplanner.core.api.score.constraint.ConstraintMatch;
 import org.optaplanner.core.api.score.constraint.ConstraintMatchTotal;
 import fr.project.planning.domain.creneau.Creneau;
@@ -14,6 +13,8 @@ import fr.project.planning.solver.SolverLauncher;
 import org.optaplanner.core.api.solver.SolutionManager;
 import org.optaplanner.core.api.score.ScoreExplanation;
 import org.optaplanner.core.api.score.buildin.hardsoft.HardSoftScore;
+import fr.project.planning.scenarios.mapper.ScoreBreakdownFactory;
+import fr.project.planning.scoring.PenaliteKey;
 
 import org.springframework.stereotype.Service;
 
@@ -107,48 +108,48 @@ public class PlanningService {
     }
 
     private List<ScoreBreakdownItemDTO> buildScoreBreakdown(
-            ScoreExplanation<PlanningProblem, HardSoftScore> explanation
+        ScoreExplanation<PlanningProblem, HardSoftScore> explanation
     ) {
         List<ScoreBreakdownItemDTO> items = new ArrayList<>();
 
         for (ConstraintMatchTotal<HardSoftScore> total : explanation.getConstraintMatchTotalMap().values()) {
-            String penaliteKey = total.getConstraintName();
+
+            PenaliteKey key;
+
+            try {
+                key = PenaliteKey.valueOf(total.getConstraintName());
+            } catch (IllegalArgumentException e) {
+                log.warn("Unknown penaliteKey: {}", total.getConstraintName());
+                continue;
+            }
+
             Set<ConstraintMatch<HardSoftScore>> matches = total.getConstraintMatchSet();
 
-            ScoreBreakdownItemDTO item = new ScoreBreakdownItemDTO();
-            item.setPenaliteKey(penaliteKey);
-            item.setUnit(resolveUnit(penaliteKey).name());
-            item.setQuantity(resolveQuantity(penaliteKey, matches));
-            item.setWeightedImpact(total.getScore().softScore());
-
-            items.add(item);
+            items.add(
+                ScoreBreakdownFactory.item(
+                    key,
+                    resolveQuantity(key, matches),
+                    total.getScore().softScore()
+                )
+            );
         }
 
-    items.sort(Comparator.comparing(ScoreBreakdownItemDTO::getPenaliteKey));
-    return items;
-    }
-
-    private ScoreBreakdownUnit resolveUnit(String penaliteKey) {
-        return switch (penaliteKey) {
-            case "METIER_SOFT_CRENEAU_NON_COUVERT" -> ScoreBreakdownUnit.OCCURRENCE;
-            case "LEGAL_SOFT_DIMANCHES_TRAVAILLES_MAX" -> ScoreBreakdownUnit.JOUR;
-            case "LEGAL_SOFT_PENIBILITES_LEGALES_MINUTES" -> ScoreBreakdownUnit.MINUTE_PONDEREE;
-            default -> ScoreBreakdownUnit.UNKNOWN;
-        };
+        items.sort(Comparator.comparing(ScoreBreakdownItemDTO::getPenaliteKey));
+        return items;
     }
 
     private double resolveQuantity(
-        String penaliteKey,
+        PenaliteKey key,
         Set<ConstraintMatch<HardSoftScore>> matches
     ) {
-    return switch (penaliteKey) {
-        case "METIER_SOFT_CRENEAU_NON_COUVERT" ->
+    return switch (key) {
+        case METIER_SOFT_CRENEAU_NON_COUVERT ->
                 matches.size();
 
-        case "LEGAL_SOFT_DIMANCHES_TRAVAILLES_MAX" ->
+        case LEGAL_SOFT_DIMANCHES_TRAVAILLES_MAX ->
                 matches.size();
 
-        case "LEGAL_SOFT_PENIBILITES_LEGALES_MINUTES" ->
+        case LEGAL_SOFT_PENIBILITES_LEGALES_MINUTES ->
                 matches.stream()
                         .mapToInt(m -> Math.abs(m.getScore().softScore()))
                         .sum();
@@ -157,4 +158,4 @@ public class PlanningService {
                 0.0;
         };
     }
-}
+} 

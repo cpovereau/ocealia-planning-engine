@@ -16,7 +16,7 @@ import fr.project.planning.scenarios.dto.SolutionSummaryDTO;
 import fr.project.planning.scenarios.dto.ScenarioAlertDTO;
 import fr.project.planning.scenarios.dto.ScenarioPlanningDTO;
 import fr.project.planning.scenarios.dto.ScenarioResponseDTO;
-import fr.project.planning.scenarios.dto.SolverResultDTO;
+import fr.project.planning.scenarios.dto.SolverResultDTO;    
 
 import java.time.LocalDate;
 import java.time.Duration;
@@ -24,6 +24,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.ArrayList;
 import java.util.stream.Collectors;
 
@@ -38,11 +39,12 @@ public class ScenarioResponseMapper {
         String idSalarie,
         List<Creneau> creneauxResolus,
         Map<String, WorkMetrics> workMetricsById,
-        List<ScenarioAlertDTO> alerts
+        List<ScenarioAlertDTO> alerts,
+        Set<String> posteVirtuelIds
         ) {
         ScenarioPlanningDTO planning = buildPlanning(idSalarie, creneauxResolus);
         SolverResultDTO solverResult = buildSolverResult(solverStatus, hardScore, softScore, scoreBreakdown);
-        DiagnosticsDTO diagnostics = buildDiagnostics(alerts);
+        DiagnosticsDTO diagnostics = buildDiagnostics(alerts, creneauxResolus, posteVirtuelIds);
 
         return new ScenarioResponseDTO(
                 scenarioType,
@@ -67,12 +69,17 @@ public class ScenarioResponseMapper {
         );
     }
 
-    private DiagnosticsDTO buildDiagnostics(List<ScenarioAlertDTO> alerts) {
+    private DiagnosticsDTO buildDiagnostics(
+        List<ScenarioAlertDTO> alerts,
+        List<Creneau> creneauxResolus,
+        Set<String> posteVirtuelIds
+    ) {
         return new DiagnosticsDTO(
-                alerts,
-                new IgnoredCreneauxDTO(0, 0, 0)
+            alerts,
+            new IgnoredCreneauxDTO(0, 0, 0),
+            AssignmentDiagnosticsFactory.build(creneauxResolus, posteVirtuelIds)
         );
-    }
+   }    
 
     private ScenarioPlanningDTO buildPlanning(String idSalarie, List<Creneau> creneauxResolus) {
         Map<java.time.LocalDate, List<CreneauPlanningDTO>> grouped = creneauxResolus.stream()

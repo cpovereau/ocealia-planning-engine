@@ -706,6 +706,37 @@ Solveur interne
 
 Cette architecture garantit la stabilité du contrat API et l’indépendance du moteur vis-à-vis des frameworks d’optimisation utilisés.
 
+### Décision — `PenaliteKey` porte l’unité de restitution du breakdown
+
+Afin d’éviter une reconstruction fragile de l’explicabilité côté API, l’unité de chaque ligne de `scoreBreakdown` est désormais rattachée directement à `PenaliteKey`.
+
+Conséquences :
+- suppression des `switch` de résolution d’unité dans la couche de restitution ;
+- centralisation de la construction des items de breakdown ;
+- stabilité accrue du contrat API lors de l’ajout de nouvelles pénalités.
+
+Cette décision renforce le principe :
+Contraintes → mesurent  
+`ScoreWeights` → pondèrent  
+`scoreBreakdown` → restitue
+
+### Décision — les diagnostics d’affectation sont produits dans le mapper API
+
+Les diagnostics d’affectation (`assignmentDiagnostics`) ne relèvent ni :
+- du builder amont,
+- ni du solveur,
+- ni des WorkMetrics.
+
+Ils relèvent de la couche de restitution API (`ScenarioResponseMapper`), qui transforme la solution solveur en contrat HTTP lisible et stable.
+
+Cette décision permet :
+- de conserver l’indépendance du solveur ;
+- de ne pas polluer le modèle interne avec des objets d’explication API ;
+- d’exposer des diagnostics contextualisés par créneau sans dépendance directe à `ScoreExplanation`.
+
+À ce stade, le diagnostic implémenté est :
+- `UNCOVERED / NO_RESOURCE_ASSIGNED`
+
 ---
 
 ## 10. Éléments volontairement différés
