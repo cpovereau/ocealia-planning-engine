@@ -56,7 +56,7 @@ public class ScenarioController {
         return "OK";
     }
 
-    @PostMapping("/sc-01/solve")
+    @PostMapping("/sc01/solve")
     public ScenarioResponseDTO solveSc01(@RequestBody ScenarioRequestDTO request) {
 
         // 1️⃣ Validation scénario
@@ -206,7 +206,7 @@ public class ScenarioController {
         }
     
     // Endpoint pour télécharger le résultat de SC-01 en JSON
-   @PostMapping(value = "/sc-01/solve/file", produces = MediaType.APPLICATION_JSON_VALUE)
+   @PostMapping(value = "/sc01/solve/file", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ScenarioResponseDTO> solveSc01File(@RequestBody ScenarioRequestDTO request) {
 
         ScenarioResponseDTO response = solveSc01(request);

@@ -435,6 +435,44 @@ Documenter explicitement le rôle du builder permet d’éviter :
 - des incohérences entre contrat d’entrée et monde solveur,
 - un couplage trop fort entre API et OptaPlanner.
 
+## 12.1 Évolution du DataSet amont (V2)
+
+Le DataSet transmis par WebDev évolue afin de représenter plus fidèlement
+la structure métier du logiciel de planning.
+
+Le builder reste responsable de la transformation vers le modèle
+interne du moteur.
+
+### 12.1.1 Responsabilités du builder
+
+Le builder doit :
+- interpréter les axes organisationnels ;
+- transformer les besoins en créneaux élémentaires ;
+- injecter explicitement les paramètres réglementaires ;
+- préserver les identifiants métiers transmis.
+
+### 12.1.2 Distinction des types de données
+
+Trois catégories peuvent être transmises :
+
+**Besoins**
+décrivent un volume de travail à couvrir.
+
+**Affectations existantes**
+décrivent des créneaux déjà planifiés.
+
+**Indisponibilités**
+décrivent les périodes où une ressource ne peut être planifiée.
+
+### 12.1.3 Compatibilité V1
+
+Le builder continue d'accepter la structure V1 :
+dataSet
+├─ ressources
+└─ creneaux
+
+La structure V2 sera introduite progressivement.
+
 ---
 
 ## 13. Lien avec les autres documents

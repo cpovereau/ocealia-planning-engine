@@ -1,0 +1,94 @@
+{
+  "scenarioType": "SC-01",
+  "planningContext": {
+    "horizon": {
+      "dateDebut": "2026-05-11",
+      "dateFin": "2026-05-17"
+    },
+    "strategieScoring": "EXPLOITATION"
+  },
+
+  "scenarioParameters": {
+    "resourceRef": {
+      "kind": "SALARIE",
+      "id": "1041"
+    },
+    "dailyAmplitudeHours": 8.0,
+    "shiftStart": "08:00",
+    "shiftEndAlert": "17:00",
+
+    "lunchBreak": {
+      "start": "12:00",
+      "end": "13:00"
+    },
+
+    "workedDays": [
+      "MONDAY",
+      "TUESDAY",
+      "WEDNESDAY",
+      "THURSDAY",
+      "SUNDAY"
+    ],
+
+    "holidayDates": [
+      "2026-05-13"
+    ]
+  },
+
+  "dataSet": {
+    "ressources": {
+      "salaries": [
+        {
+          "id": "1041",
+          "type": "SALARIE",
+          "capaciteCible": 2400,
+          "activitesAutorisees": [
+            "TRAVAIL",
+            "REUNION",
+            "PREPARATION"
+          ],
+          "lieuxAutorises": [
+            "CASTRES"
+          ],
+          "postesComptablesCompatibles": [
+            "PC-100"
+          ]
+        },
+        {
+          "id": "1042",
+          "type": "SALARIE",
+          "capaciteCible": 2400,
+          "activitesAutorisees": [
+            "TRAVAIL",
+            "REUNION",
+            "PREPARATION"
+          ],
+          "lieuxAutorises": [
+            "CASTRES"
+          ],
+          "postesComptablesCompatibles": [
+            "PC-100"
+          ]
+        }
+      ],
+      "postesVirtuels": [
+        {
+          "id": "PV-001",
+          "type": "POTENTIEL",
+          "capaciteCible": 2400,
+          "activitesAutorisees": [
+            "TRAVAIL"
+          ],
+          "lieuxAutorises": [
+            "CASTRES"
+          ],
+          "postesComptablesCompatibles": [
+            "PC-100"
+          ]
+        }
+      ]
+    },
+
+    "creneaux": []
+  }
+}

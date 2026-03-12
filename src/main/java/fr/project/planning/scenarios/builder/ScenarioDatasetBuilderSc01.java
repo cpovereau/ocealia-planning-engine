@@ -6,6 +6,10 @@ import fr.project.planning.domain.creneau.TypeCreneau;
 import fr.project.planning.domain.creneau.TypePlageHoraire;
 import fr.project.planning.domain.ressource.Ressource;
 import fr.project.planning.domain.ressource.RessourceNonAffectee;
+import fr.project.planning.scenarios.dto.DataSetDTO;
+import fr.project.planning.scenarios.dto.ScenarioRequestDTO;
+import fr.project.planning.scenarios.dto.request.ResourceRefDTO;
+import fr.project.planning.scenarios.dto.request.Sc01ScenarioParametersDTO;
 
 import java.time.DayOfWeek;
 import java.time.Duration;
@@ -305,6 +309,67 @@ public class ScenarioDatasetBuilderSc01 {
         req.dailyAmplitudeMinutes = (int) Math.round(req.dailyAmplitudeHours * 60.0);
 
         if (req.holidayDates == null) req.holidayDates = Set.of();
+    }
+
+    // =========================
+    // API de construction à partir du DTO de requête (SC-01)
+    // =========================
+
+    public BuildResult buildFromScenarioRequest(ScenarioRequestDTO request) {
+
+        Objects.requireNonNull(request, "request");
+
+        Sc01ScenarioParametersDTO params = request.getScenarioParameters();
+
+        BuildRequest br = new BuildRequest();
+
+        br.dateDebut = request.getPlanningContext().getHorizon().getDateDebut();
+        br.dateFin = request.getPlanningContext().getHorizon().getDateFin();
+
+        br.ressource = resolveResource(
+                params.getResourceRef(),
+                request.getDataSet()
+        );
+
+        br.dailyAmplitudeHours = params.getDailyAmplitudeHours();
+        br.shiftStart = params.getShiftStart();
+        br.shiftEndAlert = params.getShiftEndAlert();
+
+        if (params.getLunchBreak() != null) {
+            br.lunchBreakStart = params.getLunchBreak().getStart();
+            br.lunchBreakEnd = params.getLunchBreak().getEnd();
+        }
+
+        br.workedDays = params.getWorkedDays();
+        br.holidayDates = params.getHolidayDates();
+
+        return build(br);
+    }
+
+    // Résolution de la ressource (salarié ou poste virtuel) à partir du ResourceRefDTO
+    private Ressource resolveResource(ResourceRefDTO ref, DataSetDTO dataSet) {
+
+        if (ref == null) {
+            throw new IllegalArgumentException("resourceRef requis");
+        }
+
+        if (dataSet == null) {
+            throw new IllegalArgumentException("dataSet requis");
+        }
+
+        if (dataSet.getRessources() == null) {
+            throw new IllegalArgumentException("dataSet.ressources requis");
+        }
+
+        return dataSet.getRessources()
+                .getSalaries()
+                .stream()
+                .filter(r -> r.getId().equals(ref.getId()))
+                .findFirst()
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "Ressource introuvable : " + ref.getId()
+                        ));
     }
 
     // =========================

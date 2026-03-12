@@ -81,16 +81,30 @@ Il correspond à la décision principale du moteur :
 Exemple :
 ```json
 "planning": {
-  "creneaux": [
+  "idSalarie": "1041",
+  "jours": [
     {
-      "id": "SC01-2026-02-23-001",
-      "ressourceAffecteeId": "1041"
+      "date": "2026-02-23",
+      "creneaux": [
+        {
+          "activite": "travail",
+          "heureDebut": "08:00",
+          "heureFin": "16:00",
+          "duree": "08:00",
+          "ressourceAffecteeId": "1041"
+        }
+      ]
     }
   ]
 }
 ```
 Dans le périmètre actuel du moteur, les caractéristiques temporelles des créneaux (date, heure de début, heure de fin, type) sont considérées comme des données d’entrée figées.
-Le moteur optimise uniquement leur affectation aux ressources.
+
+Le moteur optimise principalement leur affectation aux ressources.
+
+Cependant, certains champs structurels du dataset (ex. groupeBesoinId, blocJourId, ordreDansBloc) permettent au moteur de raisonner sur des ensembles de créneaux appartenant à un même besoin ou à un même bloc journalier.
+
+Ces champs ne modifient pas directement les décisions du solveur mais permettent de structurer les contraintes métier et les analyses associées.
 
 Cette décision relève du modèle actuel.
 D’autres scénarios futurs pourraient introduire des variables de décision supplémentaires, par exemple l’ajustement des horaires ou la génération dynamique de créneaux.

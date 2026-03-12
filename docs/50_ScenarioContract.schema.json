@@ -149,7 +149,20 @@
         "segmentNuit": {
           "type": "boolean",
           "description": "INDICATIF (non réglementaire). La vérité 'nuit' est calculée par intersection temporelle avec la plage de nuit de RegulatoryParameters."
-        }
+        },
+        "axesOrganisationnels": {
+          "type": "object",
+          "properties": {
+            "directionIds": { "type": "array", "items": { "type": "string" } },
+            "serviceIds": { "type": "array", "items": { "type": "string" } },
+            "lieuIds": { "type": "array", "items": { "type": "string" } },
+            "posteComptableIds": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "groupeBesoinId": { "type": "string" },
+        "blocJourId": { "type": "string" },
+        "ordreDansBloc": { "type": "integer" },
+        "estSegmentDePause": { "type": "boolean" }   
       }
     },
 
@@ -168,6 +181,28 @@
           "type": "array",
           "items": { "type": "string" },
           "description": "Liste des idActivitePlanning compatibles (ex: 10101...). Doit être cohérente avec 'codeActiviteId' des créneaux."
+        },
+        "axesOrganisationnels": { "$ref": "#/definitions/AxesOrganisationnels" },
+        "contratTravail": {
+          "type": "object",
+          "properties": {
+            "dateDebut": { "type": "string" },
+            "dateFin": { "type": ["string", "null"] },
+            "dureeMoyenneHeuresParJour": { "type": "number" }
+            }
+        },
+        "contraintesReglementaires": {
+          "type": "object",
+          "properties": {
+            "heuresMinimumParJour": { "type": "number" },
+            "heuresMaximumParJour": { "type": "number" },
+            "amplitudeJournaliereMaximum": { "type": "number" },
+            "reposQuotidienMinimum": { "type": "number" },
+            "heuresMinimumParSemaine": { "type": "number" },
+            "heuresMaximumParSemaine": { "type": "number" },
+            "nuitsMaximumParSemaine": { "type": "integer" },
+            "joursConsecutifsMaximum": { "type": "integer" }
+          }
         }
       }
     },

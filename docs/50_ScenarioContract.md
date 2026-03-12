@@ -76,6 +76,91 @@ Données métier normalisées :
 
 ---
 
+## 3.5 Évolution du DataSet amont (V2 progressive)
+
+Le `dataSet` constitue l’interface principale entre **WebDev** et le moteur de planification.
+
+La version initiale (V1) repose sur une structure simple :
+- `creneaux`
+- `ressources`
+- paramètres réglementaires
+
+Cette structure reste **le socle contractuel actuel**.
+
+Toutefois, afin de mieux représenter les données métier issues du logiciel de planning,
+une évolution progressive du DataSet est introduite.
+
+### Objectifs
+
+Permettre de représenter explicitement :
+
+- les **besoins de couverture** ;
+- les **affectations existantes** issues du planning ;
+- les **indisponibilités** des ressources ;
+- les **axes organisationnels** du logiciel métier.
+
+### Axes organisationnels supportés
+
+Le DataSet peut désormais porter les axes organisationnels suivants :
+
+- `direction`
+- `service`
+- `lieu`
+- `posteComptable`
+
+Ces axes peuvent être présents sur :
+
+- les ressources
+- les créneaux
+- les besoins
+
+### Données portées par la ressource
+
+Les ressources peuvent désormais transmettre :
+
+- un bloc `contratTravail`
+- un bloc `contraintesReglementaires`
+
+Ces informations proviennent directement du logiciel de planning.
+
+### Structuration des besoins
+
+Afin de préparer l'évolution vers une représentation explicite des besoins,
+les champs suivants peuvent être transmis sur les créneaux :
+
+- `groupeBesoinId`
+- `blocJourId`
+- `ordreDansBloc`
+- `estSegmentDePause`
+
+Ces champs permettent de reconstruire la logique métier d’un besoin
+sans modifier le modèle conceptuel du moteur.
+
+### Trajectoire d'évolution
+
+Deux niveaux sont définis :
+
+**V1 (actuelle)**
+
+dataSet
+├─ ressources
+└─ creneaux
+
+
+**V2 cible**
+
+dataSet
+├─ referentiels
+├─ ressources
+├─ besoins
+├─ affectationsExistantes
+└─ indisponibilites
+
+Cette évolution est progressive et n'affecte pas le fonctionnement
+des scénarios existants.
+
+---
+
 ## 4. Scénarios supportés (V1)
 
 ---

@@ -85,6 +85,14 @@ I --> J[Suivi développement]
 
 # 🔌 50 — Contrats API
 
+Le moteur de planification s’appuie sur trois contrats principaux :
+1. un contrat d’entrée décrivant le scénario à résoudre,
+2. un contrat technique décrivant la structure JSON utilisée par le moteur,
+3. un contrat de sortie décrivant la solution produite par le solveur.
+
+Ces contrats constituent l’interface officielle entre le logiciel de planning
+et le moteur de planification.
+
 | Document                            | Description                            |
 | ----------------------------------- | -------------------------------------- |
 | `50_SCENARIO_CONTRACT.md`           | Contrat fonctionnel d’entrée du moteur |

@@ -66,6 +66,33 @@ Ce document :
 
 ### B. En cours (fait partiellement)
 
+- Evolution du DataSet amont
+  Objectif : aligner le contrat d'entrée du moteur avec les structures réelles du logiciel de planning.
+
+     - ajout des axes organisationnels
+      - direction
+      - service
+      - lieu
+      - poste comptable
+
+    - ajout des données portées par la ressource
+      - contrat de travail
+      - contraintes réglementaires
+
+    - ajout des champs de structuration des besoins
+      - groupeBesoinId
+      - blocJourId
+      - ordreDansBloc
+      - estSegmentDePause
+
+    - introduction d’un jeu de test technique de référence
+      permettant de tester l'alimentation WebDev → moteur.
+
+  Stratégie :
+    1. évolution compatible du schéma V1
+    2. adaptation du builder
+    3. introduction progressive de la structure V2
+
 - Contrôles combinatoires (repos hebdo, dimanches max, etc.) ✅ côté contraintes
     - WorkMetrics “séquences observées” désormais calculées côté moteur
     - exposition complète des métriques encore à structurer
@@ -375,7 +402,7 @@ Le scoring V2 est **considéré comme stabilisé**.
 ## ✅ [24/02/2026] — SC-01 — Génération de planning
 
 ### État
-SC-01 est désormais exposé via : `POST /scenarios/sc-01/solve`
+SC-01 est désormais exposé via : `POST /scenarios/sc01/solve`
 
 ### Implémentation
 Le scénario :

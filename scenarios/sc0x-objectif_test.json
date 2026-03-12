@@ -1,0 +1,260 @@
+{
+  "scenarioType": "SC-03",
+  "planningContext": {
+    "horizon": {
+      "dateDebut": "2026-05-11",
+      "dateFin": "2026-05-17"
+    },
+    "strategieScoring": "EXPLOITATION"
+  },
+  "scenarioParameters": {
+    "prioriteCouverture": "LIEU"
+  },
+  "dataSet": {
+    "referentiels": {
+      "directions": [
+        { "id": "DIR-01", "libelle": "Direction médicale" }
+      ],
+      "services": [
+        { "id": "SRV-01", "libelle": "Urgences" }
+      ],
+      "lieux": [
+        { "id": "LIEU-CASTRES-01", "libelle": "Urgences Castres" }
+      ],
+      "postesComptables": [
+        { "id": "PC-100", "libelle": "Personnel soignant" }
+      ],
+      "activites": [
+        { "id": "ACT-SOIN", "codeActiviteId": "SOIN", "libelle": "Soins" }
+      ]
+    },
+    "reglesGlobales": {
+      "joursFeries": ["2026-05-13"],
+      "plageNuit": {
+        "heureDebut": "21:00",
+        "heureFin": "06:00"
+      }
+    },
+    "ressources": {
+      "salaries": [
+        {
+          "id": "SAL-001",
+          "statut": "ACTIF",
+          "axesOrganisationnels": {
+            "directionIds": ["DIR-01"],
+            "serviceIds": ["SRV-01"],
+            "lieuIds": ["LIEU-CASTRES-01"],
+            "posteComptableIds": ["PC-100"]
+          },
+          "activitesCompatibles": ["ACT-SOIN"],
+          "contratTravail": {
+            "dateDebut": "2025-01-01",
+            "dateFin": null,
+            "dureeMoyenneHeuresParJour": 7.0
+          },
+          "contraintesReglementaires": {
+            "heuresMinimumParJour": 4.0,
+            "heuresMaximumParJour": 10.0,
+            "amplitudeJournaliereMaximum": 12.0,
+            "reposQuotidienMinimum": 11.0,
+            "heuresMinimumParSemaine": 28.0,
+            "heuresMaximumParSemaine": 48.0,
+            "nuitsMaximumParSemaine": 2,
+            "joursConsecutifsMaximum": 6
+          }
+        },
+        {
+          "id": "SAL-002",
+          "statut": "ACTIF",
+          "axesOrganisationnels": {
+            "directionIds": ["DIR-01"],
+            "serviceIds": ["SRV-01"],
+            "lieuIds": ["LIEU-CASTRES-01"],
+            "posteComptableIds": ["PC-100"]
+          },
+          "activitesCompatibles": ["ACT-SOIN"],
+          "contratTravail": {
+            "dateDebut": "2024-06-01",
+            "dateFin": null,
+            "dureeMoyenneHeuresParJour": 7.0
+          },
+          "contraintesReglementaires": {
+            "heuresMinimumParJour": 4.0,
+            "heuresMaximumParJour": 10.0,
+            "amplitudeJournaliereMaximum": 12.0,
+            "reposQuotidienMinimum": 11.0,
+            "heuresMinimumParSemaine": 28.0,
+            "heuresMaximumParSemaine": 48.0,
+            "nuitsMaximumParSemaine": 2,
+            "joursConsecutifsMaximum": 6
+          }
+        }
+      ],
+      "postesVirtuels": [
+        {
+          "id": "PV-001",
+          "type": "POTENTIEL",
+          "capaciteCible": 2400,
+          "axesOrganisationnels": {
+            "directionIds": ["DIR-01"],
+            "serviceIds": ["SRV-01"],
+            "lieuIds": ["LIEU-CASTRES-01"],
+            "posteComptableIds": ["PC-100"]
+          },
+          "activitesAutorisees": ["ACT-SOIN"]
+        }
+      ]
+    },
+    "besoins": [
+      {
+        "id": "BES-001",
+        "groupeBesoinId": "GB-2026-05-11-LIEU01",
+        "blocJourId": "BJ-2026-05-11-JOUR",
+        "ordreDansBloc": 1,
+        "estSegmentDePause": false,
+        "date": "2026-05-11",
+        "heureDebut": "08:00",
+        "heureFin": "16:00",
+        "quantiteRessourcesDemandee": 1,
+        "codeActiviteId": "SOIN",
+        "axesOrganisationnels": {
+          "directionIds": ["DIR-01"],
+          "serviceIds": ["SRV-01"],
+          "lieuIds": ["LIEU-CASTRES-01"],
+          "posteComptableIds": ["PC-100"]
+        },
+        "priorite": 1
+      },
+      {
+        "id": "BES-002",
+        "groupeBesoinId": "GB-2026-05-12-LIEU01",
+        "blocJourId": "BJ-2026-05-12-SOIREE",
+        "ordreDansBloc": 1,
+        "estSegmentDePause": false,
+        "date": "2026-05-12",
+        "heureDebut": "18:00",
+        "heureFin": "23:00",
+        "quantiteRessourcesDemandee": 1,
+        "codeActiviteId": "SOIN",
+        "axesOrganisationnels": {
+          "directionIds": ["DIR-01"],
+          "serviceIds": ["SRV-01"],
+          "lieuIds": ["LIEU-CASTRES-01"],
+          "posteComptableIds": ["PC-100"]
+        },
+        "priorite": 1
+      },
+      {
+        "id": "BES-003",
+        "groupeBesoinId": "GB-2026-05-13-LIEU01",
+        "blocJourId": "BJ-2026-05-13-JOUR",
+        "ordreDansBloc": 1,
+        "estSegmentDePause": false,
+        "date": "2026-05-13",
+        "heureDebut": "08:00",
+        "heureFin": "16:00",
+        "quantiteRessourcesDemandee": 1,
+        "codeActiviteId": "SOIN",
+        "axesOrganisationnels": {
+          "directionIds": ["DIR-01"],
+          "serviceIds": ["SRV-01"],
+          "lieuIds": ["LIEU-CASTRES-01"],
+          "posteComptableIds": ["PC-100"]
+        },
+        "priorite": 1
+      },
+      {
+        "id": "BES-004",
+        "groupeBesoinId": "GB-2026-05-14-LIEU01",
+        "blocJourId": "BJ-2026-05-14-JOUR",
+        "ordreDansBloc": 1,
+        "estSegmentDePause": false,
+        "date": "2026-05-14",
+        "heureDebut": "08:00",
+        "heureFin": "16:00",
+        "quantiteRessourcesDemandee": 1,
+        "codeActiviteId": "SOIN",
+        "axesOrganisationnels": {
+          "directionIds": ["DIR-01"],
+          "serviceIds": ["SRV-01"],
+          "lieuIds": ["LIEU-CASTRES-01"],
+          "posteComptableIds": ["PC-100"]
+        },
+        "priorite": 1
+      },
+      {
+        "id": "BES-005",
+        "groupeBesoinId": "GB-2026-05-17-LIEU01",
+        "blocJourId": "BJ-2026-05-17-JOUR",
+        "ordreDansBloc": 1,
+        "estSegmentDePause": false,
+        "date": "2026-05-17",
+        "heureDebut": "08:00",
+        "heureFin": "16:00",
+        "quantiteRessourcesDemandee": 1,
+        "codeActiviteId": "SOIN",
+        "axesOrganisationnels": {
+          "directionIds": ["DIR-01"],
+          "serviceIds": ["SRV-01"],
+          "lieuIds": ["LIEU-CASTRES-01"],
+          "posteComptableIds": ["PC-100"]
+        },
+        "priorite": 1
+      }
+    ],
+    "affectationsExistantes": [
+      {
+        "id": "AFF-001",
+        "ressourceId": "SAL-001",
+        "date": "2026-05-11",
+        "heureDebut": "08:00",
+        "heureFin": "16:00",
+        "codeActiviteId": "SOIN",
+        "axesOrganisationnels": {
+          "directionIds": ["DIR-01"],
+          "serviceIds": ["SRV-01"],
+          "lieuIds": ["LIEU-CASTRES-01"],
+          "posteComptableIds": ["PC-100"]
+        },
+        "nature": "EXISTANT",
+        "fige": true
+      },
+      {
+        "id": "AFF-002",
+        "ressourceId": "SAL-002",
+        "date": "2026-05-14",
+        "heureDebut": "08:00",
+        "heureFin": "16:00",
+        "codeActiviteId": "SOIN",
+        "axesOrganisationnels": {
+          "directionIds": ["DIR-01"],
+          "serviceIds": ["SRV-01"],
+          "lieuIds": ["LIEU-CASTRES-01"],
+          "posteComptableIds": ["PC-100"]
+        },
+        "nature": "EXISTANT",
+        "fige": true
+      }
+    ],
+    "indisponibilites": [
+      {
+        "id": "IND-001",
+        "ressourceId": "SAL-001",
+        "dateDebut": "2026-05-16",
+        "dateFin": "2026-05-16",
+        "heureDebut": "00:00",
+        "heureFin": "23:59",
+        "motif": "REPOS"
+      },
+      {
+        "id": "IND-002",
+        "ressourceId": "SAL-002",
+        "dateDebut": "2026-05-15",
+        "dateFin": "2026-05-16",
+        "heureDebut": "00:00",
+        "heureFin": "23:59",
+        "motif": "REPOS"
+      }
+    ]
+  }
+}

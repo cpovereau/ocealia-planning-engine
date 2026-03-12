@@ -35,7 +35,7 @@
 
 * HTTP REST
 * `POST /scenarios/{scenarioCode}/solve`
-ex : POST /scenarios/sc-01/solve
+ex : POST /scenarios/sc01/solve
 
 ### 2.2 Format
 
