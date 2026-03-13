@@ -193,7 +193,7 @@ public final class TestPlanningRequestFactory {
 
         LocalTime finPrevue = SC01_SHIFT_START.plusMinutes((long) (SC01_DAILY_AMPLITUDE_HOURS * 60.0));
 
-        // workedDays du JSON: MON, TUE, WED, THU, SUN + holidayDates = 2026-05-13
+        // workedDays du JSON: MONDAY, TUESDAY, WEDNESDAY, THURSDAY, SUNDAY + holidayDates = 2026-05-13
         List<LocalDate> joursTravailles = List.of(
                 LocalDate.of(2026, 5, 11),
                 LocalDate.of(2026, 5, 12),

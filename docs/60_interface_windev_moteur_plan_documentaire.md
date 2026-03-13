@@ -18,9 +18,15 @@ Ce document est volontairement **évolutif**.
 
 ---
 
-## 1 — Journal d’avancement
+## 1 — Journal des développements à faire et réalisés
 
-Ce bloc sert à tracer les évolutions validées.
+Ce bloc sert à tracer : les améliorations à produire de l'interface d'éntrée ainsi que les évolutions validées.
+
+### TODO
+
+- finaliser la complétude du contrat d'entrée
+- supprimer la tolérance aux champs inconnus dès que le contrat d’entrée sera complètement formalisé et que les DTO de transport seront stabilisés
+
 
 ### 2026-03-12
 
@@ -254,6 +260,42 @@ besoins par lieu
 besoins par activité
 besoins par période
 ```
+
+---
+
+### 5.5 Politique actuelle sur les champs inconnus
+
+#### Décision provisoire
+
+À ce stade du projet, les champs inconnus du JSON d’entrée sont **tolérés** à la désérialisation.
+
+Cette tolérance est volontaire et transitoire.
+Elle permet de ne pas bloquer l’intégration WinDev pendant la phase de construction et d’alignement du contrat d’entrée.
+
+#### Justification
+
+Le contrat d’entrée n’est pas encore complètement stabilisé :
+- certains DTO ont été introduits progressivement,
+- la séparation entre transport API et modèle domaine n’est pas encore totalement finalisée,
+- la structure JSON documentée et la structure effectivement testée ne sont pas encore parfaitement alignées.
+
+Dans ce contexte, un rejet strict des champs inconnus provoquerait des blocages inutiles pendant le développement.
+
+#### Cible à terme
+
+Lorsque le contrat d’entrée sera complètement formalisé et que les DTO de transport seront figés, la tolérance devra être supprimée.
+
+La cible est alors :
+
+- rejet explicite de tout champ inconnu ;
+- protection forte du contrat d’interface ;
+- détection immédiate des écarts entre WinDev et moteur.
+
+#### Règle d’intégration
+
+En conséquence :
+- **phase actuelle** : champs inconnus tolérés ;
+- **phase de stabilisation contractuelle** : champs inconnus rejetés.
 
 ---
 
@@ -637,6 +679,42 @@ Principaux blocs :
 
 ---
 
+### 8.2.1 Normalisation du champ `workedDays` (SC-01)
+
+Pour le scénario `SC-01`, le champ `workedDays` doit être transmis au format **Java `DayOfWeek` complet** :
+
+- `MONDAY`
+- `TUESDAY`
+- `WEDNESDAY`
+- `THURSDAY`
+- `FRIDAY`
+- `SATURDAY`
+- `SUNDAY`
+
+#### Règle de compatibilité V1
+
+Les formats abrégés suivants ne doivent **pas** être utilisés :
+
+- `MON`
+- `TUE`
+- `WED`
+- `THU`
+- `FRI`
+- `SAT`
+- `SUN`
+
+#### Décision d’intégration
+
+Le logiciel WinDev doit construire ses requêtes SC-01 en utilisant exclusivement le format long `MONDAY…SUNDAY`.
+
+Cette règle est normative pour éviter toute divergence entre :
+- le contrat fonctionnel,
+- les DTO Java,
+- les exemples JSON,
+- et l’implémentation côté WinDev.
+
+---
+
 ## 8.3 Réponse
 
 La réponse est un JSON contenant le résultat complet de la planification.
@@ -737,7 +815,8 @@ Dans cet exemple :
     },
     "dailyAmplitudeHours": 8.0,
     "shiftStart": "08:00",
-    "shiftEndAlert": "17:00"
+    "shiftEndAlert": "17:00",
+    "workedDays": ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"]
   },
   "dataSet": {
     "ressources": {
