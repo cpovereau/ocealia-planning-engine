@@ -34,6 +34,13 @@ public enum PenaliteKey {
     LEGAL_SOFT_PENIBILITES_LEGALES_MINUTES(ScoreBreakdownUnit.MINUTE_PONDEREE),
 
     // =========================
+    // Contraintes métier (HARD)
+    // =========================
+
+    METIER_HARD_JOUR_FERIE_REFUSE(ScoreBreakdownUnit.OCCURRENCE),
+    METIER_HARD_INDISPONIBILITE(ScoreBreakdownUnit.OCCURRENCE),
+
+    // =========================
     // Contraintes légales (HARD)
     // =========================
 

@@ -2,6 +2,7 @@ package fr.project.planning.api;
 
 import fr.project.planning.domain.contexte.PlanningContext;
 import fr.project.planning.domain.reglementaire.RegulatoryParameters;
+import fr.project.planning.domain.ressource.Indisponibilite;
 import fr.project.planning.domain.ressource.Ressource;
 import fr.project.planning.domain.creneau.Creneau;
 import fr.project.planning.domain.metier.ReferentielComptabiliteActivite;
@@ -17,6 +18,13 @@ public final class PlanningRequest {
     private final List<Ressource> ressources;
     private final List<Creneau> creneaux;
 
+    /**
+     * Phase 3 : indisponibilités transportées et mappées.
+     * Exploitées par le solveur à partir de Phase 4.
+     */
+    private final List<Indisponibilite> indisponibilites;
+
+    /** Constructeur Phase 1/2 — sans indisponibilités (rétrocompatibilité). */
     public PlanningRequest(
             PlanningContext planningContext,
             RegulatoryParameters regulatoryParameters,
@@ -24,30 +32,31 @@ public final class PlanningRequest {
             List<Ressource> ressources,
             List<Creneau> creneaux
     ) {
+        this(planningContext, regulatoryParameters, referentielComptabiliteActivite,
+                ressources, creneaux, List.of());
+    }
+
+    /** Constructeur Phase 3+ — avec indisponibilités. */
+    public PlanningRequest(
+            PlanningContext planningContext,
+            RegulatoryParameters regulatoryParameters,
+            ReferentielComptabiliteActivite referentielComptabiliteActivite,
+            List<Ressource> ressources,
+            List<Creneau> creneaux,
+            List<Indisponibilite> indisponibilites
+    ) {
         this.planningContext = Objects.requireNonNull(planningContext);
         this.regulatoryParameters = Objects.requireNonNull(regulatoryParameters);
         this.referentielComptabiliteActivite = Objects.requireNonNull(referentielComptabiliteActivite);
         this.ressources = List.copyOf(Objects.requireNonNull(ressources));
         this.creneaux = List.copyOf(Objects.requireNonNull(creneaux));
+        this.indisponibilites = List.copyOf(Objects.requireNonNull(indisponibilites));
     }
 
-    public PlanningContext planningContext() {
-        return planningContext;
-    }
-
-    public RegulatoryParameters regulatoryParameters() {
-        return regulatoryParameters;
-    }
-
-    public ReferentielComptabiliteActivite referentielComptabiliteActivite() {
-        return referentielComptabiliteActivite;
-    }
-
-    public List<Ressource> ressources() {
-        return ressources;
-    }
-
-    public List<Creneau> creneaux() {
-        return creneaux;
-    }
+    public PlanningContext planningContext() { return planningContext; }
+    public RegulatoryParameters regulatoryParameters() { return regulatoryParameters; }
+    public ReferentielComptabiliteActivite referentielComptabiliteActivite() { return referentielComptabiliteActivite; }
+    public List<Ressource> ressources() { return ressources; }
+    public List<Creneau> creneaux() { return creneaux; }
+    public List<Indisponibilite> indisponibilites() { return indisponibilites; }
 }

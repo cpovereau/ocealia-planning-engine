@@ -13,7 +13,7 @@ import org.springframework.http.converter.json.MappingJackson2HttpMessageConvert
 public class TestSpringConfig {
 
     @Bean
-    MappingJackson2HttpMessageConverter mappingJackson2HttpMessageConverter(ObjectMapper objectMapper) {
+    MappingJackson2HttpMessageConverter mappingJackson2HttpMessageConverter(@org.springframework.lang.NonNull ObjectMapper objectMapper) {
         return new MappingJackson2HttpMessageConverter(objectMapper);
     }
 }

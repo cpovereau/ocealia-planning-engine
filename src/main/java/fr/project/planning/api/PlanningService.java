@@ -57,7 +57,8 @@ public class PlanningService {
                 regulatory,
                 referentiel,
                 ressources,
-                creneaux
+                creneaux,
+                request.indisponibilites()
         );
 
         // ---------------------------------------------------------------------
@@ -82,7 +83,8 @@ public class PlanningService {
             problem.getRegulatoryParameters(),
             problem.getReferentielComptabiliteActivite(),
             problem.getRessources(),
-            problem.getCreneaux()
+            problem.getCreneaux(),
+            problem.getIndisponibilites()
         );
 
         // 3) Forcer l'affectation

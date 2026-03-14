@@ -112,6 +112,110 @@ Ce document :
   - constitution d’un entrepôt des codes d’activités et identifiants associés utilisés par le moteur lors de la résolution ;
   - intégration des paramètres réglementaires applicables aux ressources nécessaires au calcul des contraintes légales.
 
+- Sécurisation de la migration du contrat d’entrée
+
+#### Objectif
+
+Éviter le **faux sentiment de couverture fonctionnelle** pendant l’enrichissement progressif du `dataSet`.
+
+Pendant la migration, certains champs peuvent :
+
+* être **transportés dans le JSON**,
+* être **désérialisés côté DTO**,
+* être **mappés partiellement vers le domaine**,
+* mais **ne pas encore être exploités** par le solveur, le scoring ou les diagnostics.
+
+Sans suivi explicite, il devient difficile de savoir si un champ est réellement pris en compte par le moteur ou simplement transporté pour une phase future.
+
+---
+
+#### Principe
+
+Chaque champ ou bloc enrichi du contrat d’entrée doit être qualifié selon son **niveau réel d’exploitation**.
+
+Niveaux possibles :
+
+| Niveau               | Signification                                        |
+| -------------------- | ---------------------------------------------------- |
+| Transporté           | Présent dans le JSON et désérialisé dans les DTO     |
+| Validé               | Contrôlé par le controller ou une validation dédiée  |
+| Mappé domaine        | Converti vers un objet métier                        |
+| Exploité solveur     | Utilisé par au moins une contrainte du solveur       |
+| Exploité scoring     | Influence le score ou une pénalité                   |
+| Exploité diagnostics | Utilisé pour produire des diagnostics ou alertes     |
+| Exploité WorkMetrics | Impact visible dans les métriques calculées          |
+| Testé                | Couvert par au moins un test prouvant l’exploitation |
+
+Un champ est considéré **fonctionnellement actif** uniquement lorsqu’il atteint les niveaux :
+
+```
+Transporté → Mappé domaine → Exploité solveur/scoring/diagnostics
+```
+
+---
+
+#### Matrice d’exploitation des champs
+
+Une **matrice de suivi dédiée** est maintenue dans la documentation technique.
+
+Cette matrice permet de tracer pour chaque bloc :
+
+* statut réel d’exploitation
+* éventuelles redondances temporaires
+* phase cible d’activation
+
+Exemples de blocs suivis :
+
+* `dataSet.referentiels`
+* `dataSet.indisponibilites`
+* `ressources.salaries.axesOrganisationnels`
+* `ressources.salaries.contraintesReglementaires`
+* `ressources.salaries.travailDeNuit`
+* `ressources.salaries.travailleJourFerie`
+* `creneaux.axesOrganisationnels`
+* `creneaux.groupeBesoinId`
+* `creneaux.blocJourId`
+
+---
+
+#### Redondances temporaires connues
+
+Certaines redondances sont tolérées pendant la migration mais doivent être tracées.
+
+Exemples :
+
+| Champ            | Redondance potentielle         | Cible à terme           |
+| ---------------- | ------------------------------ | ----------------------- |
+| `activite`       | `codeActiviteId`               | référentiel d’activités |
+| `sitesAutorises` | `axesOrganisationnels.lieuIds` | axes organisationnels   |
+| `duree`          | recalculable via horaires      | durée dérivée           |
+
+Ces redondances seront supprimées lorsque le moteur utilisera pleinement les structures enrichies.
+
+---
+
+#### Plan d’action
+
+1. Inventorier les champs enrichis introduits par la migration.
+2. Qualifier leur statut réel dans la matrice d’exploitation.
+3. Identifier les redondances temporaires et leur cible de suppression.
+4. Associer chaque champ critique à **au moins un test de preuve d’exploitation**.
+5. Maintenir l’alignement avec le **dataset de référence SC‑03**.
+
+---
+
+#### Critère de stabilisation
+
+La migration du contrat d’entrée sera considérée comme stabilisée lorsque :
+
+* tous les champs critiques auront un statut clair dans la matrice,
+* les champs réellement utilisés seront couverts par des tests,
+* les redondances temporaires seront documentées ou supprimées.
+
+Ce suivi permet de garantir que l’enrichissement du `dataSet` reste **maîtrisé, traçable et vérifiable** tout au long de l’évolution du moteur.
+
+---
+
 - Améliorer l’explicabilité détaillée du solveur :
   - exposer les raisons d’incompatibilité ressource / créneau
   - étudier l’intégration de justifications typées via `ScoreExplanation`
