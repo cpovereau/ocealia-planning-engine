@@ -17,6 +17,7 @@ import fr.project.planning.constraints.legales.ReposHebdomadaireGlissant;
 import fr.project.planning.constraints.legales.DimanchesTravaillesMax;
 
 import fr.project.planning.constraints.metier.DetteReposSurReposHebdomadaire;
+import fr.project.planning.constraints.metier.NuitSalarieNonNuit;
 
 /**
  * ConstraintProviderImpl
@@ -72,6 +73,7 @@ public class ConstraintProviderImpl implements ConstraintProvider {
 
             CreneauNonAffecte.creneauNonAffecte(factory),
             AffectationPosteVirtuel.affectationPosteVirtuel(factory),
+            NuitSalarieNonNuit.nuitSalarieNonNuit(factory),
             PenibilitesLegalesMinutes.penaliser(factory),
             DetteReposSurReposHebdomadaire.penaliser(factory),
 

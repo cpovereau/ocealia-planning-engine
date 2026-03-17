@@ -206,6 +206,7 @@ public class ScenarioResponseMapper {
                         dto.setNbDimanchesTravailles(wm.getNbDimanchesTravailles());
                         dto.setMaxJoursConsecutifsObservees(wm.getMaxJoursConsecutifsObservees());
                         dto.setMaxNuitsConsecutivesObservees(wm.getMaxNuitsConsecutivesObservees());
+                        dto.setNbCreneauxNuitNonNuit(wm.getNbCreneauxNuitNonNuit());
 
                         byRessource.add(dto);
         }

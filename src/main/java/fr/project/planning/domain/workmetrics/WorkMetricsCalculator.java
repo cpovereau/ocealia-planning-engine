@@ -2,10 +2,12 @@ package fr.project.planning.domain.workmetrics;
 
 import fr.project.planning.domain.contexte.HorizonTemporel;
 import fr.project.planning.domain.creneau.Creneau;
+import fr.project.planning.domain.creneau.TypePlageHoraire;
 import fr.project.planning.domain.metier.ComptabiliteActivite;
 import fr.project.planning.domain.metier.ReferentielComptabiliteActivite;
 import fr.project.planning.domain.reglementaire.RegulatoryParameters;
 import fr.project.planning.domain.ressource.Ressource;
+import fr.project.planning.domain.ressource.SalarieReel;
 import fr.project.planning.solution.PlanningProblem;
 import fr.project.planning.time.TimeBreakdown;
 import fr.project.planning.time.TimeBreakdownCalculator;
@@ -149,6 +151,17 @@ public class WorkMetricsCalculator {
                 rhdParRessourceId
                         .computeIfAbsent(ressourceId, x -> new HashSet<>())
                         .add(c.getDate());
+            }
+
+            /*
+             * Phase 8 — inadéquation nuit :
+             * créneau de nuit affecté à un salarié non déclaré travailleur de nuit.
+             */
+            if (compteDansCharge
+                    && c.getTypePlageHoraire() == TypePlageHoraire.NUIT
+                    && r instanceof SalarieReel sr
+                    && !sr.estTravailleurDeNuit()) {
+                wm.incNuitNonNuit();
             }
         }
 

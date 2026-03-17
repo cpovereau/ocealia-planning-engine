@@ -29,6 +29,80 @@ H --> I[ScenarioResponseContract]
 
 I --> J[Suivi développement]
 ```
+---
+
+# Rôle des familles documentaires
+
+La documentation du moteur de planification est structurée en plusieurs familles
+de documents ayant chacune un rôle précis.
+
+Cette séparation vise à éviter les confusions entre :
+- règles métier
+- décisions d’architecture
+- état du développement
+- historique du projet.
+
+---
+
+## Série 20 — Décisions d’architecture
+
+Les documents de la série **20** décrivent les **choix de conception
+structurants du moteur**.
+
+Ils contiennent :
+- les invariants d’architecture
+- les conventions techniques
+- les décisions structurantes
+- les règles de séparation des responsabilités
+
+Ces documents font autorité pour l’architecture du moteur.
+
+Ils ne contiennent jamais :
+
+- d’historique de développement
+- d’état d’avancement
+- de roadmap.
+
+---
+
+## Série 40 — Référentiel fonctionnel du moteur
+
+Les documents de la série **40** décrivent les **concepts métier
+et la logique fonctionnelle du moteur**.
+
+Ils définissent notamment :
+- les WorkMetrics
+- la stratégie de scoring
+- les indicateurs métier
+- les principes d’évaluation d’un planning.
+
+Ces documents servent de référence pour l’implémentation
+des règles dans le moteur.
+
+---
+
+## Série 90 — Pilotage du développement
+
+Les documents de la série **90** décrivent :
+- l’état réel du moteur
+- les capacités implémentées
+- les fonctionnalités manquantes
+- les jalons de développement.
+
+Ils ne redéfinissent jamais les règles métier ni l’architecture.
+
+Ils doivent rester alignés avec le code.
+
+---
+
+## Série 91 — Journal de développement
+
+Les documents de la série **91** conservent la mémoire du projet :
+- étapes de développement
+- validations techniques
+- décisions prises pendant l’implémentation.
+
+Ils ne constituent pas la source de vérité actuelle du moteur.
 
 ---
 
@@ -59,6 +133,9 @@ I --> J[Suivi développement]
 | `20_DATASET_BUILDER.md`                  | Construction du monde solveur à partir du contrat scénario |
 | `20_PLANNING_CONTEXT.md`                 | Contexte de résolution transmis au moteur                  |
 | `20_HORIZON_TEMPOREL_REGLEMENTAIRE.md`   | Cadre temporel et paramètres réglementaires                |
+| `20_MIGRATION_DATASET_ENTREE.md`         | Evolution du dataset d'entrée                              |
+
+Les document '20_' donnent les principes er invariants de l'information.
 
 ---
 
@@ -83,7 +160,7 @@ I --> J[Suivi développement]
 
 ---
 
-# 🔌 50 — Contrats API
+# 🔌 50 — Interface moteur & contrats d’échange
 
 Le moteur de planification s’appuie sur trois contrats principaux :
 1. un contrat d’entrée décrivant le scénario à résoudre,
@@ -93,13 +170,14 @@ Le moteur de planification s’appuie sur trois contrats principaux :
 Ces contrats constituent l’interface officielle entre le logiciel de planning
 et le moteur de planification.
 
-| Document                            | Description                            |
-| ----------------------------------- | -------------------------------------- |
-| `50_SCENARIO_CONTRACT.md`           | Contrat fonctionnel d’entrée du moteur |
-| `50_SCENARIO_TECHNICAL_CONTRACT.md` | Spécification technique du contrat     |
-| `50_SCENARIO_RESPONSE_CONTRACT.md`  | Contrat de sortie du moteur            |
-| `50_SCENARIO_CONTRACT_SCHEMA.json`  | Schéma JSON du contrat d’entrée        |
-| `50_SCENARIO_RESPONSE_SCHEMA.json`  | Schéma JSON de la réponse              |
+| Document                            | Description                                                                          |
+| ----------------------------------- | ------------------------------------------------------------------------------------ |
+| `50_SCENARIO_CONTRACT.md`           | Contrat fonctionnel d’entrée du moteur                                               |
+| `50_SCENARIO_TECHNICAL_CONTRACT.md` | Spécification technique du contrat                                                   |
+| `50_SCENARIO_RESPONSE_CONTRACT.md`  | Contrat de sortie du moteur                                                          |
+| `50_SCENARIO_CONTRACT_SCHEMA.json`  | Schéma JSON du contrat d’entrée                                                      |
+| `50_SCENARIO_RESPONSE_SCHEMA.json`  | Schéma JSON de la réponse                                                            |
+| `50_INTERFACE_WINDEV_MOTEUR.json`   | Interface d'échange entre l'application et le moteur (entrée, sortie explicabilité)  |
 
 ---
 
@@ -113,9 +191,11 @@ et le moteur de planification.
 
 # 📍 90 — Suivi de développement
 
-| Document                           | Description                 |
-| ---------------------------------- | --------------------------- |
-| `90_SUIVI_DEVELOPPEMENT_MOTEUR.md` | État d’avancement du moteur |
+| Document                                 | Description                 |
+| ---------------------------------------- | --------------------------- |
+| `90_SUIVI_DEVELOPPEMENT_MOTEUR.md`       | État d’avancement du moteur |
+| `91_JOURNAL_DEVELOPPEMENT_MOTEUR.md`     | Historique du développement |
+| `92_ARCHIVES_DES_DECISIONS_TEHNIQUES.md` | Historique des décisions    |
 
 ---
 
@@ -129,3 +209,23 @@ Pour comprendre rapidement le moteur :
 4. `40_STRATEGIE_SCORING.md`
 5. `40_WORKMETRICS.md`
 6. `20_DATASET_BUILDER.md`
+
+
+## Gouvernance documentaire
+
+La documentation du moteur est structurée selon les rôles suivants :
+
+| Document                  | Rôle                                |
+|---------------------------|-------------------------------------|
+| 90_SUIVI_DEVELOPPEMENT    | état réel du moteur                 |
+| 91_JOURNAL_DEVELOPPEMENT  | historique du développement         |
+| 92_ARCHIVES_DES_DECISIONS | décisions techniques structurantes  |
+| 40_STRATEGIE_SCORING      | fonctionnement théorique du scoring |
+
+Principe fondamental :
+- **92 explique pourquoi une décision a été prise**
+- **40 décrit comment fonctionne le modèle**
+- **90 décrit ce qui est réellement implémenté**
+- **91 garde la mémoire des étapes du projet**
+
+Une règle métier ou une implémentation ne doit apparaître **que dans le document correspondant à son niveau** afin d’éviter les divergences documentaires.

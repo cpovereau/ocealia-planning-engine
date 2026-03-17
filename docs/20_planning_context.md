@@ -88,9 +88,10 @@ Le contexte doit porter un type métier explicite, par exemple :
 - `PROJECTION`
 
 Ce type :
-- ne change pas la nature des contraintes,
-- mais peut influencer la manière de lire les résultats,
-- ou la pondération relative de certaines pénalités si cela est explicitement documenté.
+- ne change jamais la nature des contraintes,
+- n’influence pas directement le scoring,
+- peut uniquement influencer la lecture des résultats
+  ou la manière dont ils sont interprétés côté métier ou UI.
 
 ---
 
@@ -188,13 +189,13 @@ Une information absente du dataset ne doit pas être “devinée” via le conte
 
 Le `PlanningContext` est consommé ou utilisé par plusieurs composants.
 
-| Composant                              | Rôle du PlanningContext                   |
-|----------------------------------------|-------------------------------------------|
-| `ScenarioDatasetBuilder`               | cadre de construction du monde solveur    |
-| `PlanningProblem` / `PlanningSolution` | portage du contexte de résolution         |
-| `ConstraintProvider`                   | lecture des seuils / stratégie / horizons |
-| `WorkMetricsCalculator`                | bornage des calculs post-résolution       |
-| `ScenarioResponseMapper`               | explicabilité et restitution              |
+| Composant                              | Rôle du PlanningContext                                              |
+|----------------------------------------|----------------------------------------------------------------------|
+| `ScenarioDatasetBuilder`               | cadre de construction du monde solveur                               |
+| `PlanningProblem` / `PlanningSolution` | portage du contexte de résolution                                    |
+| `ConstraintProvider`                   | lecture des seuils / stratégie / horizons                            |
+| `WorkMetricsCalculator`                | bornage des calculs post-résolution                                  |
+| `ScenarioResponseMapper`               | contextualisation et restitution (sans impact sur la logique métier) |
 
 Le `PlanningContext` ne remplace aucun de ces composants.
 Il fournit un cadre partagé entre eux.

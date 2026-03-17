@@ -77,4 +77,39 @@ public class SalarieReel extends Ressource {
     public void setContraintesReglementaires(ContraintesReglementairesSalarie contraintesReglementaires) {
         this.contraintesReglementaires = contraintesReglementaires;
     }
+
+    // =========================
+    // Méthodes utilitaires Phase 6 — nuit par salarié
+    // =========================
+
+    /**
+     * Indique si ce salarié est qualifié comme travailleur de nuit (permanent ou occasionnel).
+     * Retourne false si {@link #travailDeNuit} est null.
+     * Phase 6 — prépare les diagnostics et futures pénalités Phase 8.
+     */
+    public boolean estTravailleurDeNuit() {
+        return "permanent".equals(travailDeNuit) || "occasionnel".equals(travailDeNuit);
+    }
+
+    /**
+     * Retourne l'heure de début de nuit effective pour ce salarié.
+     * Priorité : heure spécifique du salarié si renseignée, sinon heure globale du fallback.
+     * Phase 6 — couche complémentaire au calcul global {@code RegulatoryParameters}.
+     *
+     * @param fallbackDebutNuit heure de début nuit globale (depuis RegulatoryParameters)
+     */
+    public LocalTime heureDebutNuitEffective(LocalTime fallbackDebutNuit) {
+        return heureDebutNuit != null ? heureDebutNuit : fallbackDebutNuit;
+    }
+
+    /**
+     * Retourne l'heure de fin de nuit effective pour ce salarié.
+     * Priorité : heure spécifique du salarié si renseignée, sinon heure globale du fallback.
+     * Phase 6 — couche complémentaire au calcul global {@code RegulatoryParameters}.
+     *
+     * @param fallbackFinNuit heure de fin nuit globale (depuis RegulatoryParameters)
+     */
+    public LocalTime heureFinNuitEffective(LocalTime fallbackFinNuit) {
+        return heureFinNuit != null ? heureFinNuit : fallbackFinNuit;
+    }
 }

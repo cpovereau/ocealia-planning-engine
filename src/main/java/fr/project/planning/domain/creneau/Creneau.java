@@ -73,6 +73,37 @@ public class Creneau implements Serializable {
     private QualificationJour qualificationJour;
 
     /* =========================
+       Structuration des besoins (Phase 5)
+       ========================= */
+
+    /**
+     * Identifiant du groupe de besoin auquel appartient ce créneau.
+     * Permet de regrouper des créneaux logiquement liés (ex : tous les créneaux d'une même semaine de garde).
+     * Transporté en Phase 1, mappé en Phase 5. Non exploité par le solveur jusqu'à Phase 7+.
+     */
+    private String groupeBesoinId;
+
+    /**
+     * Identifiant du bloc journalier auquel appartient ce créneau.
+     * Permet de regrouper les créneaux d'une même journée (ex : matin / après-midi / nuit).
+     * Transporté en Phase 1, mappé en Phase 5.
+     */
+    private String blocJourId;
+
+    /**
+     * Position ordinale du créneau dans son bloc journalier.
+     * Permet d'ordonner les créneaux au sein d'un même {@link #blocJourId}.
+     * Transporté en Phase 1, mappé en Phase 5.
+     */
+    private Integer ordreDansBloc;
+
+    /**
+     * Indique si ce créneau représente un segment de pause (non productif).
+     * Transporté en Phase 1, mappé en Phase 5. Servira aux contraintes de fragmentation (Phase 7+).
+     */
+    private Boolean estSegmentDePause;
+
+    /* =========================
        Variable de décision
        ========================= */
 
@@ -257,6 +288,40 @@ public class Creneau implements Serializable {
        
     public void setRessourceAffectee(Ressource ressourceAffectee) {
         this.ressourceAffectee = ressourceAffectee;
+    }
+
+    // Phase 5 — structuration des besoins
+
+    public String getGroupeBesoinId() {
+        return groupeBesoinId;
+    }
+
+    public void setGroupeBesoinId(String groupeBesoinId) {
+        this.groupeBesoinId = groupeBesoinId;
+    }
+
+    public String getBlocJourId() {
+        return blocJourId;
+    }
+
+    public void setBlocJourId(String blocJourId) {
+        this.blocJourId = blocJourId;
+    }
+
+    public Integer getOrdreDansBloc() {
+        return ordreDansBloc;
+    }
+
+    public void setOrdreDansBloc(Integer ordreDansBloc) {
+        this.ordreDansBloc = ordreDansBloc;
+    }
+
+    public Boolean getEstSegmentDePause() {
+        return estSegmentDePause;
+    }
+
+    public void setEstSegmentDePause(Boolean estSegmentDePause) {
+        this.estSegmentDePause = estSegmentDePause;
     }
 }
 

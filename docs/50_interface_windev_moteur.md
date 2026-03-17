@@ -1,4 +1,4 @@
-# 60_INTERFACE_WINDEV_MOTEUR.md
+# Interface WinDev ↔ Moteur de planification
 
 ## 0 — Contexte
 
@@ -18,35 +18,15 @@ Ce document est volontairement **évolutif**.
 
 ---
 
-## 1 — Journal des développements à faire et réalisés
+## 1 — Points d’évolution ouverts
 
-Ce bloc sert à tracer : les améliorations à produire de l'interface d'éntrée ainsi que les évolutions validées.
+Les points suivants sont identifiés et à réaliser lors des prochaines phases :
 
-### TODO
-
-- [ ] supprimer la tolérance aux champs inconnus dès que le contrat d’entrée sera complètement formalisé et que les DTO de transport seront stabilisés
-- [ ] introduire des DTO de transport dédiés pour SalarieReel et PosteVirtuel (actuellement désérialisés directement en classes domaine — voir §3.1)
-- [ ] transporter le bloc `contraintesReglementaires` par salarié (Phase 1 migration) — 8 champs définis dans le schéma, non encore transportés ni utilisés (voir §8.7.4)
+- [ ] supprimer la tolérance aux champs inconnus dès que le contrat d’entrée sera formalisé et les DTO de transport stabilisés
+- [ ] introduire des DTO de transport dédiés pour `SalarieReel` et `PosteVirtuel` (actuellement désérialisés directement en classes domaine — voir §3.1)
+- [ ] transporter le bloc `contraintesReglementaires` par salarié — 8 champs définis dans le schéma, non encore transportés (voir §8.7.4)
 - [ ] documenter les codes `reasonCode` possibles dans `AssignmentDiagnosticDTO`
 - [ ] documenter les valeurs possibles de `penaliteKey` dans `ScoreBreakdownItemDTO`
-
-### 2026-03-13
-
-Travaux réalisés :
-
-- documentation du contrat d’entrée et de sortie champ par champ (§8.7) ;
-- documentation du bloc `contraintesReglementaires` par salarié (§8.7.4) avec tableau d’état d’implémentation ;
-- correction du port applicatif (8082) ;
-- correction de la numérotation des sections ;
-- mise à jour du journal et des TODO.
-
-### 2026-03-12
-
-Travaux réalisés :
-
-- création du test de désérialisation JSON ;
-- stabilisation du dataset SC-01 ;
-- clarification du contrat d’entrée.
 
 ---
 
@@ -311,63 +291,18 @@ En conséquence :
 
 ---
 
-## 6 — Feuille de route d’évolution
+## 6 — Jalons d’évolution de l’interface
 
-### Phase 1 — Stabilisation du contrat minimal
+Les jalons ci-dessous décrivent l’évolution architecturale cible de l’interface.
+Le suivi d’avancement détaillé est dans `90_suivi_developpement_moteur.md`.
 
-Objectif :
-
-```text
-JSON valide → ScenarioRequestDTO
-```
-
-Travaux :
-
-- stabiliser `sc01_dataset_reference.json` ;
-- tester la désérialisation ;
-- documenter la structure acceptée.
-
-### Phase 2 — Dataset Builder robuste
-
-Objectif :
-
-```text
-DTO → PlanningProblem
-```
-
-Travaux :
-
-- fiabiliser `ScenarioDatasetBuilderSc01` ;
-- enrichir les validations ;
-- tracer les incohérences.
-
-### Phase 3 — Extension du dataset
-
-Ajout de :
-
-- axes organisationnels ;
-- contrats de travail ;
-- contraintes réglementaires.
-
-### Phase 4 — Gestion des besoins
-
-Ajout de :
-
-```text
-groupeBesoinId
-blocJourId
-besoins de couverture
-```
-
-### Phase 5 — Scénarios avancés
-
-Création de nouveaux scénarios :
-
-```text
-SC-02
-SC-03
-SC-04
-```
+| Jalon | Objectif                                        | Statut    |
+| ----- | ----------------------------------------------- | --------- |
+| J1    | Stabilisation du contrat minimal SC-01          | Terminé   |
+| J2    | DatasetBuilder robuste (DTO → PlanningProblem)  | Terminé   |
+| J3    | Extension du dataset (axes, contrats, réglem.)  | Terminé   |
+| J4    | Gestion des besoins (groupeBesoinId, blocJourId)| Terminé   |
+| J5    | Scénarios avancés SC-02, SC-03, SC-04           | En cours  |
 
 ---
 
@@ -1241,6 +1176,17 @@ Un `weightedImpact` nul signifie que la contrainte a été mesurée mais que son
   }
 }
 ```
+---
+
+### Points d’attention contractuels sur la réponse
+
+**Créneau non affecté** : un créneau sans ressource est représenté par la valeur `"A_AFFECTER"` dans le planning — jamais par `null`. Il est comptabilisé dans `solutionSummary.nbCreneauxNonAffectes` et dans `scoreBreakdown` via `METIER_SOFT_CRENEAU_NON_COUVERT`. La pseudo-ressource `A_AFFECTER` n’apparaît pas dans `workMetrics.byRessource`. Le comportement conceptuel associé est défini dans `20_DECISIONS_CONCEPTION_OPTAPLANNER.md`.
+
+**Séparation solveur / API** : la solution OptaPlanner est transformée en `ScenarioResponseDTO` par `ScenarioResponseMapper`. Cette couche garantit la stabilité du contrat API indépendamment des évolutions internes du solveur. La décision d’architecture est documentée dans `20_DECISIONS_CONCEPTION_OPTAPLANNER.md`.
+
+**Unité du scoreBreakdown** : l’unité de chaque ligne (`penaliteKey`, `unit`, `quantity`, `weightedImpact`) est déterminée par `PenaliteKey`. La décision de conception est documentée dans `20_DECISIONS_CONCEPTION_OPTAPLANNER.md`.
+
+**Diagnostics d’affectation** : les `assignmentDiagnostics` sont produits dans la couche de restitution API (`ScenarioResponseMapper`), indépendamment du solveur et du builder. À ce stade, le diagnostic implémenté est `UNCOVERED / NO_RESOURCE_ASSIGNED`. La décision de conception est documentée dans `20_DECISIONS_CONCEPTION_OPTAPLANNER.md`.
 
 ---
 

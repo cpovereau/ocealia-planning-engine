@@ -1,5 +1,7 @@
 package fr.project.planning.scenarios.mapper;
 
+import fr.project.planning.domain.metier.ComptabiliteActivite;
+import fr.project.planning.domain.metier.ReferentielComptabiliteActivite;
 import fr.project.planning.domain.ressource.ContraintesReglementairesSalarie;
 import fr.project.planning.domain.ressource.Indisponibilite;
 import fr.project.planning.domain.ressource.PosteVirtuel;
@@ -11,13 +13,16 @@ import fr.project.planning.scenarios.dto.DataSetDTO;
 import fr.project.planning.scenarios.dto.input.ContraintesReglementairesDTO;
 import fr.project.planning.scenarios.dto.input.IndisponibilitesDTO;
 import fr.project.planning.scenarios.dto.input.PosteVirtuelInputDTO;
+import fr.project.planning.scenarios.dto.input.ReferentielsDTO;
 import fr.project.planning.scenarios.dto.input.SalarieInputDTO;
 import fr.project.planning.scenarios.dto.request.ResourceKind;
 import fr.project.planning.scenarios.dto.request.ResourceRefDTO;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -146,6 +151,37 @@ public class ScenarioResourceMapper {
         }
 
         throw new IllegalArgumentException("Type de ressource non supporté : " + kind);
+    }
+
+    // =========================
+    // Référentiel activités
+    // =========================
+
+    /**
+     * Convertit le bloc referentiels du dataSet en ReferentielComptabiliteActivite domaine.
+     *
+     * Champs absents du contrat WinDev Phase 7 (prioritaireSurConfort, typeImpact) :
+     * valeurs par défaut appliquées — false et CHARGE_STANDARD.
+     *
+     * Si le bloc est null ou vide, retourne un référentiel neutre (map vide) :
+     * toutes les contraintes qui font getByCode(...) retournent null et sont ignorées.
+     */
+    public ReferentielComptabiliteActivite toReferentiel(ReferentielsDTO dto) {
+        if (dto == null || dto.getActivites() == null || dto.getActivites().isEmpty()) {
+            return ReferentielComptabiliteActivite.neutre();
+        }
+        Map<String, ComptabiliteActivite> map = new HashMap<>();
+        for (var a : dto.getActivites()) {
+            map.put(a.getCodeActiviteId(), new ComptabiliteActivite(
+                    a.getCodeActiviteId(),
+                    Boolean.TRUE.equals(a.getCompteDansCharge()),
+                    Boolean.TRUE.equals(a.getGenereDetteRepos()),
+                    Boolean.TRUE.equals(a.getEstServiceCritique()),
+                    false,                                              // prioritaireSurConfort — absent Phase 7
+                    ComptabiliteActivite.TypeImpactActivite.CHARGE_STANDARD  // défaut
+            ));
+        }
+        return new ReferentielComptabiliteActivite(map);
     }
 
     // =========================

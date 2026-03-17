@@ -165,29 +165,51 @@ En V2/V3, les axes d’arbitrage sont :
 
 Ces volumes sont calculés par intersection temporelle (sans découpage de créneaux), puis pondérés via ScoreWeights.
 
+**C. Dominance sur chevauchements (anti double-pondération)**
+
+Une minute peut appartenir à plusieurs catégories (ex. nuit + dimanche).
+Les volumes partiels sont calculés séparément à des fins de mesure et d’explicabilité.
+
+Cependant, le scoring ne doit pas appliquer une “double peine” par défaut.
+
+- Décision retenue :
+  - le système calcule explicitement des volumes d’intersection :
+  - minutesNuitEtDimanche
+  - minutesNuitEtFerie
+  - (optionnel) minutesDimancheEtFerie
+- et le scoring applique une dominance (via le système de pondération et la clé de pénalité métier) de façon à ce que :
+  - une minute chevauchante soit pénalisée selon une règle unique maîtrisée,
+  - plutôt que par addition naïve de toutes les pénalités.
+
+Une analyse d’impact V2 est requise pour aligner toutes les contraintes en minutes sur ce mécanisme.
+
+**Statut / périmètre**
+
+Décision structurante V3.
+Une analyse d’impact sur V2 sera menée afin :
+- d’identifier les écarts de mesure introduits,
+- d’adapter les tests,
+- de préserver les invariants de dominance et de pondération.
+
+**Principe**
+Le moteur ne découpe jamais les créneaux. Les volumes (nuit, dimanche, férié) sont calculés par intersection temporelle à la minute.
+
+**Primitive**
+minutesIntersect(A, B) renvoie la durée d’intersection de deux intervalles [start, end).
+
+**Volumes**
+Pour tout créneau travaillé (compteDansCharge=true), le moteur calcule :
+- minutesNuit
+- minutesDimanche
+- minutesFerie
+
+**Chevauchements**
+Une minute peut appartenir à plusieurs catégories (ex. nuit et dimanche). Les volumes sont indépendants et explicatifs.
+Les règles de non-double-pondération relèvent du scoring (système de pondération / clé de pénalité métier), pas de la mesure.
+
 ---
 
-#### 4.1.1 Chevauchements et dominance (anti double-pondération)
-
-Une minute peut appartenir à plusieurs catégories (ex. nuit + dimanche, nuit + férié).
-Les volumes sont mesurés séparément à des fins d’explicabilité.
-
-**Décision :**
-Le scoring ne doit pas appliquer une “double peine” par addition naïve.
-
-Le moteur calcule explicitement des volumes d’intersection :
-- minutesNuitEtDimanche
-- minutesNuitEtFerie
-- (optionnel) minutesDimancheEtFerie
-
-Puis le scoring applique une règle de dominance (via PenaliteKey / ScoreWeights) afin que :
-- une minute chevauchante soit pénalisée selon une règle unique maîtrisée,
-- avec des ordres de grandeur cohérents,
-- et une explicabilité stable.
-
----
-
-#### 4.1.2 Principe général de dominance — “Plus favorable au salarié”
+#### 4.1.1 Principe général de dominance — “Plus favorable au salarié”
 
 En cas de chevauchement de catégories temporelles (ex. nuit + dimanche, nuit + férié, dimanche + férié), le moteur applique une règle de dominance fondée sur le principe suivant :
 - La pénalité retenue est celle correspondant à la situation la plus favorable au salarié.
@@ -207,19 +229,31 @@ Les volumes bruts (minutesNuit, minutesDimanche, minutesFerie) restent disponibl
 
 ---
 
-### 4.2 Indicateurs métier pertinents à terme
+### 4.2 Indicateurs métier (hors scoring)
 
-Ces indicateurs sont **nécessaires** pour un moteur réaliste.
+Les indicateurs métier tels que :
+- heuresTravaillees
+- heuresNuit
+- heuresJourFerie
+- heuresReposHebdoTravaille
+- heuresSupplementaires
+- detteReposCompensateur
 
-| Indicateur                  | Description                      | Utilisation dans le score |
-| --------------------------- | -------------------------------- | ------------------------- |
-| `heuresTravaillees`         | Heures totales sur la période    | Charges globales          |
-| `heuresNuit`                | Heures en plage de nuit          | Contraintes légales       |
-| `heuresJourFerie`           | Heures travaillées un jour férié | Coût / dette              |
-| `heuresReposHebdoTravaille` | Travail sur repos hebdomadaire   | Dette repos               |
-| `heuresSupplementaires`     | Heures > durée contractuelle     | Coût / contingent         |
-| `heuresComplementaires`     | Heures compl. temps partiel      | Coût                      |
-| `detteReposCompensateur`    | Heures de repos à récupérer      | Pénalité forte            |
+sont des **WorkMetrics de restitution**.
+
+Ils :
+- ne participent pas au calcul du score,
+- ne sont pas utilisés pour arbitrer les solutions,
+- sont calculés après résolution.
+
+Le scoring repose exclusivement sur :
+- des mesures élémentaires (volumes, violations),
+- exprimées en unités directement exploitables par le solveur.
+
+Cette séparation garantit :
+- la lisibilité de l’architecture,
+- l’absence de confusion entre arbitrage et analyse métier,
+- la stabilité du moteur face aux évolutions métier.
 
 ---
 
@@ -278,7 +312,18 @@ pas une implémentation chiffrée définitive.
 
 ---
 
-## 7. Scoring pipeline
+## 7. Classification des contraintes
+
+| Classe        | Exemple                |
+| ------------- | ---------------------- |
+| HARD_PHYSICAL | chevauchement créneaux |
+| HARD_LEGAL    | repos minimum          |
+| SOFT_SERVICE  | couverture besoin      |
+| SOFT_EQUITY   | équilibre travail      |
+
+---
+
+## 8. Scoring pipeline
 
 ```mermaid
 flowchart TD
@@ -313,7 +358,61 @@ E --> F
 
 ---
 
-## 8. Lien avec les autres documents
+## 9. Utilisation dans le solveur
+
+Les **WorkMetrics** ne sont pas utilisées par le solveur comme variables de décision et ne pilotent jamais directement l’affectation des créneaux.
+
+Elles restent :
+- des **constats post-résolution**,
+- calculés à partir d’un planning résolu,
+- destinés à l’explicabilité, à la restitution et à l’analyse aval.
+
+### Distinction importante
+
+Il convient de distinguer deux niveaux :
+
+#### A. Primitives de mesure utilisées pendant l’évaluation
+
+Le moteur utilise, dans certaines contraintes de scoring, des **mesures élémentaires** issues du calcul temporel, notamment :
+- minutes de nuit,
+- minutes de dimanche,
+- minutes de jour férié,
+- minutes d’intersection entre pénibilités.
+
+Ces mesures sont calculées à partir des créneaux affectés, via le composant de calcul temporel, et servent à alimenter le scoring des pénibilités légales (`PenibilitesLegalesMinutes`).
+
+Elles constituent des **primitives de mesure**, pas des WorkMetrics de restitution.
+
+#### B. WorkMetrics de restitution
+
+Les WorkMetrics, au sens du présent document, sont des **agrégats descriptifs** produits après résolution, par exemple :
+- `heuresTravaillees`
+- `heuresNuit`
+- `heuresJourFerie`
+- `nbDimanchesTravailles`
+- `maxJoursConsecutifsObservees`
+- `maxNuitsConsecutivesObservees`
+
+Ces indicateurs :
+- n’interviennent pas dans la faisabilité,
+- ne déclenchent aucune contrainte HARD,
+- ne modifient jamais le planning,
+- ne constituent jamais une variable de décision.
+
+### Règle de cohérence
+
+Le solveur peut consommer des **mesures élémentaires** pour scorer certaines contraintes.
+
+En revanche, les **WorkMetrics** exposées par le moteur restent exclusivement des **constats post-résolution**.
+
+Cette séparation garantit :
+- la lisibilité de l’architecture,
+- la stabilité de l’explicabilité,
+- l’absence de confusion entre **arbitrage** et **restitution**.
+
+---
+
+## 10. Lien avec les autres documents
 
 Ce document complète :
 
@@ -324,22 +423,3 @@ Ce document complète :
 
 Il sert de référence pour toute évolution des règles de scoring.
 
-## Évolution progressive de la stratégie de scoring
-
-La stratégie de scoring évolue par paliers, en cohérence avec les WorkMetrics.
-
-### Phase actuelle
-- contraintes HARD stabilisées
-- premières contraintes SOFT
-- ScoreWeights défini mais usage limité
-- aucune interprétation métier du score
-
-### Phase suivante
-- enrichissement des contraintes combinatoires
-- premières contraintes SOFT d’équité
-- utilisation maîtrisée de ScoreWeights
-
-### Phase ultérieure
-- WorkMetrics complètes (séquences, équité, contractuel)
-- analyse métier aval (SurchargeSalarie)
-- scénarios comparatifs

@@ -20,6 +20,12 @@ public enum PenaliteKey {
     METIER_SOFT_AFFECTATION_POSTE_VIRTUEL(ScoreBreakdownUnit.OCCURRENCE),
     METIER_SOFT_DETTE_REPOS_SUR_REPOS_HEBDOMADAIRE(ScoreBreakdownUnit.JOUR),
 
+    /**
+     * Phase 8 — Créneau de nuit affecté à un salarié non déclaré travailleur de nuit.
+     * Exploite travailDeNuit (mappé Phase 3, méthodes utilitaires Phase 6).
+     */
+    METIER_SOFT_NUIT_SALARIE_NON_NUIT(ScoreBreakdownUnit.OCCURRENCE),
+
     // =========================
     // Contraintes légales (SOFT)
     // =========================
