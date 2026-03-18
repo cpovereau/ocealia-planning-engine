@@ -111,9 +111,10 @@ Phase transitoire :
 
 ### D. Durée, libellés, champs redondants
 Sont considérés comme temporaires ou secondaires :
-- `duree` sur le créneau si recalculable ;
 - `activite` comme libellé si `codeActiviteId` existe ;
 - `sitesAutorises` si `axesOrganisationnels.lieuIds` devient la source de vérité.
+
+> `duree` sur le créneau : considérée à l'origine comme recalculable, cette décision a été inversée. `Creneau.duree` est la **source de vérité** pour tous les agrégats et la restitution — elle n'est jamais recalculée depuis `heureDebut`/`heureFin`. Voir `20_DECISIONS_CONCEPTION_OPTAPLANNER.md`.
 
 ---
 
@@ -503,7 +504,7 @@ Un champ est **fonctionnellement actif** uniquement à partir de : Transporté �
 | `id` | ✅ | — | ✅ | ✅ | — | — | — | ✅ | *(actif)* | — (stable) |
 | `statut` | ✅ | — | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ | Phase 8 | — (stable) |
 | `sitesAutorises` | ✅ | — | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ | Phase 4/5 | `axesOrganisationnels.lieuIds` |
-| `activitesCompatibles` | ✅ | — | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ | Phase 4/5 | — (stable) |
+| `activitesCompatibles` | ✅ | — | ✅ | ❌ | ❌ | ✅ | ❌ | ✅ | Phase 4/5 | — (stable) |
 | `postesComptablesCompatibles` | ✅ | — | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ | Phase 4/5 | `axesOrganisationnels.posteComptableIds` |
 | `travailleJourFerie` | ✅ | — | ✅ | ✅ | ❌ | ✅ | ❌ | ✅ | *(actif)* | — (stable) |
 | `travailDeNuit` | ✅ | — | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | *(actif)* | — (stable) |
@@ -516,6 +517,7 @@ Un champ est **fonctionnellement actif** uniquement à partir de : Transporté �
 > `contraintesReglementaires` : mappé vers `ContraintesReglementairesSalarie` sur `SalarieReel`. Non exploité : le solveur utilise encore les `RegulatoryParameters` globaux.
 > `axesOrganisationnels` : transporté dans `SalarieInputDTO`, mais `SalarieReel` ne porte pas ce bloc — aucun mapping domaine réalisé.
 > `travailDeNuit` / `heureDebutNuit` / `heureFinNuit` : "Exploité diagnostics ✅" — Phase 6 ajoute `estTravailleurDeNuit()`, `heureDebutNuitEffective(fallback)`, `heureFinNuitEffective(fallback)` sur `SalarieReel`. Ces méthodes préparent les diagnostics et pénalités Phase 8 sans modifier le solveur ni `RegulatoryParameters`.
+> `activitesCompatibles` : "Exploité diagnostics ✅" depuis la Phase 12 — lu par `ScenarioSc03PreparationService.auMoinsUneRessourceCompatible()` pour le calcul de `ignoredCreneaux.aucuneRessourceDansDataset`. Une liste vide/nulle est considérée comme non contrainte (peut couvrir toute activité). Voir `20_dataset_builder.md §5.4.2B`.
 
 ---
 
@@ -526,9 +528,11 @@ Un champ est **fonctionnellement actif** uniquement à partir de : Transporté �
 | `id` | ✅ | — | ✅ | ✅ | — | — | — | ✅ | *(actif)* | — (stable) |
 | `type` | ✅ | — | ✅ | ✅ | ✅ | — | — | ✅ | *(actif)* | — (stable) |
 | `capaciteCible` | ✅ | — | ✅ | ✅ | — | — | — | ✅ | *(actif)* | — (stable) |
-| `activitesAutorisees` | ✅ | — | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ | Phase 4/5 | — (stable) |
+| `activitesAutorisees` | ✅ | — | ✅ | ❌ | ❌ | ✅ | ❌ | ✅ | Phase 4/5 | — (stable) |
 | `lieuxAutorises` | ✅ | — | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ | Phase 4/5 | `axesOrganisationnels.lieuIds` |
 | `postesComptablesCompatibles` | ✅ | — | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ | Phase 4/5 | `axesOrganisationnels.posteComptableIds` |
+
+> `activitesAutorisees` : "Exploité diagnostics ✅" depuis la Phase 12 — lu par `auMoinsUneRessourceCompatible()` pour le calcul de `ignoredCreneaux.aucuneRessourceDansDataset`. Même interprétation que `activitesCompatibles` salarié : liste vide/nulle = non contraint.
 
 ---
 
@@ -573,9 +577,9 @@ Un champ est **fonctionnellement actif** uniquement à partir de : Transporté �
 
 | Champ source | Redondance avec | Cible à terme | Phase de nettoyage |
 |--------------|-----------------|---------------|--------------------|
-| `sitesAutorises` | `axesOrganisationnels.lieuIds` | axes organisationnels | Phase 9 |
-| `activite` (libellé) | `codeActiviteId` | référentiel d'activités | Phase 9 |
-| `referentiels` JSON | référentiel hardcodé dans SC-01 | suppression du hardcodé SC-01 | Phase 9 |
+| `sitesAutorises` | `axesOrganisationnels.lieuIds` | axes organisationnels | reporté (non traité en Phase 9) |
+| `activite` (libellé) | `codeActiviteId` | référentiel d'activités | reporté (non traité en Phase 9) |
+| `referentiels` JSON | référentiel hardcodé dans SC-01 | suppression du hardcodé SC-01 | reporté (non traité en Phase 9) |
 | `contraintesReglementaires` salarié | `RegulatoryParameters` globaux | paramètres par salarié | Phase 8 |
 
 ---
