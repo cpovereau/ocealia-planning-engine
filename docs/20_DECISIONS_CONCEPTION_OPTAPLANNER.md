@@ -101,6 +101,27 @@ Conséquences :
 
 Cet invariant est également listé en §11. La forme contractuelle de cette représentation est décrite dans `50_interface_windev_moteur.md`.
 
+## Décision — Distinction créneaux ignorés / non affectés
+
+Un créneau ignoré est un créneau exclu du périmètre de résolution avant construction du PlanningProblem.
+
+Il :
+- n’est pas transmis au solveur,
+- n’est pas scoré,
+- n’apparaît pas dans le planning.
+
+Un créneau non affecté est un créneau inclus dans le PlanningProblem mais auquel aucune ressource réelle n’a pu être assignée.
+
+Il :
+- est présent dans le solveur,
+- est représenté par la pseudo-ressource "A_AFFECTER",
+- est comptabilisé dans le score et dans les métriques.
+
+Règle fondamentale :
+
+→ Ignoré = hors solveur  
+→ Non affecté = dans solveur mais non couvert
+
 ---
 
 ## 4. Typologie des contraintes (décision structurante)
@@ -137,39 +158,61 @@ Les seuils de tolérance sont fournis par le logiciel de planning via PlanningCo
 
 ## 5. Invariant fondamental — Définition du travail
 
-Cette définition constitue un invariant d’architecture. Toute règle, contrainte, métrique ou évolution future doit s’y conformer.
+Cette définition constitue un **invariant d’architecture**.
+Toute règle, contrainte, métrique ou évolution future doit s’y conformer.
+Elle fait autorité sur toute autre formulation présente dans la documentation.
 
-### 1. Définition du travail (règle unique)
+### 5.1 Définition canonique (règle unique)
 
-Un créneau est considéré comme travaillé si et seulement si son activité compte dans la charge (compteDansCharge = true dans le référentiel d’activité).
+> **Un créneau est considéré comme travaillé si et seulement si
+> son activité compte dans la charge (`compteDansCharge = true`
+> dans le référentiel d’activité).**
 
-Conséquences :
-- Nature TRAVAIL → compteDansCharge = true
-- Nature REPOS (RH, RHD) → false
-- Nature FERIE (JF substitutif) → false
-- Nature RECUP → false
-- Nature NON_TRAVAILLE → false
+Par extension :
 
-👉 Le moteur ne déduit jamais le travail à partir du code d’activité brut.
-👉 Il s’appuie uniquement sur le référentiel.
+- Une **journée** est considérée comme travaillée si et seulement si elle comporte
+  au moins un créneau dont l’activité a `compteDansCharge = true`.
+- Une **nuit** est considérée comme travaillée si et seulement si elle comporte
+  au moins un créneau en plage horaire NUIT dont l’activité a `compteDansCharge = true`.
 
-### 2. Principe structurant V2
-- Les contraintes mesurent.
-- Les ScoreWeights pondèrent.
-- Les WorkMetrics constatent post-résolution.
+### 5.2 Mappings Nature → compteDansCharge
+
+| Nature                  | compteDansCharge |
+| ----------------------- | :--------------: |
+| `TRAVAIL`               | `true`           |
+| `REPOS` (RH, RHD)       | `false`          |
+| `FERIE` (JF substitutif)| `false`          |
+| `RECUP`                 | `false`          |
+| `NON_TRAVAILLE`         | `false`          |
+
+### 5.3 Ce que le moteur ne déduit jamais
+
+Le moteur ne déduit jamais la notion de travail :
+- du code d’activité brut,
+- du type de créneau,
+- d’un qualifiant calendaire,
+- de la valeur du champ `Nature` utilisée directement.
+
+Il s’appuie **uniquement** sur `compteDansCharge` tel que fourni par le référentiel d’activité.
+
+### 5.4 Principe structurant
+
+- Les **contraintes** mesurent.
+- Les **ScoreWeights** pondèrent.
+- Les **WorkMetrics** constatent post-résolution.
 
 Aucune métrique ne redéfinit la notion de travail.
 
-📌 Cette définition devient la référence pour :
-- les contraintes légales,
-- les métriques V2,
-- les futures métriques V3,
-- et la restitution planning.
+### 5.5 Règle de cohérence transversale
 
-🔒 Règle de cohérence transversale
-- Les contraintes n’utilisent jamais directement Nature pour déterminer le travail.
-- Les WorkMetrics n’interprètent jamais QualificationJour comme du travail.
-- Toute évolution V3 ou ultérieure devra s’appuyer exclusivement sur la définition canonique ci-dessus.
+- Les contraintes n’utilisent jamais directement `Nature` pour déterminer le travail.
+- Les WorkMetrics n’interprètent jamais `QualificationJour` comme du travail.
+- Toute évolution V3 ou ultérieure devra s’appuyer exclusivement sur la définition §5.1 ci-dessus.
+
+Cette définition est la référence pour :
+- les contraintes légales,
+- les métriques WorkMetrics (toutes versions),
+- et la restitution planning.
 
 #### Décision — Nature des WorkMetrics
 
@@ -356,9 +399,7 @@ Le scoring est structuré selon trois niveaux clairement séparés :
 
 Les contraintes :
 - détectent une situation (ex. travail de nuit, créneau non couvert) ;
-- produisent une **mesure neutre** :
-  - en **minutes** (nuit, jour férié),
-  - ou en **occurrence** (créneau non couvert, poste virtuel) ;
+- produisent une **mesure neutre** exprimée selon l’unité portée par `PenaliteKey` ;
 - sont identifiées par une clé métier (`PenaliteKey`).
 
 Aucune logique de stratégie ou de priorité n’est portée par les contraintes.
@@ -431,6 +472,44 @@ Elles sont remplacées par une contrainte unique : `PenibilitesLegalesMinutes`
 
 ---
 
+### Décision — Distinction entre nuit réglementaire globale et nuit portée par salarié
+
+Le moteur distingue explicitement deux notions différentes :
+
+#### 1. Nuit réglementaire globale
+La nuit utilisée pour les calculs de pénibilité, de scoring et de WorkMetrics temporelles
+est définie globalement par les `RegulatoryParameters` / le `PlanningContext`.
+
+Cette plage constitue la **source de vérité commune** pour :
+- le calcul des minutes de nuit,
+- les intersections temporelles,
+- les pénalités légales associées,
+- les métriques agrégées du moteur.
+
+#### 2. Nuit portée par salarié
+Les champs portés par la ressource (`travailDeNuit`, `heureDebutNuit`, `heureFinNuit`)
+décrivent une **qualification propre au salarié** :
+- statut RH ou conventionnel,
+- profil de travail de nuit,
+- compatibilité ou traitement spécifique.
+
+Ils ne remplacent pas la nuit réglementaire globale.
+Ils la complètent pour des usages ciblés :
+- contraintes spécifiques au salarié,
+- pénalités différenciées,
+- diagnostics ou métriques RH.
+
+#### Règle fondamentale
+La mesure temporelle de la nuit reste globale et commune.
+La qualification “nuit” portée par un salarié reste locale à la ressource.
+
+En conséquence :
+- `RegulatoryParameters` demeure la source de vérité pour mesurer la nuit ;
+- les champs salarié ne redéfinissent pas les volumes temporels globaux ;
+- toute logique spécifique au salarié doit s’appuyer sur cette séparation.
+
+---
+
 ### Décision — Explicabilité du score
 
 Le moteur doit produire un score explicable permettant d’analyser
@@ -438,11 +517,10 @@ les contributions des différentes pénalités.
 
 Cette explicabilité repose sur :
 - l’identification explicite de chaque pénalité ;
-- l’association à une unité de mesure cohérente ;
+- l’association à une unité de mesure cohérente (voir enum `ScoreBreakdownUnit` ci-dessous) ;
 - la possibilité d’agréger et de comparer les contributions.
 
-La forme contractuelle de restitution est décrite dans
-`50_interface_windev_moteur.md`.
+La forme contractuelle de restitution est décrite dans `50_ScenarioResponseContract.md`.
 
 ---
 
@@ -456,6 +534,20 @@ Conséquences :
 - stabilité accrue du contrat API lors de l’ajout de nouvelles pénalités.
 
 Ce principe renforce le découpage : Contraintes → mesurent · `ScoreWeights` → pondèrent · `scoreBreakdown` → restitue.
+
+#### Valeurs de l’enum `ScoreBreakdownUnit`
+
+Chaque `PenaliteKey` est associée à exactement une valeur de cet enum, définie à sa création.
+
+| Valeur            | Signification                                              | Exemples de pénalité associée                  |
+| ----------------- | ---------------------------------------------------------- | ---------------------------------------------- |
+| `OCCURRENCE`      | Nombre d’occurrences d’un événement                        | Créneau non couvert, affectation sur poste virtuel |
+| `MINUTE_PONDEREE` | Minutes réelles dans un intervalle réglementaire           | Nuit, dimanche, jour férié (calcul par intersection) |
+| `JOUR`            | Nombre de jours calendaires                                | Jours consécutifs travaillés au-delà du seuil  |
+| `UNKNOWN`         | Unité non déterminée — valeur de sécurité / fallback       | Pénalité mal configurée ou en cours de définition |
+
+**Règle d’usage :** toute nouvelle `PenaliteKey` doit déclarer explicitement son unité.
+`UNKNOWN` ne doit jamais apparaître en production ; sa présence dans `scoreBreakdown` signale un problème de configuration.
 
 ---
 

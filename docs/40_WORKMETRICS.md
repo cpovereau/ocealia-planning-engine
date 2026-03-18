@@ -263,24 +263,20 @@ Elles servent exclusivement :
 
 #### 5.1.1 Définition canonique du travail
 
-> Les primitives de calcul (sans découpage, volumes d’intersection, dominance) sont définies en section 2 du présent document.
-> L’ordre de dominance est fourni par le `PlanningContext` ; les volumes d’intersection restent disponibles à des fins d’explicabilité.
+La définition canonique du travail est un invariant d’architecture défini dans :
 
+> `20_DECISIONS_CONCEPTION_OPTAPLANNER.md §5`
 
+Se référer à ce document pour la définition faisant autorité, les mappings `Nature → compteDansCharge`,
+et la règle de cohérence transversale.
 
-Un créneau contribue aux WorkMetrics si et seulement si son activité est considérée comme du travail au sens du moteur (compteDansCharge=true via référentiel).
+**Application aux WorkMetrics :**
+
+Un créneau contribue aux WorkMetrics si et seulement si `compteDansCharge = true` dans le référentiel d’activité.
 Toute minute issue d’un calcul d’intersection est ignorée si l’activité ne compte pas dans la charge.
 
-Une journée ou une nuit est considérée comme travaillée si et seulement si :
-- le créneau associé possède une activité dont
-- compteDansCharge = true dans le référentiel d’activité.
-
-Le moteur ne déduit jamais le travail :
-- du code d’activité brut,
-- du type de créneau,
-- d’un qualifiant calendaire.
-
-Cette règle constitue un invariant du moteur.
+> Les primitives de calcul (volumes d’intersection, dominance) sont définies en section 2 du présent document.
+> L’ordre de dominance est fourni par le `PlanningContext`.
 
 ---
 

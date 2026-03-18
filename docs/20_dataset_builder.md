@@ -348,7 +348,7 @@ Ils servent à **fabriquer** les objets du monde solveur.
 
 ### B. Niveau solveur
 
-Le builder traduit ensuite ces paramètres en :
+Le DatasetBuilder traduit le contrat d’entrée en monde solveur exploitable, sans arbitrer ni scorer en :
 - `Creneau` concrets ;
 - `Ressource` mobilisables ;
 - `PlanningContext` ;

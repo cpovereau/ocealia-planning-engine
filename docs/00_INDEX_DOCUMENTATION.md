@@ -9,25 +9,58 @@ Les documents sont organisés par **niveau de responsabilité** afin de facilite
 ```mermaid
 flowchart TD
 
-A[00_INDEX_DOCUMENTATION]
+subgraph S00["🧭 00 — Introduction"]
+  A[Principe OptaPlanner]
+end
 
-A --> B[Principe OptaPlanner]
+subgraph S10["🧠 10 — Référentiel métier"]
+  B1[Glossaire des concepts]
+  B2[Référentiel métier]
+  B3[Seuils surcharge salarié]
+end
 
-B --> C[Architecture moteur]
+subgraph S20["🏗 20 — Architecture"]
+  C1[Architecture moteur]
+  C2[Décisions de conception]
+  C3[Dataset Builder]
+  C4[Planning Context]
+end
 
-C --> D[Dataset Builder]
-C --> E[Planning Context]
+subgraph S30["⚙️ 30 — Modèle de résolution"]
+  D1[Modèle conceptuel]
+  D2[UML OptaPlanner]
+  D3[UML Solveur simplifié]
+end
 
-D --> F[UML Solveur]
-E --> F
+subgraph S40["📊 40 — Contraintes et scoring"]
+  E1[Règles combinatoires]
+  E2[Stratégie de scoring]
+  E3[WorkMetrics]
+end
 
-F --> G[Stratégie de scoring]
+subgraph S50["🔌 50 — Contrats et interface"]
+  F1[ScenarioContract]
+  F2[ScenarioResponseContract]
+  F3[Interface WinDev ↔ Moteur]
+end
 
-G --> H[WorkMetrics]
+subgraph S60["🧪 60 — Tests"]
+  G1[Stratégie de test]
+end
 
-H --> I[ScenarioResponseContract]
+subgraph S90["📍 90 — Suivi et historique"]
+  H1[Suivi développement]
+  H2[Journal développement]
+  H3[Archives décisions]
+end
 
-I --> J[Suivi développement]
+A --> B1
+B1 --> C1
+C1 --> D1
+D1 --> E2
+E2 --> F1
+F1 --> G1
+G1 --> H1
 ```
 ---
 
@@ -44,6 +77,30 @@ Cette séparation vise à éviter les confusions entre :
 
 ---
 
+## Série 00 — Introduction
+
+Le document de la série **00** constitue le point d’entrée du projet.
+
+Il explique :
+- le fonctionnement général du moteur
+- les principes OptaPlanner
+- la logique d’ensemble avant toute lecture technique.
+
+---
+
+## Série 10 — Référentiel métier
+
+Les documents de la série **10** définissent le vocabulaire et les règles métier partagés.
+
+Ils contiennent :
+- les définitions canoniques des concepts (créneau, ressource, score…)
+- le référentiel d’activités utilisé par le moteur
+- les seuils métier de surcharge.
+
+Ces documents font autorité pour le vocabulaire du projet.
+
+---
+
 ## Série 20 — Décisions d’architecture
 
 Les documents de la série **20** décrivent les **choix de conception
@@ -53,15 +110,27 @@ Ils contiennent :
 - les invariants d’architecture
 - les conventions techniques
 - les décisions structurantes
-- les règles de séparation des responsabilités
+- les règles de séparation des responsabilités.
 
 Ces documents font autorité pour l’architecture du moteur.
 
 Ils ne contiennent jamais :
-
 - d’historique de développement
 - d’état d’avancement
 - de roadmap.
+
+---
+
+## Série 30 — Modèle de résolution
+
+Les documents de la série **30** décrivent le modèle de données du solveur.
+
+Ils contiennent :
+- le modèle conceptuel du domaine
+- les diagrammes UML du monde OptaPlanner
+- les vues simplifiées de la structure de résolution.
+
+Ces documents servent de référence visuelle pour comprendre les objets manipulés par le solveur.
 
 ---
 
@@ -78,6 +147,29 @@ Ils définissent notamment :
 
 Ces documents servent de référence pour l’implémentation
 des règles dans le moteur.
+
+---
+
+## Série 50 — Interfaces et contrats
+
+Les documents de la série **50** définissent les contrats d’échange entre le moteur et ses appelants.
+
+Deux sous-ensembles coexistent :
+- les **contrats fonctionnels stables** (`50_ScenarioContract*`, `50_ScenarioResponseContract*`) : référence normative indépendante de l’intégrateur
+- les **documents d’intégration WinDev** (`50_interface_windev_moteur*`) : implémentation concrète, exemples, jalons de migration.
+
+Ces documents ne contiennent jamais de règles métier ni de décisions d’architecture.
+
+---
+
+## Série 60 — Tests
+
+Le document de la série **60** définit la stratégie de test du moteur.
+
+Il précise :
+- les niveaux de test et leurs garanties
+- ce que les tests prouvent et ne prouvent pas
+- les conventions de nommage et d’organisation.
 
 ---
 
@@ -128,14 +220,13 @@ Ils ne constituent pas la source de vérité actuelle du moteur.
 
 | Document                                 | Description                                                |
 | ---------------------------------------- | ---------------------------------------------------------- |
-| `20_DECISIONS_CONCEPTION_OPTAPLANNER.md` | Décisions d’architecture et choix techniques du moteur     |
-| `20_ARCHITECTURE_MOTEUR.md`              | Vue globale de l’architecture du moteur                    |
-| `20_DATASET_BUILDER.md`                  | Construction du monde solveur à partir du contrat scénario |
-| `20_PLANNING_CONTEXT.md`                 | Contexte de résolution transmis au moteur                  |
-| `20_HORIZON_TEMPOREL_REGLEMENTAIRE.md`   | Cadre temporel et paramètres réglementaires                |
-| `20_MIGRATION_DATASET_ENTREE.md`         | Evolution du dataset d'entrée                              |
+| `20_DECISIONS_CONCEPTION_OPTAPLANNER.md` | Décisions d’architecture et choix techniques du moteur                   |
+| `20_ARCHITECTURE_MOTEUR.md`              | Vue globale de l’architecture du moteur                                  |
+| `20_DATASET_BUILDER.md`                  | Construction du monde solveur à partir du contrat scénario               |
+| `20_PLANNING_CONTEXT.md`                 | Contexte de résolution : horizon temporel, cadre réglementaire, scoring  |
+| `20_MIGRATION_DATASET_ENTREE.md`         | Evolution du dataset d’entrée                                            |
 
-Les document '20_' donnent les principes er invariants de l'information.
+Les document '20_' donnent les principes et invariants de l'information.
 
 ---
 
@@ -155,7 +246,7 @@ Les document '20_' donnent les principes er invariants de l'information.
 | Document                     | Description                             |
 | ---------------------------- | --------------------------------------- |
 | `40_REGLES_COMBINATOIRES.md` | Contraintes combinatoires du moteur     |
-| `40_STRATEGIE_SCORING.md`    | Stratégie de scoring et pondérations    |
+| `40_STRATEGIE_DE_SCORING.md` | Stratégie de scoring et pondérations    |
 | `40_WORKMETRICS.md`          | Calcul des métriques RH post-résolution |
 
 ---
@@ -170,14 +261,30 @@ Le moteur de planification s’appuie sur trois contrats principaux :
 Ces contrats constituent l’interface officielle entre le logiciel de planning
 et le moteur de planification.
 
-| Document                            | Description                                                                          |
-| ----------------------------------- | ------------------------------------------------------------------------------------ |
-| `50_SCENARIO_CONTRACT.md`           | Contrat fonctionnel d’entrée du moteur                                               |
-| `50_SCENARIO_TECHNICAL_CONTRACT.md` | Spécification technique du contrat                                                   |
-| `50_SCENARIO_RESPONSE_CONTRACT.md`  | Contrat de sortie du moteur                                                          |
-| `50_SCENARIO_CONTRACT_SCHEMA.json`  | Schéma JSON du contrat d’entrée                                                      |
-| `50_SCENARIO_RESPONSE_SCHEMA.json`  | Schéma JSON de la réponse                                                            |
-| `50_INTERFACE_WINDEV_MOTEUR.json`   | Interface d'échange entre l'application et le moteur (entrée, sortie explicabilité)  |
+> **Note de lecture** : Les documents `50_ScenarioContract*` définissent le contrat
+> fonctionnel stable (référence normative). Les documents `50_interface_windev_moteur*`
+> décrivent l’implémentation concrète de ce contrat entre WinDev et le moteur,
+> y compris les phases de migration et les exemples d’intégration.
+
+### Contrats fonctionnels
+
+| Document                            | Description                                |
+| ----------------------------------- | ------------------------------------------ |
+| `50_ScenarioContract.md`            | Contrat fonctionnel d’entrée du moteur     |
+| `50_ScenarioTechnicalContract.md`   | Spécification technique du contrat         |
+| `50_ScenarioResponseContract.md`    | Contrat de sortie du moteur                |
+| `50_ScenarioContract.schema.json`   | Schéma JSON du contrat d’entrée            |
+| `50_ScenarioResponse.schema.json`   | Schéma JSON de la réponse                  |
+
+### Interface WinDev ↔ Moteur
+
+| Document                                      | Description                                              |
+| --------------------------------------------- | -------------------------------------------------------- |
+| `50_interface_windev_moteur.md`               | Vue d’ensemble, chaîne de traitement, principes          |
+| `50_interface_windev_moteur_contrat.md`        | Endpoint, structure requête/réponse, règles, jalons      |
+| `50_interface_windev_moteur_contrat_detail.md` | Détail champ par champ, contraintes de validation        |
+| `50_interface_windev_moteur_tests.md`          | Batterie de tests automatisés de l’interface             |
+| `50_interface_windev_moteur_exemples.md`       | Exemples curl, JSON requête, JSON réponse complet        |
 
 ---
 
@@ -191,38 +298,78 @@ et le moteur de planification.
 
 # 📍 90 — Suivi de développement
 
-| Document                                 | Description                 |
-| ---------------------------------------- | --------------------------- |
-| `90_SUIVI_DEVELOPPEMENT_MOTEUR.md`       | État d’avancement du moteur |
-| `91_JOURNAL_DEVELOPPEMENT_MOTEUR.md`     | Historique du développement |
-| `92_ARCHIVES_DES_DECISIONS_TEHNIQUES.md` | Historique des décisions    |
+| Document                                  | Description                 |
+| ----------------------------------------- | --------------------------- |
+| `90_SUIVI_DEVELOPPEMENT_MOTEUR.md`        | État d’avancement du moteur |
+| `91_JOURNAL_DEVELOPPEMENT_MOTEUR.md`      | Historique du développement |
+| `92_ARCHIVES_DES_DECISIONS_TECHNIQUES.md` | Historique des décisions    |
 
 ---
 
-# 🧭 Ordre de lecture recommandé
+# 🔍 Je cherche…
 
-Pour comprendre rapidement le moteur :
+| Question | Document |
+| --- | --- |
+| Qu’est-ce qu’un créneau, une ressource, un score ? | `10_glossaire_concepts.md` |
+| Quelles contraintes le moteur applique-t-il ? | `40_REGLES_COMBINATOIRES.md` |
+| Quel JSON envoyer au moteur ? | `50_interface_windev_moteur_exemples.md` |
+| Quelle est la structure de la réponse API ? | `50_ScenarioResponseContract.md` |
+| Qu’est-ce qui est implémenté aujourd’hui ? | `90_SUIVI_DEVELOPPEMENT_MOTEUR.md` |
+| Pourquoi telle décision d’architecture ? | `20_DECISIONS_CONCEPTION_OPTAPLANNER.md` |
+| Comment le moteur calcule les heures de nuit ? | `40_WORKMETRICS.md §2` |
+| Que signifie le score renvoyé ? | `40_STRATEGIE_DE_SCORING.md` |
+| Comment tester l’interface bout en bout ? | `50_interface_windev_moteur_tests.md` |
+| Quelle est la prochaine phase de migration ? | `90_plan_migration_temporaire_windev_vers_moteur.md` |
 
-1. `00_PRINCIPE_OPTAPLANNER.md`
-2. `20_ARCHITECTURE_MOTEUR.md`
-3. `30_UML_SOLVEUR_SIMPLIFIE.md`
-4. `40_STRATEGIE_SCORING.md`
-5. `40_WORKMETRICS.md`
-6. `20_DATASET_BUILDER.md`
+---
 
+# 🧭 Parcours de lecture par profil
+
+### Nouveau contributeur au projet
+
+1. `00_Principe_Optaplanner.md` — comprendre le moteur
+2. `10_glossaire_concepts.md` — vocabulaire partagé
+3. `20_ARCHITECTURE_MOTEUR.md` — vue globale de la chaîne
+4. `30_UML_SOLVEUR_SIMPLIFIE.md` — modèle visuel
+5. `90_SUIVI_DEVELOPPEMENT_MOTEUR.md` — état réel aujourd’hui
+
+### Développeur moteur (contraintes, scoring, WorkMetrics)
+
+1. `20_DECISIONS_CONCEPTION_OPTAPLANNER.md` — invariants à respecter
+2. `40_REGLES_COMBINATOIRES.md` — règles métier
+3. `40_STRATEGIE_DE_SCORING.md` — logique de scoring
+4. `40_WORKMETRICS.md` — métriques post-résolution
+5. `20_DATASET_BUILDER.md` — construction du monde solveur
+6. `60_TESTING_STRATEGY_ENGINE.md` — stratégie de test
+
+### Intégrateur WinDev
+
+1. `50_interface_windev_moteur.md` — vue d’ensemble
+2. `50_interface_windev_moteur_contrat.md` — endpoint, règles, jalons
+3. `50_interface_windev_moteur_contrat_detail.md` — détail des champs
+4. `50_interface_windev_moteur_exemples.md` — exemples JSON complets
+5. `50_ScenarioResponseContract.md` — structure de la réponse
+
+### Chef de projet / pilotage
+
+1. `90_SUIVI_DEVELOPPEMENT_MOTEUR.md` — état et roadmap
+2. `90_plan_migration_temporaire_windev_vers_moteur.md` — jalons d’intégration
+3. `40_STRATEGIE_DE_SCORING.md` — logique fonctionnelle
+
+---
 
 ## Gouvernance documentaire
 
-La documentation du moteur est structurée selon les rôles suivants :
-
-| Document                  | Rôle                                |
-|---------------------------|-------------------------------------|
-| 90_SUIVI_DEVELOPPEMENT    | état réel du moteur                 |
-| 91_JOURNAL_DEVELOPPEMENT  | historique du développement         |
-| 92_ARCHIVES_DES_DECISIONS | décisions techniques structurantes  |
-| 40_STRATEGIE_SCORING      | fonctionnement théorique du scoring |
+| Document | Rôle |
+| --- | --- |
+| `20_DECISIONS_CONCEPTION_OPTAPLANNER.md` | invariants et décisions d’architecture |
+| `90_SUIVI_DEVELOPPEMENT_MOTEUR.md` | état réel du moteur |
+| `91_JOURNAL_DEVELOPPEMENT_MOTEUR.md` | historique du développement |
+| `92_ARCHIVES_DES_DECISIONS_TECHNIQUES.md` | décisions techniques structurantes |
+| `40_STRATEGIE_DE_SCORING.md` | fonctionnement théorique du scoring |
 
 Principe fondamental :
+- **20_DECISIONS explique les invariants d’architecture**
 - **92 explique pourquoi une décision a été prise**
 - **40 décrit comment fonctionne le modèle**
 - **90 décrit ce qui est réellement implémenté**

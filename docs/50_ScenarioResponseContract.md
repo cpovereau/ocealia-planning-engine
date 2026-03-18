@@ -1,66 +1,99 @@
-# 📄 ScenarioResponseContract.md
+# 50 — Contrat de sortie du moteur (ScenarioResponseContract)
 
-**Contrat technique — Restitution du moteur de planification**
+Ce document est la **référence normative de la réponse** produite par le moteur de planification.
 
-Ce document sert de **description du contenu du fichier `ScenarioResponse.schema.json`** qui contient la réponse fournie par le moteur de planification.
+Il décrit :
+- le rôle fonctionnel de chaque bloc de la réponse,
+- la structure et les types de chaque champ,
+- les points d'attention contractuels.
+
+Pour les exemples JSON complets, voir `50_interface_windev_moteur_exemples.md`.
+Pour la description de la requête champ par champ, voir `50_interface_windev_moteur_contrat_detail.md`.
+
+---
 
 ## Principe de conception
 
 La réponse du moteur est structurée en cinq blocs fonctionnels indépendants.
 
-| Bloc            | Rôle                                                                  |
-|-----------------|-----------------------------------------------------------------------|
-| solverResult    | explique comment le solveur évalue la solution                        |
-| planning        | contient les décisions produites par le moteur                        |
-| workMetrics     | décrit les conséquences du planning sur les ressources                |
-| solutionSummary | fournit une lecture synthétique et pilotable de la solution produite  |
-| diagnostics     | fournit des informations techniques utiles pour l’analyse et le debug |
+| Bloc              | Rôle                                                                   |
+| ----------------- | ---------------------------------------------------------------------- |
+| `solverResult`    | Explique comment le solveur évalue la solution                         |
+| `planning`        | Contient les décisions produites par le moteur                         |
+| `workMetrics`     | Décrit les conséquences du planning sur les ressources                 |
+| `solutionSummary` | Fournit une lecture synthétique et pilotable de la solution produite   |
+| `diagnostics`     | Fournit des informations techniques utiles pour l'analyse et le debug  |
 
 Cette séparation garantit que :
-- le moteur reste un moteur d’optimisation,
-- l’analyse RH reste une couche aval.
+- le moteur reste un moteur d'optimisation,
+- l'analyse RH reste une couche aval.
 
-## 1 solverResult — Évaluation du solveur
+---
 
-Ce bloc expose le résultat du solveur OptaPlanner.
+## Structure racine
 
-Il contient :
-- le statut de résolution
-- le score final
-- un détail agrégé des pénalités
+| Champ             | Type   | Toujours présent | Description                                      |
+| ----------------- | ------ | :--------------: | ------------------------------------------------ |
+| `scenarioType`    | string | Oui              | Echo du type de scénario traité (`"SC-01"`)      |
+| `solverResult`    | objet  | Oui              | Statut et score du solveur                       |
+| `planning`        | objet  | Oui              | Planning généré par le moteur                    |
+| `workMetrics`     | objet  | Oui              | Métriques de travail calculées après résolution  |
+| `solutionSummary` | objet  | Oui              | Résumé synthétique chiffré                       |
+| `diagnostics`     | objet  | Oui              | Alertes et diagnostics d'affectation             |
+
+---
+
+## 1. `solverResult` — Évaluation du solveur
+
+Ce bloc expose le résultat du solveur OptaPlanner : statut de résolution, score final, et détail des pénalités.
+
+| Champ            | Type    | Description                                                               |
+| ---------------- | ------- | ------------------------------------------------------------------------- |
+| `status`         | string  | Statut du solveur (`"SOLVED"` si résolution complète)                     |
+| `score.hard`     | integer | Composante HARD du score (0 = aucune violation de contrainte impérative)  |
+| `score.soft`     | integer | Composante SOFT du score (≤ 0 — plus proche de 0 = meilleure solution)    |
+| `scoreBreakdown` | tableau | Détail des pénalités — voir §1.1                                          |
+
+Une solution valide doit toujours avoir : `hard = 0`.
 
 Exemple :
+
 ```json
 "solverResult": {
   "status": "SOLVED",
   "score": {
     "hard": 0,
     "soft": -120
-  },
-  "solverDurationMillis": 1850
+  }
 }
 ```
 
-Le score comporte deux dimensions :
+### 1.1 `scoreBreakdown` — détail des pénalités
 
-| Type |	Signification             |
-|------|----------------------------|
-| HARD |	contraintes obligatoires  |
-| SOFT |	qualité de la solution    |
+Le bloc `scoreBreakdown` expose les contributions des pénalités au score soft.
 
-Une solution valide doit toujours avoir : hard = 0
+| Champ            | Type    | Description                                                             |
+| ---------------- | ------- | ----------------------------------------------------------------------- |
+| `penaliteKey`    | string  | Identifiant de la contrainte (ex : `"METIER_SOFT_CRENEAU_NON_COUVERT"`) |
+| `unit`           | string  | Unité de mesure — voir enum `ScoreBreakdownUnit` ci-dessous             |
+| `quantity`       | double  | Volume mesuré selon l'unité                                             |
+| `weightedImpact` | integer | Impact pondéré sur le score (toujours ≤ 0)                              |
 
-### 1.1 scoreBreakdown — détail agrégé des pénalités
+L'unité est portée par `penaliteKey` pour garantir une restitution stable et cohérente.
+La décision architecturale et la définition complète de l'enum `ScoreBreakdownUnit`
+(`OCCURRENCE`, `MINUTE_PONDEREE`, `JOUR`, `UNKNOWN`) sont dans
+`20_DECISIONS_CONCEPTION_OPTAPLANNER.md §9 bis`.
 
-Le bloc `solverResult.scoreBreakdown` expose les contributions agrégées des pénalités au score soft.
+Règle de lecture :
 
-Chaque entrée contient :
-- `penaliteKey` : identifiant métier de la pénalité
-- `unit` : unité de mesure de la pénalité
-- `quantity` : volume mesuré
-- `weightedImpact` : contribution finale au score
+```text
+weightedImpact = quantity × poids(penaliteKey, strategieScoring)
+```
+
+Un `weightedImpact` nul signifie que la contrainte a été mesurée mais que son poids est 0 dans la stratégie active (informatif seulement).
 
 Exemple :
+
 ```json
 {
   "penaliteKey": "METIER_SOFT_CRENEAU_NON_COUVERT",
@@ -69,16 +102,19 @@ Exemple :
   "weightedImpact": -40000
 }
 ```
-L’unité (unit) est portée par `penaliteKey`, afin de garantir une restitution stable et cohérente.
 
-## 2 planning — Solution produite
+---
 
-Ce bloc contient le planning résultant de la résolution.
+## 2. `planning` — Solution produite
 
-Il correspond à la décision principale du moteur :
-  quel salarié est affecté à quel créneau.
+Ce bloc contient le planning résultant de la résolution : quelle ressource est affectée à quel créneau.
+
+Dans le périmètre actuel, les caractéristiques temporelles des créneaux (date, heure de début, heure de fin, type) sont des **données d'entrée figées**. Le moteur optimise leur **affectation aux ressources**.
+
+Certains champs structurels du dataset (`groupeBesoinId`, `blocJourId`, `ordreDansBloc`) permettent au moteur de raisonner sur des ensembles de créneaux liés, sans modifier directement les décisions du solveur.
 
 Exemple :
+
 ```json
 "planning": {
   "idSalarie": "1041",
@@ -98,78 +134,119 @@ Exemple :
   ]
 }
 ```
-Dans le périmètre actuel du moteur, les caractéristiques temporelles des créneaux (date, heure de début, heure de fin, type) sont considérées comme des données d’entrée figées.
 
-Le moteur optimise principalement leur affectation aux ressources.
+> **Créneau non affecté** : un créneau sans ressource est représenté par la valeur `"A_AFFECTER"` dans le champ `ressourceAffecteeId`, jamais par `null`. Il est comptabilisé dans `solutionSummary.nbCreneauxNonAffectes` et dans `scoreBreakdown` via `METIER_SOFT_CRENEAU_NON_COUVERT`. La pseudo-ressource `A_AFFECTER` n'apparaît pas dans `workMetrics.byRessource`. Décision documentée dans `20_DECISIONS_CONCEPTION_OPTAPLANNER.md`.
 
-Cependant, certains champs structurels du dataset (ex. groupeBesoinId, blocJourId, ordreDansBloc) permettent au moteur de raisonner sur des ensembles de créneaux appartenant à un même besoin ou à un même bloc journalier.
+---
 
-Ces champs ne modifient pas directement les décisions du solveur mais permettent de structurer les contraintes métier et les analyses associées.
+## 3. `workMetrics` — Conséquences du planning
 
-Cette décision relève du modèle actuel.
-D’autres scénarios futurs pourraient introduire des variables de décision supplémentaires, par exemple l’ajustement des horaires ou la génération dynamique de créneaux.
+Les WorkMetrics décrivent les effets du planning sur chaque ressource. Elles sont calculées **après** la résolution.
 
-## 3 workMetrics — Conséquences du planning
-
-Les WorkMetrics décrivent les effets du planning sur chaque ressource.
-
-Elles sont calculées après la résolution et permettent :
-- d’expliquer le score
-- d’analyser la charge de travail
+Elles permettent :
+- d'expliquer le score,
+- d'analyser la charge de travail,
 - de préparer les analyses RH futures.
 
+Les WorkMetrics :
+- ne modifient jamais le planning,
+- ne déclenchent aucune contrainte,
+- servent uniquement à décrire la solution produite.
+
+### 3.1 Structure de `workMetrics`
+
+| Champ         | Type    | Description                               |
+| ------------- | ------- | ----------------------------------------- |
+| `byRessource` | tableau | Métriques par ressource — voir §3.2       |
+| `global`      | objet   | Agrégats globaux — voir §3.3              |
+
+### 3.2 Métriques par ressource (`byRessource[]`)
+
+| Champ                           | Type    | Description                                                      |
+| ------------------------------- | ------- | ---------------------------------------------------------------- |
+| `resourceId`                    | string  | Identifiant de la ressource                                      |
+| `periodeDebut`                  | string  | Date début de la période analysée (ISO-8601)                     |
+| `periodeFin`                    | string  | Date fin de la période analysée (ISO-8601)                       |
+| `heuresTravaillees`             | double  | Heures travaillées totales (créneaux `compteDansCharge = true`)  |
+| `heuresNuit`                    | double  | Heures en plage nocturne (défaut : 22h–06h)                      |
+| `heuresJourFerie`               | double  | Heures travaillées sur jours fériés                              |
+| `heuresReposHebdoTravaille`     | double  | Heures empiétant sur le repos hebdomadaire                       |
+| `nbDimanchesTravailles`         | integer | Nombre de dimanches travaillés                                   |
+| `maxJoursConsecutifsObservees`  | integer | Séquence max de jours consécutifs travaillés                     |
+| `maxNuitsConsecutivesObservees` | integer | Séquence max de nuits consécutives                               |
+
 Exemple :
+
 ```json
 {
   "resourceId": "1041",
   "heuresTravaillees": 35.5,
-  "heuresNuit": 6,
+  "heuresNuit": 6.0,
   "nbDimanchesTravailles": 1
 }
 ```
 
-Les WorkMetrics :
-- ne modifient jamais le planning
-- ne déclenchent aucune contrainte
-- servent uniquement à décrire la solution produite.
+### 3.3 Métriques globales (`global`)
 
-## 4 diagnostics — Informations techniques
+| Champ                      | Type    | Description                             |
+| -------------------------- | ------- | --------------------------------------- |
+| `nbCreneaux`               | integer | Total créneaux dans le planning         |
+| `nbCreneauxNonAffectes`    | integer | Total créneaux non couverts             |
+| `heuresTravailleesTotales` | double  | Total heures tous salariés confondus    |
+| `heuresNuitTotales`        | double  | Total heures de nuit                    |
+| `heuresJourFerieTotales`   | double  | Total heures jours fériés               |
 
-Ce bloc contient des informations utiles pour comprendre l’exécution du moteur.
+---
 
-Exemples :
-- créneaux ignorés
-- activités inconnues
-- créneaux hors horizon
-- alertes de cohérence
+## 4. `diagnostics` — Informations techniques
 
-Ces informations sont particulièrement utiles :
-- en phase d’intégration
-- lors de l’analyse d’un scénario.
+Ce bloc contient des informations utiles pour comprendre l'exécution du moteur :
+créneaux ignorés, activités inconnues, créneaux hors horizon, alertes de cohérence.
 
-### 4.1 assignmentDiagnostics — Diagnostics d’affectation
+Particulièrement utile en phase d'intégration ou lors de l'analyse d'un scénario.
 
-Le bloc `diagnostics.assignmentDiagnostics` expose les créneaux dont l’affectation mérite une explication explicite côté API.
+### 4.1 Structure de `diagnostics`
 
-À ce stade, le moteur expose les cas :
-- `status = UNCOVERED`
-- `reasonCode = NO_RESOURCE_ASSIGNED`
-- `status = VIRTUAL_ASSIGNED`
-- `reasonCode = POSTE_VIRTUEL_ASSIGNED`
-- `status = IMPOSSIBLE_TO_ASSIGN`
-- `reasonCode = NO_COMPATIBLE_RESOURCE`
+| Champ                   | Type    | Description                                            |
+| ----------------------- | ------- | ------------------------------------------------------ |
+| `alerts`                | tableau | Alertes pré-résolution générées par le builder         |
+| `assignmentDiagnostics` | tableau | Diagnostics post-résolution sur les affectations       |
+| `ignoredCreneaux`       | objet   | Compteurs de créneaux ignorés lors de la construction  |
 
-Chaque entrée contient :
-- `creneauId`
-- `date`
-- `heureDebut`
-- `heureFin`
-- `activite`
-- `status`
-- `reasonCode`
-- `message`
+### 4.2 Alertes (`alerts[]`)
+
+| Champ     | Type   | Description                                  |
+| --------- | ------ | -------------------------------------------- |
+| `code`    | string | Code d'alerte — ex : `"SHIFT_END_EXCEEDED"`  |
+| `date`    | string | Date concernée (ISO-8601)                    |
+| `message` | string | Message lisible                              |
+
+### 4.3 Diagnostics d'affectation (`assignmentDiagnostics[]`)
+
+Les `assignmentDiagnostics` sont produits dans la couche de restitution API (`ScenarioResponseMapper`),
+indépendamment du solveur et du builder.
+
+| Champ        | Type   | Description                           |
+| ------------ | ------ | ------------------------------------- |
+| `creneauId`  | string | Identifiant du créneau concerné       |
+| `date`       | string | Date du créneau (ISO-8601)            |
+| `heureDebut` | string | Heure de début                        |
+| `heureFin`   | string | Heure de fin                          |
+| `activite`   | string | Code activité                         |
+| `status`     | string | Statut d'affectation — voir ci-dessous |
+| `reasonCode` | string | Code raison — voir ci-dessous         |
+| `message`    | string | Message explicatif                    |
+
+Valeurs de `status` / `reasonCode` implémentées :
+
+| `status`              | `reasonCode`              | Signification                              |
+| --------------------- | ------------------------- | ------------------------------------------ |
+| `UNCOVERED`           | `NO_RESOURCE_ASSIGNED`    | Aucune ressource affectée par le solveur   |
+| `VIRTUAL_ASSIGNED`    | `POSTE_VIRTUEL_ASSIGNED`  | Affecté à un poste virtuel                 |
+| `IMPOSSIBLE_TO_ASSIGN`| `NO_COMPATIBLE_RESOURCE`  | Aucune ressource compatible disponible     |
 
 Exemple :
+
 ```json
 {
   "creneauId": "SC01-2026-02-22-001",
@@ -183,38 +260,55 @@ Exemple :
 }
 ```
 
-## 5 solutionSummary — Lecture synthétique de la solution
+### 4.4 Créneaux ignorés (`ignoredCreneaux`)
+
+| Champ                        | Type    | Description                                           |
+| ---------------------------- | ------- | ----------------------------------------------------- |
+| `horsHorizon`                | integer | Créneaux hors de l'horizon temporel déclaré           |
+| `aucuneRessourceDansDataset` | integer | Créneaux sans ressource assignable                    |
+| `activiteInconnue`           | integer | Créneaux avec un code activité absent du référentiel  |
+
+---
+
+## 5. `solutionSummary` — Lecture synthétique
 
 Ce bloc fournit une lecture condensée et lisible du planning résolu.
 
-Il permet notamment :
+Il permet :
 - de résumer rapidement une solution,
 - de comparer plusieurs résultats entre eux,
-- d’exposer au Produit des indicateurs globaux compréhensibles sans l’obliger à lire le détail complet des WorkMetrics.
+- d'exposer des indicateurs globaux compréhensibles sans lire le détail des WorkMetrics.
 
-Il ne remplace ni :
-- le détail des WorkMetrics par ressource,
-- ni l’évaluation du solveur,
-- ni les diagnostics techniques.
+Il ne remplace ni le détail des WorkMetrics, ni l'évaluation du solveur, ni les diagnostics techniques.
 
-Il constitue une vue synthétique orientée pilotage et comparaison.
+| Champ                      | Type    | Description                                     |
+| -------------------------- | ------- | ----------------------------------------------- |
+| `nbCreneaux`               | integer | Nombre total de créneaux à planifier            |
+| `nbCreneauxAffectes`       | integer | Créneaux assignés à une ressource réelle        |
+| `nbCreneauxNonAffectes`    | integer | Créneaux restés sur `A_AFFECTER`                |
+| `nbRessourcesMobilisees`   | integer | Nombre de ressources ayant au moins un créneau  |
+| `heuresTravailleesTotales` | double  | Total des heures travaillées (tous salariés)    |
 
-## Pourquoi ce contrat est important
+---
 
-Ce contrat permet :
-✔ d’exposer clairement la solution produite par le moteur
-✔ d’expliquer comment elle a été évaluée
-✔ de préparer les futures analyses RH sans complexifier le solveur lui-même.
+## 6. Points d'attention contractuels
 
-Cette architecture permet également de faire évoluer le moteur :
-- d’un moteur interne de planification
-- vers un moteur d’analyse et d’aide à la décision RH sans modifier le cœur du solveur.
+**Séparation solveur / API** — la solution OptaPlanner est transformée en `ScenarioResponseDTO` par `ScenarioResponseMapper`. Cette couche garantit la stabilité du contrat API indépendamment des évolutions internes du solveur. Décision documentée dans `20_DECISIONS_CONCEPTION_OPTAPLANNER.md`.
 
-## Évolution prévue
+**Unité du `scoreBreakdown`** — l'unité de chaque ligne (`penaliteKey`, `unit`, `quantity`, `weightedImpact`) est déterminée par `PenaliteKey`. Décision documentée dans `20_DECISIONS_CONCEPTION_OPTAPLANNER.md`.
+
+**`workMetrics` et `A_AFFECTER`** — la pseudo-ressource `A_AFFECTER` n'apparaît jamais dans `workMetrics.byRessource`. Seules les ressources réelles y figurent.
+
+---
+
+## 7. Évolution prévue
 
 Ce contrat pourra être enrichi progressivement avec :
-- de nouvelles WorkMetrics (équité, écarts de charge)
-- des métriques contractuelles
-- des indicateurs d’analyse RH.
+- de nouvelles WorkMetrics (équité, écarts de charge, métriques contractuelles),
+- des indicateurs d'analyse RH.
 
-Ces évolutions n’impacteront pas la structure générale de la réponse.
+Ces évolutions n'impacteront pas la structure générale de la réponse.
+
+---
+
+**Fin du document**
