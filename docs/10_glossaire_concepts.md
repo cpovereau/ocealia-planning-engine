@@ -24,7 +24,7 @@ Un créneau possède notamment :
 - une date
 - une heure de début
 - une heure de fin
-- une durée
+- une durée (stockée — source de vérité pour les agrégats ; voir `20_DECISIONS_CONCEPTION_OPTAPLANNER.md`)
 - une activité
 
 ## Variable de décision

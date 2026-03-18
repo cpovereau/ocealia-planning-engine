@@ -433,29 +433,44 @@ Les nouveaux champs ont un impact visible dans la restitution, pas seulement dan
 
 ---
 
-## Phase 9 — Nettoyage du contrat transitoire
+## Phase 9 — Consolidation pipeline SC-03 et diagnostics complets
+
+### État : TERMINÉE (2026-03-18)
+
+Pipeline SC-03 end-to-end validé. `ignoredCreneaux` réel implémenté. Null éliminé de la réponse. Code debug supprimé. Suite de tests exécutée : **BUILD SUCCESSFUL (1m 25s, 0 échec)**. **Phase 9 TERMINÉE — critère de sortie validé.**
 
 ### Objectif
-Supprimer les redondances et figer le contrat d’entrée.
+Consolider le pipeline complet WinDev → API → Solver → ResponseDTO et implémenter les diagnostics pré-résolution `ignoredCreneaux`.
 
-### Champs candidats au nettoyage
-- `sitesAutorises` si remplacé par `axesOrganisationnels.lieuIds` ;
-- `activite` comme clé si `codeActiviteId` est généralisé ;
-- `duree` si entièrement recalculée ;
-- champs tolérés mais non utilisés.
+### Réalisations
 
-### Décisions associées
-- durcir les schémas JSON ;
-- supprimer progressivement la tolérance documentaire temporaire ;
-- préparer ensuite le rejet strict des champs inconnus.
+#### 9a — Suppression du code debug `PlanningService`
+- Suppression du bloc de 36 lignes qui forçait tous les créneaux sur la ressource "1041" (diagnostic temporaire des contraintes HARD)
+- `solve()` est maintenant propre : `PlanningProblem` → `solverLauncher.solve()` → `solutionManager.explain()` → `PlanningResponse`
 
-### Tests à créer
-- tests de validation stricte ;
-- tests de rejet des anciens champs supprimés ;
-- campagne complète de non-régression.
+#### 9b — Finalisation `ScenarioResponseMapper`
+- `toResponse()` accepte `IgnoredCreneauxDTO` en 11e argument (supprime le `new IgnoredCreneauxDTO(0,0,0)` hardcodé)
+- `buildDiagnostics()` utilise l’objet transmis (avec fallback null-safe vers `0,0,0`)
+- `toCreneauPlanningDTO()` : null-safety garantie — retourne `RessourceNonAffectee.INSTANCE.getId()` (`"A_AFFECTER"`) si `getRessourceAffectee() == null`
+
+#### 9c — Implémentation `ignoredCreneaux` dans la chaîne SC-03
+- `PreparedSc03Scenario` : ajout du 4e champ `IgnoredCreneauxDTO ignoredCreneaux`
+- `ScenarioSc03PreparationService` : calcul pré-résolution de `horsHorizon` (date hors [dateDebut, dateFin]) et `activiteInconnue` (code absent du référentiel) ; les deux compteurs sont produits avant `planningService.solve()`
+- `ScenarioSc03ExecutionService` : transmission `prepared.ignoredCreneaux()` au mapper
+- `ScenarioSc01ExecutionService` : ajout `new IgnoredCreneauxDTO(0, 0, 0)` comme 11e argument (SC-01 ne filtre pas de créneaux en pré-résolution)
+
+#### 9d — Tests d’intégration `Phase9IntegrationTest`
+- `sc03_creneauHorsHorizon_doitComptabiliserHorsHorizon` : horsHorizon=1, activiteInconnue=0
+- `sc03_activiteInconnue_doitComptabiliserActiviteInconnue` : activiteInconnue=1, horsHorizon=0
+- `sc03_referenceDataset_ressourceAffecteeId_jamaisNull` : tous les `ressourceAffecteeId` non null dans `planning.jours`
+- `sc03_referenceDataset_tousLesBlocs_presents` : présence des 5 blocs, hard=0, nbCreneaux=6, horsHorizon=0, activiteInconnue=0
+
+Nouveaux datasets de test :
+- `src/test/resources/scenarios/sc03/sc03_hors_horizon.json`
+- `src/test/resources/scenarios/sc03/sc03_activite_inconnue.json`
 
 ### Critère de sortie
-Le contrat d’entrée est stabilisé et nettoyé.
+Pipeline SC-03 end-to-end validé : `ignoredCreneaux` réel, `ressourceAffecteeId` jamais null, tous les blocs présents, hard=0.
 
 ---
 

@@ -137,6 +137,8 @@ Exemple :
 
 > **Créneau non affecté** : un créneau sans ressource est représenté par la valeur `"A_AFFECTER"` dans le champ `ressourceAffecteeId`, jamais par `null`. Il est comptabilisé dans `solutionSummary.nbCreneauxNonAffectes` et dans `scoreBreakdown` via `METIER_SOFT_CRENEAU_NON_COUVERT`. La pseudo-ressource `A_AFFECTER` n'apparaît pas dans `workMetrics.byRessource`. Décision documentée dans `20_DECISIONS_CONCEPTION_OPTAPLANNER.md`.
 
+> **Champ `duree` dans le planning** : la valeur exposée est issue de `Creneau.duree` (durée stockée, transmise par WinDev). Un recalcul d'affichage à partir de `heureDebut`/`heureFin` est toléré uniquement s'il est strictement cohérent avec la durée stockée. Décision documentée dans `20_DECISIONS_CONCEPTION_OPTAPLANNER.md`.
+
 ---
 
 ## 3. `workMetrics` — Conséquences du planning
@@ -188,13 +190,13 @@ Exemple :
 
 ### 3.3 Métriques globales (`global`)
 
-| Champ                      | Type    | Description                             |
-| -------------------------- | ------- | --------------------------------------- |
-| `nbCreneaux`               | integer | Total créneaux dans le planning         |
-| `nbCreneauxNonAffectes`    | integer | Total créneaux non couverts             |
-| `heuresTravailleesTotales` | double  | Total heures tous salariés confondus    |
-| `heuresNuitTotales`        | double  | Total heures de nuit                    |
-| `heuresJourFerieTotales`   | double  | Total heures jours fériés               |
+| Champ                      | Type    | Description                                                                  |
+| -------------------------- | ------- | ---------------------------------------------------------------------------- |
+| `nbCreneaux`               | integer | Total créneaux dans le planning                                              |
+| `nbCreneauxNonAffectes`    | integer | Total créneaux non couverts                                                  |
+| `heuresTravailleesTotales` | double  | Total heures tous salariés — calculé à partir de `Creneau.duree` (durée stockée) |
+| `heuresNuitTotales`        | double  | Total heures de nuit (intersection)                                          |
+| `heuresJourFerieTotales`   | double  | Total heures jours fériés (intersection)                                     |
 
 ---
 
@@ -262,11 +264,15 @@ Exemple :
 
 ### 4.4 Créneaux ignorés (`ignoredCreneaux`)
 
-| Champ                        | Type    | Description                                           |
-| ---------------------------- | ------- | ----------------------------------------------------- |
-| `horsHorizon`                | integer | Créneaux hors de l'horizon temporel déclaré           |
-| `aucuneRessourceDansDataset` | integer | Créneaux sans ressource assignable                    |
-| `activiteInconnue`           | integer | Créneaux avec un code activité absent du référentiel  |
+Ces compteurs sont calculés **en pré-résolution**, dans la couche de préparation du scénario (`ScenarioSc03PreparationService`), à partir des DTO bruts reçus de WinDev — avant tout appel au solveur.
+
+| Champ                        | Type    | Implémenté | Description                                           |
+| ---------------------------- | ------- | :--------: | ----------------------------------------------------- |
+| `horsHorizon`                | integer | ✅ Phase 9  | Créneaux dont la date est hors de l'horizon [dateDebut, dateFin] |
+| `activiteInconnue`           | integer | ✅ Phase 9  | Créneaux avec un `codeActiviteId` absent du référentiel d'activités |
+| `aucuneRessourceDansDataset` | integer | ✅ Phase 12 | Créneaux dont aucune ressource du dataset ne déclare l'activité (contrôle structurel pré-résolution) |
+
+> Pour SC-01, ces trois compteurs valent toujours 0 : les créneaux sont générés programmatiquement par le builder, sans filtrage pré-résolution.
 
 ---
 

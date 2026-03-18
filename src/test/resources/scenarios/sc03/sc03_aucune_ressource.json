@@ -1,0 +1,77 @@
+{
+  "_description": "Dataset Phase 9 — créneau sans ressource compatible. CRE-AR-02 utilise ACT-TECH, absent des activités déclarées par le seul salarié du dataset. Attendu : diagnostics.ignoredCreneaux.aucuneRessourceDansDataset = 1.",
+  "scenarioType": "SC-03",
+  "planningContext": {
+    "horizon": {
+      "dateDebut": "2026-05-11",
+      "dateFin": "2026-05-17"
+    },
+    "strategieScoring": "ANALYSE_RH"
+  },
+  "scenarioParameters": {
+    "prioriteCouverture": "NORMALE"
+  },
+  "dataSet": {
+    "referentiels": {
+      "activites": [
+        {
+          "codeActiviteId": "ACT-SOIN",
+          "libelle": "Soins infirmiers",
+          "compteDansCharge": true,
+          "genereDetteRepos": false,
+          "estServiceCritique": true
+        },
+        {
+          "_commentaire": "ACT-TECH est dans le référentiel (activiteInconnue = 0) mais aucune ressource ne le déclare.",
+          "codeActiviteId": "ACT-TECH",
+          "libelle": "Technique",
+          "compteDansCharge": true,
+          "genereDetteRepos": false,
+          "estServiceCritique": false
+        }
+      ]
+    },
+    "creneaux": [
+      {
+        "id": "CRE-AR-01",
+        "date": "2026-05-12",
+        "heureDebut": "07:00",
+        "heureFin": "15:00",
+        "lieu": "HOPITAL-NORD",
+        "codeActiviteId": "ACT-SOIN",
+        "activite": "Soins infirmiers",
+        "posteComptable": "PC-SOINS",
+        "priorite": 1,
+        "type": "GENERE"
+      },
+      {
+        "_commentaire": "Créneau avec ACT-TECH — non couvert par aucune ressource du dataset.",
+        "id": "CRE-AR-02",
+        "date": "2026-05-13",
+        "heureDebut": "08:00",
+        "heureFin": "16:00",
+        "lieu": "HOPITAL-NORD",
+        "codeActiviteId": "ACT-TECH",
+        "activite": "Technique",
+        "posteComptable": "PC-TECH",
+        "priorite": 1,
+        "type": "GENERE"
+      }
+    ],
+    "ressources": {
+      "salaries": [
+        {
+          "id": "SAL-AR-001",
+          "statut": "CDI",
+          "sitesAutorises": ["HOPITAL-NORD"],
+          "activitesCompatibles": ["ACT-SOIN"],
+          "travailleJourFerie": true
+        }
+      ],
+      "postesVirtuels": []
+    },
+    "indisponibilites": {
+      "items": []
+    }
+  }
+}

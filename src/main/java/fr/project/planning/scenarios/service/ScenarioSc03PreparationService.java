@@ -10,13 +10,17 @@ import fr.project.planning.domain.metier.ReferentielComptabiliteActivite;
 import fr.project.planning.domain.reglementaire.RegulatoryParameters;
 import fr.project.planning.domain.ressource.Indisponibilite;
 import fr.project.planning.domain.ressource.Ressource;
+import fr.project.planning.scenarios.dto.IgnoredCreneauxDTO;
 import fr.project.planning.scenarios.dto.Sc03ScenarioRequestDTO;
+import fr.project.planning.scenarios.dto.input.CreneauInputDTO;
 import fr.project.planning.scenarios.dto.input.PosteVirtuelInputDTO;
+import fr.project.planning.scenarios.dto.input.SalarieInputDTO;
 import fr.project.planning.scenarios.mapper.ScenarioCreneauMapper;
 import fr.project.planning.scenarios.mapper.ScenarioResourceMapper;
 import fr.project.planning.scoring.StrategieScoring;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -110,10 +114,73 @@ public class ScenarioSc03PreparationService {
         Set<String> posteVirtuelIds = request.getDataSet().getRessources().getPostesVirtuels()
                 .stream().map(PosteVirtuelInputDTO::getId).collect(Collectors.toSet());
 
+        // 9. Comptage ignoredCreneaux (pré-résolution)
+        LocalDate dateDebut = request.getPlanningContext().getHorizon().getDateDebut();
+        LocalDate dateFin   = request.getPlanningContext().getHorizon().getDateFin();
+
+        int horsHorizon = (int) request.getDataSet().getCreneaux().stream()
+                .filter(dto -> dto.getDate() != null)
+                .filter(dto -> dto.getDate().isBefore(dateDebut) || dto.getDate().isAfter(dateFin))
+                .count();
+
+        final ReferentielComptabiliteActivite ref = referentiel;
+        int activiteInconnue = (int) request.getDataSet().getCreneaux().stream()
+                .filter(dto -> {
+                    String code = (dto.getCodeActiviteId() != null && !dto.getCodeActiviteId().isBlank())
+                            ? dto.getCodeActiviteId() : dto.getActivite();
+                    return code == null || code.isBlank() || ref.getByCode(code) == null;
+                })
+                .count();
+
+        List<SalarieInputDTO> salaries = request.getDataSet().getRessources() != null
+                && request.getDataSet().getRessources().getSalaries() != null
+                ? request.getDataSet().getRessources().getSalaries() : List.of();
+
+        List<PosteVirtuelInputDTO> postesVirtuelsList = request.getDataSet().getRessources() != null
+                && request.getDataSet().getRessources().getPostesVirtuels() != null
+                ? request.getDataSet().getRessources().getPostesVirtuels() : List.of();
+
+        int aucuneRessourceDansDataset = (int) request.getDataSet().getCreneaux().stream()
+                .filter(dto -> !auMoinsUneRessourceCompatible(dto, salaries, postesVirtuelsList))
+                .count();
+
+        IgnoredCreneauxDTO ignoredCreneaux = new IgnoredCreneauxDTO(horsHorizon, aucuneRessourceDansDataset, activiteInconnue);
+
         return new PreparedSc03Scenario(
                 planningRequest,
                 request.getScenarioType(),
-                posteVirtuelIds
+                posteVirtuelIds,
+                ignoredCreneaux
         );
+    }
+
+    /**
+     * Retourne {@code true} si au moins une ressource du dataset peut potentiellement
+     * couvrir le créneau d'après son activité déclarée.
+     *
+     * Règle : une ressource avec une liste d'activités vide ou nulle est considérée
+     * comme non contrainte (peut couvrir toute activité). Une ressource contrainte
+     * doit déclarer explicitement le code activité du créneau.
+     *
+     * Ce contrôle est structurel et pré-résolution — il ne fait intervenir ni le solveur
+     * ni les contraintes OptaPlanner.
+     */
+    private boolean auMoinsUneRessourceCompatible(
+            CreneauInputDTO creneau,
+            List<SalarieInputDTO> salaries,
+            List<PosteVirtuelInputDTO> postesVirtuels) {
+
+        String activiteCode = (creneau.getCodeActiviteId() != null && !creneau.getCodeActiviteId().isBlank())
+                ? creneau.getCodeActiviteId() : creneau.getActivite();
+
+        for (SalarieInputDTO sal : salaries) {
+            Set<String> acts = sal.getActivitesCompatibles();
+            if (acts == null || acts.isEmpty() || acts.contains(activiteCode)) return true;
+        }
+        for (PosteVirtuelInputDTO pv : postesVirtuels) {
+            Set<String> acts = pv.getActivitesAutorisees();
+            if (acts == null || acts.isEmpty() || acts.contains(activiteCode)) return true;
+        }
+        return false;
     }
 }

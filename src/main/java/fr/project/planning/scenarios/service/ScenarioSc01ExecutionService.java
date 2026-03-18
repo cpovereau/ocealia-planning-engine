@@ -4,10 +4,12 @@ import fr.project.planning.api.PlanningResponse;
 import fr.project.planning.api.PlanningService;
 import fr.project.planning.domain.workmetrics.WorkMetrics;
 import fr.project.planning.domain.workmetrics.WorkMetricsCalculator;
+import fr.project.planning.scenarios.dto.IgnoredCreneauxDTO;
 import fr.project.planning.scenarios.dto.ScenarioAlertDTO;
 import fr.project.planning.scenarios.dto.ScenarioRequestDTO;
 import fr.project.planning.scenarios.dto.ScenarioResponseDTO;
 import fr.project.planning.scenarios.mapper.ScenarioResponseMapper;
+import fr.project.planning.scenarios.mapper.ScoreBreakdownFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -65,12 +67,13 @@ public class ScenarioSc01ExecutionService {
                 "SOLVED",
                 solved.solution().getScore().hardScore(),
                 solved.solution().getScore().softScore(),
-                solved.scoreBreakdown(),
+                ScoreBreakdownFactory.build(solved.explanation()),
                 prepared.resourceId(),
                 solved.solution().getCreneaux(),
                 byId,
                 alerts,
-                prepared.posteVirtuelIds()
+                prepared.posteVirtuelIds(),
+                new IgnoredCreneauxDTO(0, 0, 0)   // SC-01 ne filtre pas de créneaux
         );
     }
 }

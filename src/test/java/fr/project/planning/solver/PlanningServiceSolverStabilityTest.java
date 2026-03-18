@@ -3,6 +3,8 @@ package fr.project.planning.solver;
 import fr.project.planning.api.PlanningRequest;
 import fr.project.planning.api.PlanningResponse;
 import fr.project.planning.api.PlanningService;
+import fr.project.planning.scenarios.mapper.ScoreBreakdownFactory;
+import fr.project.planning.scenarios.dto.ScoreBreakdownItemDTO;
 import fr.project.planning.solution.PlanningProblem;
 import org.junit.jupiter.api.Test;
 import org.optaplanner.core.api.score.buildin.hardsoft.HardSoftScore;
@@ -24,7 +26,7 @@ class PlanningServiceSolverStabilityTest {
 
 
     @Test
-    void same_planning_request_should_produce_same_observable_result_via_service() throws Exception {
+    void same_planning_request_should_produce_same_observable_result_via_service() {
         
         PlanningRequest request = TestPlanningRequestFactory.sc01Minimal();     
 
@@ -45,7 +47,6 @@ class PlanningServiceSolverStabilityTest {
 
         assertEquals(score1, score2, "Le score final doit être stable");
         assertEquals(flattenBreakdown(response1), flattenBreakdown(response2), "Le scoreBreakdown doit être stable");
-        assertEquals(response1.alerts(), response2.alerts(), "Les alertes doivent être stables");
 
         List<String> affectations1 = solution1.getCreneaux().stream()
                 .sorted(Comparator
@@ -69,12 +70,12 @@ class PlanningServiceSolverStabilityTest {
     }
     
     private List<String> flattenBreakdown(PlanningResponse response) {
-        return response.scoreBreakdown().stream()
-            .sorted(Comparator.comparing(item -> item.getPenaliteKey()))
+        return ScoreBreakdownFactory.build(response.explanation()).stream()
+            .sorted(Comparator.comparing(ScoreBreakdownItemDTO::getPenaliteKey))
             .map(item -> item.getPenaliteKey()
                     + "|" + item.getUnit()
                     + "|" + item.getQuantity()
                     + "|" + item.getWeightedImpact())
             .toList();
-        }
+    }
 }

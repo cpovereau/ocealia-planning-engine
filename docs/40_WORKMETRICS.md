@@ -105,11 +105,15 @@ Les pénibilités liées au temps de travail (nuit, dimanche, jour férié) sont
 
 Le calcul est basé sur l’intersection réelle des créneaux avec les intervalles réglementaires (nuit, dimanche, jour férié).
 
+> Ces calculs d’intersection utilisent `heureDebut`/`heureFin` — c’est un usage technique légitime.
+> Ils sont distincts de `heuresTravaillees` (§4.2), qui utilise exclusivement `Creneau.duree`.
+> Voir la règle de source de vérité dans `20_DECISIONS_CONCEPTION_OPTAPLANNER.md`.
+
 Pour chaque créneau, le moteur calcule :
 
 | Métrique	                     | Description                                |
 | ------------------------------ | ------------------------------------------ |
-| `minutesTravaillees`	         | durée totale du créneau                    |
+| `minutesTravaillees`	         | durée totale du créneau (via intersection) |
 | `minutesNuit`	                 | minutes situées dans l’intervalle de nuit  |
 | `minutesDimanche`	             | minutes situées un dimanche                |
 | `minutesFerie`                 | minutes situées un jour férié              |
@@ -173,12 +177,12 @@ Chaque instance de WorkMetrics est **liée à :**
 
 ### 4.2 Charges horaires
 
-| Champ                       | Type    | Description                           | Implémenté |
-| --------------------------- | ------- | ------------------------------------- | -----------|
-| `heuresTravaillees`         | Decimal | Total heures affectées sur la période |      V1    |
-| `heuresNuit`                | Decimal | Heures en plage de nuit               |      V1    |
-| `heuresJourFerie`           | Decimal | Heures sur jours fériés               |      V1    |
-| `heuresReposHebdoTravaille` | Decimal | Travail sur repos hebdomadaire        |      V1    |
+| Champ                       | Type    | Description                                                                | Implémenté |
+| --------------------------- | ------- | -------------------------------------------------------------------------- | -----------|
+| `heuresTravaillees`         | Decimal | Total heures affectées — calculé à partir de `Creneau.duree` (durée stockée) |      V1    |
+| `heuresNuit`                | Decimal | Heures en plage de nuit (intersection `heureDebut`/`heureFin` × plage nuit) |      V1    |
+| `heuresJourFerie`           | Decimal | Heures sur jours fériés (intersection)                                     |      V1    |
+| `heuresReposHebdoTravaille` | Decimal | Travail sur repos hebdomadaire                                             |      V1    |
 
 ---
 

@@ -134,6 +134,26 @@ rendre le score **stable et interprétable**.
 
 ---
 
+## `PlanningService` solveur pur — `ScoreBreakdownFactory` couche scénarios
+
+Décision :
+
+`PlanningService` ne construit aucun DTO. Il retourne uniquement `PlanningResponse(solution, explanation)` — données brutes du solveur.
+
+La transformation `ScoreExplanation → List<ScoreBreakdownItemDTO>` est déléguée à `ScoreBreakdownFactory.build()`, appelée par les `ExecutionService` avant transmission au `ScenarioResponseMapper`.
+
+Conséquences :
+
+* `PlanningService` n’a aucune dépendance vers `scenarios.dto`
+* `ScoreBreakdownFactory` est le seul point qui connaît à la fois `PenaliteKey` (domaine) et `ScoreBreakdownItemDTO` (API)
+* la frontière solveur / API est explicite et testable
+
+Justification :
+
+Appliquer strictement la responsabilité unique : le solveur optimise, la couche scénarios restitue.
+
+---
+
 ## Diagnostic d’affectation des créneaux
 
 Décision :

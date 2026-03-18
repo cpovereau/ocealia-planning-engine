@@ -1,0 +1,69 @@
+{
+  "_description": "Dataset Phase 9 — créneau avec activité inconnue. Le créneau CRE-AI-02 utilise ACT-INCONNU absent du référentiel. Attendu : diagnostics.ignoredCreneaux.activiteInconnue = 1.",
+  "scenarioType": "SC-03",
+  "planningContext": {
+    "horizon": {
+      "dateDebut": "2026-05-11",
+      "dateFin": "2026-05-17"
+    },
+    "strategieScoring": "ANALYSE_RH"
+  },
+  "scenarioParameters": {
+    "prioriteCouverture": "NORMALE"
+  },
+  "dataSet": {
+    "referentiels": {
+      "activites": [
+        {
+          "codeActiviteId": "ACT-SOIN",
+          "libelle": "Soins infirmiers",
+          "compteDansCharge": true,
+          "genereDetteRepos": false,
+          "estServiceCritique": true
+        }
+      ]
+    },
+    "creneaux": [
+      {
+        "id": "CRE-AI-01",
+        "date": "2026-05-12",
+        "heureDebut": "07:00",
+        "heureFin": "15:00",
+        "lieu": "HOPITAL-NORD",
+        "codeActiviteId": "ACT-SOIN",
+        "activite": "Soins infirmiers",
+        "posteComptable": "PC-SOINS",
+        "priorite": 1,
+        "type": "GENERE"
+      },
+      {
+        "_commentaire": "Créneau avec activité absente du référentiel.",
+        "id": "CRE-AI-02",
+        "date": "2026-05-13",
+        "heureDebut": "08:00",
+        "heureFin": "16:00",
+        "lieu": "HOPITAL-NORD",
+        "codeActiviteId": "ACT-INCONNU",
+        "activite": "Activité non référencée",
+        "posteComptable": "PC-SOINS",
+        "priorite": 1,
+        "type": "GENERE"
+      }
+    ],
+    "ressources": {
+      "salaries": [
+        {
+          "id": "SAL-AI-001",
+          "statut": "CDI",
+          "sitesAutorises": ["HOPITAL-NORD"],
+          "activitesCompatibles": ["ACT-SOIN", "ACT-INCONNU"],
+          "travailleJourFerie": true
+        }
+      ],
+      "postesVirtuels": []
+    },
+    "indisponibilites": {
+      "items": []
+    }
+  }
+}

@@ -5,6 +5,8 @@ import fr.project.planning.domain.creneau.QualificationJour;
 import fr.project.planning.domain.creneau.TypeCreneau;
 import fr.project.planning.domain.creneau.TypePlageHoraire;
 import fr.project.planning.scenarios.dto.input.CreneauInputDTO;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalTime;
@@ -24,6 +26,8 @@ import java.util.List;
 @Service
 public class ScenarioCreneauMapper {
 
+    private static final Logger log = LoggerFactory.getLogger(ScenarioCreneauMapper.class);
+
     /**
      * Convertit un {@link CreneauInputDTO} en {@link Creneau} domaine.
      *
@@ -37,6 +41,10 @@ public class ScenarioCreneauMapper {
      */
     public Creneau toCreneau(CreneauInputDTO dto) {
         int duree = calculerDureeMinutes(dto.getHeureDebut(), dto.getHeureFin());
+        if (duree <= 0) {
+            log.warn("[ScenarioCreneauMapper] duree calculée invalide ({} min) pour le créneau {} — heureDebut={} heureFin={}",
+                    duree, dto.getId(), dto.getHeureDebut(), dto.getHeureFin());
+        }
 
         TypePlageHoraire typePlageHoraire = Boolean.TRUE.equals(dto.getSegmentNuit())
                 ? TypePlageHoraire.NUIT

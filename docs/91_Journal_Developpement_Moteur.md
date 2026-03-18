@@ -355,6 +355,66 @@ La stratégie complète est documentée dans `90_plan_migration_temporaire_winde
 - **Résultat** : BUILD SUCCESSFUL (44s, 0 échec)
 - **Décision** : `heureDebutNuit`/`heureFinNuit` non exploités solveur en Phase 8 — différé Phase 9+
 
+### Itération 10 — Refactoring architectural (2026-03-18) — PlanningService solveur pur
+
+- **Objectif** : séparer la responsabilité du solveur de la construction des DTO de restitution
+- **Fichiers modifiés** :
+  - `PlanningService` — suppression de `buildScoreBreakdown()` et `resolveQuantity()` ; retourne `PlanningResponse(solution, explanation)` ; aucune dépendance vers `scenarios.dto`
+  - `PlanningResponse` — converti en `record` : `solution` + `explanation` brute ; suppression des champs `alerts` et `scoreBreakdown`
+  - `ScoreBreakdownFactory` — ajout de la méthode statique `build(ScoreExplanation)` ; accueille la logique déplacée depuis `PlanningService`
+  - `ScenarioSc01ExecutionService` — `solved.scoreBreakdown()` → `ScoreBreakdownFactory.build(solved.explanation())`
+  - `ScenarioSc03ExecutionService` — idem
+  - `PlanningServiceSolverStabilityTest` — `flattenBreakdown()` adapté au nouveau contrat ; assertion `alerts()` supprimée
+  - `PlanningServiceScoreRegressionTest` — `response.scoreBreakdown()` → `ScoreBreakdownFactory.build(response.explanation())`
+- **Résultat** : BUILD SUCCESSFUL (1m 3s, 0 échec)
+- **Décision** : `ScoreBreakdownFactory` est le seul point de contact entre `ScoreExplanation` (domaine solveur) et `ScoreBreakdownItemDTO` (couche API) — frontière explicite et testable
+
+### Itération 9 — Phase 9 (2026-03-18) — Consolidation pipeline SC-03 et diagnostics complets
+
+- **Objectif** : pipeline end-to-end validé, `ignoredCreneaux` réels, null éliminé de la réponse
+- **Fichiers modifiés** :
+  - `PlanningService` — suppression du bloc debug force-1041 (36 lignes) — `solve()` propre
+  - `ScenarioResponseMapper` — `toResponse()` accepte `IgnoredCreneauxDTO` en 11e arg ; null-safety `ressourceAffecteeId` → `"A_AFFECTER"` garanti
+  - `PreparedSc03Scenario` — ajout 4e champ `IgnoredCreneauxDTO ignoredCreneaux`
+  - `ScenarioSc03PreparationService` — calcul pré-résolution `horsHorizon` + `activiteInconnue` à partir des DTO bruts
+  - `ScenarioSc03ExecutionService` — transmission `prepared.ignoredCreneaux()` au mapper
+  - `ScenarioSc01ExecutionService` — ajout `new IgnoredCreneauxDTO(0, 0, 0)` comme 11e argument
+- **Tests ajoutés** :
+  - `Phase9IntegrationTest` (4 tests `@SpringBootTest` + MockMvc)
+  - `sc03_hors_horizon.json` — dataset horsHorizon=1
+  - `sc03_activite_inconnue.json` — dataset activiteInconnue=1
+- **Résultat** : BUILD SUCCESSFUL (1m 25s, 0 échec)
+- **Décision** : `ignoredCreneaux` est un diagnostic pré-résolution (calculé sur les DTO avant `planningService.solve()`) — jamais dérivé de la réponse solveur
+
+### Itération 12 — `ignoredCreneaux.aucuneRessourceDansDataset` implémenté pour SC-03 (2026-03-18)
+
+- **Objectif** : compléter le compteur contractuel `aucuneRessourceDansDataset` encore laissé à `0` en dur dans `ScenarioSc03PreparationService`
+- **Règle retenue** : un créneau est compté si aucune ressource du dataset (salarié ou poste virtuel) ne peut potentiellement le couvrir au niveau structurel — sa `codeActiviteId` n'apparaît dans la liste d'activités d'aucune ressource. Une ressource avec une liste vide/nulle est considérée non contrainte (couvre toute activité). Contrôle strictement pré-résolution sur les DTO bruts.
+- **Fichiers modifiés** :
+  - `ScenarioSc03PreparationService` — calcul `aucuneRessourceDansDataset` + méthode privée `auMoinsUneRessourceCompatible()`
+- **Tests ajoutés / adaptés** :
+  - `sc03_aucune_ressource.json` — dataset avec un créneau ACT-TECH non couvert par le salarié (activitesCompatibles: ["ACT-SOIN"] seulement)
+  - `Phase9IntegrationTest` — nouveau test `sc03_aucuneRessourceCompatible_doitComptabiliserAucuneRessource()` ; assertions `aucuneRessourceDansDataset = 0` ajoutées aux 3 tests existants
+- **Résultat** : BUILD SUCCESSFUL (1m 2s, 0 échec)
+- **Décision** : `aucuneRessourceDansDataset` est calculé en préparation, avant le solveur — cohérent avec `horsHorizon` et `activiteInconnue`
+
+---
+
+### Itération 11 — Décision `Creneau.duree` source de vérité (2026-03-18)
+
+- **Objectif** : aligner le code avec la décision architecturale — `Creneau.duree` est la source de vérité pour tous les agrégats et la restitution
+- **Contexte** : `CreneauInputDTO` ne porte pas de champ `duree` ; `ScenarioCreneauMapper` le calcule depuis `heureDebut`/`heureFin`. `ScenarioResponseMapper.formatDuree()` recalculait indépendamment via `Duration.between()` — source de divergence potentielle.
+- **Fichiers modifiés** :
+  - `ScenarioResponseMapper` — `formatDuree()` remplacée : utilise directement `creneau.getDuree()` ; import `java.time.Duration` supprimé
+  - `ScenarioCreneauMapper` — ajout d’un log `warn` si `duree <= 0` après calcul (vérification défensive)
+- **Vérifications confirmées (non modifiées)** :
+  - `TimeBreakdownCalculator` — `minutesTravaillees = creneau.getDuree()` ✅
+  - `WorkMetricsCalculator` — passe par `TimeBreakdownCalculator` ✅
+  - `solutionSummary.heuresTravailleesTotales` — `Creneau::getDuree` ✅
+  - `workMetrics.global.heuresTravailleesTotales` — `Creneau::getDuree` ✅
+- **Résultat** : BUILD SUCCESSFUL (1m 14s, 0 échec)
+- **Décision** : `Creneau.duree` est l’unique référence pour les agrégats et la restitution — documenté dans `20_DECISIONS_CONCEPTION_OPTAPLANNER.md`
+
 ---
 
 ## Conclusion de l’audit actuel du moteur

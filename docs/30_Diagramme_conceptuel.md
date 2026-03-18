@@ -17,7 +17,7 @@
 │ - créneaux               │   │ - bornes physiques       │
 │ - ressources             │   │ - règles métier          │
 │ - indicateurs dérivés    │   │ - règles légales         │
-│ - score                  │   │ - stratégie (payé/récup) │
+│ - score                  │   │ - stratégie scoring      │
 └─────────────┬────────────┘   │ - priorités              │
               │                │ - pénalités              │
               │                └─────────────┬────────────┘
@@ -62,8 +62,6 @@
                 │ - activité       │
                 │ - poste compt.   │
                 │ - priorité       │
-                │ - type           │
-                │   (imposé / gen.)│
                 │ - qualifiants    │
                 │   (nuits, féries,│
                 │    repos hebdo)  │
@@ -79,11 +77,14 @@
                 │ - heures repos   │
                 │ hebdo            │
                 │ - heures sup /   │
-                │ compl.           │
+                │ compl. (à venir) │
                 │ - dette repos    │
                 │ compensateur     │
+                │   (à venir)      │
                 │ - coût direct    │
+                │   (à venir)      │
                 │ - coût indirect  │
+                │   (à venir)      │
                 └─────────┬────────┘
                           │
                           ▼
@@ -112,10 +113,12 @@
                 │ - créneaux       │
                 │   à affecter     │
                 │ - charge par     │
-                │   salarié        |
-                | - dettes         |
-                |   générées       │
+                │   salarié        │
+                │ - dettes         │
+                │   générées       │
+                │   (à venir)      │
                 │ - besoin RH      │
                 │   (ETP / heures) │
+                │   (à venir)      │
                 │ - alertes        │
                 └──────────────────┘

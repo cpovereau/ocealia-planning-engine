@@ -17,18 +17,16 @@ C’est l’unité centrale du raisonnement.
 
 ### Nature
 - Peut être **imposé** (besoin connu)
-- Peut être **généré** (besoin construit pendant la résolution)
 
 ### Attributs conceptuels
 - Date
 - Heure de début
 - Heure de fin
-- Durée (calculée)
+- Durée (stockée — source de vérité pour les agrégats)
 - Lieu
 - Activité
 - Poste comptable
 - Priorité métier
-- Type : `IMPOSÉ | GÉNÉRÉ`
 
 ### Propriétés clés
 - N’appartient à personne
@@ -95,8 +93,7 @@ Représente une personne existante et contractualisée.
 Représente une **capacité de travail manquante ou hypothétique**.
 
 ### Nature
-- Peut être fourni par l’utilisateur (potentiel)
-- Peut être révélé par la résolution
+- Fourni par l’utilisateur
 - N’est jamais une personne
 
 ### Attributs conceptuels
@@ -105,7 +102,6 @@ Représente une **capacité de travail manquante ou hypothétique**.
 - Activités autorisées
 - Lieux autorisés
 - Postes comptables compatibles
-- Type : `POTENTIEL | RÉVÉLÉ`
 
 ### Propriétés clés
 - Toujours pénalisé par rapport à un salarié réel  
@@ -145,24 +141,27 @@ Une affectation est une **proposition** de rattachement :
 Les contraintes **n’agissent jamais sur les données**,
 elles **évaluent les affectations**.
 Exemples de contraintes "coût/dette" :
-- pénaliser la création de dette de repos compensateur
-- pénaliser le dépassement d’un contingent (si vous le modélisez)
-- arbitrer payé vs récup (selon stratégie)
+- pénaliser le travail sur repos hebdomadaire
+- pénaliser l’affectation à un poste virtuel
+- pénaliser un créneau non couvert
+- pénaliser la création de dette de repos compensateur *(à venir)*
+- pénaliser le dépassement d’un contingent *(à venir)*
+- arbitrer payé vs récup selon stratégie *(à venir)*
 
-## 6bis. Indicateurs dérivés (coûts et dettes)
-Ces indicateurs ne sont pas des décisions : ils sont dérivés et servent au scoring
+## 6 bis. Indicateurs dérivés (coûts et dettes)
+
+Ces indicateurs ne sont pas des décisions : ils sont dérivés et servent au scoring.
+
 - heuresNuit
 - heuresJourFerie
 - heuresSurReposHebdo
-- heuresSupplementaires / heuresComplementaires
 - minutesDimanche
 - minutesIntersection
-- detteReposCompensateur (et éventuellement par origine : nuit / férié / repos hebdo / HS)
-- coutDirect (si payé) vs coutIndirect (si repos/dette)
+- heuresSupplementaires / heuresComplementaires *(à venir)*
+- detteReposCompensateur, par origine : nuit / férié / repos hebdo / HS *(à venir)*
+- coutDirect (si payé) vs coutIndirect (si repos/dette) *(à venir)*
 
-## 7. Evaluation globale
-
-### Catégories de contraintes
+## 6 ter. Catégories de contraintes
 
 #### Contraintes physiques (dures)
 - Impossibilités humaines
@@ -211,10 +210,10 @@ Le moteur calcule :
 - Dépassements expliqués
 
 ### Résultats décisionnels
-- Volume de poste virtuel requis
-- ETP manquant
-- Alertes légales et métier
-- Indicateurs de tension
+- Volume de poste virtuel requis *(à venir)*
+- ETP manquant *(à venir)*
+- Alertes légales et métier *(à venir)*
+- Indicateurs de tension *(à venir)*
 
 ---
 

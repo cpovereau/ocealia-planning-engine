@@ -343,13 +343,34 @@ Cette séparation est assurée par le composant `ScenarioResponseMapper`.
 Objectifs :
 - éviter toute dépendance directe de l’API vis-à-vis d’OptaPlanner ;
 - permettre l’évolution du modèle interne sans casser le contrat API ;
-- centraliser la logique de restitution (planning, scoreBreakdown, métriques, diagnostics).
+- centraliser la logique de restitution (planning, métriques, diagnostics).
 
 Chaîne de transformation :
 
 ```
 Solveur interne → PlanningSolution → ScenarioResponseMapper → ScenarioResponseDTO (contrat API)
 ```
+
+### Décision — PlanningService comme solveur pur
+
+`PlanningService` est un service à responsabilité unique : recevoir un `PlanningRequest`, résoudre le `PlanningProblem`, retourner les données brutes du solveur.
+
+`PlanningResponse` contient uniquement :
+- la `PlanningSolution` résolue
+- le `ScoreExplanation` brut produit par `SolutionManager`
+
+`PlanningService` ne construit aucun DTO et n’a aucune dépendance vers le package `scenarios.dto`.
+
+### Décision — Construction du scoreBreakdown dans ScoreBreakdownFactory (couche scénarios)
+
+La transformation `ScoreExplanation → List<ScoreBreakdownItemDTO>` est réalisée par `ScoreBreakdownFactory.build()`, dans la couche scénarios.
+
+Cette factory est appelée par les `ExecutionService` (SC-01, SC-03), qui transmettent ensuite la liste construite au `ScenarioResponseMapper`.
+
+Ce découpage garantit que :
+- `PlanningService` ne connaît aucun DTO de restitution ;
+- la logique de transformation `explanation → breakdown` est centralisée et testable indépendamment ;
+- le `ScenarioResponseMapper` reçoit des données déjà transformées, sans accès direct à `ScoreExplanation`.
 
 ### Décision — Production des diagnostics d’affectation dans le mapper API
 
@@ -602,6 +623,108 @@ Par conséquent : `penalizeLong(...)` ne peut pas être utilisé.
 
 Toutes les contraintes doivent utiliser : `penalize(...)` 
 avec conversion explicite : `Math.toIntExact(...)`si nécessaire.
+
+---
+
+### Décision de conception — Source de vérité de la durée des créneaux
+
+**Contexte**
+
+Le modèle de données du moteur de planification contient :
+* une **durée stockée** (`Creneau.duree`)
+* des **heures de début / fin** (`heureDebut`, `heureFin`) permettant de recalculer une durée
+
+Cette double information introduit une ambiguïté :
+> Quelle est la valeur de référence utilisée par le moteur et par la restitution API ?
+
+Cette décision vise à **trancher explicitement cette ambiguïté**.
+
+---
+
+#### Décision
+
+> **La durée stockée (`Creneau.duree`) est la source de vérité pour toutes les restitutions métier et les agrégats de sortie.**
+> **Toute restitution API doit être cohérente avec `Creneau.duree`**
+
+---
+
+#### Règles associées
+
+1. Restitution API
+
+Les champs suivants doivent utiliser **exclusivement la durée stockée** :
+
+* `solutionSummary.heuresTravailleesTotales`
+* `workMetrics.global.heuresTravailleesTotales`
+* toute agrégation horaire exposée en sortie
+
+👉 Aucune recomposition à partir des heures ne doit être utilisée pour ces valeurs.
+
+---
+
+2. Planning détaillé
+
+On autorise un **recalcul à partir des heures** uniquement pour l’affichage à condition que ce recalcul soit strictement cohérent avec la durée stockée
+
+---
+
+1. Recalcul technique
+
+Le recalcul de durée à partir de `heureDebut` / `heureFin` est autorisé uniquement pour :
+* des contrôles de cohérence
+* des traitements techniques explicitement documentés
+
+Il ne doit **jamais devenir une source de vérité implicite**.
+
+---
+
+4. Gestion des incohérences
+
+Toute divergence entre :
+* durée stockée
+* durée recalculée
+
+est considérée comme :
+> ❌ une anomalie de construction du dataset
+
+Toute divergence doit être tracée dans les diagnostics de préparation
+
+---
+
+5. Règle d’architecture
+
+* Le moteur **ne choisit jamais dynamiquement** entre durée stockée et durée recalculée
+* Les composants doivent appliquer une règle explicite et unique
+
+---
+
+#### Justification
+
+* La durée stockée est issue du système source (Windev)
+* Elle représente la **réalité métier contractualisée**
+* Elle garantit la **stabilité des résultats et des agrégats**
+
+À l’inverse, une durée recalculée :
+
+* dépend de conventions implicites (nuit, chevauchement, minuit)
+* peut diverger silencieusement
+
+---
+
+#### Impacts
+
+Cette décision implique :
+* un alignement des mappers API
+* une cohérence entre planning et agrégats
+* une clarification des responsabilités dans le code
+
+---
+
+#### Conclusion
+
+> La durée stockée devient la référence unique pour toute lecture métier.
+> Le recalcul reste un outil technique, jamais une vérité implicite.
+
 
 ---
 

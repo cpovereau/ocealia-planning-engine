@@ -214,6 +214,9 @@ Le paramétrage du scoring est désormais centralisé et stable, permettant d’
 | Dimanches maximum (R9)                | SOFT | ⏳            | nbDimanchesTravailles         | Oui                    | Non                                       | Non            | 40_REGLES_COMBINATOIRES     |
 | Pénibilité nuit                       | SOFT | ✅            | heuresNuit                    | Oui                    | Non                                       | Oui            | 40_WORKMETRICS              |
 | Pénibilité jours fériés               | SOFT | ✅            | heuresJourFerie               | Oui                    | Non                                       | Oui            | 40_WORKMETRICS              |
+| Nuit affectée à salarié non-nuit      | SOFT | ✅            | nbCreneauxNuitNonNuit         | Oui                    | Non                                       | Oui            | 40_WORKMETRICS              |
+| Jour férié refusé (travailleJourFerie)| HARD | ✅            | –                             | Non                    | JOUR_FERIE_NON_COUVERT                    | Non            | 50_ScenarioResponseContract |
+| Indisponibilité salarié               | HARD | ✅            | –                             | Non                    | Non                                       | Non            | 90_plan_migration §Phase 4  |
 
 ---
 
@@ -509,7 +512,7 @@ Le contrat détaillé champ par champ est dans `50_interface_windev_moteur_contr
 | 6     | Données nuit par salarié                             | ✅ Terminé  |
 | 7     | Ouverture SC-03 côté API                             | ✅ Terminé  |
 | 8     | Scoring, WorkMetrics, diagnostics enrichis           | ✅ Terminé  |
-| 9     | Nettoyage du contrat transitoire                     | ⏳ En cours |
+| 9     | Consolidation pipeline SC-03 et diagnostics complets | ✅ Terminé  |
 
 ---
 

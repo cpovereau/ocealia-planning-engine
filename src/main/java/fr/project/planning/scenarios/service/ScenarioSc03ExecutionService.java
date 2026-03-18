@@ -8,6 +8,7 @@ import fr.project.planning.scenarios.dto.Sc03ScenarioRequestDTO;
 import fr.project.planning.scenarios.dto.ScenarioAlertDTO;
 import fr.project.planning.scenarios.dto.ScenarioResponseDTO;
 import fr.project.planning.scenarios.mapper.ScenarioResponseMapper;
+import fr.project.planning.scenarios.mapper.ScoreBreakdownFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -65,12 +66,13 @@ public class ScenarioSc03ExecutionService {
                 "SOLVED",
                 solved.solution().getScore().hardScore(),
                 solved.solution().getScore().softScore(),
-                solved.scoreBreakdown(),
+                ScoreBreakdownFactory.build(solved.explanation()),
                 null,                                   // resourceId — multi-ressources
                 solved.solution().getCreneaux(),
                 byId,
                 alerts,
-                prepared.posteVirtuelIds()
+                prepared.posteVirtuelIds(),
+                prepared.ignoredCreneaux()
         );
     }
 }

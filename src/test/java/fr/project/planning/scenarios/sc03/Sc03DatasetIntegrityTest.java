@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import fr.project.planning.scenarios.dto.DataSetDTO;
 import fr.project.planning.scenarios.dto.ScenarioRequestDTO;
 import fr.project.planning.scenarios.dto.input.CreneauInputDTO;
-import fr.project.planning.scenarios.dto.input.IndisponibiliteItemDTO;
 import fr.project.planning.scenarios.dto.input.ReferentielActiviteDTO;
 import fr.project.planning.scenarios.dto.input.SalarieInputDTO;
 import org.junit.jupiter.api.BeforeAll;
