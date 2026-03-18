@@ -38,12 +38,20 @@ public final class AssignmentDiagnosticsFactory {
 
                 if (!hasRealAssignment) {
                     status = "IMPOSSIBLE_TO_ASSIGN";
-                    reason = "NO_COMPATIBLE_RESOURCE";
-                    message = "Aucune ressource compatible avec ce créneau";
+                    reason = creneau.isJourFerie()
+                            ? "JOUR_FERIE_NON_COUVERT"
+                            : "NO_COMPATIBLE_RESOURCE";
+                    message = creneau.isJourFerie()
+                            ? "Créneau sur jour férié — aucune ressource compatible"
+                            : "Aucune ressource compatible avec ce créneau";
                 } else {
                     status = "UNCOVERED";
-                    reason = "NO_RESOURCE_ASSIGNED";
-                    message = "Créneau non couvert par le solveur";
+                    reason = creneau.isJourFerie()
+                            ? "JOUR_FERIE_NON_COUVERT"
+                            : "NO_RESOURCE_ASSIGNED";
+                    message = creneau.isJourFerie()
+                            ? "Créneau sur jour férié non couvert par le solveur"
+                            : "Créneau non couvert par le solveur";
                 }
 
                 diagnostics.add(new AssignmentDiagnosticDTO(

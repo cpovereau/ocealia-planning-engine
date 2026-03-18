@@ -6,6 +6,7 @@ import fr.project.planning.api.PlanningResponse;
 import fr.project.planning.api.PlanningService;
 import fr.project.planning.fixtures.TestPlanningRequestFactory;
 import fr.project.planning.scenarios.dto.ScoreBreakdownItemDTO;
+import fr.project.planning.scenarios.mapper.ScoreBreakdownFactory;
 import org.junit.jupiter.api.Test;
 import org.optaplanner.core.api.score.buildin.hardsoft.HardSoftScore;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,7 +36,7 @@ class PlanningServiceScoreRegressionTest {
         HardSoftScore score = response.solution().getScore();
         assertNotNull(score, "Le score final ne doit pas être nul");
 
-        List<ScoreBreakdownItemDTO> breakdown = response.scoreBreakdown();
+        List<ScoreBreakdownItemDTO> breakdown = ScoreBreakdownFactory.build(response.explanation());
         assertNotNull(breakdown, "Le scoreBreakdown ne doit pas être nul");
         assertFalse(breakdown.isEmpty(), "Le scoreBreakdown ne doit pas être vide");
 

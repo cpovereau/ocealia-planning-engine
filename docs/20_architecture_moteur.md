@@ -112,6 +112,20 @@ H --> I
 - `ScenarioContract` : contrat d’entrée fourni par l’appelant
 - `PlanningContext` : contexte réglementaire et stratégie de scoring
 
+Le `PlanningContext` regroupe les paramètres structurants
+du moteur pour un scénario donné :
+- horizon temporel
+- paramètres réglementaires
+- stratégie de scoring
+- hypothèses d’historique
+
+Le `PlanningContext` est considéré comme **un fait immuable**
+pendant toute la résolution du scénario.
+
+Il est injecté dans le `ScenarioDatasetBuilder`
+et utilisé ensuite par certaines contraintes et par le calcul
+des WorkMetrics.
+
 **BUILD_WORLD**
 
 - `ScenarioDatasetBuilder` : traduction contrôlée du contrat vers le monde solveur
@@ -146,10 +160,92 @@ Aucune de ces couches ne doit absorber la responsabilité d’une autre.
 
 ---
 
-# 4. Objectif de ces diagrammes
+# 4. Invariants fondamentaux du moteur
+
+Les règles suivantes constituent les **invariants d’architecture**
+du moteur de planification.
+
+Toute évolution du moteur doit respecter ces principes.
+
+---
+
+## Séparation des couches
+
+Le moteur repose sur quatre responsabilités distinctes :
+1. construction du monde solveur
+2. optimisation des affectations
+3. analyse du planning résultant
+4. exposition d’une réponse API
+
+Ces responsabilités correspondent aux composants suivants :
+
+| Couche       | Composant              |
+|--------------|------------------------|
+| Construction | ScenarioDatasetBuilder |
+| Optimisation | OptaPlanner Solver     |
+| Analyse      | WorkMetricsCalculator  |
+| Exposition   | ScenarioResponseMapper |
+
+Chaque couche possède une responsabilité unique.
+
+---
+
+## Unicité du constructeur du monde solveur
+
+Le `ScenarioDatasetBuilder` est **le seul composant autorisé**
+à construire les objets du monde solveur :
+- `PlanningProblem`
+- entités de planning
+- faits immuables
+
+Aucune autre couche ne doit modifier ces structures.
+
+---
+
+## Indépendance du solveur
+
+Le solveur :
+- ne connaît pas les WorkMetrics
+- ne connaît pas la réponse API
+- ne connaît pas les couches de restitution
+
+Il manipule uniquement :
+- `PlanningProblem`
+- les entités de planning
+- les contraintes OptaPlanner.
+
+---
+
+## Post-traitement strict des WorkMetrics
+
+Les WorkMetrics sont calculées **après résolution complète du planning**.
+
+Elles :
+- ne sont jamais des variables de décision
+- ne participent pas à la faisabilité
+- ne modifient jamais les affectations.
+
+---
+
+## Indépendance du mapping API
+
+Le `ScenarioResponseMapper` :
+- transforme la solution interne en réponse API
+- ne modifie jamais la solution
+- ne participe jamais au scoring.
+
+---
+
+## Sens unique du flux de données
+
+Le flux de données du moteur est strictement unidirectionnel :
+
+
+---
+
+# 5. Objectif de ces diagrammes
 
 Ces deux diagrammes permettent :
-
 - de comprendre rapidement l’architecture du moteur
 - de guider l’intégration côté WebDev
 - de faciliter l’onboarding de nouveaux développeurs

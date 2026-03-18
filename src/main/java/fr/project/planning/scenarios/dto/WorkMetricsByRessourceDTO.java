@@ -17,6 +17,9 @@ public class WorkMetricsByRessourceDTO {
     private int maxJoursConsecutifsObservees;
     private int maxNuitsConsecutivesObservees;
 
+    // Phase 8 — créneaux de nuit affectés à ce salarié alors qu'il n'est pas travailleur de nuit
+    private int nbCreneauxNuitNonNuit;
+
     public WorkMetricsByRessourceDTO() {
     }
 
@@ -122,5 +125,13 @@ public class WorkMetricsByRessourceDTO {
 
     public void setMaxNuitsConsecutivesObservees(int maxNuitsConsecutivesObservees) {
         this.maxNuitsConsecutivesObservees = maxNuitsConsecutivesObservees;
+    }
+
+    public int getNbCreneauxNuitNonNuit() {
+        return nbCreneauxNuitNonNuit;
+    }
+
+    public void setNbCreneauxNuitNonNuit(int nbCreneauxNuitNonNuit) {
+        this.nbCreneauxNuitNonNuit = nbCreneauxNuitNonNuit;
     }
 }

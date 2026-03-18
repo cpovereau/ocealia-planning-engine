@@ -19,7 +19,6 @@ import fr.project.planning.scenarios.dto.ScenarioResponseDTO;
 import fr.project.planning.scenarios.dto.SolverResultDTO;    
 
 import java.time.LocalDate;
-import java.time.Duration;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -40,11 +39,12 @@ public class ScenarioResponseMapper {
         List<Creneau> creneauxResolus,
         Map<String, WorkMetrics> workMetricsById,
         List<ScenarioAlertDTO> alerts,
-        Set<String> posteVirtuelIds
+        Set<String> posteVirtuelIds,
+        IgnoredCreneauxDTO ignoredCreneaux
         ) {
         ScenarioPlanningDTO planning = buildPlanning(idSalarie, creneauxResolus);
         SolverResultDTO solverResult = buildSolverResult(solverStatus, hardScore, softScore, scoreBreakdown);
-        DiagnosticsDTO diagnostics = buildDiagnostics(alerts, creneauxResolus, posteVirtuelIds);
+        DiagnosticsDTO diagnostics = buildDiagnostics(alerts, creneauxResolus, posteVirtuelIds, ignoredCreneaux);
 
         return new ScenarioResponseDTO(
                 scenarioType,
@@ -72,11 +72,12 @@ public class ScenarioResponseMapper {
     private DiagnosticsDTO buildDiagnostics(
         List<ScenarioAlertDTO> alerts,
         List<Creneau> creneauxResolus,
-        Set<String> posteVirtuelIds
+        Set<String> posteVirtuelIds,
+        IgnoredCreneauxDTO ignoredCreneaux
     ) {
         return new DiagnosticsDTO(
             alerts,
-            new IgnoredCreneauxDTO(0, 0, 0),
+            ignoredCreneaux != null ? ignoredCreneaux : new IgnoredCreneauxDTO(0, 0, 0),
             AssignmentDiagnosticsFactory.build(creneauxResolus, posteVirtuelIds)
         );
    }    
@@ -106,20 +107,16 @@ public class ScenarioResponseMapper {
                 creneau.getHeureFin(),
                 formatDuree(creneau),
                 null,
-                creneau.getRessourceAffectee() != null ? creneau.getRessourceAffectee().getId() : null
+                creneau.getRessourceAffectee() != null
+                        ? creneau.getRessourceAffectee().getId()
+                        : RessourceNonAffectee.INSTANCE.getId()
         );
     }
 
     private String formatDuree(Creneau creneau) {
-        Duration duration = Duration.between(creneau.getHeureDebut(), creneau.getHeureFin());
-        if (duration.isNegative() || duration.isZero()) {
-            duration = duration.plusHours(24);
-        }
-
-        long totalMinutes = duration.toMinutes();
+        long totalMinutes = creneau.getDuree();
         long hours = totalMinutes / 60;
         long minutes = totalMinutes % 60;
-
         return String.format("%02d:%02d", hours, minutes);
     }
 
@@ -206,6 +203,7 @@ public class ScenarioResponseMapper {
                         dto.setNbDimanchesTravailles(wm.getNbDimanchesTravailles());
                         dto.setMaxJoursConsecutifsObservees(wm.getMaxJoursConsecutifsObservees());
                         dto.setMaxNuitsConsecutivesObservees(wm.getMaxNuitsConsecutivesObservees());
+                        dto.setNbCreneauxNuitNonNuit(wm.getNbCreneauxNuitNonNuit());
 
                         byRessource.add(dto);
         }

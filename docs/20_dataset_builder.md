@@ -125,7 +125,8 @@ Exemples :
 - une ressource référencée existe réellement,
 - les dates sont dans un format valide,
 - les activités manipulées sont exploitables dans le cadre du scénario,
-- les objets requis par le modèle ne sont pas absents.
+- les objets requis par le modèle ne sont pas absents,
+- la durée stockée (`duree`) est présente et cohérente avec `heureDebut`/`heureFin` — toute divergence est tracée en diagnostic.
 
 Cette étape ne remplace pas la validation JSON Schema, mais la complète par une validation métier de structure.
 
@@ -191,7 +192,7 @@ Chaque `Creneau` doit être construit avec des champs d’entrée cohérents et 
 - `date`
 - `heureDebut`
 - `heureFin`
-- `duree`
+- `duree` — **champ obligatoire, source de vérité pour tous les agrégats horaires**
 - `activite`
 - `typeCreneau`
 - `typePlageHoraire`
@@ -201,6 +202,8 @@ Chaque `Creneau` doit être construit avec des champs d’entrée cohérents et 
 Ces champs sont des **faits d’entrée**.
 Ils ne sont jamais modifiés par le solveur, à l’exception de la variable de décision `ressourceAffectee`.
 
+> `duree` est issue du système source (WinDev). Le builder ne doit pas la recalculer silencieusement à partir de `heureDebut`/`heureFin`. Toute divergence entre la durée stockée et la durée calculable doit être tracée dans les diagnostics de préparation. Voir `20_DECISIONS_CONCEPTION_OPTAPLANNER.md`.
+
 ### B. Invariants sur les ressources
 
 La collection `ressources` doit contenir toutes les ressources autorisées à être utilisées par le solveur.
@@ -209,6 +212,14 @@ Cela inclut, selon le scénario et le modèle retenu :
 - les `SalarieReel` ;
 - les `PosteVirtuel` ;
 - et, si l’invariant d’absence de `null` est retenu, la pseudo-ressource `RessourceNonAffectee` (`A_AFFECTER`).
+
+**Interprétation d’une liste d’activités vide ou nulle**
+
+Une ressource dont `activitesCompatibles` (salarié) ou `activitesAutorisees` (poste virtuel) est vide ou nulle est considérée comme **non contrainte** : elle peut potentiellement couvrir tout créneau, quelle que soit l’activité.
+
+Cette règle s’applique dans la couche de préparation pour le calcul du diagnostic `ignoredCreneaux.aucuneRessourceDansDataset` : un créneau est comptabilisé dans ce diagnostic uniquement si aucune ressource ne déclare son activité ET qu’aucune ressource non contrainte (liste vide/nulle) n’est présente dans le dataset.
+
+Cette interprétation est cohérente avec le comportement du solveur : en l’absence de contrainte d’activité explicite dans le `ConstraintProvider`, une ressource non contrainte reste assignable à n’importe quel créneau.
 
 ### C. Invariants sur le contexte
 
@@ -348,7 +359,7 @@ Ils servent à **fabriquer** les objets du monde solveur.
 
 ### B. Niveau solveur
 
-Le builder traduit ensuite ces paramètres en :
+Le DatasetBuilder traduit le contrat d’entrée en monde solveur exploitable, sans arbitrer ni scorer en :
 - `Creneau` concrets ;
 - `Ressource` mobilisables ;
 - `PlanningContext` ;

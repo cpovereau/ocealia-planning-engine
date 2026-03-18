@@ -2,6 +2,7 @@ package fr.project.planning.solution;
 
 import fr.project.planning.domain.contexte.PlanningContext;
 import fr.project.planning.domain.creneau.Creneau;
+import fr.project.planning.domain.ressource.Indisponibilite;
 import fr.project.planning.domain.ressource.Ressource;
 import fr.project.planning.domain.workmetrics.WorkMetrics;
 import fr.project.planning.domain.metier.ReferentielComptabiliteActivite;
@@ -89,9 +90,15 @@ public class PlanningProblem {
        ========================= */
 
     /**
+     * Indisponibilités des salariés.
+     * Phase 4 : exploitées par la contrainte IndisponibiliteSalarie (HARD).
+     */
+    @ProblemFactCollectionProperty
+    private List<Indisponibilite> indisponibilites = List.of();
+
+    /**
      * Créneaux à affecter.
      */
-    
     @PlanningEntityCollectionProperty
     private List<Creneau> creneaux;
 
@@ -122,14 +129,25 @@ public class PlanningProblem {
             RegulatoryParameters regulatoryParameters,
             ReferentielComptabiliteActivite referentielComptabiliteActivite,
             List<Ressource> ressources,
-            List<Creneau> creneaux
-            
+            List<Creneau> creneaux,
+            List<Indisponibilite> indisponibilites
     ) {
         this.planningContext = planningContext;
         this.regulatoryParameters = regulatoryParameters;
         this.referentielComptabiliteActivite = referentielComptabiliteActivite;
         this.ressources = ressources;
         this.creneaux = creneaux;
+        this.indisponibilites = indisponibilites != null ? indisponibilites : List.of();
+    }
+
+    public PlanningProblem(
+            PlanningContext planningContext,
+            RegulatoryParameters regulatoryParameters,
+            ReferentielComptabiliteActivite referentielComptabiliteActivite,
+            List<Ressource> ressources,
+            List<Creneau> creneaux
+    ) {
+        this(planningContext, regulatoryParameters, referentielComptabiliteActivite, ressources, creneaux, List.of());
     }
 
     /* =========================
@@ -168,6 +186,14 @@ public class PlanningProblem {
 
     public void setCreneaux(List<Creneau> creneaux) {
         this.creneaux = creneaux;
+    }
+
+    public List<Indisponibilite> getIndisponibilites() {
+        return indisponibilites;
+    }
+
+    public void setIndisponibilites(List<Indisponibilite> indisponibilites) {
+        this.indisponibilites = indisponibilites != null ? indisponibilites : List.of();
     }
 
     public HardSoftScore getScore() {

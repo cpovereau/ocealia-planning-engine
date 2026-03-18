@@ -17,6 +17,9 @@ public class WorkMetrics {
     private int maxJoursConsecutifsObservees;
     private int maxNuitsConsecutivesObservees;
 
+    // Phase 8 — inadéquation nuit : créneaux de nuit affectés à un salarié non-nuit
+    private int nbCreneauxNuitNonNuit;
+
     public WorkMetrics(String ressourceId) {
         this.ressourceId = ressourceId;
     }
@@ -50,5 +53,8 @@ public class WorkMetrics {
 
     public void setMaxJoursConsecutifsObservees(int value) { this.maxJoursConsecutifsObservees = value; }
     public void setMaxNuitsConsecutivesObservees(int value) { this.maxNuitsConsecutivesObservees = value; }
-    
+
+    // Phase 8 — inadéquation nuit
+    public int getNbCreneauxNuitNonNuit() { return nbCreneauxNuitNonNuit; }
+    public void incNuitNonNuit() { this.nbCreneauxNuitNonNuit++; }
 }

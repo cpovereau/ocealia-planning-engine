@@ -12,7 +12,7 @@ Le glossaire ne décrit pas l’architecture complète du moteur. Il fournit uni
 
 ## Définition
 
-Un **créneau** est l’unité élémentaire de travail à couvrir.
+Un **créneau** est l’unité élémentaire à affecter.
 
 Il représente un intervalle temporel associé à une activité.
 
@@ -24,7 +24,7 @@ Un créneau possède notamment :
 - une date
 - une heure de début
 - une heure de fin
-- une durée
+- une durée (stockée — source de vérité pour les agrégats ; voir `20_DECISIONS_CONCEPTION_OPTAPLANNER.md`)
 - une activité
 
 ## Variable de décision
@@ -36,6 +36,36 @@ ressourceAffectee
 ```
 
 Le moteur optimise **quelle ressource couvre quel créneau**.
+
+---
+
+# 1 bis. Travail (au sens du moteur)
+
+## Deux sens du terme
+
+Le mot "travail" est utilisé dans deux sens distincts dans la documentation :
+
+| Sens | Signification |
+| ---- | ------------- |
+| **Général** | Un créneau à affecter, quelle que soit son activité |
+| **Moteur** | Une activité comptant dans la charge de travail (`compteDansCharge = true`) |
+
+La distinction est importante : tous les créneaux ne sont pas du "travail" au sens moteur.
+
+## Définition canonique
+
+> **Un créneau est considéré comme travaillé (au sens moteur) si et seulement si
+> son activité a `compteDansCharge = true` dans le référentiel d’activité.**
+
+Cette définition est un **invariant d’architecture** : toute contrainte, métrique ou règle
+s’y conforme sans exception.
+
+## Référence
+
+La définition complète, les mappings `Nature → compteDansCharge` et la règle de cohérence
+transversale sont dans :
+
+> `20_DECISIONS_CONCEPTION_OPTAPLANNER.md §5`
 
 ---
 

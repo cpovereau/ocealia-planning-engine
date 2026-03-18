@@ -2,8 +2,10 @@ package fr.project.planning.constraints;
 
 import fr.project.planning.constraints.legales.DureeMaximaleLegaleParSalarie;
 import fr.project.planning.constraints.physiques.LimitePhysique;
-import fr.project.planning.constraints.metier.CreneauNonAffecte;
 import fr.project.planning.constraints.metier.AffectationPosteVirtuel;
+import fr.project.planning.constraints.metier.CreneauNonAffecte;
+import fr.project.planning.constraints.metier.IndisponibiliteSalarie;
+import fr.project.planning.constraints.metier.JourFerieRefuse;
 import org.optaplanner.core.api.score.stream.Constraint;
 import org.optaplanner.core.api.score.stream.ConstraintFactory;
 import org.optaplanner.core.api.score.stream.ConstraintProvider;
@@ -15,6 +17,7 @@ import fr.project.planning.constraints.legales.ReposHebdomadaireGlissant;
 import fr.project.planning.constraints.legales.DimanchesTravaillesMax;
 
 import fr.project.planning.constraints.metier.DetteReposSurReposHebdomadaire;
+import fr.project.planning.constraints.metier.NuitSalarieNonNuit;
 
 /**
  * ConstraintProviderImpl
@@ -58,11 +61,19 @@ public class ConstraintProviderImpl implements ConstraintProvider {
             DimanchesTravaillesMax.maxDimanchesTravailles(factory),
 
             /* =========================
-               Contraintes métier
+               Contraintes métier (HARD)
+               ========================= */
+
+            JourFerieRefuse.jourFerieRefuse(factory),
+            IndisponibiliteSalarie.indisponibiliteSalarie(factory),
+
+            /* =========================
+               Contraintes métier (SOFT)
                ========================= */
 
             CreneauNonAffecte.creneauNonAffecte(factory),
             AffectationPosteVirtuel.affectationPosteVirtuel(factory),
+            NuitSalarieNonNuit.nuitSalarieNonNuit(factory),
             PenibilitesLegalesMinutes.penaliser(factory),
             DetteReposSurReposHebdomadaire.penaliser(factory),
 

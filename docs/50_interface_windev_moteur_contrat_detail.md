@@ -1,0 +1,154 @@
+# 50 — Contrat d'API WinDev ↔ Moteur (détail de la requête)
+
+Ce document est la **référence normative champ par champ de la requête** envoyée par WinDev
+au moteur de planification pour le scénario SC-01.
+
+Il complète `50_interface_windev_moteur_contrat.md` (structure globale et règles générales).
+
+Pour la description de la réponse, voir `50_ScenarioResponseContract.md`.
+Pour les exemples JSON complets, voir `50_interface_windev_moteur_exemples.md`.
+
+---
+
+## 1. Niveau racine
+
+| Champ                | Type   | Requis | Valeurs acceptées | Notes                               |
+| -------------------- | ------ | :----: | ----------------- | ----------------------------------- |
+| `scenarioType`       | string | Oui    | `"SC-01"`         | Seule valeur supportée actuellement |
+| `planningContext`    | objet  | Oui    | voir §2           |                                     |
+| `scenarioParameters` | objet  | Oui    | voir §3           |                                     |
+| `dataSet`            | objet  | Oui    | voir §4           |                                     |
+
+---
+
+## 2. `planningContext`
+
+| Champ               | Type   | Requis | Valeurs acceptées                          | Notes                             |
+| ------------------- | ------ | :----: | ------------------------------------------ | --------------------------------- |
+| `horizon`           | objet  | Oui    | voir ci-dessous                            |                                   |
+| `horizon.dateDebut` | string | Oui    | date ISO-8601 `YYYY-MM-DD`                 | doit être ≤ `dateFin`             |
+| `horizon.dateFin`   | string | Oui    | date ISO-8601 `YYYY-MM-DD`                 | doit être ≥ `dateDebut`           |
+| `strategieScoring`  | string | Non    | `EXPLOITATION` \| `ANALYSE_RH` \| `AUDIT` | Défaut : `EXPLOITATION` si absent |
+
+Sémantique des stratégies :
+
+| Valeur        | Comportement                                                              |
+| ------------- | ------------------------------------------------------------------------- |
+| `EXPLOITATION`| Coeff ×5 sur les créneaux non couverts — pénalise le manque de couverture |
+| `ANALYSE_RH`  | Coeff ×2 — vision équilibrée pour analyse des charges                     |
+| `AUDIT`       | Coeff ×3 — focus sur la traçabilité et l'explicabilité                    |
+
+---
+
+## 3. `scenarioParameters` (SC-01)
+
+| Champ                 | Type            | Requis                      | Format / Valeurs                 | Notes                                                   |
+| --------------------- | --------------- | :-------------------------: | -------------------------------- | ------------------------------------------------------- |
+| `resourceRef`         | objet           | Oui                         | voir ci-dessous                  | Ressource principale du scénario                        |
+| `resourceRef.kind`    | string          | Oui                         | `SALARIE` \| `POSTE_VIRTUEL`     |                                                         |
+| `resourceRef.id`      | string          | Oui                         | identifiant de la ressource      | Doit exister dans `dataSet.ressources`                  |
+| `dailyAmplitudeHours` | number (double) | Oui                         | ex : `8.0`                       | Amplitude journalière **pause incluse**, en heures      |
+| `shiftStart`          | string          | Oui                         | format `HH:mm` — ex : `"08:00"` | Heure de début de poste                                 |
+| `shiftEndAlert`       | string          | Non                         | format `HH:mm` — ex : `"17:00"` | Heure de fin d'alerte (déclenche `SHIFT_END_EXCEEDED`)  |
+| `lunchBreak`          | objet           | Non                         | voir ci-dessous                  | Pause déjeuner optionnelle                              |
+| `lunchBreak.start`    | string          | Oui si `lunchBreak` présent | `HH:mm` — ex : `"12:00"`        |                                                         |
+| `lunchBreak.end`      | string          | Oui si `lunchBreak` présent | `HH:mm` — ex : `"13:00"`        |                                                         |
+| `workedDays`          | tableau string  | Oui                         | valeurs Java `DayOfWeek` long    | Voir règle de normalisation — `50_interface_windev_moteur_contrat.md` §4.1 |
+| `holidayDates`        | tableau string  | Non                         | dates ISO-8601 `YYYY-MM-DD`      | Jours fériés exclus du planning                         |
+
+Valeurs valides pour `workedDays` :
+
+```text
+MONDAY  TUESDAY  WEDNESDAY  THURSDAY  FRIDAY  SATURDAY  SUNDAY
+```
+
+Les formats abrégés (`MON`, `TUE`, etc.) sont **rejetés**.
+
+---
+
+## 4. `dataSet`
+
+| Champ                       | Type    | Requis | Notes                                                               |
+| --------------------------- | ------- | :----: | ------------------------------------------------------------------- |
+| `ressources`                | objet   | Oui    |                                                                     |
+| `ressources.salaries`       | tableau | Oui    | Liste des salariés disponibles                                      |
+| `ressources.postesVirtuels` | tableau | Non    | Postes virtuels (capacité de remplacement)                          |
+| `creneaux`                  | tableau | Non    | **Toléré mais ignoré** — DataSetDTO V1 ne mappe pas encore ce champ |
+
+### 4.1 Structure d'un salarié (`ressources.salaries[]`)
+
+| Champ                         | Type           | Requis | Notes                                    |
+| ----------------------------- | -------------- | :----: | ---------------------------------------- |
+| `id`                          | string         | Oui    | Identifiant unique                       |
+| `type`                        | string         | Non    | `"SALARIE"` (informatif)                 |
+| `capaciteCible`               | integer        | Non    | Capacité contractuelle cible en minutes  |
+| `activitesAutorisees`         | tableau string | Non    | Codes activité autorisés                 |
+| `lieuxAutorises`              | tableau string | Non    | Codes lieu autorisés                     |
+| `postesComptablesCompatibles` | tableau string | Non    | Codes poste comptable compatibles        |
+
+### 4.2 Structure d'un poste virtuel (`ressources.postesVirtuels[]`)
+
+| Champ                         | Type           | Requis | Notes                                                |
+| ----------------------------- | -------------- | :----: | ---------------------------------------------------- |
+| `id`                          | string         | Oui    | Identifiant unique                                   |
+| `type`                        | string         | Non    | `"POTENTIEL"` ou autre valeur de `TypePosteVirtuel`  |
+| `capaciteCible`               | integer        | Non    | En minutes                                           |
+| `activitesAutorisees`         | tableau string | Non    |                                                      |
+| `lieuxAutorises`              | tableau string | Non    |                                                      |
+| `postesComptablesCompatibles` | tableau string | Non    |                                                      |
+
+> **Note architecturale** : actuellement, `ressources.salaries` et `ressources.postesVirtuels`
+> sont désérialisés directement vers les classes domaine `SalarieReel` et `PosteVirtuel`.
+> C'est le couplage identifié dans `50_interface_windev_moteur.md` §5.
+> Des DTO de transport dédiés seront introduits lors d'une prochaine phase.
+
+---
+
+## 5. Bloc `contraintesReglementaires` par salarié
+
+Ce bloc est **défini dans le schéma JSON** (`50_ScenarioContract.schema.json`) et
+**prévu dans le plan de migration** (Phase 1 : transport, Phase 3 : utilisation par le builder).
+
+Il n'est **pas encore transporté ni utilisé par le moteur** à ce stade.
+
+### 5.1 Structure cible
+
+| Champ                         | Type    | Unité  | Description                                                                                       |
+| ----------------------------- | ------- | ------ | ------------------------------------------------------------------------------------------------- |
+| `heuresMinimumParJour`        | number  | heures | Durée minimale de travail effectif par jour travaillé                                             |
+| `heuresMaximumParJour`        | number  | heures | Durée maximale de travail effectif par jour (hors pause)                                          |
+| `amplitudeJournaliereMaximum` | number  | heures | Amplitude maximale entre la première heure de début et la dernière heure de fin dans une journée  |
+| `reposQuotidienMinimum`       | number  | heures | Durée minimale de repos obligatoire entre deux journées de travail                                |
+| `heuresMinimumParSemaine`     | number  | heures | Volume horaire minimum attendu sur une semaine calendaire                                         |
+| `heuresMaximumParSemaine`     | number  | heures | Volume horaire maximum autorisé sur une semaine calendaire                                        |
+| `nuitsMaximumParSemaine`      | integer | nuits  | Nombre maximal de nuits travaillées sur une semaine calendaire                                    |
+| `joursConsecutifsMaximum`     | integer | jours  | Nombre maximal de jours consécutifs travaillés (toutes activités confondues)                      |
+
+### 5.2 État d'implémentation
+
+| Contrainte                    | Schéma JSON | `SalarieReel` | Contrainte solver |
+| ----------------------------- | :---------: | :-----------: | :---------------: |
+| `heuresMinimumParJour`        | ✓           | ✗             | ✗                 |
+| `heuresMaximumParJour`        | ✓           | ✗             | ✗                 |
+| `amplitudeJournaliereMaximum` | ✓           | ✗             | ✗                 |
+| `reposQuotidienMinimum`       | ✓           | ✗             | ✗                 |
+| `heuresMinimumParSemaine`     | ✓           | ✗             | ✗                 |
+| `heuresMaximumParSemaine`     | ✓           | ✗             | ✗                 |
+| `nuitsMaximumParSemaine`      | ✓           | ✗             | ✗ (*)             |
+| `joursConsecutifsMaximum`     | ✓           | ✗             | ✗                 |
+
+(*) Un seuil global `maxNuitsConsecutives` existe dans `SeuilsDeTolerance` (PlanningContext),
+mais il concerne les **nuits consécutives**, pas le nombre de nuits par semaine calendaire —
+ce sont deux règles distinctes.
+
+### 5.3 Prochaines étapes
+
+Selon `90_plan_migration_temporaire_windev_vers_moteur.md` :
+
+1. **Phase 1** — Transporter le JSON sans l'exploiter (aucun impact sur le solveur)
+2. **Phase 3** — Mapper vers un objet `ContraintesReglementairesSalarie` sur `SalarieReel`
+3. **Phase 4+** — Activer les contraintes solver correspondantes une par une
+
+---
+
+**Fin du document**

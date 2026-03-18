@@ -1,4 +1,4 @@
-# 🧭 PLANNING_CONTEXT.md
+# 20 — Planning Context
 
 Ce document décrit le rôle, le périmètre et les invariants du `PlanningContext` transmis au moteur de planification.
 
@@ -6,13 +6,13 @@ Il constitue la **référence documentaire unique** pour tout ce qui relève :
 - du cadre temporel de résolution,
 - du contexte réglementaire applicable,
 - de la stratégie de scoring,
-- et des hypothèses nécessaires à l’interprétation correcte d’un scénario.
+- et des hypothèses nécessaires à l'interprétation correcte d'un scénario.
 
 ---
 
-## 1. Rôle du PlanningContext
+## 1. Définition du contexte de résolution
 
-Le `PlanningContext` est un **objet de contexte immuable** fourni au moteur par l’appelant.
+Le `PlanningContext` est un **objet de contexte immuable** fourni au moteur par l'appelant.
 
 Il ne représente ni :
 - une décision du solveur,
@@ -24,29 +24,18 @@ Son rôle est de porter le **cadre de jugement** dans lequel le moteur doit éva
 > Le moteur optimise des affectations.
 > Le `PlanningContext` lui dit **dans quel cadre** ces affectations doivent être jugées.
 
----
+### Principe fondamental
 
-## 2. Responsabilité du PlanningContext
+> **OptaPlanner ne choisit jamais l'horizon temporel ni aucun paramètre de cadre.**
+> Il reçoit un contexte de résolution et juge les décisions à l'intérieur de ce cadre.
 
-Le `PlanningContext` porte explicitement les informations qui ne doivent jamais être déduites implicitement par le moteur.
+Le moteur n'interprète pas l'intention utilisateur : il évalue des décisions dans un cadre **explicite et imposé**.
 
-Il regroupe notamment :
-- l’**horizon temporel**,
-- le **type de résolution**,
-- la **stratégie de scoring**,
-- les **seuils de tolérance**,
-- les **hypothèses d’historique**,
-- et, selon le modèle retenu, les **paramètres réglementaires** ou la manière d’y accéder.
+### Ce que le PlanningContext n'est pas
 
-Le moteur consomme ce contexte mais ne l’interprète pas au-delà de ce qui est explicitement transmis.
-
----
-
-## 3. Ce que le PlanningContext n’est pas
-
-Le `PlanningContext` n’est pas :
+Le `PlanningContext` n'est pas :
 - un scénario métier,
-- un référentiel d’activité,
+- un référentiel d'activité,
 - un objet de restitution,
 - une variable de décision,
 - ni un mécanisme de contournement des contraintes.
@@ -61,40 +50,100 @@ Il ne doit jamais contenir de logique du type :
 
 ---
 
-## 4. Contenu minimal attendu
+## 2. Horizon temporel
 
-## 4.1 Horizon temporel
+### 2.1 Responsabilité de l'appelant
+
+Le cadre temporel est **construit et transmis par l'appelant** (WebDev / API) à partir de la demande utilisateur.
+
+L'appelant est responsable de :
+- l'interprétation métier de la demande (planification sur période, cycle, remplacement…),
+- la construction du `PlanningContext` temporel,
+- la transmission de ce contexte au moteur.
+
+Le moteur ne recalcule, ne complète et n'interprète jamais ce cadre.
+
+### 2.2 Fenêtre de résolution
 
 Le contexte doit définir explicitement :
 - `dateDebut`
 - `dateFin`
 
-Cet horizon :
-- borne la résolution,
+Cette fenêtre :
+- borne l'espace de décision du solveur,
 - borne les WorkMetrics,
 - borne la lecture des séquences,
 - borne les diagnostics.
 
-Le moteur n’invente jamais de date en dehors de cette fenêtre.
+Le moteur n'invente jamais de date en dehors de cette fenêtre.
+
+### 2.3 Horizons réglementaires par famille de règles
+
+Pour chaque grande famille de règles, l'horizon de validité applicable est précisé explicitement :
+
+| Famille de règles               | Horizon applicable                                     |
+| ------------------------------- | ------------------------------------------------------ |
+| Repos quotidien                 | Fenêtre de résolution (ou étendue explicitement)       |
+| Repos hebdomadaire              | Fenêtre de résolution (ou étendue explicitement)       |
+| Heures supplémentaires / comp.  | Peut dépasser partiellement la fenêtre de résolution   |
+| Dette de repos compensateur     | Horizon de restitution distinct, déclaré explicitement |
+
+Ces horizons peuvent coïncider avec la fenêtre de résolution ou la dépasser partiellement.
+Dans tous les cas, ils sont **transmis explicitement** et non déduits par le moteur.
+
+### 2.4 Invariants temporels
+
+- Le cadre temporel est **toujours explicite** : aucune date implicite.
+- Toute dette générée doit être **visible dans les résultats**.
+- Le moteur **n'altère jamais le passé**.
+- Aucune règle ne s'applique en dehors des horizons déclarés.
+- Le moteur ne prolonge jamais l'analyse au-delà de la fenêtre transmise.
 
 ---
 
-## 4.2 Type de résolution
+## 3. Cadre réglementaire
 
-Le contexte doit porter un type métier explicite, par exemple :
+Le moteur a besoin de paramètres réglementaires explicites pour évaluer les affectations dans leur contexte légal.
+
+### 3.1 Paramètres attendus
+
+| Paramètre                       | Rôle                                                          |
+| ------------------------------- | ------------------------------------------------------------- |
+| Plage de nuit                   | Définit les heures constituant une nuit réglementaire         |
+| Jours fériés                    | Liste des jours fériés applicables sur l'horizon              |
+| Repos quotidien minimum         | Borne légale entre deux affectations consécutives             |
+| Repos hebdomadaire minimum      | Borne légale sur la semaine                                   |
+| Ordre de dominance pénibilités  | Priorité en cas de chevauchement (nuit > dimanche > férié)    |
+
+### 3.2 Portage des paramètres
+
+Selon l'architecture retenue, ces paramètres peuvent être :
+- portés directement par le `PlanningContext`,
+- ou référencés par lui puis injectés comme `ProblemFact` dans le monde solveur.
+
+Dans tous les cas :
+- leur origine doit être **traçable**,
+- leur rôle doit être **explicite**,
+- le moteur ne les invente jamais.
+
+---
+
+## 4. Paramètres de résolution
+
+### 4.1 Type de résolution
+
+Le contexte porte un type métier explicite, par exemple :
 - `PLANNING_GLOBAL`
 - `CYCLE`
 - `REMPLACEMENT`
 - `PROJECTION`
 
 Ce type :
-- ne change pas la nature des contraintes,
-- mais peut influencer la manière de lire les résultats,
-- ou la pondération relative de certaines pénalités si cela est explicitement documenté.
+- ne change jamais la nature des contraintes,
+- n'influence pas directement le scoring,
+- peut uniquement influencer la lecture des résultats ou leur interprétation côté métier ou UI.
 
----
-
-## 4.3 Stratégie de scoring
+### 4.2 Stratégie de scoring
 
 Le `PlanningContext` porte la `StrategieScoring` utilisée pour lire les arbitrages du solveur.
 
@@ -104,20 +153,18 @@ Exemples :
 - `AUDIT`
 
 Principe :
-- la stratégie n’est pas une règle métier,
+- la stratégie n'est pas une règle métier,
 - elle ne réécrit pas les contraintes,
 - elle fournit un **contexte de pondération** via `ScoreWeights`.
 
----
+### 4.3 Seuils de tolérance
 
-## 4.4 Seuils de tolérance
-
-Le contexte porte les seuils nécessaires à l’évaluation des contraintes lorsque ces seuils ne relèvent pas d’un invariant figé du moteur.
+Le contexte porte les seuils nécessaires à l'évaluation des contraintes lorsque ces seuils ne relèvent pas d'un invariant figé du moteur.
 
 Exemples :
 - maximum de jours consécutifs,
 - maximum de nuits consécutives,
-- seuils d’alerte sur charge ou dette,
+- seuils d'alerte sur charge ou dette,
 - limites propres à un cadre client.
 
 Règles :
@@ -127,81 +174,81 @@ Règles :
 
 ---
 
-## 4.5 Hypothèses d’historique
+## 5. Hypothèses de résolution
+
+### 5.1 Hypothèses d'historique
 
 Le contexte doit rendre explicite ce que le moteur sait du passé.
 
 Exemples :
 - historique neutre,
-- compteurs initiaux fournis,
+- compteurs initiaux fournis (heures déjà réalisées, dettes existantes),
 - dette antérieure déjà connue,
-- séquence de travail déjà entamée avant l’horizon.
+- séquence de travail déjà entamée avant l'horizon.
 
 Principe :
-- le moteur ne reconstitue jamais l’historique,
+- le moteur ne reconstitue jamais l'historique,
 - il exploite uniquement ce qui lui est transmis,
 - toute hypothèse de neutralité doit être explicite.
 
----
+### 5.2 Ce que le moteur fait — et ne fait pas
 
-## 4.6 Paramètres réglementaires
+**Le moteur :**
+- évalue des affectations dans la fenêtre fournie,
+- calcule des indicateurs dérivés (charges, dettes, coûts),
+- applique les contraintes dans les horizons définis.
 
-Le moteur a besoin de paramètres réglementaires explicites pour :
-- la plage de nuit,
-- les jours fériés,
-- certaines bornes légales,
-- l’ordre de dominance applicable en cas de chevauchement de pénibilités.
-
-Selon l’architecture retenue, ces paramètres peuvent être :
-- portés directement par le `PlanningContext`,
-- ou référencés par lui puis injectés comme `ProblemFact` dans le monde solveur.
-
-Dans tous les cas :
-- leur origine doit être traçable,
-- leur rôle doit être explicite,
-- et le moteur ne les invente jamais.
+**Le moteur ne :**
+- choisit pas la période,
+- n'interprète pas l'intention utilisateur,
+- n'extrapole pas au-delà des horizons transmis,
+- ne reconstitue pas les semaines antérieures,
+- n'invente aucun paramètre absent du contexte.
 
 ---
 
-## 5. Invariants de conception
+## 6. Invariants de conception
 
-Les invariants suivants s’appliquent au `PlanningContext`.
+Les invariants suivants s'appliquent au `PlanningContext`.
 
-### 5.1 Explicite
-Tout ce qui influence la lecture d’une solution doit être explicite.
+### 6.1 Explicite
+Tout ce qui influence la lecture d'une solution doit être explicite dans le contexte.
 
-### 5.2 Immuable
-Le contexte n’est pas modifié pendant la résolution.
+### 6.2 Immuable
+Le contexte n'est pas modifié pendant la résolution.
 
-### 5.3 Traçable
+### 6.3 Traçable
 Un résultat moteur doit toujours pouvoir être relié au contexte qui a servi à le produire.
 
-### 5.4 Non décisionnel
+### 6.4 Non décisionnel
 Le contexte ne décide pas à la place du solveur.
 
-### 5.5 Non compensatoire
-Une information absente du dataset ne doit pas être “devinée” via le contexte.
+### 6.5 Non compensatoire
+Une information absente du dataset ne doit pas être "devinée" via le contexte.
+
+### 6.6 Non extrapolant
+Aucune règle ne s'applique en dehors des horizons déclarés dans le contexte.
 
 ---
 
-## 6. Interaction avec les autres briques
+## 7. Interaction avec les autres briques
 
 Le `PlanningContext` est consommé ou utilisé par plusieurs composants.
 
-| Composant                              | Rôle du PlanningContext                   |
-|----------------------------------------|-------------------------------------------|
-| `ScenarioDatasetBuilder`               | cadre de construction du monde solveur    |
-| `PlanningProblem` / `PlanningSolution` | portage du contexte de résolution         |
-| `ConstraintProvider`                   | lecture des seuils / stratégie / horizons |
-| `WorkMetricsCalculator`                | bornage des calculs post-résolution       |
-| `ScenarioResponseMapper`               | explicabilité et restitution              |
+| Composant                              | Rôle du PlanningContext                                              |
+| -------------------------------------- | -------------------------------------------------------------------- |
+| `ScenarioDatasetBuilder`               | cadre de construction du monde solveur                               |
+| `PlanningProblem` / `PlanningSolution` | portage du contexte de résolution                                    |
+| `ConstraintProvider`                   | lecture des seuils / stratégie / horizons                            |
+| `WorkMetricsCalculator`                | bornage des calculs post-résolution                                  |
+| `ScenarioResponseMapper`               | contextualisation et restitution (sans impact sur la logique métier) |
 
 Le `PlanningContext` ne remplace aucun de ces composants.
 Il fournit un cadre partagé entre eux.
 
 ---
 
-## 7. Exemple de lecture correcte
+## 8. Exemple de lecture correcte
 
 Un scénario de type `REMPLACEMENT` sur 5 jours peut fournir :
 - un horizon borné sur 5 jours,
@@ -211,14 +258,14 @@ Un scénario de type `REMPLACEMENT` sur 5 jours peut fournir :
 - des seuils réglementaires standard.
 
 Le moteur :
-- ne déduit pas qu’il s’agit d’un remplacement à partir du dataset,
-- ne prolonge pas l’analyse au-delà des 5 jours,
+- ne déduit pas qu'il s'agit d'un remplacement à partir du dataset,
+- ne prolonge pas l'analyse au-delà des 5 jours,
 - ne reconstruit pas les semaines antérieures,
-- applique les contraintes et le scoring à l’intérieur du cadre fourni.
+- applique les contraintes et le scoring à l'intérieur du cadre fourni.
 
 ---
 
-## 8. Risques évités par ce design
+## 9. Risques évités par ce design
 
 Le `PlanningContext` existe pour éviter plusieurs dérives :
 - contexte implicite variable selon les scénarios,
@@ -229,23 +276,22 @@ Le `PlanningContext` existe pour éviter plusieurs dérives :
 
 ---
 
-## 9. Lien avec les autres documents
+## 10. Lien avec les autres documents
 
 Ce document complète directement :
-- `HORIZON_TEMPOREL_ET_REGLEMENTAIRE.md`
-- `DECISIONS_CONCEPTION_OPTAPLANNER.md`
-- `ScenarioContract.schema.json`
-- `TESTING_STRATEGY_ENGINE.md`
-- `TestPlanningContextFactory — Spécification`
+- `20_DECISIONS_CONCEPTION_OPTAPLANNER.md`
+- `20_DATASET_BUILDER.md`
+- `50_SCENARIO_CONTRACT.md`
+- `60_TESTING_STRATEGY_ENGINE.md`
 
 Il doit rester cohérent avec :
-- le contrat d’entrée,
+- le contrat d'entrée,
 - le modèle de résolution,
 - et les factories de test.
 
 ---
 
-## 10. Statut du document
+## 11. Statut du document
 
 - Document de référence
 - Normatif sur le rôle du contexte

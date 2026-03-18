@@ -22,20 +22,34 @@ Chaque nouveauté doit passer par 4 niveaux distincts :
 3. **mapping builder → domaine** ;
 4. **usage solveur / scoring / WorkMetrics**.
 
-### 2. Préserver le socle existant
+### 2. Tolérance transitoire sur le référentiel d’activités
+
+Pendant la phase de migration et de développement :
+- une activité absente du référentiel peut être tolérée ;
+- le créneau concerné est alors traité comme neutre du point de vue des calculs dépendant du référentiel ;
+- un diagnostic ou un signalement peut être produit afin de rendre cette situation visible.
+
+Cette tolérance est **transitoire**.
+Elle ne constitue pas une règle cible du moteur.
+
+À terme, le contrat d’entrée devra permettre :
+- soit le rejet explicite d’une activité inconnue ;
+- soit l’application d’une politique de défaut documentée et maîtrisée.
+
+### 3. Préserver le socle existant
 Aucune étape ne doit casser :
 - la désérialisation SC-01 ;
 - l’exécution solveur déjà validée ;
 - le contrat de sortie `ScenarioResponseDTO` ;
 - les tests de stabilité du score et des affectations.
 
-### 3. Tolérance contractuelle provisoire
+### 4. Tolérance contractuelle provisoire
 Pendant la migration :
 - les nouveaux champs peuvent être transportés avant d’être utilisés ;
 - certains champs peuvent être tolérés sans effet immédiat côté solveur ;
 - les redondances temporaires sont acceptées uniquement si elles sont documentées.
 
-### 4. Nettoyage différé mais planifié
+### 5. Nettoyage différé mais planifié
 Un champ redondant ne doit pas devenir définitif.
 Chaque redondance temporaire doit être associée à une étape de suppression cible.
 
@@ -97,9 +111,10 @@ Phase transitoire :
 
 ### D. Durée, libellés, champs redondants
 Sont considérés comme temporaires ou secondaires :
-- `duree` sur le créneau si recalculable ;
 - `activite` comme libellé si `codeActiviteId` existe ;
 - `sitesAutorises` si `axesOrganisationnels.lieuIds` devient la source de vérité.
+
+> `duree` sur le créneau : considérée à l'origine comme recalculable, cette décision a été inversée. `Creneau.duree` est la **source de vérité** pour tous les agrégats et la restitution — elle n'est jamais recalculée depuis `heureDebut`/`heureFin`. Voir `20_DECISIONS_CONCEPTION_OPTAPLANNER.md`.
 
 ---
 
@@ -111,11 +126,11 @@ Sont considérés comme temporaires ou secondaires :
 Photographier l’existant avant toute évolution du contrat d’entrée.
 
 ### Travaux
-- identifier les DTO réellement utilisés par l’API ;
-- lister les tests de non-régression déjà en place ;
-- figer un JSON de référence SC-01 ;
-- figer un JSON cible SC-03 / technique de migration ;
-- noter les champs déjà documentés mais non supportés dans le code.
+- [x] identifier les DTO réellement utilisés par l’API — documenté dans `60_interface_windev_moteur_plan_documentaire.md` §8.7 ;
+- [x] lister les tests de non-régression déjà en place — documenté dans `60_interface_windev_moteur_plan_documentaire.md` §7 ;
+- [x] figer un JSON de référence SC-01 — `src/test/resources/scenarios/sc01/sc01_dataset_reference.json` ;
+- [x] figer un JSON cible SC-03 / technique de migration — `docs/Windev_part/DataStructure/sc_03_migration_reference.json` ;
+- [x] noter les champs déjà documentés mais non supportés dans le code — `contraintesReglementaires` (§8.7.4), `creneaux` ignoré dans DataSetDTO, couplage DTO/domaine (§3.1).
 
 ### Tests à exécuter
 - `ScenarioControllerRuntimeTest`
@@ -126,6 +141,9 @@ Photographier l’existant avant toute évolution du contrat d’entrée.
 
 ### Critère de sortie
 Le socle actuel est vert avant toute modification.
+
+### État au 2026-03-13
+Tous les travaux documentaires sont réalisés. Suite de tests exécutée : **BUILD SUCCESSFUL** (47s, 0 échec). **Phase 0 TERMINÉE — critère de sortie validé.**
 
 ---
 
@@ -172,6 +190,9 @@ Permettre au moteur de **recevoir** les nouveaux champs sans les exploiter encor
 ### Critère de sortie
 Le moteur accepte le JSON enrichi sans casser SC-01.
 
+### État au 2026-03-13
+Tous les travaux réalisés. Suite de tests exécutée : **BUILD SUCCESSFUL** (39s, 0 échec). **Phase 1 TERMINÉE — critère de sortie validé.**
+
 ---
 
 ## Phase 2 — Formaliser un dataset technique de référence
@@ -196,6 +217,14 @@ Créer le jeu de test canonique de migration WinDev → moteur.
 - des besoins structurés (`groupeBesoinId`, `blocJourId`) ;
 - des champs nuit/férié par salarié.
 
+### Fichier de référence
+Le dataset cible est disponible à :
+`docs/Windev_part/DataStructure/sc_03_migration_reference.json`
+
+Il couvre toutes les situations listées ci-dessus. Les champs `referentiels`, `indisponibilites`, `travailDeNuit`, `heureDebutNuit`, `heureFinNuit` et `travailleJourFerie` sont présents dans le fichier mais marqués `_phaseActivation: Phase 1` — ils seront activés en Phase 1.
+
+En Phase 2, ce fichier sera copié vers `src/test/resources/scenarios/sc03/sc03_migration_reference.json` pour servir de base aux tests automatisés.
+
 ### But
 Ce dataset devient la base commune pour :
 - les tests JSON ;
@@ -210,9 +239,16 @@ Ce dataset devient la base commune pour :
 ### Critère de sortie
 Un dataset unique sert de référence de migration.
 
+### État au 2026-03-14
+Dataset complet et copié en Phase 1. Suite de tests exécutée : **BUILD SUCCESSFUL** (47s, 0 échec). **Phase 2 TERMINÉE — critère de sortie validé.**
+
 ---
 
 ## Phase 3 — Brancher les nouveaux champs dans le builder
+
+### État : TERMINÉE (2026-03-14)
+
+Refactoring architectural complet + mapping Phase 3 réalisés. Suite de tests exécutée : **BUILD SUCCESSFUL** (38s, 0 échec). **Phase 3 TERMINÉE — critère de sortie validé.**
 
 ### Objectif
 Faire en sorte que les nouveaux champs ne soient plus seulement transportés, mais réellement mappés vers le monde solveur.
@@ -246,39 +282,56 @@ Le builder devient la traduction officielle du nouveau contrat d’entrée.
 
 ## Phase 4 — Introduire les incompatibilités structurelles simples
 
+### État : TERMINÉE (2026-03-14)
+
+Deux contraintes HARD introduites (`JourFerieRefuse`, `IndisponibiliteSalarie`). `optaplanner-test` ajouté. Suite de tests exécutée : **BUILD SUCCESSFUL (37s, 0 échec)**. **Phase 4 TERMINÉE — critère de sortie validé.**
+
 ### Objectif
 Exploiter les nouveaux champs dans des règles simples, sans encore toucher au scoring fin.
 
+### Champs activés dans cette phase (matrice d’exploitation)
+Les champs suivants progressent de **Mappé domaine** vers **Exploité solveur** en Phase 4 :
+
+| Champ | Niveau actuel (Phase 3) | Niveau cible (Phase 4) |
+|-------|------------------------|------------------------|
+| `ressources.salaries.travailleJourFerie` | Mappé domaine ✅ | Exploité solveur |
+| `dataSet.indisponibilites` | Mappé domaine ✅ | Exploité solveur |
+
+⚠️ `ressources.salaries.axesOrganisationnels` est hors périmètre Phase 4 : il est uniquement **Transporté** (pas encore mappé vers le domaine — SalarieReel ne porte pas ce bloc). Son activation est reportée en Phase 5, après mapping domaine préalable.
+
 ### Règles visées
 - un salarié avec `travailleJourFerie = false` ne peut pas être affecté sur un jour férié ;
-- une indisponibilité interdit l’affectation du salarié sur l’intervalle concerné ;
-- les incompatibilités de base d’axes organisationnels sont appliquées proprement.
+- une indisponibilité interdit l’affectation du salarié sur l’intervalle concerné.
 
 ### Nature recommandée
-- d’abord en **HARD** si ce sont de vraies interdictions ;
-- sinon en règle de filtrage du value range si cela simplifie le solveur.
+- contrainte **HARD** — ce sont de vraies interdictions métier et légales ;
+- alternative : filtrage du value range si cela simplifie le solveur sans perte d’explicabilité.
 
 ### Tests à créer
-- salarié refusé sur jour férié ;
-- salarié autorisé sur jour férié ;
+- salarié refusé sur jour férié (`travailleJourFerie = false`) ;
+- salarié autorisé sur jour férié (`travailleJourFerie = true`) ;
 - affectation impossible à cause d’une indisponibilité ;
 - scénario de non-régression SC-01 inchangé sans ces champs.
 
 ### Critère de sortie
-Les nouveaux champs commencent à avoir un effet métier observable.
+Les nouveaux champs commencent à avoir un effet métier observable et prouvé par les tests.
 
 ---
 
 ## Phase 5 — Structurer les besoins et blocs journaliers
 
+### État : TERMINÉE (2026-03-14)
+
+Mapping domaine des 4 champs de structuration. `ScenarioCreneauMapper` créé. Suite de tests exécutée : **BUILD SUCCESSFUL (50s, 0 échec)**. **Phase 5 TERMINÉE — critère de sortie validé.**
+
 ### Objectif
 Préparer le moteur à raisonner sur des groupes logiques de créneaux sans changer la variable de décision principale.
 
 ### Travaux
-- exploiter `groupeBesoinId` ;
-- exploiter `blocJourId` ;
-- exploiter `ordreDansBloc` ;
-- reconnaître `estSegmentDePause` ;
+- mapper `groupeBesoinId` vers le domaine `Creneau` ;
+- mapper `blocJourId` vers le domaine `Creneau` ;
+- mapper `ordreDansBloc` vers le domaine `Creneau` ;
+- mapper `estSegmentDePause` vers le domaine `Creneau` ;
 - préparer les futures contraintes de continuité / fragmentation / amplitude d’une journée.
 
 ### Attention
@@ -297,6 +350,10 @@ Le moteur sait recevoir et porter la structuration métier des besoins.
 ---
 
 ## Phase 6 — Exploiter les données nuit par salarié
+
+### État : TERMINÉE (2026-03-14)
+
+Méthodes utilitaires nuit ajoutées à `SalarieReel`. Suite de tests exécutée : **BUILD SUCCESSFUL (40s, 0 échec)**. **Phase 6 TERMINÉE — critère de sortie validé.**
 
 ### Objectif
 Préparer la future prise en compte du travail de nuit selon le profil salarié.
@@ -330,21 +387,23 @@ Les informations de nuit par salarié sont disponibles et testées, sans régres
 
 ## Phase 7 — Étendre SC-03 côté API
 
+### État : TERMINÉE (2026-03-14)
+
+`Sc03ScenarioRequestDTO`, `ScenarioSc03PreparationService`, `ScenarioSc03ExecutionService`, endpoint `/sc03/solve` créés. `toReferentiel()` branché dans `ScenarioResourceMapper`. Suite de tests exécutée : **BUILD SUCCESSFUL (41s, 0 échec)**. **Phase 7 TERMINÉE — critère de sortie validé.**
+
 ### Objectif
 Sortir du mode “SC-01 seulement” et ouvrir le vrai scénario cible de couverture locale.
 
 ### Travaux
 - introduire `Sc03ScenarioParametersDTO` ;
 - formaliser `prioriteCouverture` ;
-- formaliser `lieuxCibles` si retenu ;
-- exposer l’endpoint SC-03 ;
-- brancher le builder adéquat.
+- exposer l’endpoint `/sc03/solve` ;
+- brancher `ScenarioCreneauMapper` pour les créneaux SC-03 ;
+- brancher le référentiel JSON via `ScenarioResourceMapper.toReferentiel()`.
 
-### Tests à créer
-- validation API SC-03 ;
-- désérialisation complète SC-03 ;
-- exécution d’un scénario SC-03 minimal ;
-- exécution d’un scénario SC-03 enrichi.
+### Tests créés
+- `ScenarioControllerSc03ValidationTest` (4 tests négatifs : scenarioType invalide, dataSet absent, creneaux vides, JSON invalide) ;
+- `ScenarioControllerSc03RuntimeTest` (1 test runtime : dataset de référence SC-03, score hard=0).
 
 ### Critère de sortie
 Le chantier sort du simple test technique et devient un vrai scénario supporté.
@@ -353,65 +412,192 @@ Le chantier sort du simple test technique et devient un vrai scénario supporté
 
 ## Phase 8 — Ajuster scoring, WorkMetrics et explicabilité
 
+### État : TERMINÉE (2026-03-14)
+
+Contrainte SOFT `NuitSalarieNonNuit`, diagnostic `JOUR_FERIE_NON_COUVERT`, métrique `nbCreneauxNuitNonNuit`. Suite de tests exécutée : **BUILD SUCCESSFUL (44s, 0 échec)**. **Phase 8 TERMINÉE — critère de sortie validé.**
+
 ### Objectif
 Faire évoluer la lecture métier du planning à partir des nouveaux champs transmis par WinDev.
 
-### Pistes visées
-- intégrer le statut `travailDeNuit` dans les futures pénalités ;
-- exposer les refus d’affectation liés à `travailleJourFerie = false` ;
-- enrichir les diagnostics d’incompatibilité ;
-- préparer les futures métriques d’équité et de contractuel.
+### Réalisations
+- contrainte SOFT `NuitSalarieNonNuit` : pénalise l’affectation d’un créneau de nuit à un salarié non déclaré travailleur de nuit — exploite `travailDeNuit` via `SalarieReel.estTravailleurDeNuit()` (Phase 6)
+- diagnostic enrichi `JOUR_FERIE_NON_COUVERT` dans `AssignmentDiagnosticsFactory` : reasonCode précis quand un créneau férié est non couvert
+- métrique WorkMetrics `nbCreneauxNuitNonNuit` : comptabilise les inadéquations nuit par salarié dans `WorkMetrics`, `WorkMetricsCalculator`, `WorkMetricsByRessourceDTO`
 
-### Tests à créer
-- tests de score ciblés ;
-- tests de diagnostics ;
-- tests WorkMetrics avec données salarié enrichies.
+### Tests créés
+- `Phase8ConstraintsTest` (7 tests `ConstraintVerifier`)
+- `AssignmentDiagnosticsFactoryTest` (4 tests unitaires)
+- `WorkMetricsNuitNonNuitTest` (5 tests unitaires)
 
 ### Critère de sortie
 Les nouveaux champs ont un impact visible dans la restitution, pas seulement dans l’entrée.
 
 ---
 
-## Phase 9 — Nettoyage du contrat transitoire
+## Phase 9 — Consolidation pipeline SC-03 et diagnostics complets
+
+### État : TERMINÉE (2026-03-18)
+
+Pipeline SC-03 end-to-end validé. `ignoredCreneaux` réel implémenté. Null éliminé de la réponse. Code debug supprimé. Suite de tests exécutée : **BUILD SUCCESSFUL (1m 25s, 0 échec)**. **Phase 9 TERMINÉE — critère de sortie validé.**
 
 ### Objectif
-Supprimer les redondances et figer le contrat d’entrée.
+Consolider le pipeline complet WinDev → API → Solver → ResponseDTO et implémenter les diagnostics pré-résolution `ignoredCreneaux`.
 
-### Champs candidats au nettoyage
-- `sitesAutorises` si remplacé par `axesOrganisationnels.lieuIds` ;
-- `activite` comme clé si `codeActiviteId` est généralisé ;
-- `duree` si entièrement recalculée ;
-- champs tolérés mais non utilisés.
+### Réalisations
 
-### Décisions associées
-- durcir les schémas JSON ;
-- supprimer progressivement la tolérance documentaire temporaire ;
-- préparer ensuite le rejet strict des champs inconnus.
+#### 9a — Suppression du code debug `PlanningService`
+- Suppression du bloc de 36 lignes qui forçait tous les créneaux sur la ressource "1041" (diagnostic temporaire des contraintes HARD)
+- `solve()` est maintenant propre : `PlanningProblem` → `solverLauncher.solve()` → `solutionManager.explain()` → `PlanningResponse`
 
-### Tests à créer
-- tests de validation stricte ;
-- tests de rejet des anciens champs supprimés ;
-- campagne complète de non-régression.
+#### 9b — Finalisation `ScenarioResponseMapper`
+- `toResponse()` accepte `IgnoredCreneauxDTO` en 11e argument (supprime le `new IgnoredCreneauxDTO(0,0,0)` hardcodé)
+- `buildDiagnostics()` utilise l’objet transmis (avec fallback null-safe vers `0,0,0`)
+- `toCreneauPlanningDTO()` : null-safety garantie — retourne `RessourceNonAffectee.INSTANCE.getId()` (`"A_AFFECTER"`) si `getRessourceAffectee() == null`
+
+#### 9c — Implémentation `ignoredCreneaux` dans la chaîne SC-03
+- `PreparedSc03Scenario` : ajout du 4e champ `IgnoredCreneauxDTO ignoredCreneaux`
+- `ScenarioSc03PreparationService` : calcul pré-résolution de `horsHorizon` (date hors [dateDebut, dateFin]) et `activiteInconnue` (code absent du référentiel) ; les deux compteurs sont produits avant `planningService.solve()`
+- `ScenarioSc03ExecutionService` : transmission `prepared.ignoredCreneaux()` au mapper
+- `ScenarioSc01ExecutionService` : ajout `new IgnoredCreneauxDTO(0, 0, 0)` comme 11e argument (SC-01 ne filtre pas de créneaux en pré-résolution)
+
+#### 9d — Tests d’intégration `Phase9IntegrationTest`
+- `sc03_creneauHorsHorizon_doitComptabiliserHorsHorizon` : horsHorizon=1, activiteInconnue=0
+- `sc03_activiteInconnue_doitComptabiliserActiviteInconnue` : activiteInconnue=1, horsHorizon=0
+- `sc03_referenceDataset_ressourceAffecteeId_jamaisNull` : tous les `ressourceAffecteeId` non null dans `planning.jours`
+- `sc03_referenceDataset_tousLesBlocs_presents` : présence des 5 blocs, hard=0, nbCreneaux=6, horsHorizon=0, activiteInconnue=0
+
+Nouveaux datasets de test :
+- `src/test/resources/scenarios/sc03/sc03_hors_horizon.json`
+- `src/test/resources/scenarios/sc03/sc03_activite_inconnue.json`
 
 ### Critère de sortie
-Le contrat d’entrée est stabilisé et nettoyé.
+Pipeline SC-03 end-to-end validé : `ignoredCreneaux` réel, `ressourceAffecteeId` jamais null, tous les blocs présents, hard=0.
+
+---
+
+## Matrice d'exploitation des champs
+
+Suivi du niveau réel d'exploitation de chaque champ enrichi depuis la Phase 2.
+Mise à jour à chaque itération de migration.
+
+**Légende des niveaux** (définis dans `90_suivi_developpement_moteur.md`) :
+
+| Niveau | Signification |
+|--------|---------------|
+| **Transporté** | Présent dans le JSON et désérialisé dans les DTO |
+| **Validé** | Contrôlé par le controller ou une validation dédiée |
+| **Mappé domaine** | Converti vers un objet métier |
+| **Exploité solveur** | Utilisé par au moins une contrainte du solveur |
+| **Exploité scoring** | Influence le score ou une pénalité |
+| **Exploité diagnostics** | Utilisé pour produire des diagnostics ou alertes |
+| **Exploité WorkMetrics** | Impact visible dans les métriques calculées |
+| **Testé** | Couvert par au moins un test prouvant l'exploitation |
+
+Un champ est **fonctionnellement actif** uniquement à partir de : Transporté → Mappé domaine → Exploité solveur/scoring/diagnostics.
+
+---
+
+### Bloc : `ressources.salaries`
+
+| Champ | Transporté | Validé | Mappé domaine | Exploité solveur | Exploité scoring | Exploité diagnostics | Exploité WorkMetrics | Testé | Phase cible | Source de vérité (Phase 9) |
+|-------|:----------:|:------:|:-------------:|:----------------:|:----------------:|:--------------------:|:--------------------:|:-----:|-------------|---------------------------|
+| `id` | ✅ | — | ✅ | ✅ | — | — | — | ✅ | *(actif)* | — (stable) |
+| `statut` | ✅ | — | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ | Phase 8 | — (stable) |
+| `sitesAutorises` | ✅ | — | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ | Phase 4/5 | `axesOrganisationnels.lieuIds` |
+| `activitesCompatibles` | ✅ | — | ✅ | ❌ | ❌ | ✅ | ❌ | ✅ | Phase 4/5 | — (stable) |
+| `postesComptablesCompatibles` | ✅ | — | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ | Phase 4/5 | `axesOrganisationnels.posteComptableIds` |
+| `travailleJourFerie` | ✅ | — | ✅ | ✅ | ❌ | ✅ | ❌ | ✅ | *(actif)* | — (stable) |
+| `travailDeNuit` | ✅ | — | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | *(actif)* | — (stable) |
+| `heureDebutNuit` | ✅ | — | ✅ | ❌ | ❌ | ✅ | ❌ | ✅ | Phase 9+ | — (stable) |
+| `heureFinNuit` | ✅ | — | ✅ | ❌ | ❌ | ✅ | ❌ | ✅ | Phase 9+ | — (stable) |
+| `contraintesReglementaires` | ✅ | — | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ | Phase 8 | — (remplace `RegulatoryParameters` globaux) |
+| `axesOrganisationnels` | ✅ | — | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | Phase 4/5 | — (cible, absorbe les redondances) |
+| `contratTravail` | ✅ | — | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | Phase 8 | — (stable) |
+
+> `contraintesReglementaires` : mappé vers `ContraintesReglementairesSalarie` sur `SalarieReel`. Non exploité : le solveur utilise encore les `RegulatoryParameters` globaux.
+> `axesOrganisationnels` : transporté dans `SalarieInputDTO`, mais `SalarieReel` ne porte pas ce bloc — aucun mapping domaine réalisé.
+> `travailDeNuit` / `heureDebutNuit` / `heureFinNuit` : "Exploité diagnostics ✅" — Phase 6 ajoute `estTravailleurDeNuit()`, `heureDebutNuitEffective(fallback)`, `heureFinNuitEffective(fallback)` sur `SalarieReel`. Ces méthodes préparent les diagnostics et pénalités Phase 8 sans modifier le solveur ni `RegulatoryParameters`.
+> `activitesCompatibles` : "Exploité diagnostics ✅" depuis la Phase 12 — lu par `ScenarioSc03PreparationService.auMoinsUneRessourceCompatible()` pour le calcul de `ignoredCreneaux.aucuneRessourceDansDataset`. Une liste vide/nulle est considérée comme non contrainte (peut couvrir toute activité). Voir `20_dataset_builder.md §5.4.2B`.
+
+---
+
+### Bloc : `ressources.postesVirtuels`
+
+| Champ | Transporté | Validé | Mappé domaine | Exploité solveur | Exploité scoring | Exploité diagnostics | Exploité WorkMetrics | Testé | Phase cible | Source de vérité (Phase 9) |
+|-------|:----------:|:------:|:-------------:|:----------------:|:----------------:|:--------------------:|:--------------------:|:-----:|-------------|---------------------------|
+| `id` | ✅ | — | ✅ | ✅ | — | — | — | ✅ | *(actif)* | — (stable) |
+| `type` | ✅ | — | ✅ | ✅ | ✅ | — | — | ✅ | *(actif)* | — (stable) |
+| `capaciteCible` | ✅ | — | ✅ | ✅ | — | — | — | ✅ | *(actif)* | — (stable) |
+| `activitesAutorisees` | ✅ | — | ✅ | ❌ | ❌ | ✅ | ❌ | ✅ | Phase 4/5 | — (stable) |
+| `lieuxAutorises` | ✅ | — | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ | Phase 4/5 | `axesOrganisationnels.lieuIds` |
+| `postesComptablesCompatibles` | ✅ | — | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ | Phase 4/5 | `axesOrganisationnels.posteComptableIds` |
+
+> `activitesAutorisees` : "Exploité diagnostics ✅" depuis la Phase 12 — lu par `auMoinsUneRessourceCompatible()` pour le calcul de `ignoredCreneaux.aucuneRessourceDansDataset`. Même interprétation que `activitesCompatibles` salarié : liste vide/nulle = non contraint.
+
+---
+
+### Bloc : `dataSet.indisponibilites`
+
+| Champ | Transporté | Validé | Mappé domaine | Exploité solveur | Exploité scoring | Exploité diagnostics | Exploité WorkMetrics | Testé | Phase cible | Source de vérité (Phase 9) |
+|-------|:----------:|:------:|:-------------:|:----------------:|:----------------:|:--------------------:|:--------------------:|:-----:|-------------|---------------------------|
+| `indisponibilites` (bloc) | ✅ | — | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ | *(actif)* | — (stable) |
+
+> Mappé vers `List<Indisponibilite>` dans `PlanningRequest`. Exploité par la contrainte HARD `IndisponibiliteSalarie` via `@ProblemFactCollectionProperty` dans `PlanningProblem`.
+
+---
+
+### Bloc : `dataSet.referentiels`
+
+| Champ | Transporté | Validé | Mappé domaine | Exploité solveur | Exploité scoring | Exploité diagnostics | Exploité WorkMetrics | Testé | Phase cible | Source de vérité (Phase 9) |
+|-------|:----------:|:------:|:-------------:|:----------------:|:----------------:|:--------------------:|:--------------------:|:-----:|-------------|---------------------------|
+| `referentiels` (bloc) | ✅ | — | ✅ | ✅ | — | — | — | ✅ | *(actif SC-03)* | — (stable SC-03 ; SC-01 reste hardcodé jusqu'en Phase 9) |
+
+> Phase 7 : `ScenarioResourceMapper.toReferentiel()` convertit le bloc vers `ReferentielComptabiliteActivite`. Utilisé par `ScenarioSc03PreparationService`. SC-01 conserve son référentiel hardcodé (`"travail"`) jusqu'en Phase 9.
+> Redondance temporaire documentée : `activite` (libellé) / `codeActiviteId` / `referentiels` coexistent — cible Phase 9.
+
+---
+
+### Bloc : `creneaux` (structuration des besoins)
+
+| Champ | Transporté | Validé | Mappé domaine | Exploité solveur | Exploité scoring | Exploité diagnostics | Exploité WorkMetrics | Testé | Phase cible | Source de vérité (Phase 9) |
+|-------|:----------:|:------:|:-------------:|:----------------:|:----------------:|:--------------------:|:--------------------:|:-----:|-------------|---------------------------|
+| `groupeBesoinId` | ✅ | — | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ | *(actif)* | — (stable) |
+| `blocJourId` | ✅ | — | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ | *(actif)* | — (stable) |
+| `ordreDansBloc` | ✅ | — | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ | *(actif)* | — (stable) |
+| `estSegmentDePause` | ✅ | — | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ | *(actif)* | — (stable) |
+| `activite` (libellé) | ✅ | — | ✅ | ✅ | — | — | — | ✅ | Phase 9 | `codeActiviteId` |
+| `codeActiviteId` | ✅ | — | ✅ | ✅ | — | — | — | ✅ | *(actif)* | — (stable) |
+| `axesOrganisationnels` | ✅ | — | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | Phase 4/5 | — (cible, absorbe les redondances) |
+
+> Mappés vers `Creneau` via `ScenarioCreneauMapper` (Phase 5). Testés dans `ScenarioCreneauMapperTest` (8 tests). Le builder SC-01 génère ses propres créneaux — ces champs sont null pour les créneaux SC-01, ce qui est intentionnel (pas d'impact solveur).
+
+---
+
+### Redondances temporaires documentées
+
+| Champ source | Redondance avec | Cible à terme | Phase de nettoyage |
+|--------------|-----------------|---------------|--------------------|
+| `sitesAutorises` | `axesOrganisationnels.lieuIds` | axes organisationnels | reporté (non traité en Phase 9) |
+| `activite` (libellé) | `codeActiviteId` | référentiel d'activités | reporté (non traité en Phase 9) |
+| `referentiels` JSON | référentiel hardcodé dans SC-01 | suppression du hardcodé SC-01 | reporté (non traité en Phase 9) |
+| `contraintesReglementaires` salarié | `RegulatoryParameters` globaux | paramètres par salarié | Phase 8 |
 
 ---
 
 ## Matrice de sécurité par étape
 
-| Phase | Transport | Builder | Solveur | Sortie API | Risque principal |
-|------|-----------|---------|---------|------------|------------------|
-| 0 | = | = | = | = | casser le socle sans point de départ fiable |
-| 1 | ++ | = | = | = | désérialisation / DTO incohérents |
-| 2 | + | + | = | = | absence de dataset canonique |
-| 3 | = | ++ | + | = | mapping partiel ou ambigu |
-| 4 | = | + | ++ | + | nouvelles incompatibilités non couvertes |
-| 5 | = | ++ | + | + | structure non exploitée ou mal comprise |
-| 6 | = | + | + | + | confusion nuit globale / nuit salarié |
-| 7 | ++ | ++ | ++ | + | ouverture SC-03 trop tôt |
-| 8 | = | + | ++ | ++ | régression scoring / WorkMetrics |
-| 9 | + | + | + | + | nettoyage prématuré |
+| Phase | Transport | Builder | Solveur | Sortie API | Risque principal                            |
+|-------|-----------|---------|---------|------------|---------------------------------------------|
+| 0     | =         | =       | =       | =          | casser le socle sans point de départ fiable |
+| 1     | ++        | =       | =       | =          | désérialisation / DTO incohérents           |
+| 2     | +         | +       | =       | =          | absence de dataset canonique                |
+| 3     | =         | ++      | +       | =          | mapping partiel ou ambigu                   |
+| 4     | =         | +       | ++      | +          | nouvelles incompatibilités non couvertes    |
+| 5     | =         | ++      | +       | +          | structure non exploitée ou mal comprise     |
+| 6     | =         | +       | +       | +          | confusion nuit globale / nuit salarié       |
+| 7     | ++        | ++      | ++      | +          | ouverture SC-03 trop tôt                    |
+| 8     | =         | +       | ++      | ++         | régression scoring / WorkMetrics            |
+| 9     | +         | +       | +       | +          | nettoyage prématuré                         |
 
 ---
 
@@ -448,34 +634,9 @@ Ordre conseillé :
 
 ---
 
-## Journal de pilotage à compléter au fil des itérations
+## Journal de pilotage
 
-### Itération 1
-- objectif :
-- fichiers touchés :
-- tests ajoutés :
-- tests rejoués :
-- résultat :
-- régression observée :
-- décision prise :
-
-### Itération 2
-- objectif :
-- fichiers touchés :
-- tests ajoutés :
-- tests rejoués :
-- résultat :
-- régression observée :
-- décision prise :
-
-### Itération 3
-- objectif :
-- fichiers touchés :
-- tests ajoutés :
-- tests rejoués :
-- résultat :
-- régression observée :
-- décision prise :
+L’historique détaillé des itérations (Phases 1 à 8) est conservé dans `91_Journal_Developpement_Moteur.md`.
 
 ---
 

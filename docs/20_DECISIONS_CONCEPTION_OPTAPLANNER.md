@@ -61,16 +61,6 @@ Les propriétés suivantes relèvent d’un choix métier client et peuvent êtr
 
 En l’absence de configuration, ces champs sont considérés à `false`.
 
-### Mode développement
-
-En environnement de développement :
-- une activité inconnue du référentiel est tolérée,
-- le créneau est considéré neutre,
-- un diagnostic peut être émis.
-
-En environnement cible (à définir V3) :
-- un seuil ou un échec explicite pourra être activé.
-
 ---
 
 ## 3. Modèle conceptuel stabilisé
@@ -78,30 +68,59 @@ En environnement cible (à définir V3) :
 ### Entités principales
 
 * **Créneau**
-
   * Unité élémentaire de travail à affecter.
   * Porte la variable de décision `ressourceAffectee`.
 
 * **Ressource** (concept abstrait)
-
   * **Salarié réel** : personne existante.
   * **Poste virtuel** : besoin non couvert / potentiel de recrutement.
-  * **État A_AFFECTER** : absence d’affectation explicite (pas de `null`).
+  * **État `A_AFFECTER`** : absence d’affectation explicite (pas de `null`).
 
 * **PlanningSolution**
-
   * Contient la liste des créneaux et des ressources.
   * Porte le score OptaPlanner.
 
-* **PlanningContext** (prévu)
+* **PlanningContext**
+  * Objet de contexte décrivant le cadre de résolution.
+  * Porte notamment les paramètres nécessaires à l’interprétation correcte d’un scénario.
 
-  * Objet de contexte décrivant l’objectif de la demande.
-  * Permettra de configurer les poids et l’activation des contraintes.
-  
 * **Paramètres conventionnels**
-  
-  * RegulatoryParameters est porté par le contexte.
-  * les règles de conversion (heures → repos / majorations) sont fournies par le métier (WebDev / paramétrage), le moteur ne fait que scorer / arbitrer.
+  * `RegulatoryParameters` est porté par le contexte ou injecté comme fait immuable selon l’architecture retenue.
+  * Les règles de conversion métier (heures → repos / majorations) sont fournies par l’amont ; le moteur score et arbitre, mais ne produit pas la règle conventionnelle.
+
+### Décision — Représentation des créneaux non affectés
+
+Un créneau non couvert est représenté explicitement par la pseudo-ressource `A_AFFECTER`.
+
+`ressourceAffectee` n’est jamais `null` : l’absence d’affectation est toujours matérialisée par un objet explicite.
+
+Conséquences :
+- la valeur `"A_AFFECTER"` apparaît dans le planning retourné par l’API ;
+- les créneaux non couverts sont comptabilisés dans `solutionSummary.nbCreneauxNonAffectes` et dans le `scoreBreakdown` via la pénalité `METIER_SOFT_CRENEAU_NON_COUVERT` ;
+- les métriques RH (`workMetrics.byRessource`) n’incluent pas `A_AFFECTER`.
+
+Cet invariant est également listé en §11. La forme contractuelle de cette représentation est décrite dans `50_interface_windev_moteur.md`.
+
+## Décision — Distinction créneaux ignorés / non affectés
+
+Un créneau ignoré est un créneau exclu du périmètre de résolution avant construction du PlanningProblem.
+
+Il :
+- n’est pas transmis au solveur,
+- n’est pas scoré,
+- n’apparaît pas dans le planning.
+
+Un créneau non affecté est un créneau inclus dans le PlanningProblem mais auquel aucune ressource réelle n’a pu être assignée.
+
+Il :
+- est présent dans le solveur,
+- est représenté par la pseudo-ressource "A_AFFECTER",
+- est comptabilisé dans le score et dans les métriques.
+
+Règle fondamentale :
+
+→ Ignoré = hors solveur  
+→ Non affecté = dans solveur mais non couvert
 
 ---
 
@@ -139,78 +158,82 @@ Les seuils de tolérance sont fournis par le logiciel de planning via PlanningCo
 
 ## 5. Invariant fondamental — Définition du travail
 
-Cette définition constitue un invariant d’architecture. Toute règle, contrainte, métrique ou évolution future doit s’y conformer.
+Cette définition constitue un **invariant d’architecture**.
+Toute règle, contrainte, métrique ou évolution future doit s’y conformer.
+Elle fait autorité sur toute autre formulation présente dans la documentation.
 
-### 1. Définition du travail (règle unique)
+### 5.1 Définition canonique (règle unique)
 
-Un créneau est considéré comme travaillé si et seulement si son activité compte dans la charge (compteDansCharge = true dans le référentiel d’activité).
+> **Un créneau est considéré comme travaillé si et seulement si
+> son activité compte dans la charge (`compteDansCharge = true`
+> dans le référentiel d’activité).**
 
-Conséquences :
-- Nature TRAVAIL → compteDansCharge = true
-- Nature REPOS (RH, RHD) → false
-- Nature FERIE (JF substitutif) → false
-- Nature RECUP → false
-- Nature NON_TRAVAILLE → false
+Par extension :
 
-👉 Le moteur ne déduit jamais le travail à partir du code d’activité brut.
-👉 Il s’appuie uniquement sur le référentiel.
+- Une **journée** est considérée comme travaillée si et seulement si elle comporte
+  au moins un créneau dont l’activité a `compteDansCharge = true`.
+- Une **nuit** est considérée comme travaillée si et seulement si elle comporte
+  au moins un créneau en plage horaire NUIT dont l’activité a `compteDansCharge = true`.
 
-### 2. Définition du repos hebdomadaire
-- RH = repos hebdomadaire du samedi (nature REPOS)
-- RHD = repos hebdomadaire du dimanche (nature REPOS)
+### 5.2 Mappings Nature → compteDansCharge
 
-Ces codes représentent un repos attendu, pas du travail.
+| Nature                  | compteDansCharge |
+| ----------------------- | :--------------: |
+| `TRAVAIL`               | `true`           |
+| `REPOS` (RH, RHD)       | `false`          |
+| `FERIE` (JF substitutif)| `false`          |
+| `RECUP`                 | `false`          |
+| `NON_TRAVAILLE`         | `false`          |
 
-### 3. Définitions dérivées
-- Dimanche travaillé
-Dimanche travaillé Un dimanche travaillé est un dimanche calendaire (DayOfWeek.SUNDAY) comportant au moins un créneau dont l’activité compte dans la charge.
+### 5.3 Ce que le moteur ne déduit jamais
 
-- Repos hebdomadaire travaillé
-Minutes de créneaux dont l’activité compte dans la charge positionnées un samedi (Saturday) ou un dimanche (Sunday).
+Le moteur ne déduit jamais la notion de travail :
+- du code d’activité brut,
+- du type de créneau,
+- d’un qualifiant calendaire,
+- de la valeur du champ `Nature` utilisée directement.
 
-### 4. Principe structurant V2
-- Les contraintes mesurent.
-- Les ScoreWeights pondèrent.
-- Les WorkMetrics constatent post-résolution.
+Il s’appuie **uniquement** sur `compteDansCharge` tel que fourni par le référentiel d’activité.
+
+### 5.4 Principe structurant
+
+- Les **contraintes** mesurent.
+- Les **ScoreWeights** pondèrent.
+- Les **WorkMetrics** constatent post-résolution.
 
 Aucune métrique ne redéfinit la notion de travail.
 
-📌 Cette définition devient la référence pour :
+### 5.5 Règle de cohérence transversale
+
+- Les contraintes n’utilisent jamais directement `Nature` pour déterminer le travail.
+- Les WorkMetrics n’interprètent jamais `QualificationJour` comme du travail.
+- Toute évolution V3 ou ultérieure devra s’appuyer exclusivement sur la définition §5.1 ci-dessus.
+
+Cette définition est la référence pour :
 - les contraintes légales,
-- les métriques V2,
-- les futures métriques V3,
+- les métriques WorkMetrics (toutes versions),
 - et la restitution planning.
 
-🔒 Règle de cohérence transversale
-- Les contraintes n’utilisent jamais directement Nature pour déterminer le travail.
-- Les WorkMetrics n’interprètent jamais QualificationJour comme du travail.
-- Toute évolution V3 ou ultérieure devra s’appuyer exclusivement sur la définition canonique ci-dessus.
+#### Décision — Nature des WorkMetrics
 
-### 5. Décision — Gestion des chevauchements temporels sans découpage de créneaux (V3)
+Les WorkMetrics ne sont jamais des ProblemFacts du solveur.
 
-**Constat**
+Elles ne participent pas à la résolution et ne sont pas utilisées comme variables ou faits dans l’optimisation.
 
-Dans les domaines comportant des horaires “frontières” (veille de nuit, astreintes, interventions), un même créneau peut chevaucher :
-- la plage de nuit (ex. 22:00–06:00),
-- un changement de jour calendaire (samedi → dimanche),
-- un jour férié,
-- un repos hebdomadaire attendu (RH/RHD selon la modélisation amont).
+Elles sont exclusivement produites après résolution dans une logique de restitution et d’explicabilité.
 
-Dans ces cas, une qualification globale du créneau (ex. TypePlageHoraire = NUIT) est insuffisante :
-- elle ne permet pas de comptabiliser les minutes de nuit de manière précise (ex. 18:00–23:00 contient 60 minutes de nuit),
-- elle ne permet pas de distinguer “minutes sur dimanche” dans un créneau samedi 22:00 → dimanche 06:00.
+### 3. Décision — Gestion des chevauchements temporels sans découpage de créneaux
 
-**Décision**
+Le moteur ne découpe jamais un créneau pour matérialiser des sous-segments calendaires ou réglementaires.
 
-Le moteur ne découpe jamais un créneau pour matérialiser des sous-segments (nuit/jour, samedi/dimanche, férié/non férié, etc.).
-À la place, il calcule des volumes partiels de façon déterministe, par intersection temporelle entre :
-- l’intervalle réel du créneau,
-- et les fenêtres temporelles réglementaires/calendaires (plages de nuit, jours fériés, jour “dimanche”, etc.).
+Lorsqu’un créneau chevauche plusieurs catégories temporelles (nuit, dimanche, férié, etc.), les volumes utiles sont calculés par intersection temporelle à partir du créneau d’origine.
 
-Le créneau reste un objet unique :
-- stable pour le solveur,
-- stable pour l’API,
-- stable pour la restitution UI.
+Cette décision garantit :
+- la stabilité du modèle solveur ;
+- la stabilité de l’API ;
+- la cohérence entre mesure, scoring et explicabilité.
+
+Les règles détaillées de calcul et de dominance sont documentées dans les documents de la série 40.
 
 **Conséquences**
 
@@ -222,77 +245,6 @@ Le créneau reste un objet unique :
 **Règle de cohérence**
 
 Toute pénalité exprimée “en minutes” (nuit, dimanche, férié, etc.) doit être dérivée de ces volumes partiels calculés par intersection temporelle, et non d’une qualification globale.
-
-**Dominance sur chevauchements (anti double-pondération)**
-
-Une minute peut appartenir à plusieurs catégories (ex. nuit + dimanche).
-Les volumes partiels sont calculés séparément à des fins de mesure et d’explicabilité.
-
-Cependant, le scoring ne doit pas appliquer une “double peine” par défaut.
-
-- Décision retenue :
-  - le système calcule explicitement des volumes d’intersection :
-  - minutesNuitEtDimanche
-  - minutesNuitEtFerie
-  - (optionnel) minutesDimancheEtFerie
-- et le scoring applique une dominance (via PenaliteKey / ScoreWeights) de façon à ce que :
-  - une minute chevauchante soit pénalisée selon une règle unique maîtrisée,
-  - plutôt que par addition naïve de toutes les pénalités.
-
-Une analyse d’impact V2 est requise pour aligner toutes les contraintes en minutes sur ce mécanisme.
-
-**Statut / périmètre**
-
-Décision structurante V3.
-Une analyse d’impact sur V2 sera menée afin :
-- d’identifier les écarts de mesure introduits,
-- d’adapter les tests,
-- de préserver les invariants de dominance et de pondération.
-
-**Principe**
-Le moteur ne découpe jamais les créneaux. Les volumes (nuit, dimanche, férié) sont calculés par intersection temporelle à la minute.
-
-**Primitive**
-minutesIntersect(A, B) renvoie la durée d’intersection de deux intervalles [start, end).
-
-**Volumes**
-Pour tout créneau travaillé (compteDansCharge=true), le moteur calcule :
-- minutesNuit
-- minutesDimanche
-- minutesFerie
-
-**Chevauchements**
-Une minute peut appartenir à plusieurs catégories (ex. nuit et dimanche). Les volumes sont indépendants et explicatifs.
-Les règles de non-double-pondération relèvent du scoring (ScoreWeights / PenaliteKey), pas de la mesure.
-
----
-
-### 6. Séparation “mesure de restitution” vs “mesure d’arbitrage” (V3)
-
-Le moteur calcule deux familles de compteurs :
-
-**A. Compteurs de restitution (hors scoring)**
-Ils servent uniquement à :
-- restituer un planning lisible,
-- produire des tableaux de charge (jour/hebdo/mois),
-- alimenter l’analyse aval.
-
-Ils ne sont jamais utilisés pour l’arbitrage du solveur.
-
-Exemples :
-- minutes/heures travaillées par jour calendaire,
-- agrégations hebdomadaires / mensuelles,
-- agrégations par lieu, activité, poste comptable.
-
-**B. Compteurs d’arbitrage (scoring)**
-Ils servent à mesurer les pénibilités / coûts d’organisation utilisés dans le score.
-
-En V2/V3, l’arbitrage repose exclusivement sur :
-- minutes de nuit
-- minutes de dimanche
-- minutes de jour férié
-
-Ces compteurs sont calculés par intersection temporelle (sans découpage de créneaux).
 
 ---
 
@@ -382,9 +334,59 @@ Il est fourni par l’appelant via le PlanningContext / paramètres réglementai
 * Utilisation de contraintes **configurables** (poids dynamiques).
 * Aucun code spécifique par scénario.
 
+### Décision — Séparation solveur / API via ScenarioResponseMapper
+
+Le moteur sépare explicitement la solution interne du solveur (`PlanningProblem`, `PlanningSolution`) de la représentation exposée par l’API (`ScenarioResponseDTO`).
+
+Cette séparation est assurée par le composant `ScenarioResponseMapper`.
+
+Objectifs :
+- éviter toute dépendance directe de l’API vis-à-vis d’OptaPlanner ;
+- permettre l’évolution du modèle interne sans casser le contrat API ;
+- centraliser la logique de restitution (planning, métriques, diagnostics).
+
+Chaîne de transformation :
+
+```
+Solveur interne → PlanningSolution → ScenarioResponseMapper → ScenarioResponseDTO (contrat API)
+```
+
+### Décision — PlanningService comme solveur pur
+
+`PlanningService` est un service à responsabilité unique : recevoir un `PlanningRequest`, résoudre le `PlanningProblem`, retourner les données brutes du solveur.
+
+`PlanningResponse` contient uniquement :
+- la `PlanningSolution` résolue
+- le `ScoreExplanation` brut produit par `SolutionManager`
+
+`PlanningService` ne construit aucun DTO et n’a aucune dépendance vers le package `scenarios.dto`.
+
+### Décision — Construction du scoreBreakdown dans ScoreBreakdownFactory (couche scénarios)
+
+La transformation `ScoreExplanation → List<ScoreBreakdownItemDTO>` est réalisée par `ScoreBreakdownFactory.build()`, dans la couche scénarios.
+
+Cette factory est appelée par les `ExecutionService` (SC-01, SC-03), qui transmettent ensuite la liste construite au `ScenarioResponseMapper`.
+
+Ce découpage garantit que :
+- `PlanningService` ne connaît aucun DTO de restitution ;
+- la logique de transformation `explanation → breakdown` est centralisée et testable indépendamment ;
+- le `ScenarioResponseMapper` reçoit des données déjà transformées, sans accès direct à `ScoreExplanation`.
+
+### Décision — Production des diagnostics d’affectation dans le mapper API
+
+Les diagnostics d’affectation (`assignmentDiagnostics`) sont produits dans `ScenarioResponseMapper`, pas dans le builder amont, ni dans le solveur, ni dans les WorkMetrics.
+
+Cette décision :
+- préserve l’indépendance du solveur ;
+- évite de polluer le modèle interne avec des objets d’explication API ;
+- expose des diagnostics contextualisés par créneau sans dépendance directe à `ScoreExplanation`.
+
 ---
 
-## 9 bis. Décision de stabilisation du scoring (V2)
+## 9 bis. Décision de stabilisation du scoring
+
+> **Périmètre de ce document** : ce chapitre énonce les **décisions architecturales** prises pour structurer le scoring.
+> La description fonctionnelle complète (comment fonctionne le scoring, quels volumes, quelle dominance) est dans `40_STRATEGIE_DE_SCORING.md` et `40_WORKMETRICS.md`.
 
 ### Contexte
 
@@ -418,9 +420,7 @@ Le scoring est structuré selon trois niveaux clairement séparés :
 
 Les contraintes :
 - détectent une situation (ex. travail de nuit, créneau non couvert) ;
-- produisent une **mesure neutre** :
-  - en **minutes** (nuit, jour férié),
-  - ou en **occurrence** (créneau non couvert, poste virtuel) ;
+- produisent une **mesure neutre** exprimée selon l’unité portée par `PenaliteKey` ;
 - sont identifiées par une clé métier (`PenaliteKey`).
 
 Aucune logique de stratégie ou de priorité n’est portée par les contraintes.
@@ -493,6 +493,97 @@ Elles sont remplacées par une contrainte unique : `PenibilitesLegalesMinutes`
 
 ---
 
+### Décision — Distinction entre nuit réglementaire globale et nuit portée par salarié
+
+Le moteur distingue explicitement deux notions différentes :
+
+#### 1. Nuit réglementaire globale
+La nuit utilisée pour les calculs de pénibilité, de scoring et de WorkMetrics temporelles
+est définie globalement par les `RegulatoryParameters` / le `PlanningContext`.
+
+Cette plage constitue la **source de vérité commune** pour :
+- le calcul des minutes de nuit,
+- les intersections temporelles,
+- les pénalités légales associées,
+- les métriques agrégées du moteur.
+
+#### 2. Nuit portée par salarié
+Les champs portés par la ressource (`travailDeNuit`, `heureDebutNuit`, `heureFinNuit`)
+décrivent une **qualification propre au salarié** :
+- statut RH ou conventionnel,
+- profil de travail de nuit,
+- compatibilité ou traitement spécifique.
+
+Ils ne remplacent pas la nuit réglementaire globale.
+Ils la complètent pour des usages ciblés :
+- contraintes spécifiques au salarié,
+- pénalités différenciées,
+- diagnostics ou métriques RH.
+
+#### Règle fondamentale
+La mesure temporelle de la nuit reste globale et commune.
+La qualification “nuit” portée par un salarié reste locale à la ressource.
+
+En conséquence :
+- `RegulatoryParameters` demeure la source de vérité pour mesurer la nuit ;
+- les champs salarié ne redéfinissent pas les volumes temporels globaux ;
+- toute logique spécifique au salarié doit s’appuyer sur cette séparation.
+
+---
+
+### Décision — Explicabilité du score
+
+Le moteur doit produire un score explicable permettant d’analyser
+les contributions des différentes pénalités.
+
+Cette explicabilité repose sur :
+- l’identification explicite de chaque pénalité ;
+- l’association à une unité de mesure cohérente (voir enum `ScoreBreakdownUnit` ci-dessous) ;
+- la possibilité d’agréger et de comparer les contributions.
+
+La forme contractuelle de restitution est décrite dans `50_ScenarioResponseContract.md`.
+
+---
+
+### Décision — `PenaliteKey` porte l’unité de restitution du breakdown
+
+L’unité de chaque ligne de `scoreBreakdown` est rattachée directement à `PenaliteKey`.
+
+Conséquences :
+- suppression des `switch` de résolution d’unité dans la couche de restitution ;
+- centralisation de la construction des items de breakdown ;
+- stabilité accrue du contrat API lors de l’ajout de nouvelles pénalités.
+
+Ce principe renforce le découpage : Contraintes → mesurent · `ScoreWeights` → pondèrent · `scoreBreakdown` → restitue.
+
+#### Valeurs de l’enum `ScoreBreakdownUnit`
+
+Chaque `PenaliteKey` est associée à exactement une valeur de cet enum, définie à sa création.
+
+| Valeur            | Signification                                              | Exemples de pénalité associée                  |
+| ----------------- | ---------------------------------------------------------- | ---------------------------------------------- |
+| `OCCURRENCE`      | Nombre d’occurrences d’un événement                        | Créneau non couvert, affectation sur poste virtuel |
+| `MINUTE_PONDEREE` | Minutes réelles dans un intervalle réglementaire           | Nuit, dimanche, jour férié (calcul par intersection) |
+| `JOUR`            | Nombre de jours calendaires                                | Jours consécutifs travaillés au-delà du seuil  |
+| `UNKNOWN`         | Unité non déterminée — valeur de sécurité / fallback       | Pénalité mal configurée ou en cours de définition |
+
+**Règle d’usage :** toute nouvelle `PenaliteKey` doit déclarer explicitement son unité.
+`UNKNOWN` ne doit jamais apparaître en production ; sa présence dans `scoreBreakdown` signale un problème de configuration.
+
+---
+
+### Décision — Explicabilité du score
+
+Le moteur doit produire un score explicable, permettant d’analyser
+les contributions des différentes pénalités.
+
+La structure de restitution du score est définie dans le contrat API
+(`ScenarioResponseDTO`) et documentée dans :
+
+- 50_interface_windev_moteur.md
+
+---
+
 ### Décision — Dominance des pénibilités
 
 Lorsque plusieurs pénibilités s’appliquent simultanément, une dominance configurable est utilisée.
@@ -535,6 +626,108 @@ avec conversion explicite : `Math.toIntExact(...)`si nécessaire.
 
 ---
 
+### Décision de conception — Source de vérité de la durée des créneaux
+
+**Contexte**
+
+Le modèle de données du moteur de planification contient :
+* une **durée stockée** (`Creneau.duree`)
+* des **heures de début / fin** (`heureDebut`, `heureFin`) permettant de recalculer une durée
+
+Cette double information introduit une ambiguïté :
+> Quelle est la valeur de référence utilisée par le moteur et par la restitution API ?
+
+Cette décision vise à **trancher explicitement cette ambiguïté**.
+
+---
+
+#### Décision
+
+> **La durée stockée (`Creneau.duree`) est la source de vérité pour toutes les restitutions métier et les agrégats de sortie.**
+> **Toute restitution API doit être cohérente avec `Creneau.duree`**
+
+---
+
+#### Règles associées
+
+1. Restitution API
+
+Les champs suivants doivent utiliser **exclusivement la durée stockée** :
+
+* `solutionSummary.heuresTravailleesTotales`
+* `workMetrics.global.heuresTravailleesTotales`
+* toute agrégation horaire exposée en sortie
+
+👉 Aucune recomposition à partir des heures ne doit être utilisée pour ces valeurs.
+
+---
+
+2. Planning détaillé
+
+On autorise un **recalcul à partir des heures** uniquement pour l’affichage à condition que ce recalcul soit strictement cohérent avec la durée stockée
+
+---
+
+1. Recalcul technique
+
+Le recalcul de durée à partir de `heureDebut` / `heureFin` est autorisé uniquement pour :
+* des contrôles de cohérence
+* des traitements techniques explicitement documentés
+
+Il ne doit **jamais devenir une source de vérité implicite**.
+
+---
+
+4. Gestion des incohérences
+
+Toute divergence entre :
+* durée stockée
+* durée recalculée
+
+est considérée comme :
+> ❌ une anomalie de construction du dataset
+
+Toute divergence doit être tracée dans les diagnostics de préparation
+
+---
+
+5. Règle d’architecture
+
+* Le moteur **ne choisit jamais dynamiquement** entre durée stockée et durée recalculée
+* Les composants doivent appliquer une règle explicite et unique
+
+---
+
+#### Justification
+
+* La durée stockée est issue du système source (Windev)
+* Elle représente la **réalité métier contractualisée**
+* Elle garantit la **stabilité des résultats et des agrégats**
+
+À l’inverse, une durée recalculée :
+
+* dépend de conventions implicites (nuit, chevauchement, minuit)
+* peut diverger silencieusement
+
+---
+
+#### Impacts
+
+Cette décision implique :
+* un alignement des mappers API
+* une cohérence entre planning et agrégats
+* une clarification des responsabilités dans le code
+
+---
+
+#### Conclusion
+
+> La durée stockée devient la référence unique pour toute lecture métier.
+> Le recalcul reste un outil technique, jamais une vérité implicite.
+
+
+---
+
 ### Décisions structurantes associées
 
 Les décisions suivantes sont **explicitement actées** :
@@ -557,187 +750,33 @@ Ces tests constituent des **preuves d’invariants d’arbitrage**, et non des t
 
 ---
 
-### Conséquences pour les évolutions futures
+### Invariant d’extensibilité
 
-Ce découpage permet :
-- d’introduire de nouvelles pénalités sans refonte globale ;
-- de modifier les poids sans toucher aux contraintes ;
-- d’expliquer une solution sous la forme :
+Ce découpage garantit que :
+- toute nouvelle pénalité peut être introduite sans refonte globale ;
+- les poids peuvent être modifiés sans toucher aux contraintes ;
+- une solution peut toujours être expliquée sous la forme :
   > (clé de pénalité, unité, volume, poids, stratégie, contribution au score).
 
-Les évolutions V3 (équité, pénibilité par occurrence, préférences) s’appuieront sur ce socle sans en modifier les principes.
+Toute évolution future des contraintes, WorkMetrics ou stratégies devra respecter ce découpage des responsabilités.
 
 ---
 
 ## Intégration du solveur OptaPlanner
 
-### Décision
+L’intégration du solveur OptaPlanner est réalisée dans le moteur.
 
-Le moteur de planification appelle désormais le solveur OptaPlanner en exécution réelle dans le scénario SC-01.
+Les détails d’implémentation, la chaîne d’appel, les validations d’exécution,
+ainsi que le contrat API (`ScenarioResponseDTO`) sont documentés dans les documents :
 
-L’appel est effectué via la chaîne suivante :
+- 50_interface_windev_moteur.md
+- 90_suivi_developpement_moteur.md
+- 91_Journal_Developpement_Moteur.md
 
-ScenarioController  
-→ PlanningRequest  
-→ PlanningService  
-→ SolverLauncher  
-→ OptaPlanner  
-→ PlanningProblem résolu
-
-La solution retournée par le solveur est récupérée via : `solved.solution().getCreneaux()`
-
-### Validation
-
-Le fonctionnement du solveur et du scoring a été vérifié en exécution.
-Des logs supplémentaires dans `ScenarioController` confirment :
-- le score final calculé par OptaPlanner
-- les affectations des créneaux aux ressources.
-
-### Décision associée
-
-La solution produite par le solveur est désormais exposée via un modèle métier
-stabilisé : `ScenarioResponseDTO`.
-
-L’API ne renvoie pas directement les structures internes d’OptaPlanner
-(`PlanningSolution`, `ConstraintMatch`, etc.), mais une représentation
-fonctionnelle conçue pour :
-
-- être lisible par un client API ou une UI,
-- permettre l’analyse du résultat du solveur,
-- rester indépendante de l’implémentation interne du moteur.
-
-Le modèle de réponse expose notamment :
-- le **score global** de la solution,
-- un **scoreBreakdown** détaillant les pénalités (clé, unité, volume, impact),
-- le **planning résolu** avec l’affectation des ressources aux créneaux,
-- un **résumé de solution** (créneaux affectés / non affectés),
-- des **workMetrics** permettant l’analyse RH des charges,
-- d’éventuels **diagnostics** ou alertes.
-
-Cette séparation garantit :
-- la stabilité du contrat API,
-- l’indépendance vis-à-vis d’OptaPlanner,
-- la possibilité de faire évoluer le moteur sans casser l’API.
-
-### Décision — Représentation des créneaux non couverts
-
-Un créneau peut rester sans affectation si aucune ressource compatible n’est disponible ou si le solveur privilégie une autre affectation.
-
-Afin d’éviter toute ambiguïté et de respecter l’invariant "pas de null pour représenter une absence d’affectation", un créneau non couvert est représenté explicitement par la pseudo-ressource :
-A_AFFECTER
-
-Conséquences :
-- `ressourceAffectee` n’est jamais `null`.
-- la valeur `"A_AFFECTER"` apparaît dans le planning retourné par l’API.
-- les créneaux non couverts sont également comptabilisés dans :
-  - `solutionSummary.nbCreneauxNonAffectes`
-  - le `scoreBreakdown` via la pénalité `METIER_SOFT_CRENEAU_NON_COUVERT`.
-
-Les métriques RH (`workMetrics.byRessource`) n’incluent pas la pseudo-ressource `A_AFFECTER`, afin de ne représenter que les ressources réelles.
-
-Cette décision garantit :
-- la cohérence des données retournées,
-- la lisibilité du planning,
-- l’absence de cas particuliers liés à `null`.
-
-### Décision — Structure explicable du scoreBreakdown
-
-La contribution des contraintes au score est exposée via une structure normalisée appelée `scoreBreakdown`.
-
-Chaque entrée du breakdown est décrite par :
-
-- `penaliteKey` : clé métier identifiant la contrainte
-- `unit` : unité de mesure de la pénalité
-- `quantity` : volume mesuré
-- `weightedImpact` : contribution finale au score
-
-Exemple :
-(penaliteKey, unit, quantity, weightedImpact)
-
-Cette structure permet de restituer le score sous une forme explicable et indépendante d’OptaPlanner.
-
-Les unités actuellement utilisées sont notamment :
-- `MINUTE`
-- `MINUTE_PONDEREE`
-- `OCCURRENCE`
-
-Le breakdown reflète le principe fondamental du moteur :
-Contraintes → mesurent un volume  
-ScoreWeights → appliquent les poids  
-ScoreBreakdown → expose la contribution finale
-
-Cette structure permet notamment :
-- d’expliquer une solution au métier,
-- d’analyser les arbitrages du solveur,
-- de comparer différentes stratégies de scoring.
-
-Le modèle `scoreBreakdown` constitue donc le **contrat d’explicabilité du moteur de planification**.
-
-### Décision — Séparation solveur / API via ScenarioResponseMapper
-
-Le moteur de planification sépare explicitement :
-- la **solution interne du solveur** (`PlanningProblem`, `PlanningSolution`)
-- et la **représentation exposée par l’API** (`ScenarioResponseDTO`).
-
-Cette séparation est assurée par le composant :
-ScenarioResponseMapper
-
-Ce mapper transforme les objets internes du solveur en un modèle métier stable destiné à l’API.
-
-Objectifs de cette séparation :
-- éviter toute dépendance directe de l’API vis-à-vis d’OptaPlanner ;
-- permettre l’évolution du modèle interne du solveur sans casser l’API ;
-- exposer une représentation compréhensible pour l’utilisateur ou l’UI ;
-- centraliser la logique de restitution (planning, scoreBreakdown, métriques).
-
-Le mapper est responsable notamment de :
-- transformer les créneaux résolus en `CreneauPlanningDTO`,
-- construire le `planning` journalier,
-- produire le `scoreBreakdown`,
-- calculer les `workMetrics`,
-- construire le `solutionSummary`,
-- intégrer les éventuels diagnostics.
-
-Ainsi :
-Solveur interne  
-→ PlanningSolution  
-→ ScenarioResponseMapper  
-→ ScenarioResponseDTO (contrat API)
-
-Cette architecture garantit la stabilité du contrat API et l’indépendance du moteur vis-à-vis des frameworks d’optimisation utilisés.
-
-### Décision — `PenaliteKey` porte l’unité de restitution du breakdown
-
-Afin d’éviter une reconstruction fragile de l’explicabilité côté API, l’unité de chaque ligne de `scoreBreakdown` est désormais rattachée directement à `PenaliteKey`.
-
-Conséquences :
-- suppression des `switch` de résolution d’unité dans la couche de restitution ;
-- centralisation de la construction des items de breakdown ;
-- stabilité accrue du contrat API lors de l’ajout de nouvelles pénalités.
-
-Cette décision renforce le principe :
-Contraintes → mesurent  
-`ScoreWeights` → pondèrent  
-`scoreBreakdown` → restitue
-
-### Décision — les diagnostics d’affectation sont produits dans le mapper API
-
-Les diagnostics d’affectation (`assignmentDiagnostics`) ne relèvent ni :
-- du builder amont,
-- ni du solveur,
-- ni des WorkMetrics.
-
-Ils relèvent de la couche de restitution API (`ScenarioResponseMapper`), qui transforme la solution solveur en contrat HTTP lisible et stable.
-
-Cette décision permet :
-- de conserver l’indépendance du solveur ;
-- de ne pas polluer le modèle interne avec des objets d’explication API ;
-- d’exposer des diagnostics contextualisés par créneau sans dépendance directe à `ScoreExplanation`.
-
-À ce stade, le diagnostic implémenté est :
-- `UNCOVERED / NO_RESOURCE_ASSIGNED`
+Ce document ne décrit que les décisions de conception associées.
 
 ---
+
 
 ## 10. Éléments volontairement différés
 

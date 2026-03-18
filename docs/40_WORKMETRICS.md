@@ -5,22 +5,6 @@ pour **évaluer** une solution (scoring), sans jamais devenir des décisions.
 
 ---
 
-## 0. Tableau de suivi
-
-|Domaine                            |	Livré  | Où (code)                     |	Où (tests)        |	Doc                   |
-| --------------------------------- |------- | ----------------------------- | ------------------ |---------------------- |
-| Mesures temporelles ( minutes     | 	✅   | TimeBreakdownCalculator       | tests existants    |	section 2            |
-|   nuit / dimanche / férié )       |        |   + PenibilitesLegalesMinutes |	                  |                       |
-| WorkMetrics de restitution        |   ⏳   | WorkMetricsCalculator         | scénarios          | sections 4 et 5       |
-| Dominance	                        | 	✅   | ScoreUtils	                  | ScoreDominanceTest |	section 2            |
-| Séquences (contraintes)           | 	✅   | ReposHebdomadaireMin/Glissant	| tests contraintes  |	REGLES_COMBINATOIRES |
-| Séquences (WorkMetrics observées) | 	✅   | WorkMetricsCalculator	        | scénario 1         |  section 5.1          |
-| Équité (WorkMetrics)              | 	❌   | –	                            | –	                 |  section 5.2          |
-| Contractuel                       | 	❌   | –	                            | –	                 |  section 5.3          |
-| Dettes & coûts abstraits          | 	❌   | –	                            | –	                 |  section 5.4          |
-
----
-
 ## 1. Rôle
 
 * **Nature** : agrégats dérivés des affectations
@@ -31,13 +15,7 @@ pour **évaluer** une solution (scoring), sans jamais devenir des décisions.
 
 Les compteurs de “travail” (ex. heures travaillées par jour/semaine/mois, par lieu, par activité) sont strictement destinés à la restitution et ne participent pas à l’arbitrage.
 
-> WorkMetrics rendent visibles les **conséquences** des décisions
-> (coûts, dettes, charges), pas les décisions elles‑mêmes.
-
-> Les WorkMetrics sont calculées **après la résolution complète du planning**
-> et ne sont jamais modifiées pendant l’exécution du solveur. 
-
-> Les WorkMetrics ne sont jamais des ProblemFacts du solveur.
+> Les WorkMetrics sont calculées après résolution et ne participent pas à l’évaluation du planning.
 
 -- 
 
@@ -108,17 +86,34 @@ maxNuitsConsecutivesObservees = 6
 
 ---
 
+### 1.4. Définition du repos hebdomadaire
+- RH = repos hebdomadaire du samedi (nature REPOS)
+- RHD = repos hebdomadaire du dimanche (nature REPOS)
+
+Ces codes représentent un repos attendu, pas du travail.
+
+### 1.5. Définitions dérivées
+- Dimanche travaillé
+Dimanche travaillé Un dimanche travaillé est un dimanche calendaire (DayOfWeek.SUNDAY) comportant au moins un créneau dont l’activité compte dans la charge.
+
+- Repos hebdomadaire travaillé
+Minutes de créneaux dont l’activité compte dans la charge positionnées un samedi (Saturday) ou un dimanche (Sunday).
+
 ## 2. Calcul des pénibilités temporelles
 
 Les pénibilités liées au temps de travail (nuit, dimanche, jour férié) sont calculées à partir de l’intersection réelle des créneaux avec les intervalles réglementaires.
 
-Le calcul est réalisé par : `TimeBreakdownCalculator`
+Le calcul est basé sur l’intersection réelle des créneaux avec les intervalles réglementaires (nuit, dimanche, jour férié).
+
+> Ces calculs d’intersection utilisent `heureDebut`/`heureFin` — c’est un usage technique légitime.
+> Ils sont distincts de `heuresTravaillees` (§4.2), qui utilise exclusivement `Creneau.duree`.
+> Voir la règle de source de vérité dans `20_DECISIONS_CONCEPTION_OPTAPLANNER.md`.
 
 Pour chaque créneau, le moteur calcule :
 
 | Métrique	                     | Description                                |
 | ------------------------------ | ------------------------------------------ |
-| `minutesTravaillees`	         | durée totale du créneau                    |
+| `minutesTravaillees`	         | durée totale du créneau (via intersection) |
 | `minutesNuit`	                 | minutes situées dans l’intervalle de nuit  |
 | `minutesDimanche`	             | minutes situées un dimanche                |
 | `minutesFerie`                 | minutes situées un jour férié              |
@@ -149,20 +144,11 @@ Les minutes appartenant à plusieurs catégories sont attribuées à la pénibil
 
 ---
 
-### Séquences observées (V3)
+### Séquences observées
 
-Les séquences de travail sont désormais calculées à partir des créneaux affectés :
+Les métriques `maxJoursConsecutifsObservees` et `maxNuitsConsecutivesObservees` sont calculées par `WorkMetricsCalculator` après résolution.
 
-- `seqJours` : nombre de jours travaillés consécutifs
-- `seqNuits` : nombre de nuits consécutives
-
-Ces métriques sont calculées par `WorkMetricsCalculator`
-après résolution du solveur.
-
-Elles sont actuellement utilisées pour :
-- explicabilité
-- validation des scénarios
-- préparation des futurs WorkMetrics d’équité
+Leur définition détaillée est en section 5.1.
 
 ---
 
@@ -191,12 +177,12 @@ Chaque instance de WorkMetrics est **liée à :**
 
 ### 4.2 Charges horaires
 
-| Champ                       | Type    | Description                           | Implémenté |
-| --------------------------- | ------- | ------------------------------------- | -----------|
-| `heuresTravaillees`         | Decimal | Total heures affectées sur la période |      V1    |
-| `heuresNuit`                | Decimal | Heures en plage de nuit               |      V1    |
-| `heuresJourFerie`           | Decimal | Heures sur jours fériés               |      V1    |
-| `heuresReposHebdoTravaille` | Decimal | Travail sur repos hebdomadaire        |      V1    |
+| Champ                       | Type    | Description                                                                | Implémenté |
+| --------------------------- | ------- | -------------------------------------------------------------------------- | -----------|
+| `heuresTravaillees`         | Decimal | Total heures affectées — calculé à partir de `Creneau.duree` (durée stockée) |      V1    |
+| `heuresNuit`                | Decimal | Heures en plage de nuit (intersection `heureDebut`/`heureFin` × plage nuit) |      V1    |
+| `heuresJourFerie`           | Decimal | Heures sur jours fériés (intersection)                                     |      V1    |
+| `heuresReposHebdoTravaille` | Decimal | Travail sur repos hebdomadaire                                             |      V1    |
 
 ---
 
@@ -231,57 +217,6 @@ Ces métriques ne seront introduites qu’après stabilisation :
 | `detteReposFerie`        | Decimal | Part liée aux jours fériés          |
 | `coutDirect`             | Decimal | Coût payé (abstrait, non financier) |
 | `coutIndirect`           | Decimal | Coût différé (repos, fatigue)       |
-
----
-
-### 4.5 État d’implémentation validé (V2)
-
-Cette section décrit **exclusivement** les règles actuellement
-implémentées et validées par les tests automatisés.
-
-Elle ne remet pas en cause la définition générale de WorkMetrics.
-
-#### 📊 Métriques calculées
-
-##### Travail total
-
-- Somme des durées de tous les créneaux valides.
-
-#####  Travail de nuit
-
-- Somme des minutes appartenant à la plage réglementaire de nuit,
-calculées par intersection temporelle via `TimeBreakdownCalculator`.
-
-#####  Travail les jours fériés
-
-- Somme des minutes appartenant à un jour férié,
-calculées par intersection temporelle via `TimeBreakdownCalculator`.
-
----
-
-#### 🛌 Repos hebdomadaire travaillé
-
-##### Définition
-
-Un créneau qualifié `RH` ou `RHD` est considéré comme un **repos hebdomadaire non travaillé**.
-
-##### Calcul
-
-- La durée du créneau est ajoutée aux minutes de repos hebdomadaire travaillé.
-- Une **dette de repos hebdomadaire** peut être générée selon l’activité.
-
-##### Dette de repos
-
-- La génération de dette est pilotée par le `ReferentielComptabiliteActivite`.
-- La dette est comptabilisée **par jour distinct**, indépendamment du nombre de créneaux sur la journée.
-
----
-
-#### 📆 Dimanches travaillés (V2)
-
-- Un dimanche travaillé correspond à un créneau enregistré sur un dimanche calendaire dont l’activité compte dans la charge.
-- Le comptage est effectué **par date distincte**.
-- Plusieurs créneaux travaillés le même jour ne génèrent **qu’un seul dimanche travaillé**.
 
 ---
 
@@ -330,56 +265,26 @@ Elles servent exclusivement :
 
 ---
 
-#### 5.1.1 Principe de calcul sans découpage de créneaux
+#### 5.1.1 Définition canonique du travail
 
-Le moteur ne découpe jamais les créneaux.
-Lorsque qu’un créneau chevauche une frontière (plage de nuit, changement de jour, dimanche, férié…), les volumes sont calculés par intersection temporelle afin d’obtenir des minutes partielles.
+La définition canonique du travail est un invariant d’architecture défini dans :
 
-Ces minutes partielles sont ensuite utilisées :
-- par certaines contraintes pour mesurer les pénibilités lors du calcul du score ;
-- par le calcul des WorkMetrics pour produire des indicateurs descriptifs après résolution.
+> `20_DECISIONS_CONCEPTION_OPTAPLANNER.md §5`
 
-Les volumes partiels utilisés par les contraintes et ceux utilisés pour le calcul des WorkMetrics doivent être strictement identiques (même algorithme d’intersection), afin de garantir la cohérence entre :
-- l’arbitrage effectué par le solveur
-- l’explicabilité fournie par les WorkMetrics.
+Se référer à ce document pour la définition faisant autorité, les mappings `Nature → compteDansCharge`,
+et la règle de cohérence transversale.
 
----
+**Application aux WorkMetrics :**
 
-#### 5.1.2 Volumes d’intersection
-
-Pour permettre un scoring maîtrisé en cas de chevauchements, le moteur calcule également :
-- minutesNuitEtDimanche
-- minutesNuitEtFerie
-
-Ces volumes sont des mesures neutres issues de la même primitive d’intersection temporelle.
-
-Ils servent :
-- au scoring,
-- à l’explicabilité.
-
-L’ordre de dominance appliqué au scoring est fourni par le PlanningContext ; les volumes d’intersection restent disponibles à des fins d’explicabilité, indépendamment de l’ordre choisi.
-
----
-
-#### 5.1.3 Définition canonique du travail
-
-Un créneau contribue aux WorkMetrics si et seulement si son activité est considérée comme du travail au sens du moteur (compteDansCharge=true via référentiel).
+Un créneau contribue aux WorkMetrics si et seulement si `compteDansCharge = true` dans le référentiel d’activité.
 Toute minute issue d’un calcul d’intersection est ignorée si l’activité ne compte pas dans la charge.
 
-Une journée ou une nuit est considérée comme travaillée si et seulement si :
-- le créneau associé possède une activité dont
-- compteDansCharge = true dans le référentiel d’activité.
-
-Le moteur ne déduit jamais le travail :
-- du code d’activité brut,
-- du type de créneau,
-- d’un qualifiant calendaire.
-
-Cette règle est un invariant d’architecture : DECISIONS_CONCEPTION_OPTAPLANNER
+> Les primitives de calcul (volumes d’intersection, dominance) sont définies en section 2 du présent document.
+> L’ordre de dominance est fourni par le `PlanningContext`.
 
 ---
 
-#### 5.1.4 maxJoursConsecutifsObservees
+#### 5.1.2 maxJoursConsecutifsObservees
 
 **Définition :**
 Représente la longueur maximale d’une séquence de jours calendaires consécutifs travaillés pour une ressource donnée.
@@ -401,7 +306,7 @@ Pour chaque ressource :
 
 ---
 
-### 5.1.5 maxNuitsConsecutivesObservees
+### 5.1.3 maxNuitsConsecutivesObservees
 
 #### Définition
 
@@ -460,7 +365,7 @@ La contrainte correspondante dans le moteur (`maxNuitsConsecutives`) compare cet
 
 ---
 
-#### 5.1.6 Alignement HARD / SOFT
+#### 5.1.4 Alignement HARD / SOFT
 
 Ces métriques :
 - peuvent expliquer a posteriori une violation de contrainte combinatoire ;
@@ -474,7 +379,7 @@ C’est la contrainte combinatoire correspondante (HARD ou SOFT) qui s’appliqu
 
 ---
 
-### 5.1.7 Nature des WorkMetrics : individuelles vs comparatives
+### 5.1.5 Nature des WorkMetrics : individuelles vs comparatives
 
 Les WorkMetrics peuvent être de deux natures différentes.
 
@@ -611,59 +516,19 @@ Les contraintes n’écrivent pas les WorkMetrics.
 
 ---
 
-## 9. Utilisation dans le solveur
+## 9. Utilisation des mesures dans le scoring
 
-Les **WorkMetrics** ne sont pas utilisées par le solveur comme variables de décision et ne pilotent jamais directement l’affectation des créneaux.
+Le moteur utilise des mesures élémentaires issues des créneaux pour évaluer certaines contraintes de pénibilité.
 
-Elles restent :
-- des **constats post-résolution**,
-- calculés à partir d’un planning résolu,
-- destinés à l’explicabilité, à la restitution et à l’analyse aval.
+Ces mesures sont calculées à partir des affectations et représentent des volumes (minutes de nuit, dimanche, férié, etc.).
 
-### Distinction importante
+Elles servent exclusivement à alimenter le scoring.
 
-Il convient de distinguer deux niveaux :
+Les WorkMetrics, en revanche, restent des agrégats descriptifs produits après résolution et ne participent pas à l’évaluation.
 
-#### A. Primitives de mesure utilisées pendant l’évaluation
-
-Le moteur utilise, dans certaines contraintes de scoring, des **mesures élémentaires** issues du calcul temporel, notamment :
-- minutes de nuit,
-- minutes de dimanche,
-- minutes de jour férié,
-- minutes d’intersection entre pénibilités.
-
-Ces mesures sont calculées à partir des créneaux affectés, via
-`TimeBreakdownCalculator`, et servent à alimenter le scoring des pénibilités
-légales (`PenibilitesLegalesMinutes`).
-
-Elles constituent des **primitives de mesure**, pas des WorkMetrics de restitution.
-
-#### B. WorkMetrics de restitution
-
-Les WorkMetrics, au sens du présent document, sont des **agrégats descriptifs** produits après résolution, par exemple :
-- `heuresTravaillees`
-- `heuresNuit`
-- `heuresJourFerie`
-- `nbDimanchesTravailles`
-- `maxJoursConsecutifsObservees`
-- `maxNuitsConsecutivesObservees`
-
-Ces indicateurs :
-- n’interviennent pas dans la faisabilité,
-- ne déclenchent aucune contrainte HARD,
-- ne modifient jamais le planning,
-- ne constituent jamais une variable de décision.
-
-### Règle de cohérence
-
-Le solveur peut consommer des **mesures élémentaires** pour scorer certaines contraintes.
-
-En revanche, les **WorkMetrics** exposées par le moteur restent exclusivement des **constats post-résolution**.
-
-Cette séparation garantit :
-- la lisibilité de l’architecture,
-- la stabilité de l’explicabilité,
-- l’absence de confusion entre **arbitrage** et **restitution**.
+Cette séparation garantit l’absence de confusion entre :
+- les éléments utilisés pour l’arbitrage,
+- et les indicateurs utilisés pour la restitution.
 
 ---
 

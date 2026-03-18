@@ -6,8 +6,10 @@ import fr.project.planning.domain.creneau.TypeCreneau;
 import fr.project.planning.domain.creneau.TypePlageHoraire;
 import fr.project.planning.domain.ressource.Ressource;
 import fr.project.planning.domain.ressource.RessourceNonAffectee;
+import fr.project.planning.domain.ressource.SalarieReel;
 import fr.project.planning.scenarios.dto.DataSetDTO;
 import fr.project.planning.scenarios.dto.ScenarioRequestDTO;
+import fr.project.planning.scenarios.dto.input.SalarieInputDTO;
 import fr.project.planning.scenarios.dto.request.ResourceRefDTO;
 import fr.project.planning.scenarios.dto.request.Sc01ScenarioParametersDTO;
 
@@ -65,22 +67,17 @@ public class ScenarioDatasetBuilderSc01 {
 
             // 1) Férié => non travaillé
             if (req.holidayDates.contains(date)) {
-                // On ne génère aucun créneau, mais on peut qualifier la journée.
-                // (La qualification est portée sur les créneaux dans votre modèle, donc on n'a rien à instancier.)
                 continue;
             }
 
             // 2) Repos hebdo (RH/RHD) selon règle "jours non cochés"
             QualificationJour restQ = weeklyRestQualification.get(date);
             if (restQ == QualificationJour.RH || restQ == QualificationJour.RHD) {
-                // Jour de repos => aucun créneau
                 continue;
             }
 
             // 3) Jour travaillé ?
             if (!req.workedDays.contains(dow)) {
-                // Jour non coché au-delà des 1-2 jours gérés explicitement : on le traite comme repos (pas de créneau).
-                // (Optionnel : alerte si vous voulez)
                 continue;
             }
 
@@ -162,8 +159,6 @@ public class ScenarioDatasetBuilderSc01 {
     ) {
         int dureeMinutes = minutesBetween(start, end);
 
-        // NB: votre constructeur Creneau prend beaucoup de champs.
-        // Ici on met null sur ce qui n'est pas utilisé en SC-01 MVP (lieu, posteComptable, priorite).
         String id = "SC01-" + date + "-" + String.format("%03d", sequence);
 
         Creneau c = new Creneau(
@@ -207,27 +202,23 @@ public class ScenarioDatasetBuilderSc01 {
     ) {
         Map<LocalDate, QualificationJour> result = new HashMap<>();
 
-        // Découpe en blocs "lun->dim". On part du lundi de la semaine de debut.
         LocalDate cursor = debut;
 
         while (!cursor.isAfter(fin)) {
             LocalDate weekStart = cursor.with(DayOfWeek.MONDAY);
             LocalDate weekEnd = weekStart.plusDays(6);
 
-            // borne réelle dans la période
             LocalDate blockStart = weekStart.isBefore(debut) ? debut : weekStart;
             LocalDate blockEnd = weekEnd.isAfter(fin) ? fin : weekEnd;
 
-            // Jours non cochés dans la semaine (lun->dim)
             List<DayOfWeek> nonWorked = new ArrayList<>();
             for (DayOfWeek d : DayOfWeek.values()) {
                 if (!workedDays.contains(d)) {
                     nonWorked.add(d);
                 }
             }
-            nonWorked.sort(Comparator.comparingInt(DayOfWeek::getValue)); // MON=1 .. SUN=7
+            nonWorked.sort(Comparator.comparingInt(DayOfWeek::getValue));
 
-            // Alerte si repos insuffisant (0 jour non coché)
             if (nonWorked.isEmpty()) {
                 alerts.add(new ScenarioAlert(
                         AlertCode.INSUFFICIENT_WEEKLY_REST,
@@ -236,10 +227,6 @@ public class ScenarioDatasetBuilderSc01 {
                 ));
             }
 
-            // Appliquer règle RH/RHD sur le bloc
-            //  - 1 jour non coché => RHD
-            //  - 2 jours non cochés => RH puis RHD
-            //  - >2 => RH, RHD, puis RH... (et alerte)
             if (nonWorked.size() > 2) {
                 alerts.add(new ScenarioAlert(
                         AlertCode.TOO_MANY_NON_WORKED_DAYS,
@@ -248,7 +235,6 @@ public class ScenarioDatasetBuilderSc01 {
                 ));
             }
 
-            // Marquage par date dans le bloc
             for (LocalDate d = blockStart; !d.isAfter(blockEnd); d = d.plusDays(1)) {
                 DayOfWeek dow = d.getDayOfWeek();
                 if (!workedDays.contains(dow)) {
@@ -257,7 +243,6 @@ public class ScenarioDatasetBuilderSc01 {
                 }
             }
 
-            // avancer au bloc suivant
             cursor = weekEnd.plusDays(1);
         }
 
@@ -265,20 +250,16 @@ public class ScenarioDatasetBuilderSc01 {
     }
 
     private QualificationJour mapNonWorkedDayToQualification(List<DayOfWeek> nonWorkedSorted, DayOfWeek dow) {
-        // 1 jour non coché => RHD
         if (nonWorkedSorted.size() == 1) {
             return QualificationJour.RHD;
         }
-        // 2 jours => 1er RH, 2e RHD
         if (nonWorkedSorted.size() >= 2) {
             DayOfWeek first = nonWorkedSorted.get(0);
             DayOfWeek second = nonWorkedSorted.get(1);
             if (dow == first) return QualificationJour.RH;
             if (dow == second) return QualificationJour.RHD;
-            // au-delà : RH par défaut
             return QualificationJour.RH;
         }
-        // 0 jour non coché : pas de qualification (cas géré par alerte)
         return QualificationJour.OUVRE;
     }
 
@@ -305,7 +286,6 @@ public class ScenarioDatasetBuilderSc01 {
         if (req.workedDays == null || req.workedDays.isEmpty()) {
             throw new IllegalArgumentException("workedDays doit contenir au moins 1 jour.");
         }
-        // Calcul minutes amplitude
         req.dailyAmplitudeMinutes = (int) Math.round(req.dailyAmplitudeHours * 60.0);
 
         if (req.holidayDates == null) req.holidayDates = Set.of();
@@ -346,7 +326,13 @@ public class ScenarioDatasetBuilderSc01 {
         return build(br);
     }
 
-    // Résolution de la ressource (salarié ou poste virtuel) à partir du ResourceRefDTO
+    /**
+     * Résolution de la ressource (salarié) à partir du ResourceRefDTO.
+     *
+     * Phase 1 : construit un SalarieReel minimal depuis le SalarieInputDTO.
+     * Les nouveaux champs (contraintesReglementaires, axesOrganisationnels, etc.)
+     * seront mappés vers le domaine en Phase 3.
+     */
     private Ressource resolveResource(ResourceRefDTO ref, DataSetDTO dataSet) {
 
         if (ref == null) {
@@ -361,15 +347,25 @@ public class ScenarioDatasetBuilderSc01 {
             throw new IllegalArgumentException("dataSet.ressources requis");
         }
 
-        return dataSet.getRessources()
+        SalarieInputDTO dto = dataSet.getRessources()
                 .getSalaries()
                 .stream()
-                .filter(r -> r.getId().equals(ref.getId()))
+                .filter(s -> ref.getId().equals(s.getId()))
                 .findFirst()
                 .orElseThrow(() ->
                         new IllegalArgumentException(
                                 "Ressource introuvable : " + ref.getId()
                         ));
+
+        // Phase 1 : mapping minimal — les nouveaux champs sont transportés mais pas encore mappés.
+        return new SalarieReel(
+                dto.getId(),
+                null,  // profilContractuel — Phase 3
+                dto.getStatut(),
+                dto.getSitesAutorises() != null ? dto.getSitesAutorises() : Set.of(),
+                dto.getActivitesCompatibles() != null ? dto.getActivitesCompatibles() : Set.of(),
+                dto.getPostesComptablesCompatibles() != null ? dto.getPostesComptablesCompatibles() : Set.of()
+        );
     }
 
     // =========================
@@ -380,7 +376,7 @@ public class ScenarioDatasetBuilderSc01 {
         public LocalDate dateDebut;
         public LocalDate dateFin;
 
-        public Ressource ressource; // salarié ou poste virtuel (tous 2 héritent de Ressource)
+        public Ressource ressource;
 
         /** amplitude journalière incluant pause (en heures, ex: 7.5) */
         public double dailyAmplitudeHours;

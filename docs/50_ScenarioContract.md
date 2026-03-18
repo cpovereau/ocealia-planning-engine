@@ -197,10 +197,6 @@ Construire un **planning de référence** conforme aux règles, sans historique.
 * aucune optimisation à ce stade (génération déterministe) ;
 * pas encore d’indicateurs de charge.
 
-📌 Statut V1
-SC-01 génère un planning déterministe sans appel au solveur OptaPlanner.
-Les alertes sont produites au niveau du builder, en amont de toute optimisation.
-
 ---
 
 ### 🟡 SC-02 — Remplacement d’un salarié absent
