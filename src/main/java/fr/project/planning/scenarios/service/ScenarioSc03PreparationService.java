@@ -117,18 +117,37 @@ public class ScenarioSc03PreparationService {
             }
         }
 
-        // 3. Créneaux — uniquement ceux dont l'activité est connue du référentiel
-        List<Creneau> creneaux = creneauMapper.toCreneaux(creneauxValides);
+        // 3. [Phase 3] Partition hors-horizon — sur creneauxValides (activité connue) uniquement.
+        //    Ordre : activiteInconnue en premier (Phase 2), horsHorizon ensuite (Phase 3).
+        //    Un créneau inconnu + hors-horizon est compté dans activiteInconnue uniquement.
+        //    Cas limite : créneau à date null — ni compté, ni exclu (hors périmètre Phase 3).
+        LocalDate dateDebut = request.getPlanningContext().getHorizon().getDateDebut();
+        LocalDate dateFin   = request.getPlanningContext().getHorizon().getDateFin();
 
-        // 4. Ressources (salariés + postes virtuels + RessourceNonAffectee)
+        List<CreneauInputDTO> creneauxDansHorizon = new ArrayList<>();
+        int horsHorizon = 0;
+        for (CreneauInputDTO dto : creneauxValides) {
+            if (dto.getDate() != null && (dto.getDate().isBefore(dateDebut) || dto.getDate().isAfter(dateFin))) {
+                horsHorizon++;
+                log.warn("[SC-03] créneau id='{}' : date '{}' hors horizon [{} — {}] — créneau exclu avant solveur",
+                        dto.getId(), dto.getDate(), dateDebut, dateFin);
+            } else {
+                creneauxDansHorizon.add(dto);
+            }
+        }
+
+        // 4. Créneaux — activité connue ET dans l'horizon
+        List<Creneau> creneaux = creneauMapper.toCreneaux(creneauxDansHorizon);
+
+        // 5. Ressources (salariés + postes virtuels + RessourceNonAffectee)
         List<Ressource> ressources = resourceMapper.toRessources(request.getDataSet());
 
-        // 5. Indisponibilités
+        // 6. Indisponibilités
         List<Indisponibilite> indisponibilites = resourceMapper.toIndisponibilites(
                 request.getDataSet().getIndisponibilites()
         );
 
-        // 6. Contexte planning
+        // 7. Contexte planning
         StrategieScoring strategieScoring = StrategieScoring.valueOf(
                 request.getPlanningContext().getStrategieScoring()
         );
@@ -159,14 +178,9 @@ public class ScenarioSc03PreparationService {
                 .stream().map(PosteVirtuelInputDTO::getId).collect(Collectors.toSet());
 
         // 10. Comptage ignoredCreneaux (pré-résolution)
-        LocalDate dateDebut = request.getPlanningContext().getHorizon().getDateDebut();
-        LocalDate dateFin   = request.getPlanningContext().getHorizon().getDateFin();
-
-        int horsHorizon = (int) request.getDataSet().getCreneaux().stream()
-                .filter(dto -> dto.getDate() != null)
-                .filter(dto -> dto.getDate().isBefore(dateDebut) || dto.getDate().isAfter(dateFin))
-                .count();
-
+        //     horsHorizon est produit par la partition Phase 3 (cf. étape 3 ci-dessus).
+        //     aucuneRessourceDansDataset est calculé sur creneauxDansHorizon uniquement :
+        //     les créneaux exclus (activiteInconnue ou horsHorizon) ne gonflent pas ce compteur.
         List<SalarieInputDTO> salaries = request.getDataSet().getRessources() != null
                 && request.getDataSet().getRessources().getSalaries() != null
                 ? request.getDataSet().getRessources().getSalaries() : List.of();
@@ -175,7 +189,7 @@ public class ScenarioSc03PreparationService {
                 && request.getDataSet().getRessources().getPostesVirtuels() != null
                 ? request.getDataSet().getRessources().getPostesVirtuels() : List.of();
 
-        int aucuneRessourceDansDataset = (int) request.getDataSet().getCreneaux().stream()
+        int aucuneRessourceDansDataset = (int) creneauxDansHorizon.stream()
                 .filter(dto -> !auMoinsUneRessourceCompatible(dto, salaries, postesVirtuelsList))
                 .count();
 

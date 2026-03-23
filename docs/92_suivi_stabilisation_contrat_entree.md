@@ -159,25 +159,113 @@ Suite complète exécutée après les modifications : **BUILD SUCCESSFUL** (1m 5
 
 ---
 
-## Phase 3 — Clarification SC-03 (contrat réel)
+## Phase 3 — Cohérence des diagnostics pré-résolution
 
 ### Objectif
 
-Supprimer les ambiguïtés contractuelles côté SC-03.
+Clarifier et harmoniser la sémantique de `ignoredCreneaux` après Phase 2.
 
 ### Travaux
 
-* identifier les champs :
-
-  * réellement utilisés
-  * ignorés
-  * partiellement exploités
-* documenter explicitement le statut de chaque champ
-* corriger les incohérences les plus trompeuses
+* aligner `horsHorizon` sur la même sémantique qu'`activiteInconnue` : exclusion réelle avant solveur
+* maintenir `aucuneRessourceDansDataset` comme diagnostic pur
+* rebaser `aucuneRessourceDansDataset` sur les créneaux réellement transmis (suppression du double comptage introduit par Phase 2)
+* documenter l'ordre de partition et le cas limite `date == null`
 
 ### Critère de sortie
 
-Le contrat SC-03 reflète le comportement réel.
+Les trois compteurs de `ignoredCreneaux` reflètent chacun une sémantique claire et cohérente.
+
+### État
+
+✅ Terminé — 2026-03-23
+
+### Réalisation
+
+#### Politique retenue
+
+Deux décisions structurantes :
+
+1. **`horsHorizon` → exclusion réelle avant solveur.** Un créneau à activité connue mais hors de l'horizon de résolution n'est plus transmis au solveur. Même sémantique qu'`activiteInconnue` depuis Phase 2.
+2. **`aucuneRessourceDansDataset` → maintien en diagnostic pur.** Un créneau sans ressource compatible représente un écart de couverture légitime : le solveur l'affecte à `RessourceNonAffectee`. Exclure ces créneaux masquerait des besoins non couverts.
+
+**Ordre de partition** (codé et documenté) :
+
+1. exclusion `activiteInconnue` (Phase 2) → `creneauxValides`
+2. exclusion `horsHorizon` (Phase 3) → `creneauxDansHorizon`
+3. calcul `aucuneRessourceDansDataset` sur `creneauxDansHorizon`
+
+Un créneau inconnu + hors-horizon est compté dans `activiteInconnue` uniquement.
+
+**Cas limite noté explicitement** : créneau à `date == null` — ni compté, ni exclu par la partition horizon. Hors périmètre Phase 3, à traiter ultérieurement.
+
+#### Implémentation
+
+**`ScenarioSc03PreparationService`** (seul fichier modifié) :
+
+* Extraction de `dateDebut` / `dateFin` remontée avant le mapping des créneaux.
+* Ajout d'une boucle `for` de partition horizon sur `creneauxValides` : DTOs hors-horizon incrémentent `horsHorizon` avec `log.warn`, DTOs dans l'horizon ajoutés à `creneauxDansHorizon`.
+* `creneauMapper.toCreneaux()` reçoit `creneauxDansHorizon` (était `creneauxValides`).
+* `aucuneRessourceDansDataset` rebasé sur `creneauxDansHorizon` (était `request.getDataSet().getCreneaux()`).
+* Suppression du bloc de comptage `horsHorizon` par stream sur la liste brute.
+
+#### Tests
+
+**`ScenarioSc03PreparationServicePhase3Test`** (nouvelle classe, 10 tests) :
+
+* `creneauHorsHorizon_activiteConnue_estExcluAvantSolveur` — avant horizon
+* `creneauApresHorizon_activiteConnue_estExcluAvantSolveur` — après horizon
+* `creneauDansHorizon_activiteConnue_passeToujoursAuSolveur`
+* `mixte_1DansHorizon_1HorsHorizon_seulDansHorizonPasseAuSolveur`
+* `tousCreneauxHorsHorizon_solveurRecoit0Creneaux_sansBlocage`
+* `creneauInconnu_etHorsHorizon_compteUniquementDansActiviteInconnue` — vérification de l'ordre de partition
+* `aucuneRessourceDansDataset_creneauHorsHorizon_nonCompte` — suppression du double comptage
+* `aucuneRessourceDansDataset_creneauInconnu_nonCompte` — suppression du double comptage
+* `aucuneRessourceDansDataset_creneauTransmis_sansRessourceCompatible_estCompte` — comportement attendu conservé
+* `creneauDateNull_nEstNiCompteNiExcluCommeHorsHorizon` — cas limite documenté
+
+#### Non-régression
+
+Suite complète Phase 1 + Phase 2 + Phase 3 exécutée après les modifications : **BUILD SUCCESSFUL** (8s, 0 échec).
+
+---
+
+## Phase 4 — Suppression des illusions du contrat d’entrée
+
+### Objectif
+
+Rendre visibles les champs ignorés ou écrasés silencieusement, sans modifier le comportement du moteur.
+
+### Champs concernés
+
+| Champ | DTO | Comportement réel |
+|---|---|---|
+| `type` (créneau) | `CreneauInputDTO.type` | Écrasé par `TypeCreneau.IMPOSE` — signal existant en `log.debug` (Phase 1) |
+| `priorite` (créneau) | `CreneauInputDTO.priorite` (Integer) | Ignoré — `null` passé au domaine — aucun signal |
+| `axesOrganisationnels` (créneau) | `CreneauInputDTO.axesOrganisationnels` | Ignoré — jamais lu par le mapper — aucun signal |
+| `libelle` (référentiel) | `ReferentielActiviteDTO.libelle` | Ignoré — absent de `ComptabiliteActivite` — aucun signal |
+
+### Décision retenue
+
+**Option B pour tous les champs** : signal explicite (log.warn ou documentation), sans implémentation métier, sans modification du solveur ni du domaine.
+
+### Actions par champ
+
+* `type` → élever le `log.debug` existant en `log.warn` (alignement avec les autres signaux du pipeline)
+* `priorite` → ajouter `log.warn` si valeur non nulle reçue ; documenter le mismatch de types (Integer vs enum `PrioriteCreneau`)
+* `axesOrganisationnels` → ajouter `log.warn` si objet non nul reçu
+* `libelle` → documenter (champ de présentation, aucune incidence sur la résolution)
+
+### Ce que la phase ne fait pas
+
+* ne branche aucun champ dans le solveur
+* ne modifie pas le modèle domaine
+* ne supprime pas les champs des DTO
+* ne modifie pas SC-01
+
+### Critère de sortie
+
+Chaque champ ignoré émet un signal visible ou est explicitement documenté. Aucun champ n’est absorbé silencieusement.
 
 ### État
 
@@ -185,60 +273,58 @@ Le contrat SC-03 reflète le comportement réel.
 
 ---
 
-## Phase 4 — Suppression des écrasements silencieux
+## Phase 5 — Clarification du contrat visible
 
 ### Objectif
 
-Éliminer les champs “faussement actifs”.
+Rendre le contrat d'entrée SC-03 lisible et fiable pour les intégrateurs.
 
 ### Travaux
 
-* traiter en priorité :
-
-  * `type` de créneau
-  * `priorite`
-  * `libelle` référentiel
-* choisir pour chaque champ :
-
-  * supporté
-  * ignoré explicitement
-  * supprimé
+* classifier chaque champ : SUPPORTÉ / TOLÉRÉ / ⚠️ DÉPRÉCIÉ / IGNORÉ
+* produire le document de référence `92_contrat_entree_sc03.md`
+* tracer la décision de dépréciation sur `activite`
+* documenter les comportements implicites (partition, valeurs par défaut)
+* différer les décisions sur `prioriteCouverture` et `periode` (Phase 7+, décision métier requise)
 
 ### Critère de sortie
 
-Plus aucun champ n’est absorbé silencieusement.
+Le contrat d'entrée SC-03 est documenté avec un statut explicite pour chaque champ.
 
 ### État
 
-⏳ À faire
+✅ Terminé — 2026-03-23
 
----
+### Réalisation
 
-## Phase 5 — Nettoyage des champs non exploités
+#### Classification produite
 
-### Objectif
+Quatre statuts définis :
 
-Réduire la zone grise du contrat.
+| Statut | Signification |
+|---|---|
+| SUPPORTÉ | Champ exploité, influence la résolution |
+| TOLÉRÉ | Champ reçu, mappé ou stocké, sans effet sur la résolution actuelle |
+| ⚠️ DÉPRÉCIÉ | `activite` — fallback de `codeActiviteId`, destiné à être supprimé |
+| IGNORÉ | Ignoré avec signal explicite (log.warn) |
 
-### Travaux
+Champs classés IGNORÉ (signal log.warn actif depuis Phase 4) :
+* `creneaux[].priorite`
+* `creneaux[].axesOrganisationnels`
+* `referentiels.activites[].libelle`
 
-* traiter :
+Champs IGNORÉ sans signal pour l'instant (couverture Phase 4 non étendue aux ressources) :
+* `salaries[].axesOrganisationnels`
+* `salaries[].contratTravail`
 
-  * `prioriteCouverture`
-  * `periode`
-* décider pour chacun :
+#### Document produit
 
-  * implémentation
-  * suppression
-  * marquage explicite
+`docs/92_contrat_entree_sc03.md` — tableau complet SUPPORTÉ / TOLÉRÉ / ⚠️ DÉPRÉCIÉ / IGNORÉ pour tous les champs SC-03, comportements documentés, ordre de partition, sémantique des diagnostics.
 
-### Critère de sortie
+#### Décisions différées
 
-Aucun champ “mort” dans le contrat.
-
-### État
-
-⏳ À faire
+* `scenarioParameters.prioriteCouverture` : TOLÉRÉ — implémentation ou suppression différée (décision métier requise)
+* `scenarioParameters.periode` : TOLÉRÉ — idem
 
 ---
 
@@ -246,27 +332,61 @@ Aucun champ “mort” dans le contrat.
 
 ### Objectif
 
-Préparer la suppression des redondances.
+Clarifier et unifier les sources de vérité du contrat d'entrée SC-03 :
 
-### Travaux
+* supprimer les ambiguïtés structurelles
+* identifier les doublons de données
+* préparer une convergence progressive sans casser les clients existants
 
-* définir pour chaque couple :
+### Cas identifiés
 
-  * source actuelle
-  * source cible
-* cas principaux :
+| Cas | Champs concernés | Risque |
+|---|---|---|
+| **A** | `codeActiviteId` vs `activite` (clé activité créneau) | ⚠️ dépréciation actée |
+| **B** | matching ressource ↔ créneau (`activitesCompatibles` / `activitesAutorisees`) | ⚠️ risque actif de faux négatifs |
+| **C** | `lieu` (créneau) vs `sitesAutorises` / `lieuxAutorises` (ressources) | aucune contrainte active actuellement |
+| **D** | contraintes réglementaires individuelles (`SalarieReel`) vs globales (`RegulatoryParameters`) | risque d'incohérence sur futures contraintes |
+| **E** | `planningContext.horizon` vs `scenarioParameters.periode` | TOLÉRÉ — décision métier requise |
+| **F** | `activitesCompatibles` (salarié) vs `activitesAutorisees` (poste virtuel) | confusion documentaire uniquement |
 
-  * `codeActiviteId` vs `activite`
-  * référentiel vs hardcodé
-  * axes organisationnels vs champs historiques
+### Décisions structurantes
+
+* **Cas A** — `codeActiviteId` devient la **source de vérité unique** pour identifier une activité. `activite` est en voie de dépréciation (actée Phase 5) — suppression différée après audit des clients.
+* **Cas B** — le matching ressource ↔ créneau dans `auMoinsUneRessourceCompatible()` doit être basé **exclusivement sur `codeActiviteId`**. `activitesCompatibles` des ressources doit contenir des valeurs `codeActiviteId`, jamais des libellés.
+* **Cas C** — définir la règle de correspondance `lieu` ↔ `sitesAutorises` **avant** toute activation de contrainte site. Harmoniser le nommage (`sitesAutorises` comme nom canonique).
+* **Cas D** — séparation stricte : `SalarieReel.*` pour les contraintes individuelles par salarié, `RegulatoryParameters` réservé aux paramètres globaux. Une contrainte ne doit pas lire les deux pour un même paramètre.
+* **Cas E** — `planningContext.horizon` reste la seule source active. `scenarioParameters.periode` nécessite une décision métier explicite (implémenter comme surcharge ou supprimer).
+* **Cas F** — `activitesCompatibles` est le nom canonique. `activitesAutorisees` est un alias toléré — harmonisation documentaire à terme.
+
+### Stratégie de transition
+
+* Exploiter les logs WARN Phase 4 pour auditer les appels utilisant le fallback `activite` sans `codeActiviteId`.
+* Migration progressive des clients vers `codeActiviteId` — suppression du fallback différée au vu de l'audit.
+* Documenter les règles de matching (cas B, cas C) avant toute activation de contrainte.
+* Formaliser la frontière individuel/global (cas D) dès la prochaine contrainte réglementaire.
+
+### Priorités
+
+1. **Sécuriser le matching activité (cas B)** — documenter que `activitesCompatibles` attend des valeurs `codeActiviteId`
+2. **Préparer la dépréciation `activite` (cas A)** — conditionné à l'audit des clients
+3. **Formaliser les contraintes réglementaires (cas D)** — règle à documenter avant la prochaine contrainte
+4. **Décision métier sur `periode` (cas E)** — hors périmètre technique
+5. **Harmonisation du nommage (cas F)** — documentation uniquement
+
+### Ce que la phase ne fait pas
+
+* pas de suppression immédiate de champs
+* pas de refactoring du solveur ni du matching
+* pas d'activation de nouvelles contraintes
+* pas de modification SC-01
 
 ### Critère de sortie
 
-Chaque donnée a une source de vérité identifiée.
+Chaque donnée du contrat SC-03 a une source de vérité claire et une règle de lecture documentée.
 
 ### État
 
-⏳ À faire
+✅ Terminé — 2026-03-23
 
 ---
 
@@ -376,10 +496,10 @@ Contrat stable, lisible et maîtrisé.
 | -------- | ------ |
 | Phase 1  | ✅      |
 | Phase 2  | ✅      |
-| Phase 3  | ⏳      |
+| Phase 3  | ✅      |
 | Phase 4  | ⏳      |
-| Phase 5  | ⏳      |
-| Phase 6  | ⏳      |
+| Phase 5  | ✅      |
+| Phase 6  | ✅      |
 | Phase 7  | ⏳      |
 | Phase 8  | ⏳      |
 | Phase 9  | ⏳      |
