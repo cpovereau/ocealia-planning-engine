@@ -1,6 +1,7 @@
 package fr.project.planning.scenarios.mapper;
 
 import fr.project.planning.domain.creneau.Creneau;
+import fr.project.planning.domain.creneau.TypeCreneau;
 import fr.project.planning.domain.creneau.TypePlageHoraire;
 import fr.project.planning.scenarios.dto.input.CreneauInputDTO;
 import org.junit.jupiter.api.Test;
@@ -185,6 +186,32 @@ class ScenarioCreneauMapperTest {
         assertNull(creneau.getBlocJourId());
         assertNull(creneau.getOrdreDansBloc());
         assertNull(creneau.getEstSegmentDePause());
+    }
+
+    // ----------------------------------------------------------
+    // Test 9 : champ 'type' du DTO toujours ignoré — TypeCreneau.IMPOSE appliqué
+    // [Phase 1 visibilité — T-07]
+    // ----------------------------------------------------------
+
+    @Test
+    void toCreneau_typeIgnore_imoseApplique_quelqueSoitLaValeurDTO() {
+        CreneauInputDTO dto = creneauBaseDto("CRE-TYPE-01", LocalTime.of(8, 0), LocalTime.of(16, 0));
+        dto.setType("URGENT");
+
+        Creneau creneau = mapper.toCreneau(dto);
+
+        assertEquals(TypeCreneau.IMPOSE, creneau.getType(),
+                "TypeCreneau.IMPOSE doit être appliqué quelle que soit la valeur du champ type du DTO");
+    }
+
+    @Test
+    void toCreneau_typeNull_imoseApplique() {
+        CreneauInputDTO dto = creneauBaseDto("CRE-TYPE-02", LocalTime.of(8, 0), LocalTime.of(16, 0));
+        // type non renseigné
+
+        Creneau creneau = mapper.toCreneau(dto);
+
+        assertEquals(TypeCreneau.IMPOSE, creneau.getType());
     }
 
     // ----------------------------------------------------------
