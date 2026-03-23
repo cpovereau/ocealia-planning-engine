@@ -510,11 +510,11 @@ Un champ est **fonctionnellement actif** uniquement à partir de : Transporté �
 | `travailDeNuit` | ✅ | — | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | *(actif)* | — (stable) |
 | `heureDebutNuit` | ✅ | — | ✅ | ❌ | ❌ | ✅ | ❌ | ✅ | Phase 9+ | — (stable) |
 | `heureFinNuit` | ✅ | — | ✅ | ❌ | ❌ | ✅ | ❌ | ✅ | Phase 9+ | — (stable) |
-| `contraintesReglementaires` | ✅ | — | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ | Phase 8 | — (remplace `RegulatoryParameters` globaux) |
+| `contraintesReglementaires` | ✅ | — | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | *(partiel)* | — (remplace `RegulatoryParameters` globaux) |
 | `axesOrganisationnels` | ✅ | — | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | Phase 4/5 | — (cible, absorbe les redondances) |
 | `contratTravail` | ✅ | — | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | Phase 8 | — (stable) |
 
-> `contraintesReglementaires` : mappé vers `ContraintesReglementairesSalarie` sur `SalarieReel`. Non exploité : le solveur utilise encore les `RegulatoryParameters` globaux.
+> `contraintesReglementaires` : mappé vers `ContraintesReglementairesSalarie` sur `SalarieReel`. Partiellement exploité depuis Phase 10/12 : `joursConsecutifsMaximum` (contrainte `JoursConsecutifsMax`) et `amplitudeJournaliereMaximum` (contrainte `AmplitudeJournaliere`). Les autres champs (`heuresMinimumParJour`, `heuresMaximumParJour`, `reposQuotidienMinimum`, `heuresMinimumParSemaine`, `heuresMaximumParSemaine`, `nuitsMaximumParSemaine`) restent mappés mais non exploités par le solveur — les `RegulatoryParameters` globaux restent la source de vérité pour ces axes.
 > `axesOrganisationnels` : transporté dans `SalarieInputDTO`, mais `SalarieReel` ne porte pas ce bloc — aucun mapping domaine réalisé.
 > `travailDeNuit` / `heureDebutNuit` / `heureFinNuit` : "Exploité diagnostics ✅" — Phase 6 ajoute `estTravailleurDeNuit()`, `heureDebutNuitEffective(fallback)`, `heureFinNuitEffective(fallback)` sur `SalarieReel`. Ces méthodes préparent les diagnostics et pénalités Phase 8 sans modifier le solveur ni `RegulatoryParameters`.
 > `activitesCompatibles` : "Exploité diagnostics ✅" depuis la Phase 12 — lu par `ScenarioSc03PreparationService.auMoinsUneRessourceCompatible()` pour le calcul de `ignoredCreneaux.aucuneRessourceDansDataset`. Une liste vide/nulle est considérée comme non contrainte (peut couvrir toute activité). Voir `20_dataset_builder.md §5.4.2B`.
@@ -580,7 +580,7 @@ Un champ est **fonctionnellement actif** uniquement à partir de : Transporté �
 | `sitesAutorises` | `axesOrganisationnels.lieuIds` | axes organisationnels | reporté (non traité en Phase 9) |
 | `activite` (libellé) | `codeActiviteId` | référentiel d'activités | reporté (non traité en Phase 9) |
 | `referentiels` JSON | référentiel hardcodé dans SC-01 | suppression du hardcodé SC-01 | reporté (non traité en Phase 9) |
-| `contraintesReglementaires` salarié | `RegulatoryParameters` globaux | paramètres par salarié | Phase 8 |
+| `contraintesReglementaires` salarié | `RegulatoryParameters` globaux | paramètres par salarié | En cours — `joursConsecutifsMaximum` et `amplitudeJournaliereMaximum` exploités (Phase 10/12) ; autres champs à activer progressivement |
 
 ---
 

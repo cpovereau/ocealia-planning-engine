@@ -88,7 +88,8 @@ class DominancePenibilitesTest {
                 new SeuilsDeTolerance(Integer.MAX_VALUE, Integer.MAX_VALUE, Integer.MAX_VALUE),
                 new Penalites(
                         1, 1, 1, 1, 1,
-                        1, 1, 1, 1, 1
+                        1, 1, 1, 1, 1,
+                        1, 1, 1
                 ),
                 new DominancePenibilites(ordreDominance),
                 new OptionsExplicabilite(false, false, false)

@@ -210,8 +210,10 @@ Le paramétrage du scoring est désormais centralisé et stable, permettant d’
 | Travail sur repos hebdomadaire (R8)   | SOFT | ✅            | heuresReposHebdoTravaille     | Oui                    | Non                                       | Oui            | 40_WORKMETRICS              |
 | Repos hebdomadaire min glissant (R7)  | HARD | ✅            | –                             | Non                    | Non                                       | Non            | 40_REGLES_COMBINATOIRES     |
 | Nuits consécutives max (R3)           | HARD | ⏳ / partiel  | maxNuitsConsecutivesObservees | Oui                    | Non                                       | Non            | 40_REGLES_COMBINATOIRES     |
-| Jours consécutifs max (R1)            | SOFT | ❌            | maxJoursConsecutifsObservees  | Oui                    | Non                                       | Non            | 40_REGLES_COMBINATOIRES     |
-| Dimanches maximum (R9)                | SOFT | ⏳            | nbDimanchesTravailles         | Oui                    | Non                                       | Non            | 40_REGLES_COMBINATOIRES     |
+| Jours consécutifs max (R1)            | SOFT | ✅            | maxJoursConsecutifsObservees  | Oui                    | Non                                       | Non            | 40_REGLES_COMBINATOIRES     |
+| Alternance jour / nuit (R5+R6)        | SOFT | ✅            | –                             | Non                    | Non                                       | Oui            | 40_REGLES_COMBINATOIRES     |
+| Amplitude journalière max (R10)       | SOFT | ✅            | –                             | Non                    | Non                                       | Oui            | 40_REGLES_COMBINATOIRES     |
+| Dimanches maximum (R9)                | SOFT | ✅            | nbDimanchesTravailles         | Oui                    | Non                                       | Non            | 40_REGLES_COMBINATOIRES     |
 | Pénibilité nuit                       | SOFT | ✅            | heuresNuit                    | Oui                    | Non                                       | Oui            | 40_WORKMETRICS              |
 | Pénibilité jours fériés               | SOFT | ✅            | heuresJourFerie               | Oui                    | Non                                       | Oui            | 40_WORKMETRICS              |
 | Nuit affectée à salarié non-nuit      | SOFT | ✅            | nbCreneauxNuitNonNuit         | Oui                    | Non                                       | Oui            | 40_WORKMETRICS              |
@@ -241,18 +243,6 @@ Elle permet :
 * Toute nouvelle contrainte doit être ajoutée à ce tableau
 * Toute nouvelle métrique doit être reliée à une contrainte ou explicitement marquée comme "descriptive uniquement"
 * Le statut "Implémentée" doit refléter l’état réel du code (tests + exécution)
-
----
-
-### 📍 Position recommandée dans le document 90
-
-👉 À placer **juste après la section "État & Cap" (A / B / C)**
-
-Raison :
-
-* elle sert de **pont entre l’état réel et la vision fonctionnelle**
-* elle structure la lecture avant les détails techniques
-* elle évite que le lecteur navigue entre plusieurs documents pour comprendre le moteur
 
 ---
 
@@ -375,7 +365,6 @@ Les métriques calculées sont désormais exposées dans l’API scénario.
 ## WorkMetrics Équité
 
 Ajout d’indicateurs d’équité :
-
 * écart par rapport à la moyenne
 * dispersion de charge
 
@@ -426,9 +415,9 @@ Des logs de diagnostic existent déjà :
 
 | Sujet                        | Priorité |
 | ---------------------------- | -------- |
-| Jours consécutifs travaillés | Haute    |
-| Alternance jour / nuit       | Haute    |
-| Amplitude journalière        | Moyenne  |
+| Jours consécutifs travaillés | ~~Haute~~ → ✅ implémenté Phase 10 |
+| Alternance jour / nuit       | ~~Haute~~ → ✅ implémenté Phase 11 |
+| Amplitude journalière        | ~~Moyenne~~ → ✅ implémenté Phase 12 |
 
 ---
 
@@ -469,6 +458,11 @@ Ces métriques représentent des coûts abstraits (non financiers) liés à la p
 - Analyse métier aval définie
 
 **Objectif :** support à la restitution RH et aide à la décision, hors moteur.
+
+---
+
+### V6 — Contraintes combinatoires
+Refonte des contraintes combinatoires en Constraint Streams plus natifs / incrémentaux
 
 ---
 

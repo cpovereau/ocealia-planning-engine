@@ -119,7 +119,21 @@ Très élevée
 ### R5 — Transition jour → nuit pénalisée
 
 **Description**
-Limiter les transitions brutales entre travail de jour et travail de nuit.
+Pénaliser les changements de rythme entre travail de jour et travail de nuit sur des jours consécutifs.
+
+**Definition technique**
+Une transition est caractérisée lorsque :
+- un salarié travaille un jour J en JOUR
+- puis un jour J+1 en NUIT
+La situation inverse est également à prendre en compte.
+
+**Règle**
+Pénaliser si :
+- repos < seuil légal (11h)
+- OU transition immédiate sans jour OFF
+
+**Unité de pénalité**
+Pénalité pondérée en cas de répétition (1 → 3 → 5)
 
 **Population**
 Tous salariés

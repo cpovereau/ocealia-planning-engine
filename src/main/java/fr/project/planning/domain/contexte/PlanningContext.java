@@ -122,16 +122,19 @@ private static SeuilsDeTolerance defaultSeuilsDeTolerance() {
 private static Penalites defaultPenalites() {
     // Ordres de grandeur neutres, sans écraser le score
     return new Penalites(
-            1,                         // violationPhysique
-            10_000,                      // violationLegale
-            1_000,                       // violationMetier
-            100,                        // violationService
-            10,                     // violationPersonnelle
-            500,                 // affectationPosteVirtuel
-            2_000,                        // nonAffectation
-            5_000,        // detteRepos
-            5_000,          // nuitsConsecutives
-            5_000      // dimanchesTravailles
+            1,          // violationPhysique
+            10_000,     // violationLegale
+            1_000,      // violationMetier
+            100,        // violationService
+            10,         // violationPersonnelle
+            500,        // affectationPosteVirtuel
+            2_000,      // nonAffectation
+            5_000,      // detteRepos
+            5_000,      // nuitsConsecutives
+            5_000,      // dimanchesTravailles
+            5_000,      // joursConsecutifs
+            3_000,      // alternanceJourNuit
+            50          // amplitude (par minute de dépassement, priorité moyenne R10)
     );
 }
 

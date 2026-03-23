@@ -14,7 +14,10 @@ import fr.project.planning.constraints.legales.PenibilitesLegalesMinutes;
 import fr.project.planning.constraints.legales.ReposObligatoireApresNuits;
 import fr.project.planning.constraints.legales.ReposHebdomadaireMin;
 import fr.project.planning.constraints.legales.ReposHebdomadaireGlissant;
+import fr.project.planning.constraints.legales.AlternanceJourNuit;
+import fr.project.planning.constraints.legales.AmplitudeJournaliere;
 import fr.project.planning.constraints.legales.DimanchesTravaillesMax;
+import fr.project.planning.constraints.legales.JoursConsecutifsMax;
 
 import fr.project.planning.constraints.metier.DetteReposSurReposHebdomadaire;
 import fr.project.planning.constraints.metier.NuitSalarieNonNuit;
@@ -59,6 +62,9 @@ public class ConstraintProviderImpl implements ConstraintProvider {
                ========================= */
             ReposHebdomadaireGlissant.reposHebdoGlissant(factory),
             DimanchesTravaillesMax.maxDimanchesTravailles(factory),
+            JoursConsecutifsMax.maxJoursConsecutifs(factory),
+            AlternanceJourNuit.alternanceJourNuit(factory),
+            AmplitudeJournaliere.amplitudeJournaliere(factory),
 
             /* =========================
                Contraintes métier (HARD)

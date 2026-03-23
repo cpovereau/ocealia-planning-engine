@@ -30,6 +30,8 @@ public enum PenaliteKey {
     // Contraintes légales (SOFT)
     // =========================
 
+    LEGAL_SOFT_JOURS_CONSECUTIFS_MAX(ScoreBreakdownUnit.JOUR),
+    LEGAL_SOFT_ALTERNANCE_JOUR_NUIT(ScoreBreakdownUnit.OCCURRENCE),
     LEGAL_SOFT_DIMANCHES_TRAVAILLES_MAX(ScoreBreakdownUnit.JOUR),
     LEGAL_SOFT_TRAVAIL_NUIT_MINUTES(ScoreBreakdownUnit.MINUTE_PONDEREE),
     LEGAL_SOFT_TRAVAIL_JOUR_FERIE_MINUTES(ScoreBreakdownUnit.MINUTE_PONDEREE),
@@ -55,6 +57,16 @@ public enum PenaliteKey {
     LEGAL_HARD_REPOS_HEBDOMADAIRE_GLISSANT(ScoreBreakdownUnit.JOUR),
     LEGAL_HARD_REPOS_HEBDOMADAIRE_MIN(ScoreBreakdownUnit.JOUR),
     LEGAL_HARD_DUREE_MAX_LEGALE_PAR_PERIODE(ScoreBreakdownUnit.JOUR),
+
+    // =========================
+    // Contraintes physiques (SOFT)
+    // =========================
+
+    /**
+     * R10 — Amplitude journalière maximale (physique/confort).
+     * Pénalité proportionnelle aux minutes de dépassement par salarié et par jour.
+     */
+    PHYSIQUE_SOFT_AMPLITUDE_JOURNALIERE(ScoreBreakdownUnit.MINUTE_PONDEREE),
 
     // =========================
     // Contraintes physiques (HARD)

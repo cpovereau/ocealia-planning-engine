@@ -110,4 +110,8 @@ public final class SeuilsDeTolerance implements Serializable {
     public int getMaxDimanchesTravailles() {
         return maxDimanchesTravailles;
     }
+
+    public void setMaxDimanchesTravailles(int maxDimanchesTravailles) {
+        this.maxDimanchesTravailles = maxDimanchesTravailles;
+    }
 }

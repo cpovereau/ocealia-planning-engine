@@ -417,6 +417,83 @@ La stratégie complète est documentée dans `90_plan_migration_temporaire_winde
 
 ---
 
+### Itération 10 — Phase 10 (2026-03-19) — Contrainte SOFT "Jours consécutifs travaillés max"
+
+- **Objectif** : implémenter la contrainte R1 "Jours consécutifs max" (SOFT), identifiée priorité haute, jusqu’ici absente du solveur malgré la métrique `maxJoursConsecutifsObservees` déjà observable
+- **Seuil retenu** : `ContraintesReglementairesSalarie.joursConsecutifsMaximum` (par salarié, déjà mappé depuis WinDev Phase 3) — cohérent avec la granularité individuelle ; pas de seuil global dans `SeuilsDeTolerance`
+- **Définition du jour travaillé** : date comportant au moins un créneau avec `compteDansCharge = true` — dédupliquée par date, bornée à l’horizon ; identique à la définition de `WorkMetricsCalculator`
+- **Fichiers modifiés** :
+  - `scoring/PenaliteKey.java` — ajout `LEGAL_SOFT_JOURS_CONSECUTIFS_MAX(JOUR)`
+  - `domain/contexte/Penalites.java` — ajout champ + getter `depassementMaxJoursConsecutifs`, constructeur étendu à 11 args
+  - `domain/contexte/PlanningContext.java` — `defaultPenalites()` : 11e arg = 5 000
+  - `constraints/legales/JoursConsecutifsMax.java` — nouvelle contrainte SOFT
+  - `constraints/ConstraintProviderImpl.java` — import + `JoursConsecutifsMax.maxJoursConsecutifs(factory)` dans la section légales SOFT
+- **Tests mis à jour** :
+  - `solver/StrategieScoringComparaisonTest.java` — 11e arg Penalites
+  - `score/DominancePenibilitesTest.java` — 11e arg Penalites
+- **Tests ajoutés** :
+  - `constraints/Phase10ConstraintsTest.java` — 7 cas : seuil exact, dépassement ×1, dépassement ×2, créneaux multiples même jour, activité hors charge, salarié sans contrainte, non-régression SC-01
+- **Résultat** : BUILD SUCCESSFUL (0 échec, suite complète)
+- **Cohérence WorkMetrics** : `maxJoursConsecutifsObservees` reste descriptif (post-résolution) ; la contrainte est décisionnelle (pendant résolution) — les deux partagent la même définition du jour travaillé
+
+### Itération 11 — Phase 11 (2026-03-19) — Contrainte SOFT "Alternance jour / nuit" (R5+R6)
+
+- **Objectif** : implémenter les règles R5 et R6 du référentiel "Alternance jour/nuit" (SOFT), identifiées priorité haute dans `40_REGLES_COMBINATOIRES.md`, jusqu’ici absentes du solveur
+- **Règle retenue** : deux jours calendaires consécutifs J et J+1, tous deux travaillés (`compteDansCharge = true`), avec changement de `TypePlageHoraire` — JOUR→NUIT ou NUIT→JOUR. Un jour est classé NUIT si au moins un créneau NUIT avec charge est présent ; JOUR sinon.
+- **Simplification v1** : pénalité proportionnelle `base × nbAlternances`. La pondération croissante (1→3→5) documentée dans R5 est différée à une révision ultérieure.
+- **Périmètre** : tous salariés — pas de seuil par salarié, la règle s’applique globalement.
+- **Pénalité par défaut** : 3 000 (inférieure aux contraintes légales strictes, supérieure aux contraintes de confort)
+- **Fichiers modifiés** :
+  - `scoring/PenaliteKey.java` — ajout `LEGAL_SOFT_ALTERNANCE_JOUR_NUIT(OCCURRENCE)`
+  - `domain/contexte/Penalites.java` — ajout champ + getter `penaliteAlternanceJourNuit`, constructeur étendu à 12 args
+  - `domain/contexte/PlanningContext.java` — `defaultPenalites()` : 12e arg = 3 000
+  - `constraints/legales/AlternanceJourNuit.java` — nouvelle contrainte SOFT
+  - `constraints/ConstraintProviderImpl.java` — import + `AlternanceJourNuit.alternanceJourNuit(factory)` dans la section légales SOFT
+- **Tests mis à jour** :
+  - `solver/StrategieScoringComparaisonTest.java` — 12e arg Penalites
+  - `score/DominancePenibilitesTest.java` — 12e arg Penalites
+- **Tests ajoutés** :
+  - `constraints/Phase11ConstraintsTest.java` — 7 cas : pas d’alternance, JOUR→NUIT, NUIT→JOUR, double alternance, jour mixte JOUR+NUIT classé NUIT, activité sans charge, gap d’un jour OFF
+- **Cohérence WorkMetrics** : aucune métrique "alternance" n’existe côté WorkMetrics — la contrainte est purement décisionnelle. Si une métrique descriptive est ajoutée ultérieurement, elle devra utiliser la même définition (NUIT dominant, jours consécutifs, compteDansCharge).
+
+---
+
+### Itération 12 — Phase 12 (2026-03-19) — Contrainte SOFT "Amplitude journalière maximale" (R10)
+
+- **Objectif** : implémenter la règle R10 "Amplitude journalière" (SOFT, priorité moyenne), identifiée dans `40_REGLES_COMBINATOIRES.md`, jusqu’ici absente du solveur
+- **Définition** : amplitude = max(heureFin) - min(heureDebut) des créneaux `compteDansCharge = true` sur un jour donné. Les créneaux à cheval sur minuit sont corrigés (+1440 min). Amplitude ≠ somme des durées.
+- **Seuil** : `ContraintesReglementairesSalarie.amplitudeJournaliereMaximum` (Double, heures → converti en minutes). Si null → contrainte non active pour ce salarié.
+- **Pénalité par défaut** : 50 × minutes de dépassement (priorité moyenne, sous SOFT fort à 3 000–5 000)
+- **Fichiers modifiés** :
+  - `scoring/PenaliteKey.java` — ajout `PHYSIQUE_SOFT_AMPLITUDE_JOURNALIERE(MINUTE_PONDEREE)` (première clé PHYSIQUE SOFT)
+  - `domain/contexte/Penalites.java` — ajout champ + getter `penaliteAmplitude`, constructeur étendu à 13 args
+  - `domain/contexte/PlanningContext.java` — `defaultPenalites()` : 13e arg = 50
+  - `constraints/legales/AmplitudeJournaliere.java` — nouvelle contrainte SOFT
+  - `constraints/ConstraintProviderImpl.java` — import + `AmplitudeJournaliere.amplitudeJournaliere(factory)`
+- **Tests mis à jour** :
+  - `solver/StrategieScoringComparaisonTest.java` — 13e arg Penalites
+  - `score/DominancePenibilitesTest.java` — 13e arg Penalites
+- **Tests ajoutés** :
+  - `constraints/Phase12ConstraintsTest.java` — 7 cas : sous seuil, dépassement simple, multi-créneaux avec pause (borne ≠ somme), seuil absent, activité sans charge, créneau unique, calcul cross-midnight
+
+---
+
+### Itération 13 — Phase 13 (2026-03-19) — Contrainte SOFT "Dimanches travaillés maximum" (R9)
+
+- **Objectif** : finaliser la contrainte R9 "Dimanches maximum" (SOFT, priorité moyenne), qui existait en ébauche partielle avec deux cross joins et zéro test
+- **Problèmes résolus** : double cross join (`.join(ref)` + `.join(PlanningContext)` après groupBy) → remplacé par `ifExists(ref)` + `.join(PlanningContext)` ; helper `compterDimanchesDistincts` supprimé ; import inutile `Stream/Collectors/List/Set` supprimé
+- **Définition retenue** (cohérente avec `40_WORKMETRICS.md` et métrique `nbDimanchesTravailles`) : dimanche calendaire (`DayOfWeek.SUNDAY`) comportant au moins un créneau `compteDansCharge = true`. Comptage par **date distincte** via `countDistinct` natif OptaPlanner.
+- **Seuil** : `SeuilsDeTolerance.maxDimanchesTravailles` (global, conventionnel/métier). Pas de champ par salarié dans `ContraintesReglementairesSalarie` pour ce cas.
+- **Fichiers modifiés** :
+  - `domain/contexte/SeuilsDeTolerance.java` — ajout setter `setMaxDimanchesTravailles(int)` (champ déjà mutable, setter manquant)
+  - `constraints/legales/DimanchesTravaillesMax.java` — réécriture complète : `ifExists`, `countDistinct`, filtre dimanche à la source
+- **Tests ajoutés** :
+  - `constraints/Phase13ConstraintsTest.java` — 8 cas : aucun dimanche, sous seuil, seuil exact, dépassement ×1, dépassement ×2, multi-créneaux même dimanche → 1 seul, activité sans charge, jour non dimanche
+- **Résultat** : BUILD SUCCESSFUL (0 échec, suite complète)
+- **Cohérence WorkMetrics** : `nbDimanchesTravailles` reste descriptif post-résolution avec la même définition (DayOfWeek.SUNDAY + compteDansCharge + dates distinctes) — contrainte et métrique partagent la même réalité métier
+
+---
+
 ## Conclusion de l’audit actuel du moteur
 
 L’analyse globale du moteur montre que :

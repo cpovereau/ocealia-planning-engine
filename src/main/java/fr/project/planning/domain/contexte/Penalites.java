@@ -66,6 +66,21 @@ public final class Penalites implements Serializable {
      */
     private final int depassementMaxDimanchesTravailles;
 
+    /**
+     * Pénalité associée au dépassement du nombre de jours consécutifs travaillés.
+     */
+    private final int depassementMaxJoursConsecutifs;
+
+    /**
+     * Pénalité associée à une alternance jour/nuit sur jours consécutifs (R5/R6).
+     */
+    private final int penaliteAlternanceJourNuit;
+
+    /**
+     * Pénalité par minute de dépassement de l'amplitude journalière maximale (R10).
+     */
+    private final int penaliteAmplitude;
+
     public Penalites(
             int violationPhysique,
             int violationLegale,
@@ -76,7 +91,10 @@ public final class Penalites implements Serializable {
             int nonAffectation,
             int detteReposSurReposHebdomadaire,
             int approcheMaxNuitsConsecutives,
-            int depassementMaxDimanchesTravailles
+            int depassementMaxDimanchesTravailles,
+            int depassementMaxJoursConsecutifs,
+            int penaliteAlternanceJourNuit,
+            int penaliteAmplitude
     ) {
         this.violationPhysique = violationPhysique;
         this.violationLegale = violationLegale;
@@ -88,6 +106,9 @@ public final class Penalites implements Serializable {
         this.detteReposSurReposHebdomadaire = detteReposSurReposHebdomadaire;
         this.approcheMaxNuitsConsecutives = approcheMaxNuitsConsecutives;
         this.depassementMaxDimanchesTravailles = depassementMaxDimanchesTravailles;
+        this.depassementMaxJoursConsecutifs = depassementMaxJoursConsecutifs;
+        this.penaliteAlternanceJourNuit = penaliteAlternanceJourNuit;
+        this.penaliteAmplitude = penaliteAmplitude;
     }
 
     public int getViolationPhysique() {
@@ -127,6 +148,18 @@ public final class Penalites implements Serializable {
     }
 
     public int getDepassementMaxDimanchesTravailles() {
-    return depassementMaxDimanchesTravailles;
+        return depassementMaxDimanchesTravailles;
+    }
+
+    public int getDepassementMaxJoursConsecutifs() {
+        return depassementMaxJoursConsecutifs;
+    }
+
+    public int getPenaliteAlternanceJourNuit() {
+        return penaliteAlternanceJourNuit;
+    }
+
+    public int getPenaliteAmplitude() {
+        return penaliteAmplitude;
     }
 }
