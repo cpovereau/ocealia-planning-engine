@@ -394,17 +394,87 @@ Chaque donnée du contrat SC-03 a une source de vérité claire et une règle de
 
 ### Objectif
 
-Passer d’un contrat permissif à maîtrisé.
+Durcir progressivement la validation du contrat d’entrée SC-03 :
+
+* remplacer les comportements implicites ou instables (NPE silencieuses, résultats vides sans signal)
+* sécuriser les entrées en rejetant les incohérences critiques
+* signaler explicitement les incohérences non critiques
+
+### Politique de validation cible
+
+#### ERROR — rejet immédiat
+
+Validations à ajouter dans `prepare()` avec `IllegalArgumentException` explicite, avant toute partition :
+
+| Cas | Localisation |
+|---|---|
+| `planningContext.getHorizon()` null | null check avant accès aux dates |
+| `horizon.dateDebut` null | null check individuel |
+| `horizon.dateFin` null | null check individuel |
+| `dateDebut > dateFin` (horizon inversé) | cohérence après les deux null checks |
+| `dataSet.getReferentiels()` null | null check avant construction du référentiel |
+| `creneau.heureDebut` null | validation dans la boucle de partition (ou dans le mapper) |
+| `creneau.heureFin` null | idem |
+
+Ces cas sont directement promus en ERROR sans passage préalable par WARN : ils provoquent déjà un NPE non géré à l’exécution — rendre l’erreur explicite n’est jamais une rupture.
+
+#### WARN — toléré avec signal obligatoire
+
+| Cas | Signal | Granularité |
+|---|---|---|
+| Référentiel vide (zéro activités) | `"[SC-03] référentiel vide — tous les créneaux seront exclus"` | Global (1 fois) |
+| Zéro créneaux après les deux partitions | `"[SC-03] aucun créneau transmis au solveur"` | Global (1 fois) |
+| `codeActiviteId` et `activite` tous deux présents et discordants | `"[SC-03] créneau id=’{}’ : codeActiviteId et activite discordants — activite ignorée"` | Par créneau |
+| `creneau.date` null | maintenu — cas limite Phase 3 documenté | Par créneau |
+| `salarie.id` null | `"[SC-03] salarié sans id — comportement solveur non garanti"` | Par ressource |
+| Aucune ressource réelle (salaries + postes vides) | `"[SC-03] aucune ressource dans le dataset — tous les créneaux affectés à RessourceNonAffectee"` | Global (1 fois) |
+
+#### INFO — trace technique
+
+| Cas | Note |
+|---|---|
+| `codeActiviteId` en doublon dans le référentiel | Si le comportement de `toReferentiel()` est déterministe (dernier gagne / premier gagne), un INFO suffit |
+
+### Champs devenant obligatoires
+
+À documenter dans `92_contrat_entree_sc03.md` comme **obligatoires** dès Phase 7 :
+
+* `planningContext.horizon.dateDebut`
+* `planningContext.horizon.dateFin`
+* `creneau.heureDebut`
+* `creneau.heureFin`
+* `dataSet.referentiels`
+
+### Stratégie de transition
+
+* **Étape 1** — ajouter les WARN globaux manquants (référentiel vide, zéro créneaux, discordance) sans modifier aucun comportement existant. Aucun risque de casse.
+* **Étape 2** — observer les fréquences en production. Pour chaque candidat ERROR non NPE (`dateDebut > dateFin`, etc.) : si le WARN n’apparaît jamais → promotion directe ; si des clients l’émettent → coordination avant promotion.
+* **Étape 3** — promouvoir en ERROR les cas confirmés sans client légitime.
+* **Exception** : les NPE latentes (`horizon` null, `dateDebut`/`dateFin` null, `referentiels` null, `heureDebut`/`heureFin` null) sont directement converties en ERROR — elles provoquent déjà un crash non documenté.
 
 ### Travaux
 
-* ajouter validation sur champs réellement nécessaires
-* introduire des tests négatifs
-* préparer réduction des tolérances
+* Ajouter les guards ERROR dans `prepare()` (null checks + cohérence horizon + referentiels)
+* Ajouter les WARN globaux manquants (référentiel vide, zéro créneaux après partition)
+* Ajouter les WARN de cohérence `codeActiviteId` vs `activite` (discordance)
+* Mettre à jour `92_contrat_entree_sc03.md` : marquer les champs devenus obligatoires
+* Ajouter `ScenarioSc03PreparationServicePhase7Test` (8 tests ciblés)
+
+### Ce que la phase ne fait pas
+
+* pas de validation métier avancée (cohérence organisationnelle, plages horaires métier)
+* pas de Bean Validation (`@NotNull`, `@Valid`) — les guards restent dans `prepare()`
+* pas de promotion en ERROR de cas non observés en WARN
+* pas de refonte du solveur
+* pas de modification SC-01
 
 ### Critère de sortie
 
-Le moteur rejette les incohérences réelles.
+Le moteur :
+
+* rejette explicitement les incohérences critiques (ERROR avec message clair)
+* signale toutes les incohérences non critiques (WARN visibles)
+* ne présente plus de NPE silencieuses sur des données manquantes prévisibles
 
 ### État
 
@@ -416,25 +486,95 @@ Le moteur rejette les incohérences réelles.
 
 ### Objectif
 
-Aligner mapping et usage réel.
+Traiter les champs “partiels” du contrat d'entrée SC-03 — champs désérialisés et mappés, mais sans effet réel sur le solveur :
 
-### Travaux
+* activer ceux qui ont une valeur métier immédiate et un coût faible
+* maintenir en transport ceux qui attendent une spécification ou une phase ultérieure
+* documenter une trajectoire claire pour chaque champ
 
-* traiter :
+### Familles analysées
 
-  * travail de nuit
-  * jour férié
-  * contraintes réglementaires
-  * structuration des créneaux
-* décider :
+* Travail de nuit — champs salarié (`travailDeNuit`, `heureDebutNuit`, `heureFinNuit`)
+* Jour férié — champs salarié et créneau
+* Contraintes réglementaires salarié — 8 champs de `ContraintesReglementairesSalarie`
+* Structuration des créneaux — `groupeBesoinId`, `blocJourId`, `ordreDansBloc`, `estSegmentDePause`
 
-  * activer
-  * maintenir en transport
-  * supprimer
+### Décisions par famille
+
+#### Travail de nuit (salarié)
+
+| Champ | Décision | Justification |
+|---|---|---|
+| `travailDeNuit` | **SUPPORTÉ** — déjà activé | Exploité par `NuitSalarieNonNuit` (SOFT) depuis Phase 8 implementation |
+| `segmentNuit` (créneau) | **SUPPORTÉ** — déjà activé | `TypePlageHoraire` → utilisé par `NuitSalarieNonNuit` et `AlternanceJourNuit` |
+| `heureDebutNuit` (salarié) | **Maintien en transport** | Méthode `heureDebutNuitEffective(fallback)` préparée sur `SalarieReel` mais aucune contrainte ne l'appelle. Activation conditionnée à la spécification de la relation avec `segmentNuit` : deux sources de vérité possibles pour la qualification de nuit — arbitrage métier requis |
+| `heureFinNuit` (salarié) | **Maintien en transport** | Idem |
+
+#### Jour férié
+
+| Champ | Décision |
+|---|---|
+| `travailleJourFerie` (salarié) | **SUPPORTÉ** — `JourFerieRefuse` (HARD) actif |
+| `isJourFerie` (créneau) | **SUPPORTÉ** — propagé dans `Creneau.jourFerie`, exploité par `JourFerieRefuse` |
+
+#### Contraintes réglementaires salarié
+
+| Champ | Décision | État |
+|---|---|---|
+| `joursConsecutifsMaximum` | **SUPPORTÉ** — `JoursConsecutifsMax` (SOFT) actif | ✅ |
+| `amplitudeJournaliereMaximum` | **SUPPORTÉ** — `AmplitudeJournaliere` (SOFT) actif | ✅ |
+| `nuitsMaximumParSemaine` | **INCERTAIN** — `NuitsConsecutivesMax` (HARD) enregistré, lecture requise pour confirmer si ce champ individuel est lu ou une limite globale | 🔍 |
+| `heuresMaximumParJour` | **INCERTAIN** — `DureeMaximaleLegaleParSalarie` (HARD) enregistré, idem | 🔍 |
+| `reposQuotidienMinimum` | **INCERTAIN** — `ReposObligatoireApresNuits` (HARD) enregistré, idem | 🔍 |
+| `heuresMinimumParJour` | **Candidat à activation** — SOFT, pattern identique à `AmplitudeJournaliere` | ⏳ |
+| `heuresMinimumParSemaine` | **Candidat à activation** — SOFT, même pattern | ⏳ |
+| `heuresMaximumParSemaine` | **Candidat à activation** — SOFT, même pattern, conditionné à la clarification de `heuresMaximumParJour` | ⏳ |
+
+#### Structuration des créneaux
+
+| Champ | Décision | Justification |
+|---|---|---|
+| `estSegmentDePause` | **Activation prioritaire isolée** | Modification de filtres dans les contraintes existantes (`AmplitudeJournaliere`, `JoursConsecutifsMax`) pour exclure les pauses des calculs. Faible coût, valeur immédiate, ne touche ni le mapper ni le domaine |
+| `groupeBesoinId` | **Maintien en transport — Phase 9+** | Contrainte de couverture de groupe (nouveau paradigme). Architecture plus complexe, à ne pas mélanger avec les contraintes salarié-créneau actuelles |
+| `blocJourId` | **Maintien en transport — Phase 9+** | Idem — structuration intra-journalière |
+| `ordreDansBloc` | **Maintien en transport — Phase 9+** | Idem |
+
+### Décisions structurantes
+
+* Ne pas activer `heureDebutNuit`/`heureFinNuit` sans arbitrage métier sur la relation avec `segmentNuit` (créneau). Activer sans spécification créerait deux sources de vérité pour la qualification de nuit.
+* Ne pas lancer les contraintes de groupe/bloc en Phase 8 — paradigme distinct, complexité beaucoup plus élevée que les contraintes salarié-créneau.
+* Privilégier des activations simples et isolées : une contrainte à la fois, avec tests dédiés.
+* Clarifier les INCERTAIN avant d'activer les candidats — éviter de dupliquer une contrainte déjà existante.
+
+### Priorités Phase 8
+
+1. **Clarification des INCERTAIN** — lire `DureeMaximaleLegaleParSalarie`, `NuitsConsecutivesMax`, `ReposObligatoireApresNuits` et mettre à jour la documentation du contrat
+2. **Activation de `estSegmentDePause`** — modification isolée des filtres dans les contraintes concernées + tests
+3. **Activation séquentielle des contraintes simples** (`heuresMinimumParJour`, `heuresMinimumParSemaine`, `heuresMaximumParSemaine`) — une par une, conditionnées à l'étape 1
+4. **Documentation** — mettre à jour `92_contrat_entree_sc03.md` : TOLÉRÉ → SUPPORTÉ pour les champs activés, note de trajectoire pour les champs maintenus
+
+### Plan d'action
+
+* Lecture des contraintes INCERTAIN (3 fichiers) → mise à jour immédiate du statut dans `92_contrat_entree_sc03.md`
+* Activation isolée de `estSegmentDePause` dans les filtres de contraintes existantes + `ScenarioSc03PreparationServicePhase8Test` ou classe dédiée
+* Activation séquentielle des trois contraintes heures min/max avec garde-fou null (contrainte inactive si champ non renseigné)
+* Renforcement du signal documentaire sur `heureDebutNuit`/`heureFinNuit` : “transport préparé, activation conditionnée à l'arbitrage segmentNuit/plages individuelles”
+* Trajectoire documentée pour `groupeBesoinId`, `blocJourId`, `ordreDansBloc` : “Phase 9+ — contraintes de bloc”
+
+### Ce que la phase ne fait pas
+
+* pas d'activation des plages de nuit individuelles salarié (`heureDebutNuit` / `heureFinNuit`)
+* pas de contraintes de groupe ou de bloc
+* pas de refonte du solveur ni du mapping
+* pas de modification SC-01
 
 ### Critère de sortie
 
-Moins de champs “mappés sans effet”.
+Chaque champ partiel du contrat SC-03 dispose d'un statut documenté :
+
+* **SUPPORTÉ** — champ actif avec contrainte enregistrée
+* **TOLÉRÉ** — maintenu en transport, trajectoire documentée
+* Aucun champ ne reste dans une zone grise sans décision explicite
 
 ### État
 
