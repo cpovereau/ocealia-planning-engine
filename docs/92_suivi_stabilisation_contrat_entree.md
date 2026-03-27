@@ -269,7 +269,44 @@ Chaque champ ignoré émet un signal visible ou est explicitement documenté. Au
 
 ### État
 
-⏳ À faire
+✅ Terminé — 2026-03-24
+
+### Réalisation
+
+#### Signaux ajoutés
+
+| Champ | Signal | Niveau | Localisation | Condition |
+|---|---|---|---|---|
+| `type` (créneau) | `log.warn` — "champ type reçu et ignoré — TypeCreneau.IMPOSE appliqué" | WARN | `ScenarioCreneauMapper.toCreneau()` | `type` non blank |
+| `priorite` (créneau) | `log.warn` — "champ priorite (Integer) reçu et ignoré — PrioriteCreneau non exploité, null transmis au domaine" | WARN | `ScenarioCreneauMapper.toCreneau()` | `priorite` non null |
+| `axesOrganisationnels` (créneau) | `log.warn` — "champ axesOrganisationnels reçu et ignoré — aucune contrainte organisationnelle implémentée" | WARN | `ScenarioCreneauMapper.toCreneau()` | objet non null |
+| `libelle` (référentiel activité) | Commentaire de code explicite dans `toReferentiel()` | — | `ScenarioResourceMapper.toReferentiel()` | `libelle` absent de `ComptabiliteActivite` — champ de présentation, aucune incidence sur la résolution |
+
+**Élévation `type`** : `log.debug` (Phase 1) → `log.warn` (Phase 4), aligné sur le niveau des autres signaux du pipeline.
+
+**Mismatch documenté** : `CreneauInputDTO.priorite` est `Integer`, le domaine `Creneau.priorite` est `PrioriteCreneau` (enum CRITIQUE/NORMALE/FAIBLE). Aucune conversion n’est réalisée — `null` est toujours transmis au domaine quelle que soit la valeur reçue.
+
+**`libelle`** : `ScenarioResourceMapper` n’a pas de logger (pas d’autres logs dans cette classe). Ajouter un logger pour un seul champ de présentation contreviendrait à l’esprit "signal cohérent avec l’architecture en place". Signal : commentaire `// [Phase 4]` dans la boucle `toReferentiel()`.
+
+#### Comportement inchangé
+
+* `TypeCreneau.IMPOSE` toujours appliqué — valeur de `type` DTO ignorée.
+* `PrioriteCreneau null` toujours transmis — aucune lecture de `priorite` DTO.
+* `axesOrganisationnels` absent du domaine `Creneau` — aucune transmission.
+* `ComptabiliteActivite` inchangée — `libelle` non ajouté.
+* Aucune contrainte OptaPlanner touchée.
+
+#### Tests ajoutés
+
+**`ScenarioCreneauMapperTest`** (3 tests ajoutés) :
+
+* `toCreneau_prioriteNonNull_transmisNullAuDomaine` — Integer reçu, `creneau.getPriorite()` est null, `TypeCreneau.IMPOSE` inchangé
+* `toCreneau_axesOrganisationnelsNonNull_nAucunEffetSurLeMapping` — objet reçu, pas d’exception, champs de base inchangés
+* `toCreneau_prioriteEtAxesNull_champsIgnoresComportementInchange` — cas nominal, comportement de base non régressé
+
+#### Non-régression
+
+Suite complète `fr.project.planning.scenarios.*` exécutée après les modifications : **BUILD SUCCESSFUL** (45s, 0 échec).
 
 ---
 
@@ -478,7 +515,68 @@ Le moteur :
 
 ### État
 
-⏳ À faire
+✅ Terminé — 2026-03-24
+
+### Réalisation
+
+#### Guards ERROR ajoutés
+
+Tous dans `ScenarioSc03PreparationService.prepare()`, avant toute construction du monde solveur. Remplacent des NPE silencieuses ou des comportements silencieusement incorrects.
+
+| Cas | Message d'erreur | Comportement précédent |
+|---|---|---|
+| `planningContext.getHorizon() == null` | `[SC-03] planningContext.horizon est requis.` | NPE ligne `getHorizon().getDateDebut()` |
+| `horizon.dateDebut == null` | `[SC-03] planningContext.horizon.dateDebut est requise.` | NPE dans la partition hors-horizon |
+| `horizon.dateFin == null` | `[SC-03] planningContext.horizon.dateFin est requise.` | NPE dans la partition hors-horizon |
+| `dateDebut.isAfter(dateFin)` | `[SC-03] planningContext.horizon incohérent : dateDebut (…) est postérieure à dateFin (…).` | Tous créneaux exclus silencieusement comme hors-horizon |
+| `dataSet.getReferentiels() == null` | `[SC-03] dataSet.referentiels est requis.` | `toReferentiel(null)` → référentiel neutre → tous créneaux exclus en `activiteInconnue` |
+| `creneau.heureDebut == null` | `[SC-03] créneau id='…' : heureDebut est requise.` | NPE dans `calculerDureeMinutes()` |
+| `creneau.heureFin == null` | `[SC-03] créneau id='…' : heureFin est requise.` | NPE dans `calculerDureeMinutes()` |
+
+Note : `dateDebut` et `dateFin` sont désormais déclarées dans la section guards (avant le référentiel), éliminant leur double déclaration dans l'étape de partition Phase 3.
+
+#### Signaux WARN ajoutés
+
+| Signal | Condition | Granularité |
+|---|---|---|
+| Référentiel vide | `referentiels.activites` null ou vide | Global (1 fois) |
+| Discordance `codeActiviteId` / `activite` | les deux présents et non égaux | Par créneau |
+| Zéro créneaux après partitions | `creneauxDansHorizon` vide | Global (1 fois) |
+| Salarié sans id | `sal.getId()` null ou blank | Par salarié |
+| Aucune ressource réelle | salaries vides ET postes vides | Global (1 fois) |
+
+#### Cas volontairement hors périmètre
+
+* `creneau.date == null` : cas limite Phase 3 documenté — créneau passe au solveur, toléré
+* `salarie.id == null` : WARN émis, non bloquant — rejet différé si besoin confirmé
+
+#### Sémantique `ignoredCreneaux` inchangée
+
+Les trois compteurs (`activiteInconnue`, `horsHorizon`, `aucuneRessourceDansDataset`) conservent leur sémantique exacte. Aucune contrainte OptaPlanner touchée.
+
+#### Avertissements SonarLint
+
+Les avertissements `java:S6541` (Brain Method) et `java:S3776` (Cognitive Complexity) sur `prepare()` sont des indicateurs de qualité préexistants, aggravés par Phase 7. La refactorisation de la méthode est hors périmètre Phase 7 — à traiter dans un chantier dédié.
+
+#### Tests ajoutés
+
+**`ScenarioSc03PreparationServicePhase7Test`** (nouvelle classe, 11 tests) :
+
+* `horizon_null_leve_IllegalArgumentException` — T-P7-01
+* `dateDebut_null_leve_IllegalArgumentException` — T-P7-02
+* `dateFin_null_leve_IllegalArgumentException` — T-P7-03
+* `dateDebut_apres_dateFin_leve_IllegalArgumentException` — T-P7-04
+* `referentiels_null_leve_IllegalArgumentException` — T-P7-05
+* `heureDebut_null_leve_IllegalArgumentException` — T-P7-06
+* `heureFin_null_leve_IllegalArgumentException` — T-P7-07
+* `referentiel_vide_neLevePasException_tousCreneauxExclus` — T-P7-08
+* `codeActiviteIdEtActiviteDiscordants_codeActiviteIdPrime_pasDException` — T-P7-09
+* `aucuneRessourceReelle_neLevePasException_creneauTransmis` — T-P7-10
+* `requeteValide_comportementInchange` — T-P7-11 (non-régression)
+
+#### Non-régression
+
+Suite complète `fr.project.planning.scenarios.*` exécutée après les modifications : **BUILD SUCCESSFUL** (43s, 0 échec).
 
 ---
 
@@ -578,7 +676,111 @@ Chaque champ partiel du contrat SC-03 dispose d'un statut documenté :
 
 ### État
 
-⏳ À faire
+✅ Terminé — 2026-03-25
+
+### Réalisation
+
+#### Étape 1 — Clarification des champs INCERTAIN
+
+Audit factuel des trois contraintes signalées INCERTAIN. Aucune modification de comportement solveur.
+
+| Champ | Contrainte auditée | Ce que la contrainte lit réellement | Décision |
+|---|---|---|---|
+| `heuresMaximumParJour` | `DureeMaximaleLegaleParSalarie` | Constante hardcodée `DUREE_MAX_LEGALE = 780` (13h par période de résolution) — champ individuel non lu | **TOLÉRÉ** — sémantique distincte (période vs journée) |
+| `nuitsMaximumParSemaine` | `NuitsConsecutivesMax` | `context.getSeuilsDeTolerance().getMaxNuitsConsecutives()` — paramètre global `PlanningContext` — champ individuel non lu | **TOLÉRÉ** — seuil global non lié au champ individuel |
+| `reposQuotidienMinimum` | `ReposObligatoireApresNuits` | `context.getSeuilsDeTolerance().getReposApresNuitsEnJours()` — paramètre global — sémantique "repos après nuits" ≠ "repos quotidien" | **TOLÉRÉ** — arbitrage sémantique requis |
+
+Aucun test ajouté pour cette étape : la preuve est factuelle (lecture du code de contrainte).
+
+#### Étape 2 — Activation de `estSegmentDePause`
+
+`estSegmentDePause` était déjà mappé et disponible sur le domaine (`Creneau.getEstSegmentDePause(): Boolean`). Seul le filtre dans les contraintes manquait.
+
+Contraintes modifiées (filtre `.filter(c -> !Boolean.TRUE.equals(c.getEstSegmentDePause()))` ajouté dans le join créneaux) :
+
+| Contrainte | Impact sans filtre | Impact avec filtre [Phase 8] |
+|---|---|---|
+| `AmplitudeJournaliere` | Une pause avant/après le travail élargit incorrectement l'amplitude `[minDebut, maxFin]` | Amplitude calculée sur les créneaux de travail seuls |
+| `JoursConsecutifsMax` | Un jour avec uniquement une pause compte comme "jour travaillé" | Un jour sans créneau de travail (pause seule) n'est pas compté |
+
+Ni le mapper ni le domaine ne sont modifiés — activation strictement locale aux deux contraintes.
+
+#### Étape 3 — Activation de `heuresMinimumParJour`
+
+Nouvelle contrainte SOFT `HeuresMinimumParJour` créée, suivant le pattern exact de `AmplitudeJournaliere` :
+- Inactive si `contraintesReglementaires.heuresMinimumParJour == null`
+- Active par salarié, par journée calendaire (`creneau.getDate()`)
+- Pauses exclues du total (cohérence avec l'étape 2)
+- Pénalité : constante locale `PENALITE_HEURES_MIN_PAR_JOUR = 50` × minutes de déficit
+- Enregistrée dans `ConstraintProviderImpl` et `PenaliteKey`
+
+##### Hypothèse retenue — définition du "temps de travail effectif"
+
+Le calcul du total journalier porte exclusivement sur les créneaux vérifiant **les deux conditions suivantes** :
+
+1. `estSegmentDePause != true` — les pauses sont exclues ;
+2. activité avec `compteDansCharge = true` dans le référentiel — seuls les créneaux qui comptent dans la charge sont pris en compte.
+
+Conséquences documentées :
+- Un créneau de type "formation" (`compteDansCharge = false`) n'entre pas dans le décompte, même s'il représente du temps passé au travail. Cette hypothèse est cohérente avec `AmplitudeJournaliere` et `JoursConsecutifsMax` qui appliquent le même filtre.
+- Si le métier souhaite inclure les activités hors-charge dans le calcul du minimum journalier, cette hypothèse devra être révisée en Phase 9.
+- La contrainte ne produit aucune pénalité pour les journées sans affectation de travail réel (pas de créneau non-pause + compteDansCharge = true) — ce n'est pas une contrainte de présence obligatoire.
+
+`heuresMinimumParSemaine` et `heuresMaximumParSemaine` maintenus en transport : aucun pattern de groupement par semaine calendaire n'existe dans le projet, et la définition de "semaine" sur un horizon partiel nécessite un arbitrage explicite.
+
+#### Tests ajoutés
+
+**`EstSegmentDePauseConstraintsTest`** (nouvelle classe, 6 tests) :
+
+| Test | Contrainte | Cas |
+|---|---|---|
+| `amplitude_pauseEncadrante_nElargitPasAmplitude` | `AmplitudeJournaliere` | Pause avant le travail exclue du calcul d'amplitude |
+| `amplitude_sansPause_comportementInchange` | `AmplitudeJournaliere` | Pas de pause → pénalité inchangée (non-régression) |
+| `amplitude_pauseSeule_pasDePenalite` | `AmplitudeJournaliere` | Seule une pause sur la journée → amplitude = 0 |
+| `joursConsecutifs_pauseSeule_neComptesPasCommeJourTravaille` | `JoursConsecutifsMax` | Jour avec pause seule ne casse pas la séquence consécutive |
+| `joursConsecutifs_pausePlusTravailMemeJour_jourBienCompte` | `JoursConsecutifsMax` | Pause + travail même jour → le jour est bien compté |
+| `joursConsecutifs_sansPause_comportementInchange` | `JoursConsecutifsMax` | Pas de pause → comportement inchangé (non-régression) |
+
+**`HeuresMinimumParJourConstraintsTest`** (nouvelle classe, 7 tests) :
+
+| Test | Cas |
+|---|---|
+| `heuresMinimumParJour_null_contrainterInactive` | Seuil null → contrainte inactive |
+| `contraintesReglementaires_null_contrainterInactive` | Bloc null → contrainte inactive |
+| `totalEgalMinimum_pasDePenalite` | Total = seuil → 0 pénalité |
+| `totalInferieurMinimum_pénalitéProportionnelleAuDeficit` | Total < seuil → pénalité × déficit |
+| `totalSuperieurMinimum_pasDePenalite` | Total > seuil → 0 pénalité |
+| `pauseExclue_deficitCalculeSansLaPause` | Pause exclue → déficit calculé sans elle |
+| `sc01_salarieStandard_pasDePenalite` | Non-régression SC-01 |
+
+#### Champs maintenus en transport
+
+| Champ | Raison |
+|---|---|
+| `heureDebutNuit` / `heureFinNuit` | Deux sources de vérité possibles pour la qualification de nuit — arbitrage métier requis |
+| `heuresMinimumParSemaine` | Pas de pattern per-semaine existant — définition de "semaine" sur horizon partiel non arbitrée |
+| `heuresMaximumParSemaine` | Idem |
+| `nuitsMaximumParSemaine` | Seuil global dans `NuitsConsecutivesMax` — arbitrage global/individuel requis |
+| `heuresMaximumParJour` | `DureeMaximaleLegaleParSalarie` utilise un seuil global hardcodé — activation nécessite refonte de cette contrainte |
+| `reposQuotidienMinimum` | Sémantique distincte de `ReposObligatoireApresNuits` — arbitrage requis |
+| `groupeBesoinId` / `blocJourId` / `ordreDansBloc` | Phase 9+ — nouveau paradigme de contraintes de bloc |
+
+#### Fichiers modifiés
+
+| Fichier | Nature |
+|---|---|
+| `constraints/legales/AmplitudeJournaliere.java` | Filtre pause ajouté au join créneaux |
+| `constraints/legales/JoursConsecutifsMax.java` | Filtre pause ajouté au join créneaux |
+| `constraints/legales/HeuresMinimumParJour.java` | Nouvelle contrainte SOFT |
+| `constraints/ConstraintProviderImpl.java` | Enregistrement `HeuresMinimumParJour` |
+| `scoring/PenaliteKey.java` | `LEGAL_SOFT_HEURES_MIN_PAR_JOUR` ajouté |
+| `constraints/EstSegmentDePauseConstraintsTest.java` | 6 tests |
+| `constraints/HeuresMinimumParJourConstraintsTest.java` | 7 tests |
+| `docs/92_contrat_entree_sc03.md` | Statuts mis à jour |
+
+#### Non-régression
+
+Tests ciblés écrits pour les deux contraintes modifiées et la nouvelle contrainte. Les cas sans pause et les cas SC-01 sont couverts explicitement.
 
 ---
 
@@ -603,7 +805,67 @@ La documentation décrit le comportement réel.
 
 ### État
 
-⏳ À faire
+✅ Terminé — 2026-03-25
+
+### Réalisation
+
+#### Mini-audit factuel
+
+Revue complète champ par champ de `92_contrat_entree_sc03.md` par rapport au code réel.
+Périmètre : créneaux, salariés, référentiel activités, postes virtuels, tolérances structurelles.
+
+**3 écarts identifiés :**
+
+| Écart | Nature | Correction |
+|---|---|---|
+| `referentiels.activites[].estServiceCritique` classé SUPPORTÉ | `isEstServiceCritique()` défini dans `ComptabiliteActivite` mais jamais appelé par aucune contrainte | SUPPORTÉ → TOLÉRÉ |
+| `creneaux[].estSegmentDePause` description incomplète | `HeuresMinimumParJour` (Phase 8) manquait dans la liste des contraintes utilisant le filtre pause | Description complétée |
+| `salaries[].axesOrganisationnels` et `contratTravail` : IGNORÉ sans signal | La légende IGNORÉ garantit un log.warn — aucun signal existait (couverture Phase 4 non étendue aux ressources salarié) | Signal ajouté (voir ci-dessous) |
+
+**Champs vérifiés et confirmés exacts :** `type`, `priorite`, `axesOrganisationnels` créneaux, `segmentNuit`, `isJourFerie`, `travailDeNuit`, `travailleJourFerie`, `heureDebutNuit`/`heureFinNuit`, toutes les `contraintesReglementaires`, `compteDansCharge`, `genereDetteRepos`, `libelle`, `postesVirtuels.*`, fallback `codeActiviteId → activite`, valeurs par défaut silencieuses, `@JsonIgnoreProperties`.
+
+#### Corrections documentaires (`92_contrat_entree_sc03.md`)
+
+* `estServiceCritique` : SUPPORTÉ → **TOLÉRÉ** — description précisant l'absence de contrainte active
+* `estSegmentDePause` : ajout de `HeuresMinimumParJour` dans le comportement
+* `axesOrganisationnels` (salariés) : "sans signal actuellement" → "log.warn émis si valeur fournie (Phase 9)"
+* `contratTravail` (salariés) : idem
+* `libelle` (référentiel) : note "pas de log.warn — le mapper n'a pas de logger" → supprimée (le mapper a désormais un Logger) — décision de ne pas ajouter de log.warn sur ce champ de présentation maintenue
+* Date du document : 2026-03-23 → 2026-03-25
+
+#### Signal mineur ajouté (`ScenarioResourceMapper.java`)
+
+Logger ajouté à `ScenarioResourceMapper`. Deux log.warn conditionnels dans `toSalarieReel()` :
+
+| Champ | Signal | Condition |
+|---|---|---|
+| `axesOrganisationnels` (salarié) | `log.warn` — "champ axesOrganisationnels reçu et ignoré — aucune contrainte organisationnelle salarié implémentée" | objet non null |
+| `contratTravail` (salarié) | `log.warn` — "champ contratTravail reçu et ignoré — non mappé au domaine SalarieReel" | objet non null |
+
+Cohérent avec Phase 4 (même approche pour `axesOrganisationnels` et `priorite` créneaux).
+Aucun comportement solveur modifié.
+
+#### Tests ajoutés (`ScenarioResourceMapperTest`)
+
+2 tests ajoutés :
+
+* `toSalarieReel_avecAxesOrganisationnels_nAucunEffetSurLeMapping` — champ reçu, mapping nominal inchangé
+* `toSalarieReel_avecContratTravail_nAucunEffetSurLeMapping` — champ reçu, mapping nominal inchangé
+
+#### Fichiers modifiés
+
+| Fichier | Nature |
+|---|---|
+| `scenarios/mapper/ScenarioResourceMapper.java` | Logger ajouté + 2 log.warn Phase 9 |
+| `scenarios/mapper/ScenarioResourceMapperTest.java` | 2 tests Phase 9 |
+| `docs/92_contrat_entree_sc03.md` | 5 corrections de statut / description |
+
+#### Points laissés pour Phase 10
+
+* `AlternanceJourNuit` utilise `creneau.getActivite()` sans fallback `codeActiviteId` — inconsistance interne, hors périmètre Phase 9
+* `PosteVirtuel.type` inconnu → fallback POTENTIEL silencieux — TOLÉRÉ sans signal, signal optionnel Phase 10
+* Suppression des `@JsonIgnoreProperties(ignoreUnknown = true)` des sous-DTOs (T-02)
+* Simplification DTO, suppression des champs obsolètes
 
 ---
 
@@ -624,9 +886,247 @@ Finaliser la stabilisation.
 
 Contrat stable, lisible et maîtrisé.
 
+---
+
+## Phase 10A — Incohérences internes + fallbacks silencieux
+
+### Objectif
+
+Corriger les incohérences internes de lecture du code activité dans les contraintes solveur, et rendre explicites les fallbacks silencieux du mapper.
+
+### Mini-audit réalisé
+
+| Sujet | Comportement avant | Risque | Correction |
+|---|---|---|---|
+| Activity lookup dans `AlternanceJourNuit`, `JoursConsecutifsMax`, `HeuresMinimumParJour`, `AmplitudeJournaliere` | `ref.getByCode(creneau.getActivite())` uniquement | SC-03 créneaux avec seulement `codeActiviteId` silencieusement exclus de ces contraintes | Fallback `codeActiviteId → activite` aligné sur `DetteReposSurReposHebdomadaire` / `PenibilitesLegalesMinutes` |
+| `PosteVirtuel.type` inconnu | `catch (IllegalArgumentException ignored)` — silencieux | Valeur mal formée indétectable par les opérateurs | `log.warn` ajouté dans le catch (Logger déjà disponible depuis Phase 9) |
+
+### Réalisation
+
+#### Corrections contraintes (4 fichiers)
+
+Pattern appliqué identique dans les 4 contraintes :
+
+```java
+// [Phase 10A] Fallback codeActiviteId → activite (cohérence avec le reste du moteur)
+String codeActivite = (creneau.getCodeActiviteId() != null && !creneau.getCodeActiviteId().isBlank())
+        ? creneau.getCodeActiviteId() : creneau.getActivite();
+ComptabiliteActivite ca = ref.getByCode(codeActivite);
+```
+
+#### Signal PosteVirtuel.type inconnu
+
+```java
+log.warn("[ScenarioResourceMapper] poste virtuel id='{}' : type='{}' inconnu — fallback sur POTENTIEL",
+        dto.getId(), dto.getType());
+```
+
+#### Impact SC-01
+
+Aucun : les créneaux SC-01 ont `codeActiviteId = null` et `activite = "travail"`. Le fallback revient à `activite` — comportement identique.
+
+#### Tests ajoutés
+
+| Fichier | Tests |
+|---|---|
+| `constraints/CodeActiviteIdFallbackConstraintsTest.java` | 8 tests (4 contraintes × 2 : codeActiviteId seul + non-régression SC-01) |
+| `scenarios/mapper/ScenarioResourceMapperTest.java` | 1 test Phase 10A (PosteVirtuel.type inconnu sans exception) |
+
 ### État
 
-⏳ À faire
+✅ Terminé 2026-03-25
+
+---
+
+## Phase 10B — Réduction progressive de `@JsonIgnoreProperties(ignoreUnknown = true)`
+
+### Objectif
+
+Réduire progressivement l'acceptation silencieuse des champs inconnus dans les DTO du contrat d'entrée. Sans big bang, sans casser l'API.
+
+### Mini-audit réalisé
+
+| DTO | Champs connus | Décision | Justification |
+|---|---|---|---|
+| `IndisponibilitesDTO` | 1 (`items`) | **A — STRICT** | Seul champ connu, bloc stable, tout champ inconnu est une erreur |
+| `ReferentielsDTO` | 1 (`activites`) | **A — STRICT** | Idem |
+| `Sc03ScenarioRequestDTO` | 4 | B — TOLÉRANT | Root DTO — WinDev pourrait envoyer `correlationId`, `version`, etc. ; aligner avec SC-01 en 10C après vérification |
+| `Sc03ScenarioParametersDTO` | 2 | B — TOLÉRANT | Bloc non activé, en transition, évolution prévisible |
+| `DataSetDTO` | 4 sous-blocs | B — TOLÉRANT | Conteneur — métadonnées WinDev possibles au niveau dataset |
+| `PosteVirtuelInputDTO` | 6 | B — TOLÉRANT | Périmètre poste virtuel encore potentiellement évolutif |
+| `SalarieInputDTO` | ~15 + `@JsonAlias` | C — après 10C | Champs IGNORÉ encore présents, aliases rétrocompat actifs |
+| `CreneauInputDTO` | ~17 | C — après 10C | Phase 5 partiel, champs IGNORÉ au niveau mapping ; nettoyer d'abord |
+
+DTOs déjà stricts sans annotation (aucun `@JsonIgnoreProperties`) : `RessourcesDTO`, `IndisponibiliteItemDTO`, `ReferentielActiviteDTO`, `AxesOrganisationnelsDTO`, `ContratTravailDTO`, `ContraintesReglementairesDTO`.
+
+### Réalisation
+
+#### DTO durcis (Catégorie A)
+
+Retrait de `@JsonIgnoreProperties(ignoreUnknown = true)` de 2 DTOs :
+
+```java
+// IndisponibilitesDTO — avant :
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class IndisponibilitesDTO { ... }
+
+// Après :
+public class IndisponibilitesDTO { ... }
+// [Phase 10B] bloc stabilisé à 1 champ (items) — champ inconnu = erreur de contrat
+
+// ReferentielsDTO — même traitement
+```
+
+#### Note sur le comportement en production
+
+Les DTO sans `@JsonIgnoreProperties(ignoreUnknown = true)` rejettent les champs inconnus **quand l'ObjectMapper est en mode strict**. Le comportement de production dépend de la configuration globale Jackson (Spring Boot). Si `spring.jackson.deserialization.fail-on-unknown-properties` est activé, ces blocs rejettent immédiatement. Sinon, le signal reste au niveau DTO — prêt à être activé.
+
+#### Tests ajoutés
+
+| Fichier | Tests |
+|---|---|
+| `scenarios/dto/StrictDeserializationPhase10BTest.java` | 6 tests : 2 × valid + 1 × items null + 1 × liste vide + 2 × champ inconnu échoue |
+
+#### DTO laissés tolérants — justification explicite
+
+| DTO | Raison de maintien de la tolérance |
+|---|---|
+| `Sc03ScenarioRequestDTO` | Root DTO : le plus risqué à durcir ; à aligner avec SC-01 (déjà strict) une fois l'interface WinDev confirmée |
+| `Sc03ScenarioParametersDTO` | Bloc non encore activé, évolution prévisible (champs à venir) |
+| `DataSetDTO` | Conteneur des 4 sous-blocs ; des métadonnées WinDev niveau dataset sont plausibles |
+| `PosteVirtuelInputDTO` | Périmètre évolutif (activités, lieux, types) |
+| `SalarieInputDTO` | `@JsonAlias` actifs pour rétrocompatibilité SC-01 ; champs IGNORÉ non encore nettoyés |
+| `CreneauInputDTO` | Phase 5 non finalisée ; champs IGNORÉ (`type`, `priorite`) présents dans le DTO mais pas dans le domaine |
+
+### État
+
+✅ Terminé 2026-03-25
+
+---
+
+## Phase 10C — Nettoyage DTO final
+
+### Objectif
+
+Supprimer les champs DTO devenus définitivement obsolètes (IGNORÉ sans trajectoire), durcir les DTO mûrs, nettoyer le scénario de référence de ses métadonnées de migration.
+
+### Mini-audit réalisé
+
+| DTO | Champ / annotation | Décision | Justification |
+|---|---|---|---|
+| `CreneauInputDTO` | `axesOrganisationnels` | **Supprimé** | IGNORÉ — jamais mappé, aucune contrainte organisationnelle, aucune trajectoire |
+| `CreneauInputDTO` | `priorite` | **Supprimé** | IGNORÉ — mismatch Integer/PrioriteCreneau, null transmis au domaine |
+| `CreneauInputDTO` | `type` | **Supprimé** | TypeCreneau.IMPOSE toujours appliqué — valeur ignorée sans exception |
+| `CreneauInputDTO` | `@JsonIgnoreProperties` | **Retiré** | DTO strict — SC-01 a `creneaux: []`, aucun risque |
+| `SalarieInputDTO` | `axesOrganisationnels` | **Supprimé** | IGNORÉ — jamais mappé au domaine SalarieReel |
+| `SalarieInputDTO` | `contratTravail` | **Supprimé** | IGNORÉ — jamais mappé au domaine SalarieReel |
+| `SalarieInputDTO` | `@JsonIgnoreProperties` | **Conservé** | SC-01 envoie `type:"SALARIE"` et `capaciteCible` dans ses salariés |
+| `SalarieInputDTO` | `@JsonAlias` × 2 | **Conservés** | SC-01 utilise `activitesAutorisees` et `lieuxAutorises` |
+| `AxesOrganisationnelsDTO` | classe entière | **Supprimée** | Orpheline après nettoyage |
+| `ContratTravailDTO` | classe entière | **Supprimée** | Orpheline après nettoyage |
+| `Sc03ScenarioParametersDTO` | — | **Tolérant conservé** | 2 champs TOLÉRÉS, pas de champ mort, périmètre évolutif |
+| `DataSetDTO`, `Sc03ScenarioRequestDTO`, `PosteVirtuelInputDTO` | — | **Tolérants conservés** | Root DTOs et conteneurs — tolérance justifiée |
+
+### Réalisation
+
+#### Suppression champs IGNORÉS (5 champs + 2 classes)
+
+**`CreneauInputDTO`** — 3 champs supprimés + `@JsonIgnoreProperties` retiré :
+
+* `axesOrganisationnels` (AxesOrganisationnelsDTO) — IGNORÉ depuis Phase 4
+* `priorite` (Integer) — IGNORÉ depuis Phase 4 — mismatch Integer/PrioriteCreneau
+* `type` (String) — valeur ignorée, TypeCreneau.IMPOSE toujours appliqué
+
+**`SalarieInputDTO`** — 2 champs supprimés, `@JsonIgnoreProperties` et `@JsonAlias` conservés :
+
+* `axesOrganisationnels` (AxesOrganisationnelsDTO) — IGNORÉ depuis Phase 9
+* `contratTravail` (ContratTravailDTO) — IGNORÉ depuis Phase 9
+
+**`AxesOrganisationnelsDTO`** — classe supprimée (orpheline).
+**`ContratTravailDTO`** — classe supprimée (orpheline).
+
+#### Nettoyage mappers
+
+**`ScenarioCreneauMapper`** — 3 blocs `log.warn` supprimés (type, priorite, axesOrganisationnels) — les champs n'existant plus, les signaux n'ont plus de raison d'être.
+
+**`ScenarioResourceMapper`** — 2 blocs `log.warn` supprimés (axesOrganisationnels salarié, contratTravail) — idem.
+
+#### Nettoyage scénario de référence (`sc03_migration_reference.json`)
+
+Champs supprimés du JSON de référence :
+
+| Bloc | Champ | Motif |
+|---|---|---|
+| Racine | `_phasesMigration` | Métadonnée de migration obsolète |
+| `referentiels` | `_phaseActivation` | Phase 10B debt — ReferentielsDTO strict |
+| `indisponibilites` | `_phaseActivation`, `_commentaire` | Phase 10B debt — IndisponibilitesDTO strict |
+| `creneaux[]` (6) | `priorite`, `type`, `axesOrganisationnels` | Champs retirés du DTO |
+| `creneaux[]` (3) | `_commentaire` | CreneauInputDTO désormais strict |
+| `salaries[]` (2) | `axesOrganisationnels`, `contratTravail`, `_commentaire` | Champs retirés + JSON propre |
+| `postesVirtuels[]` (1) | `_commentaire` | JSON propre |
+
+Le scénario de référence reste fonctionnellement identique : les mêmes 2 salariés, 6 créneaux (dont jour férié, nuit, dimanche), 1 poste virtuel, 1 indisponibilité.
+
+#### Tests ajoutés
+
+**`StrictDeserializationPhase10CTest`** (nouvelle classe, 5 tests) :
+
+* `creneauInputDTO_jsonValide_doitDeserializerCorrectement` — JSON valide sans les champs supprimés → désérialisation correcte
+* `creneauInputDTO_champType_doitEchouerExplicitement` — `type` → `UnrecognizedPropertyException`
+* `creneauInputDTO_champPriorite_doitEchouerExplicitement` — `priorite` → `UnrecognizedPropertyException`
+* `creneauInputDTO_champAxesOrganisationnels_doitEchouerExplicitement` — `axesOrganisationnels` → `UnrecognizedPropertyException`
+* `creneauInputDTO_champActiviteDeprecated_doitEncoreEtreAccepte` — `activite` (⚠️ DÉPRÉCIÉ) → accepté
+
+#### Tests supprimés
+
+**`ScenarioCreneauMapperTest`** — 5 tests Phase 1/4 sur les champs retirés :
+
+* `toCreneau_typeIgnore_imoseApplique_quelqueSoitLaValeurDTO`
+* `toCreneau_typeNull_imoseApplique`
+* `toCreneau_prioriteNonNull_transmisNullAuDomaine`
+* `toCreneau_axesOrganisationnelsNonNull_nAucunEffetSurLeMapping`
+* `toCreneau_prioriteEtAxesNull_champsIgnoresComportementInchange`
+
+Remplacé par : `toCreneau_typeDomaine_estToujoursIMPOSE` — prouve que TypeCreneau.IMPOSE reste le comportement câblé.
+
+**`ScenarioResourceMapperTest`** — 2 tests Phase 9 sur les champs retirés :
+
+* `toSalarieReel_avecAxesOrganisationnels_nAucunEffetSurLeMapping`
+* `toSalarieReel_avecContratTravail_nAucunEffetSurLeMapping`
+
+#### Fichiers modifiés
+
+| Fichier | Nature |
+|---|---|
+| `scenarios/dto/input/CreneauInputDTO.java` | 3 champs supprimés + `@JsonIgnoreProperties` retiré |
+| `scenarios/dto/input/SalarieInputDTO.java` | 2 champs supprimés |
+| `scenarios/dto/input/AxesOrganisationnelsDTO.java` | **Supprimé** |
+| `scenarios/dto/input/ContratTravailDTO.java` | **Supprimé** |
+| `scenarios/mapper/ScenarioCreneauMapper.java` | 3 blocs log.warn supprimés |
+| `scenarios/mapper/ScenarioResourceMapper.java` | 2 blocs log.warn supprimés |
+| `scenarios/mapper/ScenarioCreneauMapperTest.java` | 5 tests supprimés + 1 ajouté |
+| `scenarios/mapper/ScenarioResourceMapperTest.java` | 2 tests supprimés |
+| `scenarios/dto/StrictDeserializationPhase10CTest.java` | **Nouveau** — 5 tests |
+| `scenarios/sc03/sc03_migration_reference.json` | Nettoyage complet métadonnées et champs retirés |
+| `scenarios/sc03/Sc03DatasetIntegrityTest.java` | Section 8 supprimée — 2 tests `axesOrganisationnels` obsolètes (champ retiré du DTO) |
+| `docs/92_contrat_entree_sc03.md` | Champs retirés supprimés, statuts mis à jour, note Phase 10C |
+
+#### Points délibérément hors périmètre
+
+* `SalarieInputDTO.@JsonIgnoreProperties` conservé — SC-01 envoie des champs inconnus dans ses salariés
+* `activite` conservé dans `CreneauInputDTO` — fallback ⚠️ DÉPRÉCIÉ encore actif
+* `Sc03ScenarioRequestDTO`, `DataSetDTO`, `Sc03ScenarioParametersDTO`, `PosteVirtuelInputDTO` : tolérants conservés — trajectoires justifiées
+* Aucune contrainte solveur touchée
+* Aucun scoring modifié
+
+#### Non-régression
+
+* `sc03_migration_reference.json` nettoyé reste fonctionnellement équivalent — mêmes situations réglementaires couvertes
+* Tests `StrictDeserializationPhase10CTest` + non-régression de `ScenarioCreneauMapperTest` + `ScenarioResourceMapperTest`
+
+### État
+
+✅ Terminé 2026-03-26
 
 ---
 
@@ -637,13 +1137,15 @@ Contrat stable, lisible et maîtrisé.
 | Phase 1  | ✅      |
 | Phase 2  | ✅      |
 | Phase 3  | ✅      |
-| Phase 4  | ⏳      |
+| Phase 4  | ✅      |
 | Phase 5  | ✅      |
 | Phase 6  | ✅      |
-| Phase 7  | ⏳      |
-| Phase 8  | ⏳      |
-| Phase 9  | ⏳      |
-| Phase 10 | ⏳      |
+| Phase 7  | ✅      |
+| Phase 8  | ✅      |
+| Phase 9  | ✅      |
+| Phase 10A | ✅      |
+| Phase 10B | ✅      |
+| Phase 10C | ✅      |
 
 ---
 

@@ -213,8 +213,9 @@
 
 - **Description** : le champ `type` du créneau entrant est désérialisé mais remplacé systématiquement par `TypeCreneau.IMPOSE` dans le mapper.
 - **Localisation** : `ScenarioCreneauMapper.toCreneau()` — `TypeCreneau.IMPOSE` hardcodé
-- **Type** : champ ignoré sans alerte
+- **Type** : champ ignoré sans alerte *(état initial — 2026-03-20)*
 - **Impact** : quelle que soit la valeur envoyée par WinDev, elle est écrasée
+- **Mise à jour Phase 4 (2026-03-24)** : `log.debug` élevé en `log.warn` — un signal WARN est désormais émis si le champ est non blank. Le comportement (TypeCreneau.IMPOSE) reste inchangé.
 
 ---
 
@@ -222,8 +223,9 @@
 
 - **Description** : le champ `priorite` est désérialisé mais passé `null` dans le constructeur de `Creneau` (`null` pour `PrioriteCreneau`).
 - **Localisation** : `ScenarioCreneauMapper.toCreneau()` — `null` explicite
-- **Type** : champ non exploité
+- **Type** : champ non exploité *(état initial — 2026-03-20)*
 - **Impact** : nul pour l'instant, mais les contraintes futures dépendant de la priorité ne fonctionneront pas tant que ce mapping n'est pas finalisé
+- **Mise à jour Phase 4 (2026-03-24)** : `log.warn` ajouté si `priorite != null` — le mismatch de types (DTO `Integer` vs domaine `PrioriteCreneau` enum) est documenté dans le message. `null` reste toujours transmis au domaine.
 
 ---
 

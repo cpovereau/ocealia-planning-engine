@@ -1,6 +1,6 @@
 # Contrat d'entrée SC-03 — Référence des champs
 
-> **Date** : 2026-03-23
+> **Date** : 2026-03-26 (Phase 10C — nettoyage DTO final)
 > **Périmètre** : SC-03 uniquement
 > **Nature** : référence pour les intégrateurs — statut de chaque champ
 >
@@ -37,7 +37,9 @@
 
 ## 2. Créneaux — `dataSet.creneaux[]`
 
-> En **SC-01**, `dataSet.creneaux` est désérialisé mais jamais lu. Les créneaux SC-01 sont générés depuis `scenarioParameters`.
+> En **SC-01**, `dataSet.creneaux` est désérialisé mais jamais lu. Les créneaux SC-01 sont générés depuis `scenarioParameters`. L'array `creneaux` est vide dans le JSON SC-01.
+>
+> **[Phase 10C]** Le bloc `creneaux` est désormais **strict** : `CreneauInputDTO` n'absorbe plus les champs inconnus silencieusement. Les champs `type`, `priorite` et `axesOrganisationnels` ont été supprimés du DTO. Tout champ non déclaré provoque une erreur de désérialisation avec un ObjectMapper strict.
 
 | Champ | Obligatoire | Statut | Comportement |
 |---|---|---|---|
@@ -49,15 +51,12 @@
 | `segmentNuit` | non | SUPPORTÉ | `null` → `JOUR` par défaut — impact sur contraintes nuit et WorkMetrics (`minutesNuit`) |
 | `codeActiviteId` | non | SUPPORTÉ | Clé de résolution dans le référentiel — prioritaire sur `activite` |
 | `activite` | non | ⚠️ DÉPRÉCIÉ | Fallback si `codeActiviteId` absent — log.warn émis — **utiliser `codeActiviteId` à la place** |
-| `type` | non | TOLÉRÉ | Toujours écrasé par `TypeCreneau.IMPOSE` — log.warn si valeur fournie — la valeur envoyée est ignorée |
-| `priorite` | non | IGNORÉ | Ignoré avec signal explicite (log.warn) — mismatch de type : DTO `Integer`, domaine `PrioriteCreneau` |
-| `axesOrganisationnels` | non | IGNORÉ | Ignoré avec signal explicite (log.warn) — jamais lu par le mapper créneau |
 | `lieu` | non | TOLÉRÉ | Mappé dans le domaine — aucune contrainte active ne l'exploite actuellement |
 | `posteComptable` | non | TOLÉRÉ | Mappé dans le domaine — aucune contrainte active |
 | `groupeBesoinId` | non | TOLÉRÉ | Mappé dans le domaine — aucune contrainte active |
 | `blocJourId` | non | TOLÉRÉ | Mappé dans le domaine — aucune contrainte active |
 | `ordreDansBloc` | non | TOLÉRÉ | Mappé dans le domaine — aucune contrainte active |
-| `estSegmentDePause` | non | TOLÉRÉ | Mappé dans le domaine — aucune contrainte active |
+| `estSegmentDePause` | non | SUPPORTÉ | Activé Phase 8 — exclu des calculs d'amplitude journalière (`AmplitudeJournaliere`), de jours consécutifs (`JoursConsecutifsMax`) et du minimum horaire journalier (`HeuresMinimumParJour`) |
 
 ---
 
@@ -65,13 +64,15 @@
 
 > En **SC-01**, `dataSet.referentiels` est désérialisé mais jamais lu. Un référentiel hardcodé `{"travail": …}` est utilisé à la place.
 
+> **[Phase 10B]** Le bloc `referentiels` est désormais **strict** : `ReferentielsDTO` n'absorbe plus les champs inconnus silencieusement. Seul le champ `activites` est admis à ce niveau. Tout autre champ (ex. `postesComptables`, `configurations`) provoque une erreur de désérialisation avec un ObjectMapper strict. Si un nouveau type de référentiel est nécessaire, il doit être déclaré dans `ReferentielsDTO` avant d'être utilisé.
+
 | Champ | Obligatoire | Statut | Comportement |
 |---|---|---|---|
 | `codeActiviteId` | oui | SUPPORTÉ | Clé de résolution — détermine l'exclusion pré-solveur des créneaux à activité inconnue |
 | `compteDansCharge` | non | SUPPORTÉ | Mappé dans `ComptabiliteActivite` — `false` si absent |
 | `genereDetteRepos` | non | SUPPORTÉ | Mappé — utilisé par `DetteReposSurReposHebdomadaire` |
-| `estServiceCritique` | non | SUPPORTÉ | Mappé dans `ComptabiliteActivite` — `false` si absent |
-| `libelle` | non | IGNORÉ | Ignoré avec signal explicite (log.warn) — absent de `ComptabiliteActivite` — champ de présentation uniquement |
+| `estServiceCritique` | non | TOLÉRÉ | Mappé dans `ComptabiliteActivite` — `false` si absent — **aucune contrainte active ne lit `isEstServiceCritique()`** — activation conditionnée à la définition d'une règle métier exploitant ce flag |
+| `libelle` | non | IGNORÉ | Ignoré — absent de `ComptabiliteActivite` — champ de présentation uniquement. Signal : commentaire explicite `[Phase 4]` dans `ScenarioResourceMapper.toReferentiel()` — pas de log.warn (champ de présentation sans incidence opérationnelle) |
 
 > **Note** : deux champs absents du contrat JSON sont calculés avec des valeurs par défaut côté moteur — `prioritaireSurConfort = false` et `typeImpact = CHARGE_STANDARD`.
 
@@ -88,12 +89,17 @@
 | `travailDeNuit` | non | SUPPORTÉ | Utilisé par la contrainte `NuitSalarieNonNuit` |
 | `statut` | non | TOLÉRÉ | Mappé — aucune contrainte solveur ne l'exploite |
 | `sitesAutorises` | non | TOLÉRÉ | Mappé — aucune contrainte active sur les sites |
-| `contraintesReglementaires.joursConsecutifsMaximum` | non | TOLÉRÉ | Exploité par `JoursConsecutifsMax` — les autres champs de `contraintesReglementaires` sont mappés mais sans contrainte active |
-| `heureDebutNuit` / `heureFinNuit` | non | TOLÉRÉ | Mappés — `RegulatoryParameters.neutre()` est utilisé globalement, les plages individuelles ne sont pas encore exploitées |
-| `travailleJourFerie` | non | TOLÉRÉ | Mappé — aucune contrainte active |
+| `contraintesReglementaires.joursConsecutifsMaximum` | non | SUPPORTÉ | Exploité par `JoursConsecutifsMax` (SOFT) |
+| `contraintesReglementaires.amplitudeJournaliereMaximum` | non | SUPPORTÉ | Exploité par `AmplitudeJournaliere` (SOFT) |
+| `contraintesReglementaires.heuresMinimumParJour` | non | SUPPORTÉ | Activé Phase 8 — exploité par `HeuresMinimumParJour` (SOFT) — inactif si null |
+| `contraintesReglementaires.heuresMaximumParJour` | non | TOLÉRÉ | Mappé — `DureeMaximaleLegaleParSalarie` utilise une constante globale (780 min/période), pas ce champ individuel — activation conditionnée à une refonte de cette contrainte |
+| `contraintesReglementaires.nuitsMaximumParSemaine` | non | TOLÉRÉ | Mappé — `NuitsConsecutivesMax` lit `SeuilsDeTolerance.maxNuitsConsecutives` (global), pas ce champ individuel — activation conditionnée à un arbitrage entre seuil global et seuil individuel |
+| `contraintesReglementaires.reposQuotidienMinimum` | non | TOLÉRÉ | Mappé — `ReposObligatoireApresNuits` lit un repos après nuits (global), sémantique différente du repos quotidien individuel — arbitrage requis |
+| `contraintesReglementaires.heuresMinimumParSemaine` | non | TOLÉRÉ | Mappé — aucune contrainte active — activation conditionnée à la définition d'un pattern de groupement par semaine (ISO week, gestion des horizons partiels) |
+| `contraintesReglementaires.heuresMaximumParSemaine` | non | TOLÉRÉ | Mappé — aucune contrainte active — même condition que `heuresMinimumParSemaine` |
+| `heureDebutNuit` / `heureFinNuit` | non | TOLÉRÉ | Mappés — méthodes utilitaires préparées sur `SalarieReel` — activation conditionnée à l'arbitrage sur la relation avec `segmentNuit` (créneau) : deux sources de vérité possibles pour la qualification de nuit |
+| `travailleJourFerie` | non | SUPPORTÉ | Exploité par `JourFerieRefuse` (HARD) |
 | `postesComptablesCompatibles` | non | TOLÉRÉ | Mappé — aucune contrainte active |
-| `axesOrganisationnels` | non | IGNORÉ | Ignoré — jamais passé au mapper domaine — sans signal actuellement |
-| `contratTravail` | non | IGNORÉ | Ignoré — jamais passé au mapper domaine — sans signal actuellement |
 
 ### 4.2 Postes virtuels — `ressources.postesVirtuels[]`
 
@@ -101,7 +107,7 @@
 |---|---|---|---|
 | `id` | oui (implicite) | SUPPORTÉ | Présent dans les diagnostics (`posteVirtuelIds`) |
 | `activitesAutorisees` | non | SUPPORTÉ | Utilisé pour le diagnostic `aucuneRessourceDansDataset` — `null` → accepte toutes les activités |
-| `type` | non | TOLÉRÉ | Mappé sur `TypePosteVirtuel` — valeur inconnue → fallback silencieux sur `POTENTIEL` (sans signal) |
+| `type` | non | TOLÉRÉ | Mappé sur `TypePosteVirtuel` — valeur inconnue → fallback sur `POTENTIEL` avec log.warn (Phase 10A) |
 | `capaciteCible` | non | TOLÉRÉ | Mappé — aucune contrainte active |
 | `lieuxAutorises` | non | TOLÉRÉ | Mappé — aucune contrainte active |
 | `postesComptablesCompatibles` | non | TOLÉRÉ | Mappé — aucune contrainte active |
@@ -109,6 +115,8 @@
 ---
 
 ## 5. Indisponibilités — `dataSet.indisponibilites`
+
+> **[Phase 10B]** Le bloc `indisponibilites` est désormais **strict** : `IndisponibilitesDTO` n'absorbe plus les champs inconnus silencieusement. Tout champ non déclaré provoque une erreur de désérialisation avec un ObjectMapper strict.
 
 | Champ | Obligatoire | Statut | Comportement |
 |---|---|---|---|

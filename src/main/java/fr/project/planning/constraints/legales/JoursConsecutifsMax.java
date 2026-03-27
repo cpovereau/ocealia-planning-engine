@@ -45,10 +45,12 @@ public class JoursConsecutifsMax {
             .filter(s -> s.getContraintesReglementaires() != null
                     && s.getContraintesReglementaires().getJoursConsecutifsMaximum() != null)
 
-            // 2) Jointure avec les créneaux affectés à ce salarié
+            // 2) Jointure avec les créneaux affectés à ce salarié, pauses exclues
+            // [Phase 8] estSegmentDePause = true → exclu du comptage des jours travaillés (segment non productif)
             .join(
                 factory.forEach(Creneau.class)
-                    .filter(c -> c.getRessourceAffectee() != null),
+                    .filter(c -> c.getRessourceAffectee() != null)
+                    .filter(c -> !Boolean.TRUE.equals(c.getEstSegmentDePause())),
                 Joiners.equal(
                     SalarieReel::getId,
                     c -> c.getRessourceAffectee().getId()
@@ -59,8 +61,11 @@ public class JoursConsecutifsMax {
             .join(factory.forEach(ReferentielComptabiliteActivite.class))
 
             // 4) Filtre : uniquement les jours travaillés (compteDansCharge = true)
+            // [Phase 10A] Fallback codeActiviteId → activite (cohérence avec le reste du moteur)
             .filter((salarie, creneau, ref) -> {
-                ComptabiliteActivite ca = ref.getByCode(creneau.getActivite());
+                String codeActivite = (creneau.getCodeActiviteId() != null && !creneau.getCodeActiviteId().isBlank())
+                        ? creneau.getCodeActiviteId() : creneau.getActivite();
+                ComptabiliteActivite ca = ref.getByCode(codeActivite);
                 return ca != null && ca.isCompteDansCharge();
             })
 

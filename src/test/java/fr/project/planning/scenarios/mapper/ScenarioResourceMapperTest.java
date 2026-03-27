@@ -299,4 +299,21 @@ class ScenarioResourceMapperTest {
         dto.setItems(null);
         assertTrue(mapper.toIndisponibilites(dto).isEmpty());
     }
+
+    // -------------------------------------------------------
+    // toPosteVirtuel — signal type inconnu Phase 10A
+    // -------------------------------------------------------
+
+    @Test
+    void toPosteVirtuel_avecTypeInconnu_doitDefaulterSurPotentielSansException() {
+        // [Phase 10A] type inconnu → fallback POTENTIEL avec log.warn — aucune exception levée
+        PosteVirtuelInputDTO dto = new PosteVirtuelInputDTO();
+        dto.setId("PV-P10A-01");
+        dto.setType("TYPE_INCONNU_P10A");
+
+        PosteVirtuel result = mapper.toPosteVirtuel(dto);
+
+        assertEquals("PV-P10A-01", result.getId());
+        assertEquals(TypePosteVirtuel.POTENTIEL, result.getType());
+    }
 }

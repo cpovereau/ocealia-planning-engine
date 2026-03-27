@@ -46,12 +46,6 @@ public class ScenarioCreneauMapper {
                     duree, dto.getId(), dto.getHeureDebut(), dto.getHeureFin());
         }
 
-        // [Phase 1 visibilité] Signalement du champ 'type' reçu mais ignoré (TypeCreneau.IMPOSE est toujours appliqué)
-        if (dto.getType() != null && !dto.getType().isBlank()) {
-            log.debug("[ScenarioCreneauMapper] créneau id='{}' : champ type='{}' reçu et ignoré — TypeCreneau.IMPOSE appliqué",
-                    dto.getId(), dto.getType());
-        }
-
         TypePlageHoraire typePlageHoraire = Boolean.TRUE.equals(dto.getSegmentNuit())
                 ? TypePlageHoraire.NUIT
                 : TypePlageHoraire.JOUR;

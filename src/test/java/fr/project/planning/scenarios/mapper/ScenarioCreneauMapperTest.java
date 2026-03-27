@@ -77,7 +77,7 @@ class ScenarioCreneauMapperTest {
         assertEquals("BESOIN-SEMAINE-01", creneau.getGroupeBesoinId());
         assertEquals("BLOC-LUNDI-MATIN", creneau.getBlocJourId());
         assertEquals(1, creneau.getOrdreDansBloc());
-        assertFalse(Boolean.TRUE.equals(creneau.getEstSegmentDePause()));
+        assertNotEquals(Boolean.TRUE, creneau.getEstSegmentDePause());
     }
 
     // ----------------------------------------------------------
@@ -94,7 +94,7 @@ class ScenarioCreneauMapperTest {
 
         Creneau creneau = mapper.toCreneau(dto);
 
-        assertTrue(Boolean.TRUE.equals(creneau.getEstSegmentDePause()));
+        assertEquals(Boolean.TRUE, creneau.getEstSegmentDePause());
     }
 
     // ----------------------------------------------------------
@@ -189,25 +189,14 @@ class ScenarioCreneauMapperTest {
     }
 
     // ----------------------------------------------------------
-    // Test 9 : champ 'type' du DTO toujours ignoré — TypeCreneau.IMPOSE appliqué
-    // [Phase 1 visibilité — T-07]
+    // Test 9 : TypeCreneau.IMPOSE est toujours appliqué
+    // (champ 'type' supprimé en Phase 10C — le domaine reçoit toujours IMPOSE)
     // ----------------------------------------------------------
 
     @Test
-    void toCreneau_typeIgnore_imoseApplique_quelqueSoitLaValeurDTO() {
+    void toCreneau_typeDomaine_estToujoursIMPOSE() {
+        // [Phase 10C] le champ 'type' a été supprimé du DTO — TypeCreneau.IMPOSE est câblé
         CreneauInputDTO dto = creneauBaseDto("CRE-TYPE-01", LocalTime.of(8, 0), LocalTime.of(16, 0));
-        dto.setType("URGENT");
-
-        Creneau creneau = mapper.toCreneau(dto);
-
-        assertEquals(TypeCreneau.IMPOSE, creneau.getType(),
-                "TypeCreneau.IMPOSE doit être appliqué quelle que soit la valeur du champ type du DTO");
-    }
-
-    @Test
-    void toCreneau_typeNull_imoseApplique() {
-        CreneauInputDTO dto = creneauBaseDto("CRE-TYPE-02", LocalTime.of(8, 0), LocalTime.of(16, 0));
-        // type non renseigné
 
         Creneau creneau = mapper.toCreneau(dto);
 
