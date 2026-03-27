@@ -18,9 +18,12 @@ import fr.project.planning.scenarios.dto.input.SalarieInputDTO;
 import fr.project.planning.scenarios.mapper.ScenarioCreneauMapper;
 import fr.project.planning.scenarios.mapper.ScenarioResourceMapper;
 import fr.project.planning.scoring.StrategieScoring;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -40,6 +43,8 @@ import java.util.stream.Collectors;
 @Service
 public class ScenarioSc03PreparationService {
 
+    private static final Logger log = LoggerFactory.getLogger(ScenarioSc03PreparationService.class);
+
     private final ScenarioResourceMapper resourceMapper;
     private final ScenarioCreneauMapper creneauMapper;
 
@@ -51,6 +56,17 @@ public class ScenarioSc03PreparationService {
 
     public PreparedSc03Scenario prepare(Sc03ScenarioRequestDTO request) {
         Objects.requireNonNull(request, "request");
+
+        // [Phase 1 visibilité] Signalement des champs SC-03 reçus mais non exploités
+        if (request.getScenarioParameters() != null) {
+            if (request.getScenarioParameters().getPrioriteCouverture() != null) {
+                log.warn("[SC-03] prioriteCouverture='{}' reçu mais non exploité — champ ignoré (Phase 5 cible)",
+                        request.getScenarioParameters().getPrioriteCouverture());
+            }
+            if (request.getScenarioParameters().getPeriode() != null) {
+                log.warn("[SC-03] scenarioParameters.periode reçu mais non exploité — l'horizon de planningContext fait foi (Phase 5 cible)");
+            }
+        }
 
         if (!"SC-03".equals(request.getScenarioType())) {
             throw new IllegalArgumentException("Seul SC-03 est supporté par cet endpoint.");
@@ -68,23 +84,122 @@ public class ScenarioSc03PreparationService {
             throw new IllegalArgumentException("dataSet.creneaux est requis et ne peut pas être vide.");
         }
 
-        // 1. Créneaux depuis le dataSet
-        List<Creneau> creneaux = creneauMapper.toCreneaux(request.getDataSet().getCreneaux());
+        // [Phase 7] Guards — horizon temporel
+        //   Ces vérifications remplacent les NPE silencieuses qui se produiraient plus loin dans la méthode.
+        //   dateDebut et dateFin sont déclarées ici pour être réutilisées par la partition Phase 3.
+        if (request.getPlanningContext().getHorizon() == null) {
+            throw new IllegalArgumentException("[SC-03] planningContext.horizon est requis.");
+        }
+        LocalDate dateDebut = request.getPlanningContext().getHorizon().getDateDebut();
+        LocalDate dateFin   = request.getPlanningContext().getHorizon().getDateFin();
+        if (dateDebut == null) {
+            throw new IllegalArgumentException("[SC-03] planningContext.horizon.dateDebut est requise.");
+        }
+        if (dateFin == null) {
+            throw new IllegalArgumentException("[SC-03] planningContext.horizon.dateFin est requise.");
+        }
+        if (dateDebut.isAfter(dateFin)) {
+            throw new IllegalArgumentException(
+                    "[SC-03] planningContext.horizon incohérent : dateDebut (" + dateDebut + ") est postérieure à dateFin (" + dateFin + ").");
+        }
 
-        // 2. Ressources (salariés + postes virtuels + RessourceNonAffectee)
-        List<Ressource> ressources = resourceMapper.toRessources(request.getDataSet());
+        // [Phase 7] Guard — referentiels requis
+        //   Sans référentiel, toReferentiel() retournerait neutre() silencieusement et tous les créneaux
+        //   seraient exclus comme activité inconnue — comportement trompeur non signalé.
+        if (request.getDataSet().getReferentiels() == null) {
+            throw new IllegalArgumentException("[SC-03] dataSet.referentiels est requis.");
+        }
 
-        // 3. Indisponibilités
-        List<Indisponibilite> indisponibilites = resourceMapper.toIndisponibilites(
-                request.getDataSet().getIndisponibilites()
-        );
-
-        // 4. Référentiel d'activités depuis le dataSet (ACT-SOIN, ACT-ADMIN, etc.)
+        // 1. Référentiel d'activités — construit en premier pour filtrer les créneaux avant solveur
         ReferentielComptabiliteActivite referentiel = resourceMapper.toReferentiel(
                 request.getDataSet().getReferentiels()
         );
 
-        // 5. Contexte planning
+        // [Phase 7] WARN — référentiel vide
+        if (request.getDataSet().getReferentiels().getActivites() == null
+                || request.getDataSet().getReferentiels().getActivites().isEmpty()) {
+            log.warn("[SC-03] dataSet.referentiels.activites est vide — tous les créneaux seront exclus comme activité inconnue");
+        }
+
+        // 2. [Phase 2] Partition des créneaux : valides (activité connue) vs exclus (activité inconnue)
+        //    On collecte directement les DTOs valides pour éviter tout dépendance sur l'id du créneau.
+        List<CreneauInputDTO> creneauxValides = new ArrayList<>();
+        int activiteInconnue = 0;
+        for (CreneauInputDTO dto : request.getDataSet().getCreneaux()) {
+            // [Phase 7] Guards — champs horaires requis (NPE garantie sinon dans calculerDureeMinutes)
+            if (dto.getHeureDebut() == null) {
+                throw new IllegalArgumentException(
+                        "[SC-03] créneau id='" + dto.getId() + "' : heureDebut est requise.");
+            }
+            if (dto.getHeureFin() == null) {
+                throw new IllegalArgumentException(
+                        "[SC-03] créneau id='" + dto.getId() + "' : heureFin est requise.");
+            }
+
+            String codeUtilise;
+            boolean estFallback = false;
+            if (dto.getCodeActiviteId() != null && !dto.getCodeActiviteId().isBlank()) {
+                codeUtilise = dto.getCodeActiviteId();
+                // [Phase 7] WARN — discordance codeActiviteId vs activite
+                if (dto.getActivite() != null && !dto.getActivite().isBlank()
+                        && !codeUtilise.equals(dto.getActivite())) {
+                    log.warn("[SC-03] créneau id='{}' : codeActiviteId='{}' et activite='{}' discordants — activite ignorée",
+                            dto.getId(), codeUtilise, dto.getActivite());
+                }
+            } else {
+                codeUtilise = dto.getActivite();
+                estFallback = true;
+            }
+
+            if (estFallback && codeUtilise != null && !codeUtilise.isBlank()) {
+                log.warn("[SC-03] créneau id='{}' : codeActiviteId absent — fallback sur activite='{}' utilisé comme clé référentiel",
+                        dto.getId(), codeUtilise);
+            }
+
+            if (codeUtilise == null || codeUtilise.isBlank() || referentiel.getByCode(codeUtilise) == null) {
+                activiteInconnue++;
+                log.warn("[SC-03] créneau id='{}' : activité '{}' absente du référentiel — créneau exclu avant solveur",
+                        dto.getId(), codeUtilise);
+            } else {
+                creneauxValides.add(dto);
+            }
+        }
+
+        // 3. [Phase 3] Partition hors-horizon — sur creneauxValides (activité connue) uniquement.
+        //    Ordre : activiteInconnue en premier (Phase 2), horsHorizon ensuite (Phase 3).
+        //    Un créneau inconnu + hors-horizon est compté dans activiteInconnue uniquement.
+        //    Cas limite : créneau à date null — ni compté, ni exclu (hors périmètre Phase 3).
+        //    Note : dateDebut et dateFin sont déclarées dans les guards Phase 7 ci-dessus.
+        List<CreneauInputDTO> creneauxDansHorizon = new ArrayList<>();
+        int horsHorizon = 0;
+        for (CreneauInputDTO dto : creneauxValides) {
+            if (dto.getDate() != null && (dto.getDate().isBefore(dateDebut) || dto.getDate().isAfter(dateFin))) {
+                horsHorizon++;
+                log.warn("[SC-03] créneau id='{}' : date '{}' hors horizon [{} — {}] — créneau exclu avant solveur",
+                        dto.getId(), dto.getDate(), dateDebut, dateFin);
+            } else {
+                creneauxDansHorizon.add(dto);
+            }
+        }
+
+        // [Phase 7] WARN — zéro créneaux transmis au solveur après les deux partitions
+        if (creneauxDansHorizon.isEmpty()) {
+            log.warn("[SC-03] aucun créneau transmis au solveur après les partitions (activiteInconnue={}, horsHorizon={})",
+                    activiteInconnue, horsHorizon);
+        }
+
+        // 4. Créneaux — activité connue ET dans l'horizon
+        List<Creneau> creneaux = creneauMapper.toCreneaux(creneauxDansHorizon);
+
+        // 5. Ressources (salariés + postes virtuels + RessourceNonAffectee)
+        List<Ressource> ressources = resourceMapper.toRessources(request.getDataSet());
+
+        // 6. Indisponibilités
+        List<Indisponibilite> indisponibilites = resourceMapper.toIndisponibilites(
+                request.getDataSet().getIndisponibilites()
+        );
+
+        // 7. Contexte planning
         StrategieScoring strategieScoring = StrategieScoring.valueOf(
                 request.getPlanningContext().getStrategieScoring()
         );
@@ -97,10 +212,10 @@ public class ScenarioSc03PreparationService {
                 HypotheseHistorique.NEUTRE
         );
 
-        // 6. Paramètres réglementaires — neutres (Phase 8+ branchera les contraintes nuit)
+        // 7. Paramètres réglementaires — neutres (Phase 8+ branchera les contraintes nuit)
         RegulatoryParameters regulatoryParameters = RegulatoryParameters.neutre();
 
-        // 7. Planning Request
+        // 8. Planning Request
         PlanningRequest planningRequest = new PlanningRequest(
                 planningContext,
                 regulatoryParameters,
@@ -110,28 +225,14 @@ public class ScenarioSc03PreparationService {
                 indisponibilites
         );
 
-        // 8. IDs postes virtuels (pour les diagnostics)
+        // 9. IDs postes virtuels (pour les diagnostics)
         Set<String> posteVirtuelIds = request.getDataSet().getRessources().getPostesVirtuels()
                 .stream().map(PosteVirtuelInputDTO::getId).collect(Collectors.toSet());
 
-        // 9. Comptage ignoredCreneaux (pré-résolution)
-        LocalDate dateDebut = request.getPlanningContext().getHorizon().getDateDebut();
-        LocalDate dateFin   = request.getPlanningContext().getHorizon().getDateFin();
-
-        int horsHorizon = (int) request.getDataSet().getCreneaux().stream()
-                .filter(dto -> dto.getDate() != null)
-                .filter(dto -> dto.getDate().isBefore(dateDebut) || dto.getDate().isAfter(dateFin))
-                .count();
-
-        final ReferentielComptabiliteActivite ref = referentiel;
-        int activiteInconnue = (int) request.getDataSet().getCreneaux().stream()
-                .filter(dto -> {
-                    String code = (dto.getCodeActiviteId() != null && !dto.getCodeActiviteId().isBlank())
-                            ? dto.getCodeActiviteId() : dto.getActivite();
-                    return code == null || code.isBlank() || ref.getByCode(code) == null;
-                })
-                .count();
-
+        // 10. Comptage ignoredCreneaux (pré-résolution)
+        //     horsHorizon est produit par la partition Phase 3 (cf. étape 3 ci-dessus).
+        //     aucuneRessourceDansDataset est calculé sur creneauxDansHorizon uniquement :
+        //     les créneaux exclus (activiteInconnue ou horsHorizon) ne gonflent pas ce compteur.
         List<SalarieInputDTO> salaries = request.getDataSet().getRessources() != null
                 && request.getDataSet().getRessources().getSalaries() != null
                 ? request.getDataSet().getRessources().getSalaries() : List.of();
@@ -140,7 +241,19 @@ public class ScenarioSc03PreparationService {
                 && request.getDataSet().getRessources().getPostesVirtuels() != null
                 ? request.getDataSet().getRessources().getPostesVirtuels() : List.of();
 
-        int aucuneRessourceDansDataset = (int) request.getDataSet().getCreneaux().stream()
+        // [Phase 7] WARN — salariés sans id
+        for (SalarieInputDTO sal : salaries) {
+            if (sal.getId() == null || sal.getId().isBlank()) {
+                log.warn("[SC-03] salarié sans id — comportement solveur non garanti");
+            }
+        }
+
+        // [Phase 7] WARN — aucune ressource réelle dans le dataset
+        if (salaries.isEmpty() && postesVirtuelsList.isEmpty()) {
+            log.warn("[SC-03] aucune ressource réelle dans le dataset (ni salarié, ni poste virtuel) — tous les créneaux seront affectés à RessourceNonAffectee");
+        }
+
+        int aucuneRessourceDansDataset = (int) creneauxDansHorizon.stream()
                 .filter(dto -> !auMoinsUneRessourceCompatible(dto, salaries, postesVirtuelsList))
                 .count();
 

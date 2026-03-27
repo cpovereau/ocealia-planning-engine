@@ -65,8 +65,11 @@ public class AlternanceJourNuit {
             .join(factory.forEach(ReferentielComptabiliteActivite.class))
 
             // 4) Filtre : uniquement les créneaux travaillés (compteDansCharge = true)
+            // [Phase 10A] Fallback codeActiviteId → activite (cohérence avec le reste du moteur)
             .filter((salarie, creneau, ref) -> {
-                ComptabiliteActivite ca = ref.getByCode(creneau.getActivite());
+                String codeActivite = (creneau.getCodeActiviteId() != null && !creneau.getCodeActiviteId().isBlank())
+                        ? creneau.getCodeActiviteId() : creneau.getActivite();
+                ComptabiliteActivite ca = ref.getByCode(codeActivite);
                 return ca != null && ca.isCompteDansCharge();
             })
 

@@ -17,6 +17,8 @@ import fr.project.planning.scenarios.dto.input.ReferentielsDTO;
 import fr.project.planning.scenarios.dto.input.SalarieInputDTO;
 import fr.project.planning.scenarios.dto.request.ResourceKind;
 import fr.project.planning.scenarios.dto.request.ResourceRefDTO;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -37,6 +39,8 @@ import java.util.Set;
  */
 @Service
 public class ScenarioResourceMapper {
+
+    private static final Logger log = LoggerFactory.getLogger(ScenarioResourceMapper.class);
 
     // =========================
     // Salarié
@@ -92,6 +96,8 @@ public class ScenarioResourceMapper {
                 type = TypePosteVirtuel.valueOf(dto.getType());
             } catch (IllegalArgumentException ignored) {
                 // type inconnu → POTENTIEL par défaut
+                log.warn("[ScenarioResourceMapper] poste virtuel id='{}' : type='{}' inconnu — fallback sur POTENTIEL",
+                        dto.getId(), dto.getType());
             }
         }
         return new PosteVirtuel(
@@ -172,6 +178,8 @@ public class ScenarioResourceMapper {
         }
         Map<String, ComptabiliteActivite> map = new HashMap<>();
         for (var a : dto.getActivites()) {
+            // [Phase 4] a.getLibelle() est intentionnellement ignoré :
+            // champ de présentation sans équivalent dans ComptabiliteActivite, sans incidence sur la résolution.
             map.put(a.getCodeActiviteId(), new ComptabiliteActivite(
                     a.getCodeActiviteId(),
                     Boolean.TRUE.equals(a.getCompteDansCharge()),

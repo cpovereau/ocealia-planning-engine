@@ -1,7 +1,6 @@
 package fr.project.planning.scenarios.dto.input;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -11,12 +10,14 @@ import java.time.LocalTime;
  *
  * Distinct de CreneauPlanningDTO qui est un DTO de sortie (réponse API).
  *
- * Phase 1 : tous les champs sont désérialisés.
- * Phase 5 : groupeBesoinId, blocJourId, ordreDansBloc, estSegmentDePause seront exploités.
+ * Phase 5 : groupeBesoinId, blocJourId, ordreDansBloc, estSegmentDePause exploités.
+ *
+ * [Phase 10C] @JsonIgnoreProperties retiré — contrat strict.
+ * Champs IGNORÉS supprimés : axesOrganisationnels, priorite, type.
+ * Champ ⚠️ DÉPRÉCIÉ conservé : activite (fallback codeActiviteId).
  *
  * Créneau traversant minuit : date = jour de début, heureFin < heureDebut.
  */
-@JsonIgnoreProperties(ignoreUnknown = true)
 public class CreneauInputDTO {
 
     private String id;
@@ -30,15 +31,11 @@ public class CreneauInputDTO {
 
     private String lieu;
     private String codeActiviteId;
-    private String activite;
+    private String activite;        // ⚠️ DÉPRÉCIÉ — fallback si codeActiviteId absent
     private String posteComptable;
-    private Integer priorite;
-    private String type;
 
     private Boolean isJourFerie;
     private Boolean segmentNuit;
-
-    private AxesOrganisationnelsDTO axesOrganisationnels;
 
     // [Phase 5] structuration des besoins
     private String groupeBesoinId;
@@ -74,20 +71,11 @@ public class CreneauInputDTO {
     public String getPosteComptable() { return posteComptable; }
     public void setPosteComptable(String posteComptable) { this.posteComptable = posteComptable; }
 
-    public Integer getPriorite() { return priorite; }
-    public void setPriorite(Integer priorite) { this.priorite = priorite; }
-
-    public String getType() { return type; }
-    public void setType(String type) { this.type = type; }
-
     public Boolean getIsJourFerie() { return isJourFerie; }
     public void setIsJourFerie(Boolean isJourFerie) { this.isJourFerie = isJourFerie; }
 
     public Boolean getSegmentNuit() { return segmentNuit; }
     public void setSegmentNuit(Boolean segmentNuit) { this.segmentNuit = segmentNuit; }
-
-    public AxesOrganisationnelsDTO getAxesOrganisationnels() { return axesOrganisationnels; }
-    public void setAxesOrganisationnels(AxesOrganisationnelsDTO axesOrganisationnels) { this.axesOrganisationnels = axesOrganisationnels; }
 
     public String getGroupeBesoinId() { return groupeBesoinId; }
     public void setGroupeBesoinId(String groupeBesoinId) { this.groupeBesoinId = groupeBesoinId; }

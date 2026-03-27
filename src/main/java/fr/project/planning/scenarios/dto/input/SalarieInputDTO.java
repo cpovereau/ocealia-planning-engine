@@ -10,12 +10,13 @@ import java.util.Set;
 /**
  * SalarieInputDTO — DTO de transport pour un salarié réel.
  *
- * Remplace l'usage direct de SalarieReel dans RessourcesDTO.
  * Accepte les anciens noms de champs (activitesAutorisees, lieuxAutorises)
  * pour la rétrocompatibilité avec les JSON SC-01 existants.
  *
- * Phase 1 : tous les champs sont transportés mais ceux marqués [Phase 3]
- * ne sont pas encore mappés par le builder.
+ * [Phase 10C] Champs IGNORÉS supprimés : axesOrganisationnels, contratTravail.
+ * @JsonIgnoreProperties conservé : SC-01 envoie type:"SALARIE" et capaciteCible
+ * dans ses objets salarié — ces champs inconnus doivent être absorbés silencieusement.
+ * @JsonAlias conservés : SC-01 utilise activitesAutorisees et lieuxAutorises.
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class SalarieInputDTO {
@@ -31,16 +32,10 @@ public class SalarieInputDTO {
 
     private Set<String> postesComptablesCompatibles;
 
-    // [Phase 3] axes organisationnels
-    private AxesOrganisationnelsDTO axesOrganisationnels;
-
-    // [Phase 3] contrat de travail
-    private ContratTravailDTO contratTravail;
-
-    // [Phase 3] contraintes réglementaires individuelles (8 champs)
+    // contraintes réglementaires individuelles (8 champs)
     private ContraintesReglementairesDTO contraintesReglementaires;
 
-    // [Phase 3] statut de travail de nuit : null | "permanent" | "occasionnel"
+    // statut de travail de nuit : null | "permanent" | "occasionnel"
     private String travailDeNuit;
 
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "HH:mm")
@@ -49,7 +44,7 @@ public class SalarieInputDTO {
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "HH:mm")
     private LocalTime heureFinNuit;
 
-    // [Phase 3] autorisation de travailler les jours fériés
+    // autorisation de travailler les jours fériés
     private Boolean travailleJourFerie;
 
     // =========================
@@ -70,12 +65,6 @@ public class SalarieInputDTO {
 
     public Set<String> getPostesComptablesCompatibles() { return postesComptablesCompatibles; }
     public void setPostesComptablesCompatibles(Set<String> postesComptablesCompatibles) { this.postesComptablesCompatibles = postesComptablesCompatibles; }
-
-    public AxesOrganisationnelsDTO getAxesOrganisationnels() { return axesOrganisationnels; }
-    public void setAxesOrganisationnels(AxesOrganisationnelsDTO axesOrganisationnels) { this.axesOrganisationnels = axesOrganisationnels; }
-
-    public ContratTravailDTO getContratTravail() { return contratTravail; }
-    public void setContratTravail(ContratTravailDTO contratTravail) { this.contratTravail = contratTravail; }
 
     public ContraintesReglementairesDTO getContraintesReglementaires() { return contraintesReglementaires; }
     public void setContraintesReglementaires(ContraintesReglementairesDTO contraintesReglementaires) { this.contraintesReglementaires = contraintesReglementaires; }

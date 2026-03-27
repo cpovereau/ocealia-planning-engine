@@ -1,6 +1,7 @@
 package fr.project.planning.scenarios.mapper;
 
 import fr.project.planning.domain.creneau.Creneau;
+import fr.project.planning.domain.creneau.TypeCreneau;
 import fr.project.planning.domain.creneau.TypePlageHoraire;
 import fr.project.planning.scenarios.dto.input.CreneauInputDTO;
 import org.junit.jupiter.api.Test;
@@ -76,7 +77,7 @@ class ScenarioCreneauMapperTest {
         assertEquals("BESOIN-SEMAINE-01", creneau.getGroupeBesoinId());
         assertEquals("BLOC-LUNDI-MATIN", creneau.getBlocJourId());
         assertEquals(1, creneau.getOrdreDansBloc());
-        assertFalse(Boolean.TRUE.equals(creneau.getEstSegmentDePause()));
+        assertNotEquals(Boolean.TRUE, creneau.getEstSegmentDePause());
     }
 
     // ----------------------------------------------------------
@@ -93,7 +94,7 @@ class ScenarioCreneauMapperTest {
 
         Creneau creneau = mapper.toCreneau(dto);
 
-        assertTrue(Boolean.TRUE.equals(creneau.getEstSegmentDePause()));
+        assertEquals(Boolean.TRUE, creneau.getEstSegmentDePause());
     }
 
     // ----------------------------------------------------------
@@ -185,6 +186,21 @@ class ScenarioCreneauMapperTest {
         assertNull(creneau.getBlocJourId());
         assertNull(creneau.getOrdreDansBloc());
         assertNull(creneau.getEstSegmentDePause());
+    }
+
+    // ----------------------------------------------------------
+    // Test 9 : TypeCreneau.IMPOSE est toujours appliqué
+    // (champ 'type' supprimé en Phase 10C — le domaine reçoit toujours IMPOSE)
+    // ----------------------------------------------------------
+
+    @Test
+    void toCreneau_typeDomaine_estToujoursIMPOSE() {
+        // [Phase 10C] le champ 'type' a été supprimé du DTO — TypeCreneau.IMPOSE est câblé
+        CreneauInputDTO dto = creneauBaseDto("CRE-TYPE-01", LocalTime.of(8, 0), LocalTime.of(16, 0));
+
+        Creneau creneau = mapper.toCreneau(dto);
+
+        assertEquals(TypeCreneau.IMPOSE, creneau.getType());
     }
 
     // ----------------------------------------------------------

@@ -1,11 +1,4 @@
 {
-  "_phasesMigration": {
-    "description": "Dataset technique de référence pour la migration WinDev → moteur. Couvre toutes les situations réglementaires cibles (jour, soirée, nuit, férié, dimanche). Certains champs marqués [Phase 1+] ne sont pas encore transportés par le moteur.",
-    "phase0": "Ce fichier constitue la cible documentaire de la Phase 0 du plan de migration.",
-    "phase1": "Les champs referentiels, indisponibilites, travailDeNuit, heureDebutNuit, heureFinNuit, travailleJourFerie seront activés en Phase 1 (transport JSON).",
-    "phase3": "Les contraintesReglementaires et axesOrganisationnels seront mappés vers le domaine en Phase 3."
-  },
-
   "scenarioType": "SC-03",
 
   "planningContext": {
@@ -27,7 +20,6 @@
   "dataSet": {
 
     "referentiels": {
-      "_phaseActivation": "Phase 1",
       "activites": [
         {
           "codeActiviteId": "ACT-SOIN",
@@ -56,14 +48,6 @@
         "codeActiviteId": "ACT-SOIN",
         "activite": "Soins infirmiers",
         "posteComptable": "PC-SOINS",
-        "priorite": 1,
-        "type": "GENERE",
-        "axesOrganisationnels": {
-          "directionIds": ["DIR-001"],
-          "serviceIds": ["SRV-001"],
-          "lieuIds": ["HOPITAL-NORD"],
-          "posteComptableIds": ["PC-SOINS"]
-        },
         "groupeBesoinId": "BESOIN-SEMAINE-01",
         "blocJourId": "BLOC-LUNDI-MATIN",
         "ordreDansBloc": 1,
@@ -78,14 +62,6 @@
         "codeActiviteId": "ACT-SOIN",
         "activite": "Soins infirmiers",
         "posteComptable": "PC-SOINS",
-        "priorite": 1,
-        "type": "GENERE",
-        "axesOrganisationnels": {
-          "directionIds": ["DIR-001"],
-          "serviceIds": ["SRV-001"],
-          "lieuIds": ["HOPITAL-NORD"],
-          "posteComptableIds": ["PC-SOINS"]
-        },
         "groupeBesoinId": "BESOIN-SEMAINE-01",
         "blocJourId": "BLOC-LUNDI-SOIR",
         "ordreDansBloc": 1,
@@ -100,21 +76,12 @@
         "codeActiviteId": "ACT-SOIN",
         "activite": "Soins infirmiers",
         "posteComptable": "PC-SOINS",
-        "priorite": 1,
-        "type": "GENERE",
-        "axesOrganisationnels": {
-          "directionIds": ["DIR-001"],
-          "serviceIds": ["SRV-001"],
-          "lieuIds": ["HOPITAL-NORD"],
-          "posteComptableIds": ["PC-SOINS"]
-        },
         "groupeBesoinId": "BESOIN-SEMAINE-01",
         "blocJourId": "BLOC-MARDI-MATIN",
         "ordreDansBloc": 1,
         "estSegmentDePause": false
       },
       {
-        "_commentaire": "Créneau sur jour férié (Ascension 2026). SAL-2001 est indisponible et non autorisé sur les jours fériés.",
         "id": "CRE-ME-01",
         "date": "2026-05-13",
         "heureDebut": "07:00",
@@ -123,22 +90,13 @@
         "codeActiviteId": "ACT-SOIN",
         "activite": "Soins infirmiers",
         "posteComptable": "PC-SOINS",
-        "priorite": 2,
-        "type": "GENERE",
         "isJourFerie": true,
-        "axesOrganisationnels": {
-          "directionIds": ["DIR-001"],
-          "serviceIds": ["SRV-001"],
-          "lieuIds": ["HOPITAL-NORD"],
-          "posteComptableIds": ["PC-SOINS"]
-        },
         "groupeBesoinId": "BESOIN-FERIE-01",
         "blocJourId": "BLOC-MERCREDI-MATIN",
         "ordreDansBloc": 1,
         "estSegmentDePause": false
       },
       {
-        "_commentaire": "Créneau de nuit : traverse minuit (22h vendredi → 6h samedi). Date = jour de début.",
         "id": "CRE-VN-01",
         "date": "2026-05-15",
         "heureDebut": "22:00",
@@ -147,22 +105,13 @@
         "codeActiviteId": "ACT-SOIN",
         "activite": "Soins infirmiers",
         "posteComptable": "PC-SOINS",
-        "priorite": 2,
-        "type": "GENERE",
         "segmentNuit": true,
-        "axesOrganisationnels": {
-          "directionIds": ["DIR-001"],
-          "serviceIds": ["SRV-001"],
-          "lieuIds": ["HOPITAL-NORD"],
-          "posteComptableIds": ["PC-SOINS"]
-        },
         "groupeBesoinId": "BESOIN-NUIT-01",
         "blocJourId": "BLOC-VENDREDI-NUIT",
         "ordreDansBloc": 1,
         "estSegmentDePause": false
       },
       {
-        "_commentaire": "Créneau dimanche travaillé.",
         "id": "CRE-DI-01",
         "date": "2026-05-17",
         "heureDebut": "10:00",
@@ -171,14 +120,6 @@
         "codeActiviteId": "ACT-SOIN",
         "activite": "Soins infirmiers",
         "posteComptable": "PC-SOINS",
-        "priorite": 1,
-        "type": "GENERE",
-        "axesOrganisationnels": {
-          "directionIds": ["DIR-001"],
-          "serviceIds": ["SRV-001"],
-          "lieuIds": ["HOPITAL-NORD"],
-          "posteComptableIds": ["PC-SOINS"]
-        },
         "groupeBesoinId": "BESOIN-SEMAINE-01",
         "blocJourId": "BLOC-DIMANCHE-MATIN",
         "ordreDansBloc": 1,
@@ -189,22 +130,10 @@
     "ressources": {
       "salaries": [
         {
-          "_commentaire": "SAL-2001 : profil jour, pas de travail de nuit, non autorisé les jours fériés. Indisponible mercredi 13/05.",
           "id": "SAL-2001",
           "statut": "CDI",
           "sitesAutorises": ["HOPITAL-NORD"],
           "activitesCompatibles": ["ACT-SOIN", "ACT-ADMIN"],
-          "axesOrganisationnels": {
-            "directionIds": ["DIR-001"],
-            "serviceIds": ["SRV-001"],
-            "lieuIds": ["HOPITAL-NORD"],
-            "posteComptableIds": ["PC-SOINS"]
-          },
-          "contratTravail": {
-            "dateDebut": "2020-01-06",
-            "dateFin": null,
-            "dureeMoyenneHeuresParJour": 7.8
-          },
           "contraintesReglementaires": {
             "heuresMinimumParJour": 4.0,
             "heuresMaximumParJour": 10.0,
@@ -219,22 +148,10 @@
           "travailleJourFerie": false
         },
         {
-          "_commentaire": "SAL-2002 : profil nuit occasionnel, autorisé les jours fériés, amplitude étendue.",
           "id": "SAL-2002",
           "statut": "CDI",
           "sitesAutorises": ["HOPITAL-NORD"],
           "activitesCompatibles": ["ACT-SOIN"],
-          "axesOrganisationnels": {
-            "directionIds": ["DIR-001"],
-            "serviceIds": ["SRV-001"],
-            "lieuIds": ["HOPITAL-NORD"],
-            "posteComptableIds": ["PC-SOINS"]
-          },
-          "contratTravail": {
-            "dateDebut": "2022-03-01",
-            "dateFin": null,
-            "dureeMoyenneHeuresParJour": 7.8
-          },
           "contraintesReglementaires": {
             "heuresMinimumParJour": 4.0,
             "heuresMaximumParJour": 10.0,
@@ -253,7 +170,6 @@
       ],
       "postesVirtuels": [
         {
-          "_commentaire": "Poste virtuel de substitution — couverture résiduelle si aucun salarié disponible.",
           "id": "PV-001",
           "type": "POTENTIEL",
           "capaciteCible": 2400,
@@ -265,8 +181,6 @@
     },
 
     "indisponibilites": {
-      "_phaseActivation": "Phase 1",
-      "_commentaire": "SAL-2001 est en congé posé le mercredi 13/05 (Ascension). Combiné avec travailleJourFerie=false, le créneau CRE-ME-01 ne peut lui être affecté.",
       "items": [
         {
           "ressourceId": "SAL-2001",

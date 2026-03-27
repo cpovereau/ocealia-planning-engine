@@ -291,21 +291,4 @@ class Sc03DatasetIntegrityTest {
         assertTrue(hasNuit, "Au moins un salarié avec travailDeNuit non-null attendu");
     }
 
-    // -------------------------------------------------------
-    // 8. Axes organisationnels
-    // -------------------------------------------------------
-
-    @Test
-    void auMoinsUnCreneauDevraitAvoirDesAxesOrganisationnels() {
-        boolean hasAxes = request.getDataSet().getCreneaux().stream()
-                .anyMatch(c -> c.getAxesOrganisationnels() != null);
-        assertTrue(hasAxes, "Au moins un créneau avec axesOrganisationnels attendu");
-    }
-
-    @Test
-    void auMoinsUnSalarieDevraitAvoirDesAxesOrganisationnels() {
-        boolean hasAxes = request.getDataSet().getRessources().getSalaries().stream()
-                .anyMatch(s -> s.getAxesOrganisationnels() != null);
-        assertTrue(hasAxes, "Au moins un salarié avec axesOrganisationnels attendu");
-    }
 }
