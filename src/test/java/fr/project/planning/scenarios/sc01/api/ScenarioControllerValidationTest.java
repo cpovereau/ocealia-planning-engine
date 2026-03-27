@@ -77,7 +77,7 @@ class ScenarioControllerValidationTest {
     // ---------------------------------------------------------
 
     @Test
-    void should_raise_null_pointer_if_resource_reference_missing() throws Exception {
+    void should_raise_illegal_argument_if_resource_reference_missing() throws Exception {
 
         String json = """
         {
@@ -110,7 +110,8 @@ class ScenarioControllerValidationTest {
         );
 
         assertNotNull(ex.getCause());
-        assertInstanceOf(NullPointerException.class, ex.getCause());
+        // Phase A : resourceRef absent est désormais détecté par un guard explicite
+        assertInstanceOf(IllegalArgumentException.class, ex.getCause());
     }
 
     // ---------------------------------------------------------
@@ -120,6 +121,8 @@ class ScenarioControllerValidationTest {
     @Test
     void should_raise_null_pointer_if_dataset_missing() throws Exception {
 
+        // dailyAmplitudeHours et shiftStart sont requis pour passer les guards Phase A
+        // et atteindre effectivement le NPE sur le dataset absent
         String json = """
         {
           "scenarioType": "SC-01",
@@ -134,7 +137,9 @@ class ScenarioControllerValidationTest {
             "resourceRef": {
               "kind": "SALARIE",
               "id": "1041"
-            }
+            },
+            "dailyAmplitudeHours": 8.0,
+            "shiftStart": "08:00"
           }
         }
         """;

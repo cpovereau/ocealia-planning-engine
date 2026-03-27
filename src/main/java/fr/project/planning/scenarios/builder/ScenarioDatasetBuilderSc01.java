@@ -168,7 +168,8 @@ public class ScenarioDatasetBuilderSc01 {
                 end,
                 dureeMinutes,
                 null,                 // lieu
-                "travail",            // activite (V1)
+                "travail",            // codeActiviteId (SC-01) — clé de lookup référentiel
+                "travail",            // activite (fallback legacy)
                 null,                 // posteComptable
                 null,                 // priorite (PrioriteCreneau) -> null pour MVP
                 TypeCreneau.GENERE,

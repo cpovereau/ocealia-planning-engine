@@ -89,6 +89,17 @@
       ]
     },
 
-    "creneaux": []
+    "creneaux": [],
+
+    "referentiels": {
+      "activites": [
+        {
+          "codeActiviteId": "travail",
+          "compteDansCharge": true,
+          "genereDetteRepos": false,
+          "estServiceCritique": false
+        }
+      ]
+    }
   }
 }

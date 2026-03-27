@@ -1,0 +1,460 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "scenario_sc_03_schema.json",
+  "title": "SC-03 Scenario Request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "scenarioType",
+    "planningContext",
+    "dataSet"
+  ],
+  "properties": {
+    "scenarioType": {
+      "type": "string",
+      "const": "SC-03",
+      "description": "Type de scénario. Doit valoir exactement 'SC-03'."
+    },
+    "planningContext": {
+      "$ref": "#/$defs/PlanningContext"
+    },
+    "scenarioParameters": {
+      "$ref": "#/$defs/Sc03ScenarioParameters"
+    },
+    "dataSet": {
+      "$ref": "#/$defs/DataSet"
+    }
+  },
+  "$defs": {
+    "PlanningContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "horizon",
+        "strategieScoring"
+      ],
+      "properties": {
+        "horizon": {
+          "$ref": "#/$defs/Horizon"
+        },
+        "strategieScoring": {
+          "type": "string",
+          "enum": [
+            "EXPLOITATION",
+            "ANALYSE_RH",
+            "AUDIT"
+          ],
+          "description": "Stratégie de scoring utilisée par le moteur. Adapter l'enum si le code expose d'autres valeurs."
+        }
+      }
+    },
+    "Horizon": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dateDebut",
+        "dateFin"
+      ],
+      "properties": {
+        "dateDebut": {
+          "type": "string",
+          "format": "date",
+          "description": "Date de début de l'horizon de résolution."
+        },
+        "dateFin": {
+          "type": "string",
+          "format": "date",
+          "description": "Date de fin de l'horizon de résolution. Doit être >= dateDebut."
+        }
+      }
+    },
+    "Sc03ScenarioParameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Bloc toléré mais non exploité par le moteur à ce stade. Les champs sont conservés pour compatibilité/documentation.",
+      "properties": {
+        "prioriteCouverture": {
+          "description": "Champ TOLÉRÉ. Reçu mais ignoré par la résolution."
+        },
+        "periode": {
+          "description": "Champ TOLÉRÉ. Reçu mais ignoré par la résolution ; planningContext.horizon reste la source de vérité."
+        }
+      }
+    },
+    "DataSet": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ressources",
+        "creneaux",
+        "referentiels"
+      ],
+      "properties": {
+        "ressources": {
+          "$ref": "#/$defs/Ressources",
+          "description": "Bloc ressources. Requis. Les listes salaries et postesVirtuels peuvent être vides ([]). Si aucune ressource réelle n'est présente, tous les créneaux sont affectés à RessourceNonAffectee."
+        },
+        "creneaux": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/CreneauInput"
+          },
+          "description": "Liste des créneaux SC-03. Bloc strict depuis la Phase 10C."
+        },
+        "referentiels": {
+          "$ref": "#/$defs/Referentiels"
+        },
+        "indisponibilites": {
+          "$ref": "#/$defs/Indisponibilites"
+        }
+      }
+    },
+    "Ressources": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "salaries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SalarieInput"
+          },
+          "default": []
+        },
+        "postesVirtuels": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PosteVirtuelInput"
+          },
+          "default": []
+        }
+      }
+    },
+    "SalarieInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Identifiant salarié."
+        },
+        "statut": {
+          "type": "string",
+          "description": "Champ TOLÉRÉ. Mappé mais non exploité par une contrainte active."
+        },
+        "sitesAutorises": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Champ TOLÉRÉ. Mappé mais aucune contrainte site active."
+        },
+        "lieuxAutorises": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "deprecated": true,
+          "description": "Alias legacy toléré historiquement côté code pour compatibilité. Préférer sitesAutorises."
+        },
+        "activitesCompatibles": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "SUPPORTÉ pour le diagnostic pré-résolution aucuneRessourceDansDataset. Attendu: codes activité (codeActiviteId)."
+        },
+        "activitesAutorisees": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "deprecated": true,
+          "description": "Alias legacy toléré historiquement côté code pour compatibilité. Préférer activitesCompatibles."
+        },
+        "postesComptablesCompatibles": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Champ TOLÉRÉ. Mappé mais aucune contrainte active."
+        },
+        "contraintesReglementaires": {
+          "$ref": "#/$defs/ContraintesReglementairesSalarie"
+        },
+        "travailDeNuit": {
+          "type": "string",
+          "enum": ["permanent", "occasionnel"],
+          "description": "SUPPORTÉ. Exploité par la contrainte NuitSalarieNonNuit via estTravailleurDeNuit(). Valeurs attendues : 'permanent' | 'occasionnel'. Absent/null = non travailleur de nuit."
+        },
+        "heureDebutNuit": {
+          "type": "string",
+          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+          "description": "Champ TOLÉRÉ. Mappé mais non exploité à ce stade ; arbitrage requis avec segmentNuit."
+        },
+        "heureFinNuit": {
+          "type": "string",
+          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+          "description": "Champ TOLÉRÉ. Mappé mais non exploité à ce stade ; arbitrage requis avec segmentNuit."
+        },
+        "travailleJourFerie": {
+          "type": "boolean",
+          "description": "SUPPORTÉ. Exploité par JourFerieRefuse."
+        }
+      }
+    },
+    "ContraintesReglementairesSalarie": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "joursConsecutifsMaximum": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "SUPPORTÉ. Exploité par JoursConsecutifsMax."
+        },
+        "amplitudeJournaliereMaximum": {
+          "type": "number",
+          "minimum": 0,
+          "description": "SUPPORTÉ. Exploité par AmplitudeJournaliere."
+        },
+        "heuresMinimumParJour": {
+          "type": "number",
+          "minimum": 0,
+          "description": "SUPPORTÉ. Exploité par HeuresMinimumParJour ; inactif si null côté code."
+        },
+        "heuresMaximumParJour": {
+          "type": "number",
+          "minimum": 0,
+          "description": "TOLÉRÉ. Mappé mais non lu ; la contrainte active utilise encore une limite globale hardcodée."
+        },
+        "nuitsMaximumParSemaine": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "TOLÉRÉ. Mappé mais non lu ; la contrainte active lit un seuil global du PlanningContext."
+        },
+        "reposQuotidienMinimum": {
+          "type": "number",
+          "minimum": 0,
+          "description": "TOLÉRÉ. Mappé mais non lu ; sémantique différente du repos après nuits actuellement utilisé."
+        },
+        "heuresMinimumParSemaine": {
+          "type": "number",
+          "minimum": 0,
+          "description": "TOLÉRÉ. Mappé mais aucune contrainte active."
+        },
+        "heuresMaximumParSemaine": {
+          "type": "number",
+          "minimum": 0,
+          "description": "TOLÉRÉ. Mappé mais aucune contrainte active."
+        }
+      }
+    },
+    "PosteVirtuelInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "type": "string",
+          "description": "TOLÉRÉ. Valeur inconnue -> fallback runtime sur POTENTIEL avec log.warn."
+        },
+        "capaciteCible": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Champ TOLÉRÉ. Mappé mais aucune contrainte active."
+        },
+        "activitesAutorisees": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "SUPPORTÉ pour le diagnostic aucuneRessourceDansDataset."
+        },
+        "lieuxAutorises": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Champ TOLÉRÉ. Mappé mais aucune contrainte active."
+        },
+        "postesComptablesCompatibles": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Champ TOLÉRÉ. Mappé mais aucune contrainte active."
+        }
+      }
+    },
+    "CreneauInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "date",
+        "heureDebut",
+        "heureFin"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Identifiant créneau. Contractuellement facultatif ; runtime tolère null mais les logs/diagnostics sont moins précis."
+        },
+        "date": {
+          "type": "string",
+          "format": "date",
+          "description": "Date du créneau. Contractuellement attendue. Note runtime : le cas null a été historiquement toléré/documenté comme cas limite."
+        },
+        "heureDebut": {
+          "type": "string",
+          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+          "description": "Heure de début. Traversée minuit gérée si heureDebut > heureFin."
+        },
+        "heureFin": {
+          "type": "string",
+          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+          "description": "Heure de fin."
+        },
+        "isJourFerie": {
+          "type": "boolean",
+          "description": "SUPPORTÉ. Si absent côté runtime, valeur par défaut false."
+        },
+        "segmentNuit": {
+          "type": "boolean",
+          "description": "SUPPORTÉ. Si absent côté runtime, valeur par défaut JOUR."
+        },
+        "codeActiviteId": {
+          "type": "string",
+          "description": "SUPPORTÉ. Clé principale de résolution dans le référentiel."
+        },
+        "activite": {
+          "type": "string",
+          "deprecated": true,
+          "description": "⚠️ DÉPRÉCIÉ. Fallback si codeActiviteId absent ou blank. Préférer toujours codeActiviteId."
+        },
+        "lieu": {
+          "type": "string",
+          "description": "TOLÉRÉ. Mappé mais aucune contrainte active."
+        },
+        "posteComptable": {
+          "type": "string",
+          "description": "TOLÉRÉ. Mappé mais aucune contrainte active."
+        },
+        "groupeBesoinId": {
+          "type": "string",
+          "description": "TOLÉRÉ. Mappé mais aucune contrainte active."
+        },
+        "blocJourId": {
+          "type": "string",
+          "description": "TOLÉRÉ. Mappé mais aucune contrainte active."
+        },
+        "ordreDansBloc": {
+          "type": "integer",
+          "description": "TOLÉRÉ. Mappé mais aucune contrainte active."
+        },
+        "estSegmentDePause": {
+          "type": "boolean",
+          "description": "SUPPORTÉ. Exclu des calculs d'amplitude journalière, de jours consécutifs et de minimum horaire journalier."
+        }
+      }
+    },
+    "Referentiels": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "activites"
+      ],
+      "properties": {
+        "activites": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ReferentielActivite"
+          }
+        }
+      },
+      "description": "Bloc strict depuis la Phase 10B."
+    },
+    "ReferentielActivite": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "codeActiviteId"
+      ],
+      "properties": {
+        "codeActiviteId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "SUPPORTÉ. Clé du référentiel."
+        },
+        "compteDansCharge": {
+          "type": "boolean",
+          "description": "SUPPORTÉ. Si absent côté runtime, valeur par défaut false."
+        },
+        "genereDetteRepos": {
+          "type": "boolean",
+          "description": "SUPPORTÉ. Si absent côté runtime, valeur par défaut false."
+        },
+        "estServiceCritique": {
+          "type": "boolean",
+          "description": "TOLÉRÉ. Mappé mais aucune contrainte active ne le lit actuellement."
+        },
+        "libelle": {
+          "type": "string",
+          "description": "IGNORÉ. Champ de présentation uniquement, non transporté dans ComptabiliteActivite."
+        }
+      }
+    },
+    "Indisponibilites": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "items"
+      ],
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/IndisponibiliteItem"
+          }
+        }
+      },
+      "description": "Bloc strict depuis la Phase 10B."
+    },
+    "IndisponibiliteItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ressourceId",
+        "dateDebut",
+        "dateFin"
+      ],
+      "properties": {
+        "ressourceId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "dateDebut": {
+          "type": "string",
+          "format": "date"
+        },
+        "dateFin": {
+          "type": "string",
+          "format": "date"
+        },
+        "motif": {
+          "type": "string",
+          "description": "TOLÉRÉ. Mappé mais non utilisé par les contraintes."
+        }
+      }
+    }
+  }
+}

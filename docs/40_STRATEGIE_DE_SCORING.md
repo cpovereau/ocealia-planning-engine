@@ -412,7 +412,118 @@ Cette séparation garantit :
 
 ---
 
-## 10. Lien avec les autres documents
+## 10. StrategieScoring
+
+### Définition
+
+La **StrategieScoring** définit le mode de lecture et d’arbitrage du moteur.
+
+Elle permet d’adapter le comportement du solveur selon l’objectif métier recherché.
+
+Elle est transmise dans le `PlanningContext` via le champ : `planningContext.strategieScoring`
+
+
+---
+
+### Valeurs disponibles
+
+#### EXPLOITATION
+
+**Objectif**
+
+Produire un planning opérationnel exploitable.
+
+**Caractéristiques**
+
+- priorité forte à la couverture des besoins
+- limitation du recours aux postes virtuels
+- respect des contraintes légales
+- arbitrage orienté service
+
+**Usage**
+
+- génération de planning réel
+- préparation opérationnelle
+- exploitation quotidienne
+
+---
+
+#### ANALYSE_RH
+
+**Objectif**
+
+Analyser l’impact du planning sur les ressources humaines.
+
+**Caractéristiques**
+
+- mise en évidence des déséquilibres de charge
+- accent sur la pénibilité (nuit, dimanche, férié)
+- arbitrage plus tolérant sur la couverture
+
+**Usage**
+
+- analyse de charge
+- étude d’équité
+- diagnostic RH
+
+---
+
+#### AUDIT
+
+**Objectif**
+
+Observer les limites du système sans contrainte opérationnelle forte.
+
+**Caractéristiques**
+
+- tolérance maximale aux imperfections
+- mise en évidence des impossibilités
+- score orienté diagnostic
+
+**Usage**
+
+- audit de données
+- test de scénarios
+- validation de cohérence
+
+---
+
+### Impact sur le moteur
+
+La stratégie influence :
+
+- les pondérations dans `ScoreWeights`
+- l’importance relative des contraintes SOFT
+- le comportement d’arbitrage du solveur
+
+Elle ne modifie pas :
+
+- les contraintes HARD
+- la structure des données
+- le modèle du problème
+
+---
+
+### Principe fondamental
+
+> La stratégie de scoring ne change pas le problème à résoudre,
+> elle change la manière dont le moteur arbitre entre plusieurs solutions.
+
+---
+
+### Recommandation Produit
+
+Pour une première version :
+
+- valeur par défaut : `EXPLOITATION`
+- exposer les 3 modes avec un libellé métier :
+  - Exploitation (planning opérationnel)
+  - Analyse RH (équité / charge)
+  - Audit (diagnostic)
+
+---
+
+## 11. Lien avec les autres documents
 
 Ce document complète :
 

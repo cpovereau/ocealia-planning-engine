@@ -1,8 +1,9 @@
+
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://example.org/schema/scenario-contract.schema.json",
   "title": "ScenarioContract",
-  "description": "Contrat JSON d'alimentation du moteur de planification",
+  "description": "Contrat JSON d'alimentation du moteur de planification. Document en cours d’alignement avec les contrats JSON stabilisés. La source de vérité actuelle est constituée par les schémas JSON par scénario.",
   "type": "object",
   "required": [
     "scenarioType",
