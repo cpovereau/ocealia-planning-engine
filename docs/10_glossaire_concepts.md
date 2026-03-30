@@ -316,7 +316,63 @@ Les diagnostics ne participent ni au score ni aux décisions du solveur.
 
 ---
 
-# 13. Principe général du moteur
+# 13. Indisponibilité
+
+## Définition
+
+Une **indisponibilité** est un intervalle temporel pendant lequel une ressource ne peut pas être affectée à un créneau.
+
+Elle représente une contrainte externe au planning (absence, congé, formation, etc.).
+
+## Nature
+
+- Fait d’entrée du problème (comme un créneau ou une ressource)
+- Immuable pendant la résolution
+- Ne constitue pas une décision du solveur
+
+## Caractéristiques principales
+
+Une indisponibilité possède :
+
+- une ressource concernée
+- une date de début
+- une date de fin
+
+## Rôle dans le moteur
+
+Une indisponibilité interdit l’affectation d’un créneau à une ressource si :
+
+- le créneau intersecte la période d’indisponibilité
+
+Cette règle est portée par une contrainte HARD.
+
+## Propriétés clés
+
+- Une indisponibilité ne génère jamais de créneau
+- Elle ne participe pas au score directement
+- Elle agit uniquement comme filtre de faisabilité
+
+## Différence avec un créneau
+
+| Créneau | Indisponibilité |
+|--------|----------------|
+| Besoin à couvrir | Impossibilité de couvrir |
+| Peut être affecté | Ne peut jamais être affecté |
+| Porte une activité | N’en porte pas |
+
+## Exemple
+
+Un salarié en congé du 10/04 au 12/04 :
+
+→ tous les créneaux sur cette période lui sont interdits
+
+## Principe
+
+L’indisponibilité réduit l’espace des solutions possibles, mais ne crée aucune décision.
+
+---
+
+# 14. Principe général du moteur
 
 Le moteur de planification repose sur une séparation stricte des responsabilités :
 
@@ -331,3 +387,54 @@ Cette séparation garantit :
 - une explicabilité des résultats
 - une évolution du moteur sans rupture de contrat API.
 
+---
+
+# 15. Scoring (au sens du moteur)
+
+## Définition
+
+Le **scoring** désigne le mécanisme global par lequel le moteur évalue et compare les solutions de planning.
+
+Il repose sur :
+
+- les contraintes (HARD / SOFT),
+- les pénalités métier (`Penalites`),
+- les pondérations techniques (`ScoreWeights`),
+- et la stratégie de scoring (`StrategieScoring`).
+
+## Rôle
+
+Le scoring permet de :
+
+- comparer plusieurs solutions possibles,
+- arbitrer entre des compromis,
+- orienter le comportement du solveur.
+
+Il ne sert pas à :
+
+- produire un indicateur métier,
+- mesurer la performance RH,
+- calculer une conformité réglementaire.
+
+## Lien avec le score
+
+Le **score** est la valeur numérique produite par le scoring.
+
+Le scoring est donc le processus,
+le score en est le résultat.
+
+## Lien avec la stratégie de scoring
+
+La `StrategieScoring` permet de faire varier le comportement du scoring selon l’objectif :
+
+- exploitation (planning opérationnel),
+- analyse RH,
+- audit.
+
+Elle modifie la pondération des contraintes,
+mais ne change pas le problème à résoudre.
+
+## Principe
+
+> Le moteur ne cherche pas une solution parfaite,
+> mais la solution la moins pénalisée selon une stratégie donnée.

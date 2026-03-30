@@ -4,7 +4,6 @@ import fr.project.planning.api.PlanningResponse;
 import fr.project.planning.api.PlanningService;
 import fr.project.planning.domain.workmetrics.WorkMetrics;
 import fr.project.planning.domain.workmetrics.WorkMetricsCalculator;
-import fr.project.planning.scenarios.dto.IgnoredCreneauxDTO;
 import fr.project.planning.scenarios.dto.ScenarioAlertDTO;
 import fr.project.planning.scenarios.dto.ScenarioRequestDTO;
 import fr.project.planning.scenarios.dto.ScenarioResponseDTO;
@@ -73,7 +72,7 @@ public class ScenarioSc01ExecutionService {
                 byId,
                 alerts,
                 prepared.posteVirtuelIds(),
-                new IgnoredCreneauxDTO(0, 0, 0)   // SC-01 ne filtre pas de créneaux
+                prepared.ignoredCreneaux()   // C1 — compteurs diagnostiques calculés à la préparation
         );
     }
 }

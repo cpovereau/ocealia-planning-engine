@@ -434,46 +434,308 @@ Les nouveaux champs ont un impact visible dans la restitution, pas seulement dan
 
 ---
 
-## Phase 9 — Consolidation pipeline SC-03 et diagnostics complets
-
-### État : TERMINÉE (2026-03-18)
-
-Pipeline SC-03 end-to-end validé. `ignoredCreneaux` réel implémenté. Null éliminé de la réponse. Code debug supprimé. Suite de tests exécutée : **BUILD SUCCESSFUL (1m 25s, 0 échec)**. **Phase 9 TERMINÉE — critère de sortie validé.**
+## Phase 9 — Stabilisation technique et contractuelle du contrat d’entrée
 
 ### Objectif
-Consolider le pipeline complet WinDev → API → Solver → ResponseDTO et implémenter les diagnostics pré-résolution `ignoredCreneaux`.
 
-### Réalisations
+Finaliser la migration en **stabilisant le contrat d’entrée réel** entre WinDev et le moteur, en cohérence avec :
 
-#### 9a — Suppression du code debug `PlanningService`
-- Suppression du bloc de 36 lignes qui forçait tous les créneaux sur la ressource "1041" (diagnostic temporaire des contraintes HARD)
-- `solve()` est maintenant propre : `PlanningProblem` → `solverLauncher.solve()` → `solutionManager.explain()` → `PlanningResponse`
+* les DTO effectivement utilisés ;
+* le mapping builder → domaine ;
+* les contraintes déjà actives dans le solveur ;
+* les WorkMetrics exposées en sortie.
 
-#### 9b — Finalisation `ScenarioResponseMapper`
-- `toResponse()` accepte `IgnoredCreneauxDTO` en 11e argument (supprime le `new IgnoredCreneauxDTO(0,0,0)` hardcodé)
-- `buildDiagnostics()` utilise l’objet transmis (avec fallback null-safe vers `0,0,0`)
-- `toCreneauPlanningDTO()` : null-safety garantie — retourne `RessourceNonAffectee.INSTANCE.getId()` (`"A_AFFECTER"`) si `getRessourceAffectee() == null`
+Cette phase marque le passage :
 
-#### 9c — Implémentation `ignoredCreneaux` dans la chaîne SC-03
-- `PreparedSc03Scenario` : ajout du 4e champ `IgnoredCreneauxDTO ignoredCreneaux`
-- `ScenarioSc03PreparationService` : calcul pré-résolution de `horsHorizon` (date hors [dateDebut, dateFin]) et `activiteInconnue` (code absent du référentiel) ; les deux compteurs sont produits avant `planningService.solve()`
-- `ScenarioSc03ExecutionService` : transmission `prepared.ignoredCreneaux()` au mapper
-- `ScenarioSc01ExecutionService` : ajout `new IgnoredCreneauxDTO(0, 0, 0)` comme 11e argument (SC-01 ne filtre pas de créneaux en pré-résolution)
-
-#### 9d — Tests d’intégration `Phase9IntegrationTest`
-- `sc03_creneauHorsHorizon_doitComptabiliserHorsHorizon` : horsHorizon=1, activiteInconnue=0
-- `sc03_activiteInconnue_doitComptabiliserActiviteInconnue` : activiteInconnue=1, horsHorizon=0
-- `sc03_referenceDataset_ressourceAffecteeId_jamaisNull` : tous les `ressourceAffecteeId` non null dans `planning.jours`
-- `sc03_referenceDataset_tousLesBlocs_presents` : présence des 5 blocs, hard=0, nbCreneaux=6, horsHorizon=0, activiteInconnue=0
-
-Nouveaux datasets de test :
-- `src/test/resources/scenarios/sc03/sc03_hors_horizon.json`
-- `src/test/resources/scenarios/sc03/sc03_activite_inconnue.json`
-
-### Critère de sortie
-Pipeline SC-03 end-to-end validé : `ignoredCreneaux` réel, `ressourceAffecteeId` jamais null, tous les blocs présents, hard=0.
+```
+migration progressive → contrat maîtrisé et stabilisé
+```
 
 ---
+
+## 9.1 Stabilisation du contrat SC-03
+
+### Principe
+
+À ce stade, tout champ présent dans le contrat doit être :
+
+* soit **explicitement supporté** par le moteur ;
+* soit **toléré et documenté** (sans effet immédiat) ;
+* soit **supprimé** s’il est inutile ou ambigu.
+
+Aucun champ ne doit rester dans un état implicite ou inconnu.
+
+---
+
+## 9.2 Classification des champs
+
+Chaque champ du contrat est désormais classé selon trois statuts.
+
+### A. SUPPORTÉ
+
+Le champ est :
+
+* transporté dans les DTO ;
+* mappé vers le domaine (`ScenarioDatasetBuilder` / mappers) ;
+* exploité par :
+
+  * une contrainte,
+  * ou le scoring,
+  * ou les WorkMetrics,
+  * ou les diagnostics.
+
+👉 Il participe réellement au comportement du moteur.
+
+---
+
+### B. TOLÉRÉ
+
+Le champ est :
+
+* accepté dans le JSON ;
+* désérialisé et éventuellement mappé ;
+* **non exploité** à ce stade par le solveur.
+
+👉 Il est conservé pour :
+
+* compatibilité amont (WinDev) ;
+* activation future planifiée.
+
+⚠️ Tout champ toléré doit être :
+
+* tracé ;
+* associé à une phase cible d’activation.
+
+---
+
+### C. SUPPRIMÉ / INTERDIT
+
+Le champ est :
+
+* supprimé des DTO ;
+* refusé dans le contrat d’entrée ;
+* ou explicitement ignoré côté API avec rejet futur prévu.
+
+👉 Objectif : éliminer toute ambiguïté ou redondance.
+
+---
+
+## 9.3 Nettoyage des DTO
+
+### Décisions appliquées
+
+* suppression des champs marqués `IGNORÉ` ou sans usage identifié ;
+* suppression des redondances évidentes entre champs métier ;
+* conservation des champs dépréciés uniquement si :
+
+  * nécessaires à la compatibilité,
+  * clairement identifiés comme tels.
+
+### Conséquence
+
+Les DTO deviennent la **représentation fidèle du contrat réel**,
+et non plus un support de migration temporaire.
+
+---
+
+## 9.4 Alignement JSON ↔ DTO ↔ Domaine
+
+### Objectif
+
+Garantir une cohérence stricte entre :
+
+```
+JSON WinDev → DTO → Builder → Domaine solveur
+```
+
+### Règles
+
+* tout champ JSON doit avoir :
+
+  * une correspondance DTO explicite ;
+  * un mapping maîtrisé ;
+* aucun champ domaine ne doit dépendre :
+
+  * d’un champ implicite ;
+  * ou d’un comportement non documenté.
+
+---
+
+## 9.5 Cohérence avec les contraintes et le scoring
+
+### Vérification effectuée
+
+Chaque champ SUPPORTÉ a été vérifié vis-à-vis de :
+
+* contraintes HARD / SOFT ;
+* clés de pénalité (`PenaliteKey`) ;
+* calcul des WorkMetrics ;
+* diagnostics d’affectation.
+
+👉 Aucun champ actif ne doit être :
+
+* sans effet ;
+* ou en contradiction avec une règle existante.
+
+---
+
+## 9.6 Impact sur SC-01
+
+### Principe de non-régression
+
+La stabilisation du contrat SC-03 ne doit pas :
+
+* casser la désérialisation SC-01 ;
+* modifier le comportement du solveur SC-01 ;
+* altérer les tests existants.
+
+### Règle
+
+Tout champ absent du scénario SC-01 doit :
+
+* conserver un comportement par défaut stable ;
+* ou être ignoré sans effet.
+
+---
+
+## 9.7 Verrou de stabilisation
+
+À l’issue de cette phase :
+
+* le contrat d’entrée est considéré comme **maîtrisé** ;
+* toute évolution ultérieure devra :
+
+  * passer par une décision explicite ;
+  * être tracée dans la matrice des champs ;
+  * être accompagnée de tests.
+
+---
+
+## Critère de sortie
+
+Le contrat d’entrée est stabilisé lorsque :
+
+* aucun champ n’est dans un état implicite ;
+* chaque champ est classé (SUPPORTÉ / TOLÉRÉ / SUPPRIMÉ) ;
+* le mapping DTO → domaine est complet et maîtrisé ;
+* les tests couvrent les champs critiques ;
+* SC-01 et SC-03 sont tous deux stables.
+
+---
+
+## État au [À compléter]
+
+* stabilisation SC-03 réalisée ;
+* nettoyage DTO effectué ;
+* contrat aligné avec les contraintes actives ;
+* suite de tests exécutée : **BUILD SUCCESSFUL**.
+
+
+---
+
+## 9.8 Matrice contractuelle des champs (référence Phase 9)
+
+### Objectif
+
+Cette matrice constitue la **référence officielle du contrat d’entrée**.
+
+Elle complète la matrice d’exploitation technique en répondant à la question :
+
+```text
+Ce champ fait-il partie du contrat métier du moteur ?
+```
+
+---
+
+### Légende des statuts
+
+| Statut       | Signification                                           |
+| ------------ | ------------------------------------------------------- |
+| **SUPPORTÉ** | Champ pleinement intégré au moteur (utilisé réellement) |
+| **TOLÉRÉ**   | Accepté mais sans effet fonctionnel                     |
+| **DÉPRÉCIÉ** | Conservé temporairement mais destiné à disparaître      |
+| **INTERDIT** | Ne doit plus apparaître dans le contrat                 |
+
+---
+
+### Matrice contractuelle
+
+| Champ                         | Bloc    | Statut             | Utilisation réelle    | Source de vérité | Remplacement / cible                     | Action Phase 9           |
+| ----------------------------- | ------- | ------------------ | --------------------- | ---------------- | ---------------------------------------- | ------------------------ |
+| `id`                          | salarié | SUPPORTÉ           | Solveur               | DTO              | —                                        | —                        |
+| `statut`                      | salarié | TOLÉRÉ             | Aucun                 | DTO              | —                                        | À exploiter ou supprimer |
+| `sitesAutorises`              | salarié | DÉPRÉCIÉ           | Aucun                 | DTO              | `axesOrganisationnels.lieuIds`           | Migration progressive    |
+| `activitesCompatibles`        | salarié | SUPPORTÉ           | Diagnostics           | DTO              | —                                        | —                        |
+| `postesComptablesCompatibles` | salarié | DÉPRÉCIÉ           | Aucun                 | DTO              | `axesOrganisationnels.posteComptableIds` | Migration progressive    |
+| `travailleJourFerie`          | salarié | SUPPORTÉ           | Contrainte HARD       | Domaine          | —                                        | —                        |
+| `travailDeNuit`               | salarié | SUPPORTÉ           | Scoring + diagnostics | Domaine          | —                                        | —                        |
+| `heureDebutNuit`              | salarié | TOLÉRÉ             | Préparation           | DTO              | —                                        | Activation future        |
+| `heureFinNuit`                | salarié | TOLÉRÉ             | Préparation           | DTO              | —                                        | Activation future        |
+| `contraintesReglementaires`   | salarié | SUPPORTÉ (partiel) | Contraintes           | Domaine          | Remplace `RegulatoryParameters`          | Activation progressive   |
+| `axesOrganisationnels`        | salarié | TOLÉRÉ             | Aucun                 | DTO              | Devient source principale                | À mapper                 |
+| `contratTravail`              | salarié | TOLÉRÉ             | Aucun                 | DTO              | —                                        | À définir                |
+
+---
+
+| Champ                  | Bloc    | Statut   | Utilisation réelle | Source de vérité | Remplacement / cible | Action Phase 9      |
+| ---------------------- | ------- | -------- | ------------------ | ---------------- | -------------------- | ------------------- |
+| `activite` (libellé)   | créneau | DÉPRÉCIÉ | Affichage          | DTO              | `codeActiviteId`     | À supprimer à terme |
+| `codeActiviteId`       | créneau | SUPPORTÉ | Solveur            | Référentiel      | —                    | —                   |
+| `groupeBesoinId`       | créneau | SUPPORTÉ | Structuration      | Domaine          | —                    | —                   |
+| `blocJourId`           | créneau | SUPPORTÉ | Structuration      | Domaine          | —                    | —                   |
+| `ordreDansBloc`        | créneau | SUPPORTÉ | Structuration      | Domaine          | —                    | —                   |
+| `estSegmentDePause`    | créneau | SUPPORTÉ | Structuration      | Domaine          | —                    | —                   |
+| `axesOrganisationnels` | créneau | TOLÉRÉ   | Aucun              | DTO              | À exploiter          | À mapper            |
+
+---
+
+| Champ              | Bloc    | Statut   | Utilisation réelle   | Source de vérité | Remplacement / cible | Action Phase 9       |
+| ------------------ | ------- | -------- | -------------------- | ---------------- | -------------------- | -------------------- |
+| `referentiels`     | dataset | SUPPORTÉ | Référentiel activité | JSON             | —                    | Généralisation SC-01 |
+| `indisponibilites` | dataset | SUPPORTÉ | Contrainte HARD      | Domaine          | —                    | —                    |
+
+---
+
+### Règles fondamentales
+
+* Un champ **SUPPORTÉ** doit être :
+
+  * testé ;
+  * exploité ;
+  * documenté.
+
+* Un champ **TOLÉRÉ** doit :
+
+  * avoir une cible ;
+  * ne pas rester indéfini.
+
+* Un champ **DÉPRÉCIÉ** doit :
+
+  * avoir une date ou phase de suppression.
+
+* Aucun champ ne doit rester **implicite**.
+
+---
+
+### Principe de gouvernance
+
+Toute évolution du contrat doit :
+
+* mettre à jour cette matrice ;
+* être tracée dans le journal de développement ;
+* être validée par des tests.
+
+---
+
+### Rôle de la matrice
+
+Cette matrice devient :
+
+* la référence pour les développeurs ;
+* la référence pour l’intégration WinDev ;
+* le garde-fou contre la dérive du contrat.
+
+---En 
 
 ## Matrice d'exploitation des champs
 
@@ -637,6 +899,99 @@ Ordre conseillé :
 ## Journal de pilotage
 
 L’historique détaillé des itérations (Phases 1 à 8) est conservé dans `91_Journal_Developpement_Moteur.md`.
+
+---
+
+## Phase D — Génération de créneaux et convergence vers dataset-driven
+
+### État : TERMINÉE (2026-03-30)
+
+`CreneauGenerationService` créé. `ScenarioSc01PreparationService` adapté. Suite de tests exécutée : **BUILD SUCCESSFUL**. **Phase D TERMINÉE — critère de sortie validé.**
+
+---
+
+### 1. Rôle du `CreneauGenerationService`
+
+Le `CreneauGenerationService` encapsule la logique de génération de créneaux SC-01 dans un composant de service autonome et réutilisable.
+
+**Pourquoi il existe :**
+- isole la responsabilité de génération du pipeline de préparation SC-01
+- rend la logique de construction testable indépendamment du scénario
+- prépare l’architecture vers un modèle dataset-driven (convergence vers SC-03)
+
+**Ce qu’il remplace :**
+- l’appel direct à `new ScenarioDatasetBuilderSc01()` dans `ScenarioSc01PreparationService`
+- la dépendance directe de la préparation SC-01 sur la classe builder
+
+**Pourquoi il est isolé :**
+- la génération de créneaux est un concept transverse (pas lié à un scénario)
+- d’autres scénarios ou services pourront le réutiliser sans toucher à SC-01
+- en cas de migration vers Option 2 (dataset-driven), seul ce service évolue
+
+---
+
+### 2. Architecture actuelle (Option 1 — maintenue)
+
+```text
+SC-01 : paramètres → CreneauGenerationService → créneaux → solveur
+SC-03 : dataSet.creneaux → solveur
+```
+
+Les deux pipelines restent distincts.
+SC-01 génère ses créneaux à partir de paramètres utilisateur (amplitude, horaires, jours travaillés, jours fériés).
+SC-03 consomme des créneaux fournis explicitement dans le contrat d’entrée.
+
+#### Contrat SC-01 — point de clarification
+
+`dataSet.creneaux` est **ignoré** dans SC-01. Les créneaux sont générés par le moteur via `CreneauGenerationService` à partir des `scenarioParameters`. Un `log.warn` est émis si `dataSet.creneaux` contient des éléments (guard A1).
+
+---
+
+### 3. Architecture cible (Option 2 — non implémentée)
+
+```text
+génération → dataSet.creneaux → partitioning → solveur (pipeline unifié)
+```
+
+Dans ce modèle :
+- SC-01 utiliserait `CreneauGenerationService` pour produire des `CreneauInputDTO`
+- ces créneaux alimenteraient `dataSet.creneaux` avant le solveur
+- le partitioning SC-03 (activité inconnue + hors-horizon) s’appliquerait identiquement
+- les deux scénarios convergeraient vers le même pipeline de résolution
+
+**Point d’extension préparé (non codé) :** `CreneauGenerationService` pourra exposer une méthode `generateAsInputDtos(BuildRequest)` retournant `List<CreneauInputDTO>` pour alimenter `dataSet.creneaux`.
+
+---
+
+### 4. Stratégie de migration
+
+| Étape | Description | Statut |
+|-------|-------------|--------|
+| 1 — Extraction | Création de `CreneauGenerationService`, injection dans SC-01 | ✅ Phase D |
+| 2 — Réutilisation | Le service peut être utilisé par d’autres scénarios paramétriques | Futur |
+| 3 — Injection dataset | Le service produit des `CreneauInputDTO` → `dataSet.creneaux` | Futur |
+| 4 — Pipeline unifié | SC-01 et SC-03 partagent le même pipeline de résolution | Futur |
+
+---
+
+### 5. Règles de gouvernance
+
+* SC-01 **reste génératif** tant que WinDev ne fournit pas les créneaux dans `dataSet.creneaux`
+* `dataSet.creneaux` est **ignoré** dans SC-01 (guard A1 + log.warn) — jamais silencieusement consumé
+* toute évolution du `CreneauGenerationService` doit préserver la compatibilité comportementale avec SC-01
+* aucun champ des `scenarioParameters` SC-01 ne doit être implicitement ignoré sans warn
+* la migration vers Option 2 est une décision produit, pas une décision technique isolée
+
+---
+
+### Fichiers créés / modifiés
+
+| Fichier | Nature |
+|---------|--------|
+| `CreneauGenerationService.java` | Nouveau — service de génération isolé |
+| `ScenarioSc01PreparationService.java` | Injecte `CreneauGenerationService` au lieu de `new ScenarioDatasetBuilderSc01()` |
+| `CreneauGenerationServiceTest.java` | 4 tests unitaires du service de génération |
+| Tests A/B/C (3 fichiers) | Constructeur mis à jour avec le nouveau paramètre |
 
 ---
 

@@ -1,0 +1,211 @@
+{
+"$schema": "https://json-schema.org/draft/2020-12/schema",
+"$id": "scenario_sc_01_schema.json",
+"title": "SC-01 Scenario Request",
+"type": "object",
+"additionalProperties": false,
+"required": [
+"scenarioType",
+"planningContext",
+"scenarioParameters"
+],
+"properties": {
+"scenarioType": {
+"type": "string",
+"const": "SC-01",
+"description": "Type de scénario. Doit valoir exactement 'SC-01'."
+},
+
+"planningContext": {
+  "$ref": "#/$defs/PlanningContext"
+},
+
+"scenarioParameters": {
+  "$ref": "#/$defs/Sc01ScenarioParameters"
+},
+
+"dataSet": {
+  "$ref": "#/$defs/DataSet",
+  "description": "Bloc partiel. SC-01 n'utilise pas dataSet.creneaux."
+}
+
+},
+
+"$defs": {
+
+"PlanningContext": {
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "horizon",
+    "strategieScoring"
+  ],
+  "properties": {
+    "horizon": {
+      "$ref": "#/$defs/Horizon"
+    },
+    "strategieScoring": {
+      "type": "string",
+      "enum": [
+        "EXPLOITATION",
+        "ANALYSE_RH",
+        "AUDIT"
+      ],
+      "description": "Stratégie de scoring utilisée par le moteur."
+    }
+  }
+},
+
+"Horizon": {
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "dateDebut",
+    "dateFin"
+  ],
+  "properties": {
+    "dateDebut": {
+      "type": "string",
+      "format": "date"
+    },
+    "dateFin": {
+      "type": "string",
+      "format": "date"
+    }
+  }
+},
+
+"Sc01ScenarioParameters": {
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "resourceRef",
+    "dailyAmplitudeHours",
+    "shiftStart",
+    "workedDays"
+  ],
+  "properties": {
+
+    "resourceRef": {
+      "type": "object",
+      "required": ["id"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Identifiant de la ressource cible."
+        }
+      }
+    },
+
+    "dailyAmplitudeHours": {
+      "type": "number",
+      "minimum": 0.5,
+      "description": "Durée journalière de travail en heures."
+    },
+
+    "shiftStart": {
+      "type": "string",
+      "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+      "description": "Heure de début de la journée."
+    },
+
+    "workedDays": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "enum": [
+          "MONDAY",
+          "TUESDAY",
+          "WEDNESDAY",
+          "THURSDAY",
+          "FRIDAY",
+          "SATURDAY",
+          "SUNDAY"
+        ]
+      },
+      "description": "Jours travaillés."
+    },
+
+    "lunchBreak": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "start": {
+          "type": "string",
+          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+        },
+        "end": {
+          "type": "string",
+          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+        }
+      },
+      "description": "Pause déjeuner optionnelle."
+    },
+
+    "holidayDates": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "format": "date"
+      },
+      "description": "Liste des jours fériés."
+    }
+  }
+},
+
+"DataSet": {
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+
+    "referentiels": {
+      "$ref": "#/$defs/Referentiels"
+    }
+
+  },
+  "description": "SC-01 ignore dataSet.creneaux. Seul le référentiel est exploité."
+},
+
+"Referentiels": {
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "activites"
+  ],
+  "properties": {
+    "activites": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/ReferentielActivite"
+      }
+    }
+  }
+},
+
+"ReferentielActivite": {
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "codeActiviteId"
+  ],
+  "properties": {
+    "codeActiviteId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "compteDansCharge": {
+      "type": "boolean"
+    },
+    "genereDetteRepos": {
+      "type": "boolean"
+    },
+    "estServiceCritique": {
+      "type": "boolean"
+    }
+  }
+}
+
+}
+}
