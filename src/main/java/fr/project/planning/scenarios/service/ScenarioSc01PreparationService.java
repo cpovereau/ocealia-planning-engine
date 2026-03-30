@@ -5,8 +5,10 @@ import fr.project.planning.domain.contexte.HypotheseHistorique;
 import fr.project.planning.domain.contexte.ObjectifResolution;
 import fr.project.planning.domain.contexte.PlanningContext;
 import fr.project.planning.domain.contexte.ResolutionType;
+import fr.project.planning.domain.creneau.Creneau;
 import fr.project.planning.domain.metier.ComptabiliteActivite;
 import fr.project.planning.domain.metier.ReferentielComptabiliteActivite;
+import fr.project.planning.scenarios.dto.IgnoredCreneauxDTO;
 import fr.project.planning.domain.reglementaire.RegulatoryParameters;
 import fr.project.planning.domain.ressource.Indisponibilite;
 import fr.project.planning.domain.ressource.Ressource;
@@ -49,10 +51,12 @@ public class ScenarioSc01PreparationService {
     private static final Logger log = LoggerFactory.getLogger(ScenarioSc01PreparationService.class);
 
     private final ScenarioResourceMapper resourceMapper;
-    private final ScenarioDatasetBuilderSc01 builder = new ScenarioDatasetBuilderSc01();
+    private final CreneauGenerationService generationService;
 
-    public ScenarioSc01PreparationService(ScenarioResourceMapper resourceMapper) {
+    public ScenarioSc01PreparationService(ScenarioResourceMapper resourceMapper,
+                                          CreneauGenerationService generationService) {
         this.resourceMapper = resourceMapper;
+        this.generationService = generationService;
     }
 
     public PreparedSc01Scenario prepare(ScenarioRequestDTO request) {
@@ -140,8 +144,8 @@ public class ScenarioSc01PreparationService {
         br.workedDays = params.getWorkedDays() != null ? params.getWorkedDays() : Set.of();
         br.holidayDates = params.getHolidayDates() != null ? params.getHolidayDates() : Set.of();
 
-        // 3. Générer les créneaux
-        ScenarioDatasetBuilderSc01.BuildResult buildResult = builder.build(br);
+        // 3. Générer les créneaux via CreneauGenerationService (Phase D)
+        ScenarioDatasetBuilderSc01.BuildResult buildResult = generationService.generate(br);
 
         // 4. Contexte planning
         StrategieScoring strategieScoring = StrategieScoring.valueOf(
@@ -186,13 +190,62 @@ public class ScenarioSc01PreparationService {
         Set<String> posteVirtuelIds = request.getDataSet().getRessources().getPostesVirtuels()
                 .stream().map(PosteVirtuelInputDTO::getId).collect(Collectors.toSet());
 
+        // 11. C1 — IgnoredCreneauxDTO diagnostique (mesure, pas d'exclusion en Phase C)
+        IgnoredCreneauxDTO ignoredCreneaux = computeIgnoredCreneaux(
+                buildResult.creneaux(), referentiel, br.dateDebut, br.dateFin
+        );
+
         return new PreparedSc01Scenario(
                 planningRequest,
                 buildResult,
                 request.getScenarioType(),
                 params.getResourceRef().getId(),
-                posteVirtuelIds
+                posteVirtuelIds,
+                ignoredCreneaux
         );
+    }
+
+    /**
+     * C1 — Calcule les compteurs diagnostiques IgnoredCreneauxDTO pour SC-01.
+     *
+     * SC-01 génère ses créneaux via le builder — ils ne sont pas exclus du solveur en Phase C,
+     * mais les anomalies détectables sont mesurées pour la visibilité opérationnelle.
+     *
+     * horsHorizon         : créneaux dont la date sort de l'horizon (cas théorique — le builder respecte l'horizon)
+     * activiteInconnue    : créneaux dont le codeActiviteId est absent du référentiel injecté
+     * aucuneRessourceDansDataset : toujours 0 pour SC-01 (ressource cible explicite via resourceRef)
+     */
+    private IgnoredCreneauxDTO computeIgnoredCreneaux(
+            List<Creneau> creneaux,
+            ReferentielComptabiliteActivite referentiel,
+            LocalDate dateDebut,
+            LocalDate dateFin
+    ) {
+        int horsHorizon = 0;
+        int activiteInconnue = 0;
+
+        for (Creneau c : creneaux) {
+            if (c.getDate() != null
+                    && (c.getDate().isBefore(dateDebut) || c.getDate().isAfter(dateFin))) {
+                horsHorizon++;
+            }
+
+            String code = (c.getCodeActiviteId() != null && !c.getCodeActiviteId().isBlank())
+                    ? c.getCodeActiviteId()
+                    : c.getActivite();
+            if (code == null || code.isBlank() || referentiel.getByCode(code) == null) {
+                activiteInconnue++;
+                log.warn("[SC-01] créneau id='{}' : activité '{}' absente du référentiel — diagnostic uniquement (non exclu en Phase C)",
+                        c.getId(), code);
+            }
+        }
+
+        if (horsHorizon > 0) {
+            log.warn("[SC-01] {} créneau(x) hors horizon détecté(s) — diagnostic uniquement (non exclu en Phase C)",
+                    horsHorizon);
+        }
+
+        return new IgnoredCreneauxDTO(horsHorizon, 0, activiteInconnue);
     }
 
     /**

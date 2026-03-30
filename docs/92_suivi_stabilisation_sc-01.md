@@ -11,8 +11,8 @@
 |-------|----------|--------|--------|------|
 | A | Transparence et guards | **Terminée** | A1 ✓, A2 ✓, A3 ✓, A4 ✓, A5 ✓ | 2026-03-27 |
 | B | Injection du référentiel | **Terminée** | B1 ✓, B2 ✓, B3 ✓, B4 ✓ | 2026-03-27 |
-| C | Alignement architecture | À faire | C1, C2, C3 | — |
-| D | Migration créneaux (décision) | En attente | D1, D2, D3 | — |
+| C | Alignement architecture | **Terminée** | C1 ✓, C2 ✓, C3 évalué | 2026-03-30 |
+| D | Génération isolée et convergence dataset-driven | **Terminée** | D1 ✓, D2 ✓, D3 N/A, D4 ✓, D5 ✓ | 2026-03-30 |
 
 ---
 
@@ -144,65 +144,107 @@ Le warning `[SC-01] dataSet.referentiels fourni mais ignoré` a été supprimé 
 
 ---
 
-## Phase C — Alignement architecture
+## Phase C — Alignement architecture ✓ TERMINÉE
+
+> Complétée le **2026-03-30** — `BUILD SUCCESSFUL` — aucune régression
 
 **Objectif :** aligner SC-01 sur les conventions établies par SC-03 — sans changer le comportement fonctionnel.
 
 ### Tâches
 
-| ID | Description | Type | Priorité | Dépendances |
-|----|-------------|------|----------|-------------|
-| C1 | Calculer `IgnoredCreneauxDTO` dynamiquement dans SC-01 plutôt que retourner `(0, 0, 0)` statique | contrat | haute | Phase B |
-| C2 | Extraire la logique de construction du référentiel hors de `ScenarioSc01PreparationService` si ce n'est pas déjà le cas via `resourceMapper` | architecture | moyenne | Phase B |
-| C3 | Évaluer une base commune à `ScenarioRequestDTO` et `Sc03ScenarioRequestDTO` — interface ou classe abstraite | architecture | moyenne | Phase B |
+| ID | Description | Statut | Fichier(s) modifié(s) |
+|----|-------------|--------|----------------------|
+| C1 | `IgnoredCreneauxDTO` calculé dynamiquement dans `ScenarioSc01PreparationService` ; passé dans `PreparedSc01Scenario` ; utilisé dans `ScenarioSc01ExecutionService` | ✓ | `ScenarioSc01PreparationService`, `PreparedSc01Scenario`, `ScenarioSc01ExecutionService` |
+| C2 | Référentiel déjà correctement isolé via `buildReferentielSc01()` (Phase B) — pas de refactoring supplémentaire nécessaire | ✓ (rien à faire) | — |
+| C3 | **Évaluation** : base commune `ScenarioRequestDTO` / `Sc03ScenarioRequestDTO` → **reportée** (voir conclusion) | Évalué | — |
 
-**Détail C1 — compteurs `IgnoredCreneauxDTO` pour SC-01 :**
+**Logique C1 — `computeIgnoredCreneaux()` :**
 
-SC-01 génère ses créneaux via le builder (pas de partitioning externe). Les seuls compteurs
-pertinents à calculer sont :
+Méthode privée ajoutée dans `ScenarioSc01PreparationService` :
 
-- `horsHorizon` : créneaux générés par le builder tombant hors horizon (cas théoriquement impossible, mais à défensiviser)
-- `activiteInconnue` : créneaux générés avec un `codeActiviteId` absent du référentiel injecté (pertinent après Phase B)
-- `aucuneRessourceDansDataset` : reste à `0` (SC-01 a toujours une ressource cible)
+| Compteur | Règle de calcul SC-01 |
+|----------|-----------------------|
+| `horsHorizon` | Créneaux dont `date < dateDebut` ou `date > dateFin` (théoriquement 0 — le builder respecte l'horizon) |
+| `activiteInconnue` | Créneaux dont `codeActiviteId` (ou fallback `activite`) est absent du référentiel injecté |
+| `aucuneRessourceDansDataset` | Toujours `0` — SC-01 a une ressource cible explicite via `resourceRef` |
 
-**Détail C3 :** ne pas forcer si l'effort dépasse le bénéfice — à valider avec l'équipe.
+`PreparedSc01Scenario` est enrichi du champ `IgnoredCreneauxDTO ignoredCreneaux`.
+`ScenarioSc01ExecutionService` utilise `prepared.ignoredCreneaux()` au lieu de `new IgnoredCreneauxDTO(0,0,0)`.
+
+**Conclusion C3 — Évaluation base commune DTOs :**
+
+`ScenarioRequestDTO` (SC-01) et `Sc03ScenarioRequestDTO` (SC-03) partagent 3 champs communs :
+`scenarioType`, `planningContext`, `dataSet`. La seule différence est le type de `scenarioParameters`.
+
+**Verdict : à reporter.**
+- Aucune logique partagée ne bénéficierait d'un type commun aujourd'hui (chaque service reçoit son type propre)
+- Le risque Jackson sur la désérialisation d'un type polymorphe est réel et disproportionné au gain
+- Pertinent uniquement si un middleware ou un contrôleur commun émerge — à décider en Phase D ou après
+
+### Tests Phase C
+
+| Fichier | Tests | Résultat |
+|---------|-------|----------|
+| `ScenarioSc01PreparationServicePhaseCTest` *(nouveau)* | 5 tests unitaires (C1a × 1, C1b × 1, C1c × 1, C1d × 1, nominal × 1) | ✓ tous verts |
+| Suite complète | — | ✓ `BUILD SUCCESSFUL` |
 
 ### Critères de validation — Phase C
 
-| Critère | Condition de succès |
-|---------|---------------------|
-| `IgnoredCreneauxDTO` dynamique | La réponse SC-01 reflète les vraies anomalies détectées (pas `(0,0,0)` en dur) |
-| Pas de régression | `sc01_dataset_reference.json` toujours vert |
-| Build | `BUILD SUCCESSFUL` |
+| Critère | Condition de succès | Résultat |
+|---------|---------------------|----------|
+| `IgnoredCreneauxDTO` dynamique | Réponse SC-01 reflète les vraies anomalies (plus de `(0,0,0)` statique) | ✓ |
+| `activiteInconnue > 0` simulable | Test T-C1-03 : référentiel sans "travail" → compteur positif | ✓ |
+| `aucuneRessourceDansDataset = 0` garanti | Test T-C1-01 | ✓ |
+| `horsHorizon = 0` par construction | Test T-C1-04 | ✓ |
+| Pas de régression | `sc01_dataset_reference.json` vert — suite complète verte | ✓ |
+| Build | `BUILD SUCCESSFUL` | ✓ |
 
 ---
 
-## Phase D — Migration créneaux vers dataset (décision stratégique)
+## Phase D — Génération isolée et convergence dataset-driven ✓ TERMINÉE
 
-**Objectif :** trancher si SC-01 doit à terme recevoir ses créneaux depuis `dataSet.creneaux`
-ou conserver la génération paramétrique via le builder.
+> Complétée le **2026-03-30** — `BUILD SUCCESSFUL` — aucune régression
 
-**Prérequis :** phases A, B, C terminées et validées.
+**Objectif :** extraire la génération de créneaux SC-01 dans un service dédié, rendre l'architecture prête pour une convergence future vers le modèle dataset-driven, sans migrer SC-01 maintenant.
+
+**Décision D1 :** **Option 1 retenue — génération conservée.** SC-01 reste paramétrique. La génération est isolée dans `CreneauGenerationService` pour préparer la migration future.
 
 ### Tâches
 
-| ID | Description | Type | Priorité | Dépendances |
-|----|-------------|------|----------|-------------|
-| D1 | Décider : génération conservée ou migration vers dataset | architecture | haute | Phase C |
-| D2 | Si génération conservée : documenter explicitement dans `scenario_sc_01_schema.json` que `dataSet.creneaux` est ignoré | contrat | haute | D1 |
-| D3 | Si migration vers dataset : implémenter le partitioning (activité inconnue + hors-horizon) sur le modèle SC-03 | contrat | haute | D1 |
+| ID | Description | Statut | Fichier(s) modifié(s) |
+|----|-------------|--------|----------------------|
+| D1 | Décision : génération conservée (Option 1) | ✓ | — |
+| D2 | Extraction de la génération dans `CreneauGenerationService` | ✓ | `CreneauGenerationService` (nouveau), `ScenarioSc01PreparationService` |
+| D3 | Option 2 (migration dataset) — non retenue | N/A | — |
+| D4 | Section Phase D ajoutée à `90_plan_migration_temporaire_windev_vers_moteur.md` | ✓ | `90_plan_migration_temporaire_windev_vers_moteur.md` |
+| D5 | Contrat SC-01 clarifié : `dataSet.creneaux` ignoré, créneaux générés par le moteur | ✓ | `90_plan_migration_temporaire_windev_vers_moteur.md` §D.2 |
 
-**Note :** La génération paramétrique est une fonctionnalité métier légitime (semaine type).
-Elle n'a pas à disparaître. L'enjeu est de documenter ou d'aligner, pas de supprimer.
+### Architecture après Phase D
+
+```text
+SC-01 : scenarioParameters → CreneauGenerationService → créneaux → solveur
+SC-03 : dataSet.creneaux → solveur
+```
+
+`CreneauGenerationService` isole la génération. Il peut à terme exposer une API retournant `List<CreneauInputDTO>` pour alimenter `dataSet.creneaux` (Option 2, non implémentée).
+
+### Tests Phase D
+
+| Fichier | Tests | Résultat |
+|---------|-------|----------|
+| `CreneauGenerationServiceTest` *(nouveau)* | 4 tests unitaires (génération, codeActiviteId, comptage créneaux, alertes) | ✓ tous verts |
+| Tests A/B/C *(mis à jour)* | Constructeur étendu avec `CreneauGenerationService` | ✓ tous verts |
+| Suite complète | — | ✓ `BUILD SUCCESSFUL` |
 
 ### Critères de validation — Phase D
 
-| Critère | Si génération conservée | Si migration dataset |
-|---------|------------------------|---------------------|
-| Schéma JSON | `dataSet.creneaux` marqué ignoré dans le schéma | `dataSet.creneaux` obligatoire et documenté |
-| Comportement | Pas de changement fonctionnel | Partitioning activité + horizon actif |
-| Tests | Pas de régression | Nouveau dataset de test avec créneaux explicites |
-| Build | `BUILD SUCCESSFUL` | `BUILD SUCCESSFUL` |
+| Critère | Condition de succès | Résultat |
+|---------|---------------------|----------|
+| Service isolé | `CreneauGenerationService` existe et encapsule le builder | ✓ |
+| SC-01 adapté | `ScenarioSc01PreparationService` injecte et utilise le service | ✓ |
+| Comportement identique | Aucun changement fonctionnel — même résultat de génération | ✓ |
+| Contrat documenté | `dataSet.creneaux` ignoré documenté dans `90_plan_migration_temporaire_windev_vers_moteur.md` | ✓ |
+| Build | `BUILD SUCCESSFUL` | ✓ |
 
 ---
 
@@ -223,7 +265,7 @@ Elle n'a pas à disparaître. L'enjeu est de documenter ou d'aligner, pas de sup
 |---|--------|----------------|-------------|--------|--------|------------|
 | RF1 | Le score OptaPlanner change après injection du référentiel réel (activités avec `genereDetteRepos=true`) | B | Moyenne | Important | **Surveillé** | Fallback B2 préserve le comportement historique ; delta à documenter si WinDev fournit un référentiel différent |
 | RF2 | WinDev ne fournit pas `referentiels` dans ses appels SC-01 actuels → fallback nécessaire | B | Haute | Important | **Couvert (B2)** | Fallback minimal "travail" implémenté avec warn |
-| RF3 | La génération RH/RHD du builder est incompatible avec un futur partitioning si D3 est choisi | D | Faible | Moyen | Ouvert | Traiter en phase D uniquement |
+| RF3 | La génération RH/RHD du builder est incompatible avec un futur partitioning si Option 2 est choisie | D | Faible | Moyen | **Documenté** | Option 2 non retenue en Phase D — à reconsidérer si convergence dataset décidée |
 
 ---
 
@@ -240,9 +282,11 @@ Elle n'a pas à disparaître. L'enjeu est de documenter ou d'aligner, pas de sup
 | B2 | Fallback référentiel minimal "travail" + warn si `referentiels` absent | contrat | critique | B | ✓ | B1 |
 | B3 | Corriger `codeActiviteId` explicite dans les créneaux du builder | builder | critique | B | ✓ | B1 |
 | B4 | Mettre à jour `sc01_dataset_reference.json` avec `referentiels` | tests | haute | B | ✓ | B1, B3 |
-| C1 | `IgnoredCreneauxDTO` dynamique | contrat | haute | C | À faire | Phase B ✓ |
-| C2 | Extraire construction référentiel hors `PreparationService` | architecture | moyenne | C | À faire | Phase B ✓ |
-| C3 | Base commune `ScenarioRequestDTO` / `Sc03ScenarioRequestDTO` | architecture | moyenne | C | À faire | Phase B ✓ |
-| D1 | Décision : génération conservée ou migration dataset | architecture | haute | D | En attente | Phase C |
-| D2 | Documenter `dataSet.creneaux` ignoré dans le schéma JSON | contrat | haute | D | En attente | D1 |
-| D3 | Implémenter partitioning si migration dataset choisie | contrat | haute | D | En attente | D1 |
+| C1 | `IgnoredCreneauxDTO` dynamique | contrat | haute | C | ✓ | Phase B ✓ |
+| C2 | Extraire construction référentiel hors `PreparationService` | architecture | moyenne | C | ✓ (Phase B) | Phase B ✓ |
+| C3 | Base commune `ScenarioRequestDTO` / `Sc03ScenarioRequestDTO` | architecture | moyenne | C | Reporté | Phase B ✓ |
+| D1 | Décision : génération conservée (Option 1) | architecture | haute | D | ✓ | Phase C |
+| D2 | Extraction `CreneauGenerationService` + adaptation SC-01 | architecture | haute | D | ✓ | D1 |
+| D3 | Option 2 (migration dataset) — non retenue | contrat | haute | D | N/A | D1 |
+| D4 | Documentation Phase D dans plan migration | contrat | haute | D | ✓ | D1 |
+| D5 | Clarification contrat SC-01 (`dataSet.creneaux` ignoré) | contrat | haute | D | ✓ | D1 |

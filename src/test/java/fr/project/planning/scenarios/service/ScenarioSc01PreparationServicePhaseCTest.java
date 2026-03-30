@@ -1,9 +1,8 @@
 package fr.project.planning.scenarios.service;
 
-import fr.project.planning.domain.creneau.Creneau;
-import fr.project.planning.domain.metier.ReferentielComptabiliteActivite;
 import fr.project.planning.scenarios.dto.DataSetDTO;
 import fr.project.planning.scenarios.dto.HorizonDTO;
+import fr.project.planning.scenarios.dto.IgnoredCreneauxDTO;
 import fr.project.planning.scenarios.dto.PlanningContextDTO;
 import fr.project.planning.scenarios.dto.RessourcesDTO;
 import fr.project.planning.scenarios.dto.ScenarioRequestDTO;
@@ -27,15 +26,15 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Tests Phase B — Injection du référentiel dans ScenarioSc01PreparationService.
+ * Tests Phase C — IgnoredCreneauxDTO dynamique dans ScenarioSc01PreparationService.
  *
  * Vérifie :
- * - B1 : le référentiel fourni dans dataSet.referentiels est injecté dans le planningRequest
- * - B2 : si referentiels absent ou vide, fallback "travail" sans exception
- * - B3 : les créneaux générés portent codeActiviteId = "travail"
- * - Cohérence B1+B3 : le référentiel injecté couvre bien le codeActiviteId des créneaux
+ * - C1a : aucuneRessourceDansDataset = 0 toujours pour SC-01
+ * - C1b : activiteInconnue = 0 quand le référentiel couvre "travail"
+ * - C1c : activiteInconnue > 0 quand le référentiel ne contient pas "travail"
+ * - C1d : horsHorizon = 0 (le builder ne génère que des créneaux dans l'horizon)
  */
-class ScenarioSc01PreparationServicePhaseBTest {
+class ScenarioSc01PreparationServicePhaseCTest {
 
     private final ScenarioSc01PreparationService service =
             new ScenarioSc01PreparationService(new ScenarioResourceMapper(), new CreneauGenerationService());
@@ -44,122 +43,114 @@ class ScenarioSc01PreparationServicePhaseBTest {
     private static final LocalDate DATE_FIN   = LocalDate.of(2026, 5, 17);
 
     // ----------------------------------------------------------
-    // B1 — Référentiel fourni → injecté dans le planningRequest
+    // C1a — aucuneRessourceDansDataset toujours 0 pour SC-01
     // ----------------------------------------------------------
 
     /**
-     * [T-B1-01] Quand dataSet.referentiels est fourni avec l'activité "travail",
-     * le planningRequest doit contenir un référentiel avec cette activité.
+     * [T-C1-01] SC-01 travaille avec une ressource cible explicite (resourceRef).
+     * Le compteur aucuneRessourceDansDataset doit toujours être 0.
      */
     @Test
-    void referentiel_fourni_est_injecte_dans_planning_request() {
-        ScenarioRequestDTO req = requeteBase();
-        req.getDataSet().setReferentiels(referentielAvecTravail());
+    void aucuneRessourceDansDataset_est_toujours_zero() {
+        PreparedSc01Scenario scenario = assertDoesNotThrow(() -> service.prepare(requeteBase()));
 
-        PreparedSc01Scenario scenario = assertDoesNotThrow(() -> service.prepare(req));
-
-        ReferentielComptabiliteActivite ref = scenario.planningRequest().referentielComptabiliteActivite();
-        assertTrue(ref.contient("travail"),
-                "Le référentiel injecté doit contenir l'activité 'travail'");
-        assertTrue(ref.getByCode("travail").isCompteDansCharge(),
-                "L'activité 'travail' doit avoir compteDansCharge=true");
+        IgnoredCreneauxDTO ignored = scenario.ignoredCreneaux();
+        assertNotNull(ignored);
+        assertEquals(0, ignored.getAucuneRessourceDansDataset(),
+                "SC-01 : aucuneRessourceDansDataset doit toujours être 0 (ressource cible explicite)");
     }
 
     // ----------------------------------------------------------
-    // B2 — Référentiel absent → fallback "travail"
+    // C1b — activiteInconnue = 0 quand le référentiel couvre "travail"
     // ----------------------------------------------------------
 
     /**
-     * [T-B2-01] Quand dataSet.referentiels est null,
-     * SC-01 ne doit pas lever d'exception et le fallback doit contenir "travail".
+     * [T-C1-02] Quand le référentiel injecté contient l'activité "travail",
+     * tous les créneaux générés sont reconnus : activiteInconnue = 0.
      */
     @Test
-    void referentiel_absent_declenche_fallback_avec_activite_travail() {
+    void activiteInconnue_zero_quand_referentiel_couvre_travail() {
         ScenarioRequestDTO req = requeteBase();
-        req.getDataSet().setReferentiels(null);
+        req.getDataSet().setReferentiels(referentielAvec("travail"));
+
+        PreparedSc01Scenario scenario = assertDoesNotThrow(() -> service.prepare(req));
+
+        IgnoredCreneauxDTO ignored = scenario.ignoredCreneaux();
+        assertEquals(0, ignored.getActiviteInconnue(),
+                "activiteInconnue doit être 0 quand le référentiel contient 'travail'");
+    }
+
+    // ----------------------------------------------------------
+    // C1c — activiteInconnue > 0 quand le référentiel ne contient pas "travail"
+    // ----------------------------------------------------------
+
+    /**
+     * [T-C1-03] Quand le référentiel fourni ne contient pas "travail" (p.ex. uniquement "reunion"),
+     * tous les créneaux générés ont une activité inconnue : activiteInconnue > 0.
+     * Le pipeline ne lève pas d'exception (diagnostic uniquement en Phase C).
+     */
+    @Test
+    void activiteInconnue_positif_quand_referentiel_sans_travail() {
+        ScenarioRequestDTO req = requeteBase();
+        req.getDataSet().setReferentiels(referentielAvec("reunion"));
 
         PreparedSc01Scenario scenario = assertDoesNotThrow(() -> service.prepare(req),
-                "Un referentiels absent ne doit pas lever d'exception");
+                "Un référentiel sans 'travail' ne doit pas lever d'exception en Phase C");
 
-        ReferentielComptabiliteActivite ref = scenario.planningRequest().referentielComptabiliteActivite();
-        assertTrue(ref.contient("travail"),
-                "Le fallback doit contenir 'travail' pour la compatibilité SC-01");
-        assertTrue(ref.getByCode("travail").isCompteDansCharge(),
-                "L'activité 'travail' du fallback doit avoir compteDansCharge=true");
-    }
-
-    /**
-     * [T-B2-02] Quand dataSet.referentiels est fourni mais avec une liste vide,
-     * le fallback doit s'appliquer (même comportement que l'absence).
-     */
-    @Test
-    void referentiel_vide_declenche_fallback() {
-        ScenarioRequestDTO req = requeteBase();
-        ReferentielsDTO referentiels = new ReferentielsDTO();
-        referentiels.setActivites(new ArrayList<>());
-        req.getDataSet().setReferentiels(referentiels);
-
-        PreparedSc01Scenario scenario = assertDoesNotThrow(() -> service.prepare(req),
-                "Un referentiels vide ne doit pas lever d'exception");
-
-        assertTrue(scenario.planningRequest().referentielComptabiliteActivite().contient("travail"),
-                "Le fallback doit contenir 'travail' quand referentiels est vide");
+        IgnoredCreneauxDTO ignored = scenario.ignoredCreneaux();
+        assertTrue(ignored.getActiviteInconnue() > 0,
+                "activiteInconnue doit être > 0 quand le référentiel ne contient pas 'travail'");
+        assertEquals(scenario.buildResult().creneaux().size(), ignored.getActiviteInconnue(),
+                "Tous les créneaux doivent être comptés comme activité inconnue");
     }
 
     // ----------------------------------------------------------
-    // B3 — Créneaux générés portent codeActiviteId = "travail"
+    // C1d — horsHorizon = 0 (le builder respecte toujours l'horizon)
     // ----------------------------------------------------------
 
     /**
-     * [T-B3-01] Les créneaux générés par le builder SC-01 doivent tous
-     * avoir codeActiviteId = "travail" (clé de lookup référentiel explicite).
+     * [T-C1-04] Le builder SC-01 génère des créneaux strictement dans l'horizon fourni.
+     * horsHorizon doit être 0.
      */
     @Test
-    void creneaux_generes_ont_codeActiviteId_travail() {
+    void horsHorizon_zero_car_builder_respecte_horizon() {
+        PreparedSc01Scenario scenario = assertDoesNotThrow(() -> service.prepare(requeteBase()));
+
+        IgnoredCreneauxDTO ignored = scenario.ignoredCreneaux();
+        assertEquals(0, ignored.getHorsHorizon(),
+                "Le builder SC-01 ne génère pas de créneaux hors horizon — horsHorizon doit être 0");
+    }
+
+    // ----------------------------------------------------------
+    // C1e — cas nominal : tous les compteurs à 0 avec référentiel correct
+    // ----------------------------------------------------------
+
+    /**
+     * [T-C1-05] Cas nominal : référentiel contenant "travail", horizon cohérent.
+     * Tous les compteurs diagnostiques doivent être 0.
+     */
+    @Test
+    void tous_les_compteurs_a_zero_en_cas_nominal() {
         ScenarioRequestDTO req = requeteBase();
+        req.getDataSet().setReferentiels(referentielAvec("travail"));
 
         PreparedSc01Scenario scenario = assertDoesNotThrow(() -> service.prepare(req));
 
-        List<Creneau> creneaux = scenario.buildResult().creneaux();
-        assertFalse(creneaux.isEmpty(), "Le builder doit générer au moins un créneau");
-        assertTrue(creneaux.stream().allMatch(c -> "travail".equals(c.getCodeActiviteId())),
-                "Tous les créneaux SC-01 doivent avoir codeActiviteId = 'travail'");
-    }
-
-    // ----------------------------------------------------------
-    // Cohérence B1+B3 — Référentiel fourni couvre les créneaux
-    // ----------------------------------------------------------
-
-    /**
-     * [T-B1B3-01] Le référentiel fourni doit couvrir le codeActiviteId de tous les créneaux générés.
-     * Vérifie la cohérence end-to-end : pas de créneau avec activité inconnue.
-     */
-    @Test
-    void referentiel_fourni_couvre_codeActiviteId_des_creneaux() {
-        ScenarioRequestDTO req = requeteBase();
-        req.getDataSet().setReferentiels(referentielAvecTravail());
-
-        PreparedSc01Scenario scenario = assertDoesNotThrow(() -> service.prepare(req));
-
-        ReferentielComptabiliteActivite ref = scenario.planningRequest().referentielComptabiliteActivite();
-        List<Creneau> creneaux = scenario.buildResult().creneaux();
-
-        assertFalse(creneaux.isEmpty(), "Le builder doit générer au moins un créneau");
-        for (Creneau c : creneaux) {
-            String code = c.getCodeActiviteId();
-            assertNotNull(code, "Le codeActiviteId ne doit pas être null sur un créneau SC-01");
-            assertTrue(ref.contient(code),
-                    "Le référentiel doit couvrir le codeActiviteId '" + code + "' — sinon minutesTravaillees = 0");
-        }
+        IgnoredCreneauxDTO ignored = scenario.ignoredCreneaux();
+        assertAll(
+                () -> assertEquals(0, ignored.getHorsHorizon(),       "horsHorizon = 0"),
+                () -> assertEquals(0, ignored.getAucuneRessourceDansDataset(), "aucuneRessourceDansDataset = 0"),
+                () -> assertEquals(0, ignored.getActiviteInconnue(),   "activiteInconnue = 0")
+        );
     }
 
     // ----------------------------------------------------------
     // Utilitaires
     // ----------------------------------------------------------
 
-    private ReferentielsDTO referentielAvecTravail() {
+    private ReferentielsDTO referentielAvec(String codeActiviteId) {
         ReferentielActiviteDTO activite = new ReferentielActiviteDTO();
-        activite.setCodeActiviteId("travail");
+        activite.setCodeActiviteId(codeActiviteId);
         activite.setCompteDansCharge(true);
         activite.setGenereDetteRepos(false);
         activite.setEstServiceCritique(false);

@@ -902,6 +902,99 @@ L’historique détaillé des itérations (Phases 1 à 8) est conservé dans `91
 
 ---
 
+## Phase D — Génération de créneaux et convergence vers dataset-driven
+
+### État : TERMINÉE (2026-03-30)
+
+`CreneauGenerationService` créé. `ScenarioSc01PreparationService` adapté. Suite de tests exécutée : **BUILD SUCCESSFUL**. **Phase D TERMINÉE — critère de sortie validé.**
+
+---
+
+### 1. Rôle du `CreneauGenerationService`
+
+Le `CreneauGenerationService` encapsule la logique de génération de créneaux SC-01 dans un composant de service autonome et réutilisable.
+
+**Pourquoi il existe :**
+- isole la responsabilité de génération du pipeline de préparation SC-01
+- rend la logique de construction testable indépendamment du scénario
+- prépare l’architecture vers un modèle dataset-driven (convergence vers SC-03)
+
+**Ce qu’il remplace :**
+- l’appel direct à `new ScenarioDatasetBuilderSc01()` dans `ScenarioSc01PreparationService`
+- la dépendance directe de la préparation SC-01 sur la classe builder
+
+**Pourquoi il est isolé :**
+- la génération de créneaux est un concept transverse (pas lié à un scénario)
+- d’autres scénarios ou services pourront le réutiliser sans toucher à SC-01
+- en cas de migration vers Option 2 (dataset-driven), seul ce service évolue
+
+---
+
+### 2. Architecture actuelle (Option 1 — maintenue)
+
+```text
+SC-01 : paramètres → CreneauGenerationService → créneaux → solveur
+SC-03 : dataSet.creneaux → solveur
+```
+
+Les deux pipelines restent distincts.
+SC-01 génère ses créneaux à partir de paramètres utilisateur (amplitude, horaires, jours travaillés, jours fériés).
+SC-03 consomme des créneaux fournis explicitement dans le contrat d’entrée.
+
+#### Contrat SC-01 — point de clarification
+
+`dataSet.creneaux` est **ignoré** dans SC-01. Les créneaux sont générés par le moteur via `CreneauGenerationService` à partir des `scenarioParameters`. Un `log.warn` est émis si `dataSet.creneaux` contient des éléments (guard A1).
+
+---
+
+### 3. Architecture cible (Option 2 — non implémentée)
+
+```text
+génération → dataSet.creneaux → partitioning → solveur (pipeline unifié)
+```
+
+Dans ce modèle :
+- SC-01 utiliserait `CreneauGenerationService` pour produire des `CreneauInputDTO`
+- ces créneaux alimenteraient `dataSet.creneaux` avant le solveur
+- le partitioning SC-03 (activité inconnue + hors-horizon) s’appliquerait identiquement
+- les deux scénarios convergeraient vers le même pipeline de résolution
+
+**Point d’extension préparé (non codé) :** `CreneauGenerationService` pourra exposer une méthode `generateAsInputDtos(BuildRequest)` retournant `List<CreneauInputDTO>` pour alimenter `dataSet.creneaux`.
+
+---
+
+### 4. Stratégie de migration
+
+| Étape | Description | Statut |
+|-------|-------------|--------|
+| 1 — Extraction | Création de `CreneauGenerationService`, injection dans SC-01 | ✅ Phase D |
+| 2 — Réutilisation | Le service peut être utilisé par d’autres scénarios paramétriques | Futur |
+| 3 — Injection dataset | Le service produit des `CreneauInputDTO` → `dataSet.creneaux` | Futur |
+| 4 — Pipeline unifié | SC-01 et SC-03 partagent le même pipeline de résolution | Futur |
+
+---
+
+### 5. Règles de gouvernance
+
+* SC-01 **reste génératif** tant que WinDev ne fournit pas les créneaux dans `dataSet.creneaux`
+* `dataSet.creneaux` est **ignoré** dans SC-01 (guard A1 + log.warn) — jamais silencieusement consumé
+* toute évolution du `CreneauGenerationService` doit préserver la compatibilité comportementale avec SC-01
+* aucun champ des `scenarioParameters` SC-01 ne doit être implicitement ignoré sans warn
+* la migration vers Option 2 est une décision produit, pas une décision technique isolée
+
+---
+
+### Fichiers créés / modifiés
+
+| Fichier | Nature |
+|---------|--------|
+| `CreneauGenerationService.java` | Nouveau — service de génération isolé |
+| `ScenarioSc01PreparationService.java` | Injecte `CreneauGenerationService` au lieu de `new ScenarioDatasetBuilderSc01()` |
+| `CreneauGenerationServiceTest.java` | 4 tests unitaires du service de génération |
+| Tests A/B/C (3 fichiers) | Constructeur mis à jour avec le nouveau paramètre |
+
+---
+
 ## Point d’attention final
 
 Le vrai risque n’est pas d’ajouter des champs.

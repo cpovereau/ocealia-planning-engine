@@ -36,7 +36,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class ScenarioSc01PreparationServicePhaseATest {
 
     private final ScenarioSc01PreparationService service =
-            new ScenarioSc01PreparationService(new ScenarioResourceMapper());
+            new ScenarioSc01PreparationService(new ScenarioResourceMapper(), new CreneauGenerationService());
 
     private static final LocalDate DATE_DEBUT = LocalDate.of(2026, 5, 11);
     private static final LocalDate DATE_FIN   = LocalDate.of(2026, 5, 17);
