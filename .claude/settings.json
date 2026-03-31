@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./gradlew compileJava --info)",
+      "Bash(xargs -I{} grep -l \"FAIL\\\\|PASS\\\\|tests\" {})",
+      "Bash(while read:*)",
+      "Bash(do echo:*)",
+      "Read(//c/Projets/optaplanner/**)",
+      "Bash(done)",
+      "Bash(./gradlew compileTestJava)"
+    ]
+  }
+}
