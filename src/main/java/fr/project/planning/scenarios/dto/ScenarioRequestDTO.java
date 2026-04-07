@@ -1,8 +1,18 @@
 package fr.project.planning.scenarios.dto;
 
 import fr.project.planning.scenarios.dto.request.Sc01ScenarioParametersDTO;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 
 public class ScenarioRequestDTO {
+
+    @NotBlank(message = "requestId est obligatoire")
+    private String requestId;
+
+    @NotNull(message = "metadata est obligatoire")
+    @Valid
+    private MetadataDTO metadata;
 
     private String scenarioType;
 
@@ -19,6 +29,22 @@ public class ScenarioRequestDTO {
     // =========================
     // Getters / Setters
     // =========================
+
+    public String getRequestId() {
+        return requestId;
+    }
+
+    public void setRequestId(String requestId) {
+        this.requestId = requestId;
+    }
+
+    public MetadataDTO getMetadata() {
+        return metadata;
+    }
+
+    public void setMetadata(MetadataDTO metadata) {
+        this.metadata = metadata;
+    }
 
     public String getScenarioType() {
         return scenarioType;

@@ -291,7 +291,7 @@ public class ScenarioSc03PreparationService {
             if (acts == null || acts.isEmpty() || acts.contains(activiteCode)) return true;
         }
         for (PosteVirtuelInputDTO pv : postesVirtuels) {
-            Set<String> acts = pv.getActivitesAutorisees();
+            Set<String> acts = pv.getActivitesCompatibles();
             if (acts == null || acts.isEmpty() || acts.contains(activiteCode)) return true;
         }
         return false;

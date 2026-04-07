@@ -7,7 +7,11 @@
       "Bash(do echo:*)",
       "Read(//c/Projets/optaplanner/**)",
       "Bash(done)",
-      "Bash(./gradlew compileTestJava)"
+      "Bash(./gradlew compileTestJava)",
+      "Bash(./gradlew compileJava compileTestJava)",
+      "Bash(python3 -c \"import yaml, sys; yaml.safe_load\\(open\\('c:/Projets/optaplanner/docs/50_openapi_windev_moteur_v_1.yaml'\\)\\); print\\('YAML OK'\\)\")",
+      "Bash(node -e ':*)",
+      "Bash(grep -n \"^\\\\s*/scenarios\\\\|operationId\\\\|SCENARIO_VALIDATION\\\\|absents de \\\\`ScenarioRequest\\\\|absents du DTO Java\" c:/Projets/optaplanner/docs/50_openapi_windev_moteur_v_1.yaml)"
     ]
   }
 }

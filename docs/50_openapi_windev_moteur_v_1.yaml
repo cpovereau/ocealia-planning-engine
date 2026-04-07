@@ -1,0 +1,1236 @@
+openapi: 3.1.0
+info:
+  title: API Moteur de planification
+  version: 1.0.0
+  description: |
+    Contrat OpenAPI V1 – intégration WinDev ↔ moteur de planification.
+
+    ## Principes structurants
+
+    - Même contrat métier JSON pour mode fichier et mode API.
+    - La réponse HTTP expose directement `ScenarioResponseDTO` (pas d'enveloppe requestId/status).
+    - L'enveloppe `requestId/status/response` est propre au FileAdapter — elle ne fait pas partie de ce contrat.
+
+    ## Distinction des deux pipelines
+
+    **SC-01 — Mode paramétrique** (`/scenarios/sc01/solve`)
+    - L'appelant fournit des paramètres de génération (`scenarioParameters`).
+    - Le moteur **génère les créneaux** avant de résoudre.
+    - `dataSet.creneaux` est ignoré par le DatasetBuilder SC-01.
+
+    **SC-03 — Mode dataset-driven** (`/scenarios/sc03/solve`)
+    - L'appelant fournit directement les créneaux dans `dataSet.creneaux`.
+    - Le moteur **consomme le dataset fourni** sans phase de génération.
+
+    ## Champs obligatoires de traçabilité (depuis Phase 4.1)
+
+    Toute requête doit inclure `requestId` (String non vide) et `metadata`
+    (`clientId` + `timestamp` obligatoires, `source` optionnel).
+    L'absence de l'un de ces champs provoque une réponse `400 INVALID_REQUEST`.
+
+    ## Écarts résiduels (code réel vs documents de cadrage)
+
+    - `PlanningContextDTO` : seuls `horizon` et `strategieScoring` sont portés
+      en V1. `resolutionType`, `regulatoryParameters`, `seuils` sont définis dans
+      les documents de cadrage mais **non présents dans le DTO** actuel.
+    - `referentiels` et `indisponibilites` dans `dataSet` : transportés en V1,
+      non exploités avant Phase 3 (Phase 3 = référentiel activités, indispos).
+
+servers:
+  - url: https://moteur.example.local/api/v1
+    description: Exemple d'URL de base (à confirmer avec l'équipe infrastructure)
+
+tags:
+  - name: Health
+    description: Vérification de disponibilité du service
+  - name: Scenarios-Parametric
+    description: |
+      Mode paramétrique — le moteur génère les créneaux (SC-01).
+      Pipeline : scenarioParameters → génération créneaux → résolution solveur.
+  - name: Scenarios-Dataset
+    description: |
+      Mode dataset-driven — les créneaux sont fournis dans le corps (SC-03).
+      Pipeline : dataSet.creneaux → résolution solveur directe.
+
+paths:
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # HEALTH
+  # ─────────────────────────────────────────────────────────────────────────
+  /scenarios/ping:
+    get:
+      tags: [Health]
+      summary: Ping technique
+      description: |
+        Route exposée par `ScenarioController.ping()`.
+        Attention : la route réelle est `/scenarios/ping`, pas `/health/ping`.
+      operationId: ping
+      responses:
+        '200':
+          description: Service joignable — retourne la chaîne littérale "OK"
+          content:
+            text/plain:
+              schema:
+                type: string
+                const: OK
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # SC-01 — MODE PARAMÉTRIQUE (avec génération de créneaux)
+  # ─────────────────────────────────────────────────────────────────────────
+  /scenarios/sc01/solve:
+    post:
+      tags: [Scenarios-Parametric]
+      summary: Résoudre un scénario paramétrique SC-01
+      description: |
+        **Mode paramétrique** : les créneaux sont générés par le moteur à partir
+        de `scenarioParameters` (amplitude, heure de début, jours travaillés…).
+        `dataSet.creneaux` est ignoré par le DatasetBuilder.
+
+        Route réelle : `POST /scenarios/sc01/solve`
+        Controller : `ScenarioController.solveSc01()`
+        DTO d'entrée : `ScenarioRequestDTO` + `Sc01ScenarioParametersDTO`
+        DTO de sortie : `ScenarioResponseDTO`
+      operationId: solveSc01
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Sc01ScenarioRequest'
+            examples:
+              sc01_minimal:
+                summary: Exemple SC-01 minimal
+                value:
+                  requestId: REQ-20260401-SC01-001
+                  metadata:
+                    clientId: CLIENT-WINDEV
+                    timestamp: '2026-04-01T08:00:00Z'
+                    source: WINDEV
+                  scenarioType: SC-01
+                  planningContext:
+                    strategieScoring: EXPLOITATION
+                    horizon:
+                      dateDebut: '2026-04-01'
+                      dateFin: '2026-04-07'
+                  scenarioParameters:
+                    resourceRef:
+                      kind: SALARIE
+                      id: SAL001
+                    shiftStart: '08:00'
+                    shiftEndAlert: '17:00'
+                    dailyAmplitudeHours: 7.5
+                    workedDays:
+                      - MONDAY
+                      - TUESDAY
+                      - WEDNESDAY
+                      - THURSDAY
+                      - FRIDAY
+                  dataSet:
+                    ressources:
+                      salaries:
+                        - id: SAL001
+                          activitesCompatibles:
+                            - ACT-SOIN
+                      postesVirtuels: []
+      responses:
+        '200':
+          description: Résolution effectuée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScenarioResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /scenarios/sc01/solve/file:
+    post:
+      tags: [Scenarios-Parametric]
+      summary: Résoudre SC-01 et retourner le résultat en pièce jointe JSON
+      description: |
+        Identique à `POST /scenarios/sc01/solve` mais retourne la réponse avec
+        un en-tête `Content-Disposition: attachment; filename="SC-01-result-<dateDebut>-<dateFin>.json"`.
+
+        Route réelle : `POST /scenarios/sc01/solve/file`
+        Controller : `ScenarioController.solveSc01File()`
+        Même DTO d'entrée et de sortie que `/scenarios/sc01/solve`.
+      operationId: solveSc01File
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Sc01ScenarioRequest'
+      responses:
+        '200':
+          description: Résultat retourné en pièce jointe JSON
+          headers:
+            Content-Disposition:
+              description: |
+                `attachment; filename="SC-01-result-<dateDebut>-<dateFin>.json"`
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScenarioResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # SC-03 — MODE DATASET-DRIVEN (sans génération de créneaux)
+  # ─────────────────────────────────────────────────────────────────────────
+  /scenarios/sc03/solve:
+    post:
+      tags: [Scenarios-Dataset]
+      summary: Résoudre un scénario dataset-driven SC-03
+      description: |
+        **Mode dataset-driven** : les créneaux sont fournis directement dans
+        `dataSet.creneaux`. Aucune génération n'est effectuée.
+
+        Route réelle : `POST /scenarios/sc03/solve`
+        Controller : `ScenarioController.solveSc03()`
+        DTO d'entrée : `Sc03ScenarioRequestDTO` + `Sc03ScenarioParametersDTO`
+        DTO de sortie : `ScenarioResponseDTO`
+      operationId: solveSc03
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Sc03ScenarioRequest'
+            examples:
+              sc03_minimal:
+                summary: Exemple SC-03 minimal
+                value:
+                  requestId: REQ-20260401-SC03-001
+                  metadata:
+                    clientId: CLIENT-WINDEV
+                    timestamp: '2026-04-01T08:00:00Z'
+                    source: WINDEV
+                  scenarioType: SC-03
+                  planningContext:
+                    strategieScoring: EXPLOITATION
+                    horizon:
+                      dateDebut: '2026-04-01'
+                      dateFin: '2026-04-07'
+                  scenarioParameters:
+                    prioriteCouverture: NORMALE
+                  dataSet:
+                    referentiels:
+                      activites:
+                        - codeActiviteId: ACT-SOIN
+                          compteDansCharge: true
+                          genereDetteRepos: false
+                          estServiceCritique: false
+                    ressources:
+                      salaries:
+                        - id: SAL001
+                          activitesCompatibles:
+                            - ACT-SOIN
+                      postesVirtuels: []
+                    creneaux:
+                      - id: CRN-001
+                        date: '2026-04-01'
+                        heureDebut: '08:00'
+                        heureFin: '16:00'
+                        codeActiviteId: ACT-SOIN
+                        isJourFerie: false
+      responses:
+        '200':
+          description: Résolution effectuée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScenarioResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+
+  responses:
+    BadRequest:
+      description: |
+        Requête invalide — structure, typage ou champ obligatoire manquant.
+        Codes possibles : `INVALID_REQUEST` (Bean Validation), `MALFORMED_JSON` (JSON non parseable).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            invalidRequest:
+              summary: Champ obligatoire manquant (Bean Validation)
+              value:
+                error:
+                  code: INVALID_REQUEST
+                  message: Validation failed
+                  details:
+                    - field: requestId
+                      message: requestId est obligatoire
+                    - field: metadata.clientId
+                      message: metadata.clientId est obligatoire
+            malformedJson:
+              summary: JSON non parseable
+              value:
+                error:
+                  code: MALFORMED_JSON
+                  message: JSON invalide ou mal formé
+                  details: []
+    UnprocessableEntity:
+      description: |
+        Requête techniquement valide mais incohérente métier.
+        Code : `BUSINESS_ERROR`. Le champ `details` est toujours vide pour ce code —
+        le message décrit la violation métier.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            businessError:
+              summary: Violation de règle métier
+              value:
+                error:
+                  code: BUSINESS_ERROR
+                  message: "[SC-03] dataSet.creneaux est requis et ne peut pas être vide."
+                  details: []
+    InternalServerError:
+      description: Erreur technique interne non anticipée.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            unexpected:
+              value:
+                error:
+                  code: INTERNAL_ERROR
+                  message: Une erreur interne est survenue
+                  details: []
+
+  schemas:
+
+    # ──────────────────────────────────────────────
+    # TRAÇABILITÉ (ENTRÉE — OBLIGATOIRE)
+    # ──────────────────────────────────────────────
+
+    Metadata:
+      type: object
+      description: |
+        Métadonnées de traçabilité transmises par l'appelant à chaque requête.
+        Correspond à `MetadataDTO`.
+        `clientId` et `timestamp` sont obligatoires (Bean Validation `@NotBlank`).
+      properties:
+        clientId:
+          type: string
+          description: Identifiant de l'appelant (ex. code application WinDev)
+        timestamp:
+          type: string
+          description: Horodatage ISO-8601 côté appelant (ex. "2026-03-31T09:30:00Z")
+        source:
+          type: string
+          description: Système source optionnel (ex. "WINDEV")
+      required: [clientId, timestamp]
+
+    # ──────────────────────────────────────────────
+    # CONTEXTE DE PLANIFICATION
+    # ──────────────────────────────────────────────
+
+    Horizon:
+      type: object
+      description: |
+        Fenêtre temporelle de la résolution.
+        Correspond à `HorizonDTO` (dateDebut, dateFin sont des LocalDate sérialisés en ISO-8601).
+      properties:
+        dateDebut:
+          type: string
+          format: date
+        dateFin:
+          type: string
+          format: date
+      required: [dateDebut, dateFin]
+
+    PlanningContext:
+      type: object
+      description: |
+        Cadre de la résolution transmis à chaque requête.
+        Correspond à `PlanningContextDTO`.
+
+        ⚠️ Écart document/code : `resolutionType`, `regulatoryParameters` et `seuils`
+        sont présents dans les documents de cadrage et dans le domaine (`PlanningContext`
+        interne), mais **pas dans `PlanningContextDTO`** en V1. Le DatasetBuilder les
+        construit avec des valeurs par défaut ou les reçoit via des mécanismes internes.
+        Ces champs sont marqués comme hypothétiques — à intégrer en Phase 3+.
+      properties:
+        strategieScoring:
+          type: string
+          enum: [EXPLOITATION, ANALYSE_RH, AUDIT]
+          description: |
+            Stratégie d'évaluation du score.
+            Correspond à `StrategieScoring` (enum Java).
+        horizon:
+          $ref: '#/components/schemas/Horizon'
+      required: [strategieScoring, horizon]
+
+    # ──────────────────────────────────────────────
+    # RESSOURCES (ENTRÉE)
+    # ──────────────────────────────────────────────
+
+    ContraintesReglementaires:
+      type: object
+      description: |
+        Contraintes réglementaires individuelles d'un salarié.
+        Correspond à `ContraintesReglementairesDTO`.
+        Transporté en V1, non encore exploité par le builder (Phase 3).
+      properties:
+        heuresMinimumParJour:
+          type: number
+          description: Borne basse journalière (heures)
+        heuresMaximumParJour:
+          type: number
+          description: Borne haute journalière (heures)
+        amplitudeJournaliereMaximum:
+          type: number
+          description: Amplitude max entre 1er et dernier créneau (heures)
+        reposQuotidienMinimum:
+          type: number
+          description: Repos minimum entre deux journées consécutives (heures)
+        heuresMinimumParSemaine:
+          type: number
+        heuresMaximumParSemaine:
+          type: number
+        nuitsMaximumParSemaine:
+          type: integer
+        joursConsecutifsMaximum:
+          type: integer
+
+    SalarieInput:
+      type: object
+      description: |
+        Salarié réel transmis dans le dataSet.
+        Correspond à `SalarieInputDTO`.
+
+        Noms canoniques V1 : `sitesAutorises`, `activitesCompatibles`.
+        Alias acceptés en entrée (rétrocompatibilité WinDev SC-01) :
+        - `lieuxAutorises` → alias de `sitesAutorises`
+        - `activitesAutorisees` → alias de `activitesCompatibles`
+
+        Note : WinDev SC-01 peut envoyer des champs supplémentaires (`type`, `capaciteCible`)
+        qui sont silencieusement ignorés par le moteur.
+      properties:
+        id:
+          type: string
+        statut:
+          type: string
+          description: Statut du salarié (valeur libre, non validée en V1)
+        sitesAutorises:
+          type: array
+          items:
+            type: string
+          description: "Alias JSON accepté : 'lieuxAutorises'"
+        activitesCompatibles:
+          type: array
+          items:
+            type: string
+          description: "Alias JSON accepté : 'activitesAutorisees'"
+        postesComptablesCompatibles:
+          type: array
+          items:
+            type: string
+        contraintesReglementaires:
+          $ref: '#/components/schemas/ContraintesReglementaires'
+        travailDeNuit:
+          type: string
+          description: |
+            Statut travail de nuit. Valeurs connues : "permanent", "occasionnel".
+            Null si non travailleur de nuit.
+        heureDebutNuit:
+          type: string
+          pattern: '^([01]\d|2[0-3]):[0-5]\d$'
+          description: Heure de début de nuit individuelle (override du paramètre réglementaire global)
+        heureFinNuit:
+          type: string
+          pattern: '^([01]\d|2[0-3]):[0-5]\d$'
+          description: Heure de fin de nuit individuelle
+        travailleJourFerie:
+          type: boolean
+          description: Autorisation individuelle de travailler les jours fériés
+      required: [id]
+
+    PosteVirtuelInput:
+      type: object
+      description: |
+        Poste virtuel transmis dans le dataSet.
+        Correspond à `PosteVirtuelInputDTO`.
+
+        Noms canoniques V1 : `activitesCompatibles`, `sitesAutorises`.
+        Alias acceptés en entrée (rétrocompatibilité) :
+        - `activitesAutorisees` → `activitesCompatibles`
+        - `lieuxAutorises` → `sitesAutorises`
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          description: Type de poste virtuel (valeur libre, non validée en V1)
+        capaciteCible:
+          type: integer
+          description: Capacité cible du poste (nombre de créneaux couverts simultanément)
+        activitesCompatibles:
+          type: array
+          items:
+            type: string
+          description: "Activités compatibles. Alias accepté : 'activitesAutorisees'"
+        sitesAutorises:
+          type: array
+          items:
+            type: string
+          description: "Sites / lieux autorisés. Alias accepté : 'lieuxAutorises'"
+        postesComptablesCompatibles:
+          type: array
+          items:
+            type: string
+      required: [id]
+
+    Ressources:
+      type: object
+      description: "Correspond à 'RessourcesDTO'."
+      properties:
+        salaries:
+          type: array
+          items:
+            $ref: '#/components/schemas/SalarieInput'
+        postesVirtuels:
+          type: array
+          items:
+            $ref: '#/components/schemas/PosteVirtuelInput'
+      required: [salaries, postesVirtuels]
+
+    # ──────────────────────────────────────────────
+    # CRÉNEAUX (ENTRÉE — SC-03)
+    # ──────────────────────────────────────────────
+
+    CreneauInput:
+      type: object
+      description: |
+        Créneau entrant (WinDev → moteur).
+        Correspond à `CreneauInputDTO`.
+
+        Un créneau peut traverser minuit : dans ce cas `heureFin < heureDebut`
+        et `date` représente le jour de début.
+
+        `activite` est déprécié — utiliser `codeActiviteId`. Le moteur accepte
+        les deux en fallback.
+
+        Les champs Phase 5 (`groupeBesoinId`, `blocJourId`, `ordreDansBloc`,
+        `estSegmentDePause`) sont transportés en V1 mais non exploités avant Phase 5.
+
+        ⚠️ `duree` et `isReposHebdo` sont dans l'ancienne spec YAML mais **absents
+        de `CreneauInputDTO`** — ne pas utiliser.
+      properties:
+        id:
+          type: string
+        date:
+          type: string
+          format: date
+          description: Date du créneau (jour de début si traverse minuit)
+        heureDebut:
+          type: string
+          pattern: '^([01]\d|2[0-3]):[0-5]\d$'
+        heureFin:
+          type: string
+          pattern: '^([01]\d|2[0-3]):[0-5]\d$'
+        lieu:
+          type: string
+          description: Identifiant du lieu / site
+        codeActiviteId:
+          type: string
+          description: Identifiant canonique de l'activité (référentiel)
+        activite:
+          type: string
+          description: |
+            ⚠️ DÉPRÉCIÉ. Fallback si `codeActiviteId` est absent.
+            Sera supprimé dans une version ultérieure.
+        posteComptable:
+          type: string
+          description: Code du poste comptable associé
+        isJourFerie:
+          type: boolean
+        segmentNuit:
+          type: boolean
+          description: |
+            Indique explicitement que ce créneau est un segment de nuit.
+            Si null, le moteur calcule par intersection avec la plage réglementaire.
+        groupeBesoinId:
+          type: string
+          description: "[Phase 5] Identifiant du groupe de besoin"
+        blocJourId:
+          type: string
+          description: "[Phase 5] Identifiant du bloc journalier"
+        ordreDansBloc:
+          type: integer
+          description: "[Phase 5] Position du créneau dans son bloc"
+        estSegmentDePause:
+          type: boolean
+          description: "[Phase 5] Vrai si ce créneau représente une pause segmentée"
+      required: [id, date, heureDebut, heureFin, codeActiviteId]
+
+    # ──────────────────────────────────────────────
+    # RÉFÉRENTIELS ET INDISPONIBILITÉS (ENTRÉE)
+    # ──────────────────────────────────────────────
+
+    ReferentielActivite:
+      type: object
+      description: |
+        Une activité dans le référentiel transmis par WinDev.
+        Correspond à `ReferentielActiviteDTO`.
+        Transporté en V1, non exploité avant Phase 3.
+      properties:
+        codeActiviteId:
+          type: string
+        libelle:
+          type: string
+        compteDansCharge:
+          type: boolean
+          description: "Vrai si l'activité compte dans la charge de travail"
+        genereDetteRepos:
+          type: boolean
+          description: "Vrai si l'activité génère une dette de repos compensateur"
+        estServiceCritique:
+          type: boolean
+      required: [codeActiviteId]
+
+    Referentiels:
+      type: object
+      description: |
+        Bloc référentiels du dataSet.
+        Correspond à `ReferentielsDTO`.
+        Transporté en V1, non exploité avant Phase 3.
+      properties:
+        activites:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReferentielActivite'
+
+    IndisponibiliteItem:
+      type: object
+      description: |
+        Une période d'indisponibilité individuelle d'un salarié.
+        Correspond à `IndisponibiliteItemDTO`.
+        Transporté en V1, non exploité avant Phase 3.
+      properties:
+        ressourceId:
+          type: string
+        dateDebut:
+          type: string
+          format: date
+        dateFin:
+          type: string
+          format: date
+        motif:
+          type: string
+      required: [ressourceId, dateDebut, dateFin]
+
+    Indisponibilites:
+      type: object
+      description: |
+        Bloc indisponibilités du dataSet.
+        Correspond à `IndisponibilitesDTO`.
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/IndisponibiliteItem'
+
+    # ──────────────────────────────────────────────
+    # DATASET
+    # ──────────────────────────────────────────────
+
+    DataSet:
+      type: object
+      description: |
+        Correspond à `DataSetDTO`.
+        `creneaux` est obligatoire pour SC-03, ignoré pour SC-01.
+        `referentiels` et `indisponibilites` sont optionnels en V1 (transportés,
+        non exploités avant Phase 3).
+      properties:
+        ressources:
+          $ref: '#/components/schemas/Ressources'
+        creneaux:
+          type: array
+          items:
+            $ref: '#/components/schemas/CreneauInput'
+          description: |
+            Créneaux fournis directement (SC-03). Ignorés pour SC-01.
+        referentiels:
+          $ref: '#/components/schemas/Referentiels'
+        indisponibilites:
+          $ref: '#/components/schemas/Indisponibilites'
+      required: [ressources]
+
+    # ──────────────────────────────────────────────
+    # PARAMÈTRES SPÉCIFIQUES SC-01
+    # ──────────────────────────────────────────────
+
+    ResourceRef:
+      type: object
+      description: |
+        Référence à une ressource cible (salarié ou poste virtuel).
+        Correspond à `ResourceRefDTO`.
+      properties:
+        kind:
+          type: string
+          enum: [SALARIE, POSTE_VIRTUEL]
+        id:
+          type: string
+      required: [kind, id]
+
+    LunchBreak:
+      type: object
+      description: |
+        Pause déjeuner optionnelle pour SC-01.
+        Correspond à `LunchBreakDTO`.
+      properties:
+        start:
+          type: string
+          pattern: '^([01]\d|2[0-3]):[0-5]\d$'
+        end:
+          type: string
+          pattern: '^([01]\d|2[0-3]):[0-5]\d$'
+      required: [start, end]
+
+    Sc01ScenarioParameters:
+      type: object
+      description: |
+        Paramètres de génération de créneaux pour SC-01.
+        Correspond à `Sc01ScenarioParametersDTO`.
+
+        L'horizon de génération est celui de `planningContext.horizon`.
+        La ressource cible est identifiée par `resourceRef` (non plus `salarieId`).
+
+        ⚠️ Écarts avec l'ancienne spec YAML :
+        - `salarieId` remplacé par `resourceRef` (kind + id)
+        - `dateDebut` / `dateFin` supprimés (portés par planningContext.horizon)
+        - `heureDebutPoste` renommé `shiftStart`
+        - `amplitudeJournaliereHeures` renommé `dailyAmplitudeHours`
+        - Ajout : `shiftEndAlert`, `lunchBreak`, `holidayDates`
+      properties:
+        resourceRef:
+          $ref: '#/components/schemas/ResourceRef'
+          description: Ressource cible de la génération (salarié ou poste virtuel)
+        shiftStart:
+          type: string
+          pattern: '^([01]\d|2[0-3]):[0-5]\d$'
+          description: Heure de début de poste
+        shiftEndAlert:
+          type: string
+          pattern: '^([01]\d|2[0-3]):[0-5]\d$'
+          description: |
+            Heure de fin de poste (borne d'alerte). Si la génération dépasse
+            cette borne, une alerte `SHIFT_END_EXCEEDED` est émise.
+        dailyAmplitudeHours:
+          type: number
+          description: Amplitude journalière incluant la pause éventuelle (ex. 7.5)
+        lunchBreak:
+          $ref: '#/components/schemas/LunchBreak'
+          description: Pause déjeuner à exclure de l'amplitude (optionnelle)
+        workedDays:
+          type: array
+          items:
+            type: string
+            enum: [MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY]
+          description: Jours travaillés dans la semaine
+        holidayDates:
+          type: array
+          items:
+            type: string
+            format: date
+          description: Jours fériés non travaillés dans la période
+      required:
+        - resourceRef
+        - shiftStart
+        - shiftEndAlert
+        - dailyAmplitudeHours
+        - workedDays
+
+    # ──────────────────────────────────────────────
+    # PARAMÈTRES SPÉCIFIQUES SC-03
+    # ──────────────────────────────────────────────
+
+    Sc03ScenarioParameters:
+      type: object
+      description: |
+        Paramètres complémentaires pour SC-03.
+        Correspond à `Sc03ScenarioParametersDTO`.
+
+        ⚠️ Écart avec l'ancienne spec YAML : ce bloc n'est pas vide.
+        Il contient `prioriteCouverture` et `periode` (optionnels).
+        `prioriteCouverture` est transporté pour traçabilité — non exploité
+        par le solveur avant Phase 8.
+      properties:
+        prioriteCouverture:
+          type: string
+          enum: [NORMALE, HAUTE, CRITIQUE]
+          description: Niveau de priorité global de couverture (non exploité avant Phase 8)
+        periode:
+          $ref: '#/components/schemas/Horizon'
+          description: |
+            Période de planification optionnelle. Si null, `planningContext.horizon` fait foi.
+
+    # ──────────────────────────────────────────────
+    # ENVELOPPES DE REQUÊTE
+    # ──────────────────────────────────────────────
+
+    Sc01ScenarioRequest:
+      type: object
+      description: |
+        Corps de requête pour SC-01 — mode paramétrique.
+        Correspond à `ScenarioRequestDTO`.
+
+        Pipeline : `scenarioParameters` → génération des créneaux (ScenarioDatasetBuilderSc01)
+        → résolution solveur → `ScenarioResponseDTO`.
+
+        `dataSet.creneaux` est ignoré par le builder SC-01 (un log WARN est émis
+        si des créneaux sont fournis).
+      properties:
+        requestId:
+          type: string
+          description: Identifiant unique de la requête pour la traçabilité (obligatoire)
+        metadata:
+          $ref: '#/components/schemas/Metadata'
+        scenarioType:
+          type: string
+          const: SC-01
+        planningContext:
+          $ref: '#/components/schemas/PlanningContext'
+        scenarioParameters:
+          $ref: '#/components/schemas/Sc01ScenarioParameters'
+        dataSet:
+          $ref: '#/components/schemas/DataSet'
+      required: [requestId, metadata, scenarioType, planningContext, scenarioParameters, dataSet]
+
+    Sc03ScenarioRequest:
+      type: object
+      description: |
+        Corps de requête pour SC-03 — mode dataset-driven.
+        Correspond à `Sc03ScenarioRequestDTO`.
+
+        Pipeline : `dataSet.creneaux` (fournis par l'appelant) → résolution solveur
+        → `ScenarioResponseDTO`. Aucune génération de créneaux n'est effectuée.
+
+        `dataSet.creneaux` est obligatoire et ne peut pas être vide.
+        `scenarioParameters` est optionnel (prioriteCouverture et periode transportés
+        pour traçabilité, non exploités avant Phase 8).
+      properties:
+        requestId:
+          type: string
+          description: Identifiant unique de la requête pour la traçabilité (obligatoire)
+        metadata:
+          $ref: '#/components/schemas/Metadata'
+        scenarioType:
+          type: string
+          const: SC-03
+        planningContext:
+          $ref: '#/components/schemas/PlanningContext'
+        scenarioParameters:
+          $ref: '#/components/schemas/Sc03ScenarioParameters'
+        dataSet:
+          allOf:
+            - $ref: '#/components/schemas/DataSet'
+            - type: object
+              required: [ressources, creneaux]
+              properties:
+                creneaux:
+                  type: array
+                  minItems: 1
+                  items:
+                    $ref: '#/components/schemas/CreneauInput'
+      required: [requestId, metadata, scenarioType, planningContext, dataSet]
+
+    # ──────────────────────────────────────────────
+    # RÉPONSE — SOLVERRESULT
+    # ──────────────────────────────────────────────
+
+    Score:
+      type: object
+      description: "Correspond à 'ScoreDTO'."
+      properties:
+        hard:
+          type: integer
+          description: Score dur (violations de contraintes physiques/légales)
+        soft:
+          type: integer
+          description: Score doux (violations de contraintes métier/préférences)
+      required: [hard, soft]
+
+    ScoreBreakdownItem:
+      type: object
+      description: "Correspond à 'ScoreBreakdownItemDTO'."
+      properties:
+        penaliteKey:
+          type: string
+          description: Identifiant de la contrainte pénalisée
+        unit:
+          type: string
+          enum: [OCCURRENCE, MINUTE_PONDEREE, JOUR, UNKNOWN]
+          description: "Unité de mesure de la pénalité (enum ScoreBreakdownUnit)"
+        quantity:
+          type: number
+          description: Quantité observée (nombre d'occurrences, de minutes, etc.)
+        weightedImpact:
+          type: integer
+          description: Impact pondéré sur le score total
+      required: [penaliteKey, unit, quantity, weightedImpact]
+
+    SolverResult:
+      type: object
+      description: "Correspond à 'SolverResultDTO'."
+      properties:
+        status:
+          type: string
+          description: |
+            Statut de la résolution. Valeurs connues : "FEASIBLE", "INFEASIBLE",
+            "OPTIMAL". Non validé par enum en V1 — le code sérialise une String libre.
+        score:
+          $ref: '#/components/schemas/Score'
+        scoreBreakdown:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScoreBreakdownItem'
+      required: [status, score]
+
+    # ──────────────────────────────────────────────
+    # RÉPONSE — PLANNING
+    # ──────────────────────────────────────────────
+
+    PlanningCreneau:
+      type: object
+      description: |
+        Créneau dans la vue planning de la réponse.
+        Correspond à `CreneauPlanningDTO`.
+        `ressourceAffecteeId` vaut "A_AFFECTER" si le créneau n'est pas couvert
+        (jamais null — pseudo-ressource `RessourceNonAffectee`).
+        `nature` est un champ de qualification du créneau (enum `CreneauNature`).
+      properties:
+        activite:
+          type: string
+        heureDebut:
+          type: string
+          description: Format HH:mm (sérialisé par @JsonFormat)
+        heureFin:
+          type: string
+          description: Format HH:mm (sérialisé par @JsonFormat)
+        duree:
+          type: string
+          description: Format HH:MM (chaîne calculée)
+        nature:
+          type: string
+          enum: [TRAVAIL, REPOS, FERIE, ABSENCE, IMPOSE]
+          description: "Nature du créneau (enum CreneauNature)"
+        ressourceAffecteeId:
+          type: string
+          description: |
+            Identifiant de la ressource affectée. "A_AFFECTER" si non couvert.
+      required: [activite, heureDebut, heureFin, duree, ressourceAffecteeId]
+
+    PlanningDay:
+      type: object
+      description: "Correspond à 'JourPlanningDTO'."
+      properties:
+        date:
+          type: string
+          format: date
+        creneaux:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanningCreneau'
+      required: [date, creneaux]
+
+    ScenarioPlanning:
+      type: object
+      description: |
+        Vue planning de la réponse.
+        Correspond à `ScenarioPlanningDTO`.
+        `idSalarie` peut être null pour SC-03 multi-ressources (non confirmé par le code).
+      properties:
+        idSalarie:
+          type: string
+          description: |
+            Identifiant du salarié (SC-01). Peut être absent ou null en SC-03.
+            ⚠️ Hypothèse : à confirmer avec l'équipe sur la structure SC-03 réelle.
+        jours:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanningDay'
+      required: [jours]
+
+    # ──────────────────────────────────────────────
+    # RÉPONSE — WORKMETRICS
+    # ──────────────────────────────────────────────
+
+    WorkMetricsByRessource:
+      type: object
+      description: |
+        Métriques de travail par ressource.
+        Correspond à `WorkMetricsByRessourceDTO`.
+        `nbCreneauxNuitNonNuit` est un indicateur Phase 8 : créneaux de nuit
+        affectés à un salarié non travailleur de nuit.
+      properties:
+        resourceId:
+          type: string
+        periodeDebut:
+          type: string
+          format: date
+        periodeFin:
+          type: string
+          format: date
+        heuresTravaillees:
+          type: number
+        heuresNuit:
+          type: number
+        heuresJourFerie:
+          type: number
+        heuresReposHebdoTravaille:
+          type: number
+          description: Heures de repos hebdomadaire effectivement travaillées
+        nbDimanchesTravailles:
+          type: integer
+        maxJoursConsecutifsObservees:
+          type: integer
+        maxNuitsConsecutivesObservees:
+          type: integer
+        nbCreneauxNuitNonNuit:
+          type: integer
+          description: "[Phase 8] Créneaux de nuit affectés à un non-travailleur de nuit"
+      required: [resourceId]
+
+    WorkMetricsGlobal:
+      type: object
+      description: "Correspond à 'GlobalWorkMetricsDTO'."
+      properties:
+        nbCreneaux:
+          type: integer
+        nbCreneauxNonAffectes:
+          type: integer
+        heuresTravailleesTotales:
+          type: number
+        heuresNuitTotales:
+          type: number
+        heuresJourFerieTotales:
+          type: number
+      required: [nbCreneaux, nbCreneauxNonAffectes]
+
+    WorkMetrics:
+      type: object
+      description: "Correspond à 'WorkMetricsDTO'."
+      properties:
+        byRessource:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkMetricsByRessource'
+        global:
+          $ref: '#/components/schemas/WorkMetricsGlobal'
+      required: [byRessource, global]
+
+    # ──────────────────────────────────────────────
+    # RÉPONSE — SOLUTIONSUMMARY
+    # ──────────────────────────────────────────────
+
+    SolutionSummary:
+      type: object
+      description: |
+        Résumé synthétique de la solution.
+        Correspond à `SolutionSummaryDTO`.
+
+        ⚠️ Écart corrigé : l'ancienne spec avait `nbPostesVirtuelsUtilises`.
+        Le code réel expose `nbRessourcesMobilisees` (toutes ressources confondues).
+      properties:
+        nbCreneaux:
+          type: integer
+          description: Nombre total de créneaux soumis au solveur
+        nbCreneauxAffectes:
+          type: integer
+        nbCreneauxNonAffectes:
+          type: integer
+          description: Créneaux affectés à la pseudo-ressource "A_AFFECTER"
+        nbRessourcesMobilisees:
+          type: integer
+          description: Nombre de ressources réelles ou virtuelles effectivement utilisées
+        heuresTravailleesTotales:
+          type: number
+      required: [nbCreneaux, nbCreneauxAffectes, nbCreneauxNonAffectes]
+
+    # ──────────────────────────────────────────────
+    # RÉPONSE — DIAGNOSTICS
+    # ──────────────────────────────────────────────
+
+    ScenarioAlert:
+      type: object
+      description: |
+        Alerte émise lors de la génération ou de la préparation du dataset.
+        Correspond à `ScenarioAlertDTO`.
+        Codes connus : `SHIFT_END_EXCEEDED`, `LUNCH_BREAK_OUTSIDE_AMPLITUDE`.
+      properties:
+        code:
+          type: string
+          description: Code machine de l'alerte
+        date:
+          type: string
+          format: date
+          description: Date concernée par l'alerte
+        message:
+          type: string
+          description: Message lisible
+      required: [code, message]
+
+    AssignmentDiagnostic:
+      type: object
+      description: |
+        Diagnostic d'affectation pour un créneau non couvert ou virtuellement affecté.
+        Correspond à `AssignmentDiagnosticDTO`.
+        Les champs (`date`, `heureDebut`, etc.) sont des String dans le DTO Java.
+      properties:
+        creneauId:
+          type: string
+        date:
+          type: string
+          description: Date (String, format ISO-8601)
+        heureDebut:
+          type: string
+        heureFin:
+          type: string
+        activite:
+          type: string
+        status:
+          type: string
+          description: |
+            Statut de l'affectation.
+            Valeurs attendues (non enum Java) : UNCOVERED, VIRTUAL_ASSIGNED,
+            IMPOSSIBLE_TO_ASSIGN.
+        reasonCode:
+          type: string
+          description: |
+            Code de raison. Valeurs attendues : NO_RESOURCE_ASSIGNED,
+            POSTE_VIRTUEL_ASSIGNED, NO_COMPATIBLE_RESOURCE, JOUR_FERIE_NON_COUVERT.
+        message:
+          type: string
+      required: [creneauId, status, reasonCode, message]
+
+    IgnoredCreneaux:
+      type: object
+      description: |
+        Compteurs de créneaux ignorés avant la phase de résolution.
+        Correspond à `IgnoredCreneauxDTO`.
+
+        Note : `aucuneRessourceDansDataset` accepte l'alias JSON `sansRessource`
+        en lecture (rétrocompatibilité).
+      properties:
+        horsHorizon:
+          type: integer
+          description: Créneaux hors de l'horizon de planification
+        activiteInconnue:
+          type: integer
+          description: Créneaux dont l'activité est absente du référentiel
+        aucuneRessourceDansDataset:
+          type: integer
+          description: Créneaux sans aucune ressource compatible dans le dataset
+      required: [horsHorizon, activiteInconnue, aucuneRessourceDansDataset]
+
+    Diagnostics:
+      type: object
+      description: "Correspond à 'DiagnosticsDTO'."
+      properties:
+        alerts:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScenarioAlert'
+          description: Alertes émises pendant la génération / préparation du dataset
+        assignmentDiagnostics:
+          type: array
+          items:
+            $ref: '#/components/schemas/AssignmentDiagnostic'
+          description: Diagnostics par créneau non affecté ou virtuellement couvert
+        ignoredCreneaux:
+          $ref: '#/components/schemas/IgnoredCreneaux'
+      required: [alerts, assignmentDiagnostics, ignoredCreneaux]
+
+    # ──────────────────────────────────────────────
+    # RÉPONSE GLOBALE
+    # ──────────────────────────────────────────────
+
+    ScenarioResponse:
+      type: object
+      description: |
+        Corps de réponse HTTP 200 pour SC-01 et SC-03.
+        Correspond directement à `ScenarioResponseDTO` — pas d'enveloppe transport.
+        L'enveloppe `{requestId, status, response}` est propre au FileAdapter
+        et ne s'applique pas à ce contrat API.
+      properties:
+        scenarioType:
+          type: string
+          description: Valeur reflétée depuis la requête (SC-01 ou SC-03)
+        solverResult:
+          $ref: '#/components/schemas/SolverResult'
+        planning:
+          $ref: '#/components/schemas/ScenarioPlanning'
+        workMetrics:
+          $ref: '#/components/schemas/WorkMetrics'
+        solutionSummary:
+          $ref: '#/components/schemas/SolutionSummary'
+        diagnostics:
+          $ref: '#/components/schemas/Diagnostics'
+      required: [scenarioType, solverResult, planning, workMetrics, solutionSummary, diagnostics]
+
+    # ──────────────────────────────────────────────
+    # ERREURS
+    # ──────────────────────────────────────────────
+
+    ErrorDetail:
+      type: object
+      description: Détail d'une erreur de validation.
+      properties:
+        field:
+          type: string
+          description: Chemin JSON du champ en erreur (ex. dataSet.creneaux[0].codeActiviteId)
+        message:
+          type: string
+      required: [message]
+
+    ErrorBody:
+      type: object
+      properties:
+        code:
+          type: string
+          description: |
+            Code machine de l'erreur.
+            Valeurs V1 : INVALID_REQUEST (400), MALFORMED_JSON (400),
+            BUSINESS_ERROR (422), INTERNAL_ERROR (500).
+        message:
+          type: string
+        details:
+          type: array
+          items:
+            $ref: '#/components/schemas/ErrorDetail'
+      required: [code, message, details]
+
+    ErrorResponse:
+      type: object
+      description: |
+        Corps des réponses d'erreur (400, 422, 500).
+        Le `requestId` de la requête n'est pas répercuté dans la réponse d'erreur
+        en mode API — il appartient à la couche appelante de faire la corrélation.
+        En mode FileAdapter, la corrélation est assurée par l'enveloppe transport.
+      properties:
+        error:
+          $ref: '#/components/schemas/ErrorBody'
+      required: [error]

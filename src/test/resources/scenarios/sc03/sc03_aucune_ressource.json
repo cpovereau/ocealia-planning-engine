@@ -1,5 +1,10 @@
 {
   "_description": "Dataset Phase 9 — créneau sans ressource compatible. CRE-AR-02 utilise ACT-TECH, absent des activités déclarées par le seul salarié du dataset. Attendu : diagnostics.ignoredCreneaux.aucuneRessourceDansDataset = 1.",
+  "requestId": "REQ-TEST-AR-001",
+  "metadata": {
+    "clientId": "CLIENT-TEST",
+    "timestamp": "2026-05-11T08:00:00Z"
+  },
   "scenarioType": "SC-03",
   "planningContext": {
     "horizon": {

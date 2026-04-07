@@ -1,6 +1,5 @@
 package fr.project.planning.scenarios.sc03.api;
 
-import jakarta.servlet.ServletException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -8,19 +7,18 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
  * Tests négatifs du contrat d'entrée SC-03.
  *
- * Vérifie les rejets attendus avant l'appel au solveur :
- * - scenarioType invalide (pas SC-03)
- * - dataSet absent
- * - creneaux absents ou vides
- * - JSON invalide (400 Spring)
+ * Tous les payloads incluent requestId + metadata valides pour que la validation
+ * Bean Validation passe et que les guards métier restent atteignables.
+ *
+ * Phase 4.2 : les erreurs métier (IllegalArgumentException) sont désormais
+ * interceptées par GlobalExceptionHandler et retournent HTTP 422 BUSINESS_ERROR.
  */
 @SpringBootTest(classes = fr.project.planning.TestSpringConfig.class)
 @AutoConfigureMockMvc
@@ -34,9 +32,11 @@ class ScenarioControllerSc03ValidationTest {
     // ---------------------------------------------------------
 
     @Test
-    void should_raise_illegal_argument_if_scenarioType_is_not_sc03() {
+    void should_raise_illegal_argument_if_scenarioType_is_not_sc03() throws Exception {
         String json = """
         {
+          "requestId": "REQ-TEST-SC03-001",
+          "metadata": { "clientId": "CLIENT-TEST", "timestamp": "2026-05-11T08:00:00Z" },
           "scenarioType": "SC-01",
           "planningContext": {
             "horizon": { "dateDebut": "2026-05-11", "dateFin": "2026-05-17" },
@@ -46,24 +46,21 @@ class ScenarioControllerSc03ValidationTest {
             "ressources": { "salaries": [], "postesVirtuels": [] },
             "creneaux": [
               {
-                "id": "C-001", "posteVirtuelId": "PV-001",
+                "id": "C-001",
                 "codeActiviteId": "ACT-SOIN",
-                "dateJour": "2026-05-12",
-                "heureDebut": "08:00", "heureFin": "12:00",
-                "siteId": "SITE-A", "dureeMinutes": 240
+                "date": "2026-05-12",
+                "heureDebut": "08:00", "heureFin": "12:00"
               }
             ]
           }
         }
         """;
 
-        assertThrows(ServletException.class, () ->
-                mockMvc.perform(post("/scenarios/sc03/solve")
+        mockMvc.perform(post("/scenarios/sc03/solve")
                         .contentType(MediaType.APPLICATION_JSON_VALUE)
                         .content(json))
-                        .andExpect(status().isOk()),
-                "Une IllegalArgumentException était attendue pour scenarioType=SC-01"
-        );
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.error.code").value("BUSINESS_ERROR"));
     }
 
     // ---------------------------------------------------------
@@ -71,9 +68,11 @@ class ScenarioControllerSc03ValidationTest {
     // ---------------------------------------------------------
 
     @Test
-    void should_raise_exception_if_dataset_is_absent() {
+    void should_raise_exception_if_dataset_is_absent() throws Exception {
         String json = """
         {
+          "requestId": "REQ-TEST-SC03-002",
+          "metadata": { "clientId": "CLIENT-TEST", "timestamp": "2026-05-11T08:00:00Z" },
           "scenarioType": "SC-03",
           "planningContext": {
             "horizon": { "dateDebut": "2026-05-11", "dateFin": "2026-05-17" },
@@ -82,12 +81,11 @@ class ScenarioControllerSc03ValidationTest {
         }
         """;
 
-        assertThrows(ServletException.class, () ->
-                mockMvc.perform(post("/scenarios/sc03/solve")
+        mockMvc.perform(post("/scenarios/sc03/solve")
                         .contentType(MediaType.APPLICATION_JSON_VALUE)
                         .content(json))
-                        .andExpect(status().isOk())
-        );
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.error.code").value("BUSINESS_ERROR"));
     }
 
     // ---------------------------------------------------------
@@ -95,9 +93,11 @@ class ScenarioControllerSc03ValidationTest {
     // ---------------------------------------------------------
 
     @Test
-    void should_raise_illegal_argument_if_creneaux_are_empty() {
+    void should_raise_illegal_argument_if_creneaux_are_empty() throws Exception {
         String json = """
         {
+          "requestId": "REQ-TEST-SC03-003",
+          "metadata": { "clientId": "CLIENT-TEST", "timestamp": "2026-05-11T08:00:00Z" },
           "scenarioType": "SC-03",
           "planningContext": {
             "horizon": { "dateDebut": "2026-05-11", "dateFin": "2026-05-17" },
@@ -110,13 +110,11 @@ class ScenarioControllerSc03ValidationTest {
         }
         """;
 
-        Exception ex = assertThrows(ServletException.class, () ->
-                mockMvc.perform(post("/scenarios/sc03/solve")
+        mockMvc.perform(post("/scenarios/sc03/solve")
                         .contentType(MediaType.APPLICATION_JSON_VALUE)
                         .content(json))
-                        .andExpect(status().isOk())
-        );
-        assertInstanceOf(IllegalArgumentException.class, ex.getCause());
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.error.code").value("BUSINESS_ERROR"));
     }
 
     // ---------------------------------------------------------
@@ -128,6 +126,7 @@ class ScenarioControllerSc03ValidationTest {
         mockMvc.perform(post("/scenarios/sc03/solve")
                         .contentType(MediaType.APPLICATION_JSON_VALUE)
                         .content("{ invalid json }"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("MALFORMED_JSON"));
     }
 }

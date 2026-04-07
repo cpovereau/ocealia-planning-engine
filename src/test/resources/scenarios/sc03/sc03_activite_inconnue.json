@@ -1,5 +1,10 @@
 {
   "_description": "Dataset Phase 9 — créneau avec activité inconnue. Le créneau CRE-AI-02 utilise ACT-INCONNU absent du référentiel. Attendu : diagnostics.ignoredCreneaux.activiteInconnue = 1.",
+  "requestId": "REQ-TEST-AI-001",
+  "metadata": {
+    "clientId": "CLIENT-TEST",
+    "timestamp": "2026-05-11T08:00:00Z"
+  },
   "scenarioType": "SC-03",
   "planningContext": {
     "horizon": {

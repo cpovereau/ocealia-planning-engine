@@ -172,8 +172,8 @@ class ScenarioResourceMapperTest {
         dto.setId("PV-001");
         dto.setType("POTENTIEL");
         dto.setCapaciteCible(2400);
-        dto.setActivitesAutorisees(Set.of("ACT-SOIN"));
-        dto.setLieuxAutorises(Set.of("HOPITAL-NORD"));
+        dto.setActivitesCompatibles(Set.of("ACT-SOIN"));
+        dto.setSitesAutorises(Set.of("HOPITAL-NORD"));
         dto.setPostesComptablesCompatibles(Set.of("PC-SOINS"));
 
         PosteVirtuel result = mapper.toPosteVirtuel(dto);

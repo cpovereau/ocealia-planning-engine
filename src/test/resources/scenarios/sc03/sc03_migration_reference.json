@@ -1,4 +1,10 @@
 {
+  "requestId": "REQ-20260511-SC03-001",
+  "metadata": {
+    "clientId": "CLIENT-TEST",
+    "timestamp": "2026-05-11T08:00:00Z",
+    "source": "WINDEV"
+  },
   "scenarioType": "SC-03",
 
   "planningContext": {

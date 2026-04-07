@@ -104,8 +104,8 @@ public class ScenarioResourceMapper {
                 dto.getId(),
                 type,
                 dto.getCapaciteCible(),
-                dto.getActivitesAutorisees() != null ? dto.getActivitesAutorisees() : Set.of(),
-                dto.getLieuxAutorises() != null ? dto.getLieuxAutorises() : Set.of(),
+                dto.getActivitesCompatibles() != null ? dto.getActivitesCompatibles() : Set.of(),
+                dto.getSitesAutorises() != null ? dto.getSitesAutorises() : Set.of(),
                 dto.getPostesComptablesCompatibles() != null ? dto.getPostesComptablesCompatibles() : Set.of()
         );
     }

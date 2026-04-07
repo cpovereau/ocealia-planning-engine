@@ -2,6 +2,9 @@ package fr.project.planning.scenarios.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import fr.project.planning.scenarios.dto.request.Sc03ScenarioParametersDTO;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 
 /**
  * Sc03ScenarioRequestDTO
@@ -12,9 +15,17 @@ import fr.project.planning.scenarios.dto.request.Sc03ScenarioParametersDTO;
  * et permettre un typage fort des paramètres SC-03.
  *
  * Phase 7 : désérialisation complète + exécution solveur.
+ * Phase 4.1 : requestId + metadata obligatoires.
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class Sc03ScenarioRequestDTO {
+
+    @NotBlank(message = "requestId est obligatoire")
+    private String requestId;
+
+    @NotNull(message = "metadata est obligatoire")
+    @Valid
+    private MetadataDTO metadata;
 
     private String scenarioType;
 
@@ -31,6 +42,22 @@ public class Sc03ScenarioRequestDTO {
     // =========================
     // Getters / Setters
     // =========================
+
+    public String getRequestId() {
+        return requestId;
+    }
+
+    public void setRequestId(String requestId) {
+        this.requestId = requestId;
+    }
+
+    public MetadataDTO getMetadata() {
+        return metadata;
+    }
+
+    public void setMetadata(MetadataDTO metadata) {
+        this.metadata = metadata;
+    }
 
     public String getScenarioType() {
         return scenarioType;

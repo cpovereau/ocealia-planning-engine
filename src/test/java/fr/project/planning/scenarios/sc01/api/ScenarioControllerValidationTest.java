@@ -7,24 +7,18 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
-import jakarta.servlet.ServletException;
-
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * V1 réaliste des tests négatifs du contrat d'entrée de l'API SC-01.
+ * Tests négatifs du contrat d'entrée de l'API SC-01.
  *
- * Cette version ne suppose pas encore l'existence d'un ControllerAdvice global
- * transformant systématiquement les erreurs métier/techniques en HTTP 400.
+ * Tous les payloads incluent requestId + metadata valides pour que la validation
+ * Bean Validation passe et que les guards métier restent atteignables.
  *
- * On vérifie donc :
- * - 400 quand Spring le produit réellement,
- * - l'exception résolue quand le contrôleur laisse encore remonter
- *   une NullPointerException / IllegalArgumentException.
+ * Phase 4.2 : les erreurs métier (IllegalArgumentException) sont désormais
+ * interceptées par GlobalExceptionHandler et retournent HTTP 422 BUSINESS_ERROR.
  */
 @SpringBootTest(classes = fr.project.planning.TestSpringConfig.class)
 @AutoConfigureMockMvc
@@ -34,7 +28,7 @@ class ScenarioControllerValidationTest {
     private MockMvc mockMvc;
 
     // ---------------------------------------------------------
-    // 1️⃣ scenarioType invalide
+    // 1. scenarioType invalide
     // ---------------------------------------------------------
 
     @Test
@@ -42,6 +36,8 @@ class ScenarioControllerValidationTest {
 
         String json = """
         {
+          "requestId": "REQ-TEST-001",
+          "metadata": { "clientId": "CLIENT-TEST", "timestamp": "2026-05-11T08:00:00Z" },
           "scenarioType": "SC-99",
           "planningContext": {
             "horizon": {
@@ -61,19 +57,15 @@ class ScenarioControllerValidationTest {
         }
         """;
 
-        ServletException ex = assertThrows(
-        ServletException.class,
-        () -> mockMvc.perform(post("/scenarios/sc01/solve")
-                .contentType(MediaType.APPLICATION_JSON_VALUE)
-                .content(json))
-        );
-
-        assertNotNull(ex.getCause());
-        assertInstanceOf(IllegalArgumentException.class, ex.getCause());
+        mockMvc.perform(post("/scenarios/sc01/solve")
+                        .contentType(MediaType.APPLICATION_JSON_VALUE)
+                        .content(json))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.error.code").value("BUSINESS_ERROR"));
     }
 
     // ---------------------------------------------------------
-    // 2️⃣ resourceRef absent
+    // 2. resourceRef absent
     // ---------------------------------------------------------
 
     @Test
@@ -81,6 +73,8 @@ class ScenarioControllerValidationTest {
 
         String json = """
         {
+          "requestId": "REQ-TEST-002",
+          "metadata": { "clientId": "CLIENT-TEST", "timestamp": "2026-05-11T08:00:00Z" },
           "scenarioType": "SC-01",
           "planningContext": {
             "horizon": {
@@ -102,29 +96,32 @@ class ScenarioControllerValidationTest {
         }
         """;
 
-        ServletException ex = assertThrows(
-        ServletException.class,
-        () -> mockMvc.perform(post("/scenarios/sc01/solve")
-                .contentType(MediaType.APPLICATION_JSON_VALUE)
-                .content(json))
-        );
-
-        assertNotNull(ex.getCause());
-        // Phase A : resourceRef absent est désormais détecté par un guard explicite
-        assertInstanceOf(IllegalArgumentException.class, ex.getCause());
+        mockMvc.perform(post("/scenarios/sc01/solve")
+                        .contentType(MediaType.APPLICATION_JSON_VALUE)
+                        .content(json))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.error.code").value("BUSINESS_ERROR"));
     }
 
     // ---------------------------------------------------------
-    // 3️⃣ dataset absent
+    // 3. dataset absent
     // ---------------------------------------------------------
 
+    /**
+     * Quand dataSet est absent, le service lève une NullPointerException avant
+     * d'atteindre le guard IllegalArgumentException — ce qui produit un 500.
+     *
+     * TODO Phase 4.6 : ajouter un guard explicite (throw IAE) dans
+     *   ScenarioSc01PreparationService avant tout accès à dataSet,
+     *   afin de retourner 422 BUSINESS_ERROR à la place du 500 actuel.
+     */
     @Test
-    void should_raise_null_pointer_if_dataset_missing() throws Exception {
+    void should_return_500_if_dataset_missing() throws Exception {
 
-        // dailyAmplitudeHours et shiftStart sont requis pour passer les guards Phase A
-        // et atteindre effectivement le NPE sur le dataset absent
         String json = """
         {
+          "requestId": "REQ-TEST-003",
+          "metadata": { "clientId": "CLIENT-TEST", "timestamp": "2026-05-11T08:00:00Z" },
           "scenarioType": "SC-01",
           "planningContext": {
             "horizon": {
@@ -144,19 +141,15 @@ class ScenarioControllerValidationTest {
         }
         """;
 
-        ServletException ex = assertThrows(
-        ServletException.class,
-        () -> mockMvc.perform(post("/scenarios/sc01/solve")
-                .contentType(MediaType.APPLICATION_JSON_VALUE)
-                .content(json))
-        );
-
-        assertNotNull(ex.getCause());
-        assertInstanceOf(NullPointerException.class, ex.getCause());
+        mockMvc.perform(post("/scenarios/sc01/solve")
+                        .contentType(MediaType.APPLICATION_JSON_VALUE)
+                        .content(json))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.error.code").value("INTERNAL_ERROR"));
     }
 
     // ---------------------------------------------------------
-    // 4️⃣ JSON invalide
+    // 4. JSON invalide
     // ---------------------------------------------------------
 
     @Test
@@ -165,13 +158,14 @@ class ScenarioControllerValidationTest {
         String invalidJson = "{ \"scenarioType\": \"SC-01\", ";
 
         mockMvc.perform(post("/scenarios/sc01/solve")
-                .contentType(MediaType.APPLICATION_JSON_VALUE)
-                .content(invalidJson))
-                .andExpect(status().isBadRequest());
+                        .contentType(MediaType.APPLICATION_JSON_VALUE)
+                        .content(invalidJson))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("MALFORMED_JSON"));
     }
 
     // ---------------------------------------------------------
-    // 5️⃣ resourceRef inconnue dans le dataset
+    // 5. resourceRef inconnue dans le dataset
     // ---------------------------------------------------------
 
     @Test
@@ -179,6 +173,8 @@ class ScenarioControllerValidationTest {
 
         String json = """
         {
+          "requestId": "REQ-TEST-005",
+          "metadata": { "clientId": "CLIENT-TEST", "timestamp": "2026-05-11T08:00:00Z" },
           "scenarioType": "SC-01",
           "planningContext": {
             "horizon": {
@@ -212,19 +208,15 @@ class ScenarioControllerValidationTest {
         }
         """;
 
-        ServletException ex = assertThrows(
-        ServletException.class,
-        () -> mockMvc.perform(post("/scenarios/sc01/solve")
-                .contentType(MediaType.APPLICATION_JSON_VALUE)
-                .content(json))
-        );
-
-        assertNotNull(ex.getCause());
-        assertInstanceOf(IllegalArgumentException.class, ex.getCause());
+        mockMvc.perform(post("/scenarios/sc01/solve")
+                        .contentType(MediaType.APPLICATION_JSON_VALUE)
+                        .content(json))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.error.code").value("BUSINESS_ERROR"));
     }
 
     // ---------------------------------------------------------
-    // 6️⃣ horizon incohérent (dateFin < dateDebut)
+    // 6. horizon incohérent (dateFin < dateDebut)
     // ---------------------------------------------------------
 
     @Test
@@ -232,6 +224,8 @@ class ScenarioControllerValidationTest {
 
         String json = """
         {
+          "requestId": "REQ-TEST-006",
+          "metadata": { "clientId": "CLIENT-TEST", "timestamp": "2026-05-11T08:00:00Z" },
           "scenarioType": "SC-01",
           "planningContext": {
             "horizon": {
@@ -269,14 +263,10 @@ class ScenarioControllerValidationTest {
         }
         """;
 
-        ServletException ex = assertThrows(
-        ServletException.class,
-        () -> mockMvc.perform(post("/scenarios/sc01/solve")
-                .contentType(MediaType.APPLICATION_JSON_VALUE)
-                .content(json))
-        );
-
-        assertNotNull(ex.getCause());
-        assertInstanceOf(IllegalArgumentException.class, ex.getCause());
+        mockMvc.perform(post("/scenarios/sc01/solve")
+                        .contentType(MediaType.APPLICATION_JSON_VALUE)
+                        .content(json))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.error.code").value("BUSINESS_ERROR"));
     }
 }

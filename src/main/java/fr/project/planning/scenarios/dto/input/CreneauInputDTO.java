@@ -31,7 +31,11 @@ public class CreneauInputDTO {
 
     private String lieu;
     private String codeActiviteId;
+
+    @Deprecated
+    // TODO Phase X : suppression après migration WinDev
     private String activite;        // ⚠️ DÉPRÉCIÉ — fallback si codeActiviteId absent
+    
     private String posteComptable;
 
     private Boolean isJourFerie;
