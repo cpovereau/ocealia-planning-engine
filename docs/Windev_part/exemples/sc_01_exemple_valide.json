@@ -1,0 +1,57 @@
+{
+  "requestId": "REQ-20260729-SC01-001",
+  "scenarioType": "SC-01",
+  "metadata": {
+    "clientId": "CLIENT01",
+    "source": "WINDEV",
+    "timestamp": "2026-07-29T08:00:00Z"
+  },
+  "planningContext": {
+    "horizon": {
+      "dateDebut": "2026-07-27",
+      "dateFin": "2026-08-02"
+    },
+    "strategieScoring": "EXPLOITATION"
+  },
+  "scenarioParameters": {
+    "resourceRef": {
+      "kind": "SALARIE",
+      "id": "10212"
+    },
+    "dailyAmplitudeHours": 7.0,
+    "shiftStart": "09:00",
+    "shiftEndAlert": "17:00",
+    "lunchBreak": {
+      "start": "12:00",
+      "end": "13:00"
+    },
+    "workedDays": ["MONDAY", "TUESDAY", "THURSDAY", "FRIDAY"],
+    "holidayDates": []
+  },
+  "dataSet": {
+    "ressources": {
+      "salaries": [
+        {
+          "id": "10212",
+          "statut": "CDI",
+          "sitesAutorises": ["CASTRES"],
+          "activitesCompatibles": ["travail"],
+          "postesComptablesCompatibles": ["PC-100"],
+          "travailleJourFerie": false
+        }
+      ],
+      "postesVirtuels": []
+    },
+    "referentiels": {
+      "activites": [
+        {
+          "codeActiviteId": "travail",
+          "libelle": "Travail",
+          "compteDansCharge": true,
+          "genereDetteRepos": false,
+          "estServiceCritique": false
+        }
+      ]
+    }
+  }
+}
