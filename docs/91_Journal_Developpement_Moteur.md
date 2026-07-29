@@ -494,6 +494,36 @@ La stratégie complète est documentée dans `90_plan_migration_temporaire_winde
 
 ---
 
+## Juillet 2026 — Contrat de sortie et cohérence documentaire
+
+### 2026-07-29 — Restitution du code activité corrigée + reprise des obsolescences documentaires
+
+- **Constat** : `ScenarioResponseMapper` et `AssignmentDiagnosticsFactory` alimentaient le champ de sortie `activite` depuis `Creneau.getActivite()` (libellé déprécié) au lieu de `codeActiviteId` (clé stable du référentiel). Un client conforme n'envoyant que `codeActiviteId` — cas nominal SC-03 — recevait `"activite": null`. Reproduit sur un résultat réel du FileAdapter (`outbox/sc_03_fileadapter_input_RESULT.json`).
+- **Correction** : ajout de `Creneau.getCodeActiviteEffectif()` — `codeActiviteId` prioritaire, repli sur `activite`, `null` si les deux sont absents ou vides. Même règle que celle appliquée avant résolution par `ScenarioSc03PreparationService`, donc la sortie expose désormais la clé qui a réellement servi au calcul.
+- **Fichiers modifiés** :
+  - `domain/creneau/Creneau.java` — nouvelle méthode `getCodeActiviteEffectif()`
+  - `scenarios/mapper/ScenarioResponseMapper.java` — `toCreneauPlanningDTO()`
+  - `scenarios/mapper/AssignmentDiagnosticsFactory.java` — 2 sites de construction du diagnostic
+- **Tests ajoutés** : `ScenarioResponseActiviteRestitutionTest` — 5 cas (code seul, libellé seul, les deux, aucun, diagnostics)
+- **Résultat** : BUILD SUCCESSFUL — 308 tests, 0 échec. Vérifié bout en bout sur `docs/Windev_part/exemples/sc_03_exemple_valide.json` : `"activite": "ACT-SOIN"` en planning comme en diagnostics.
+- **Impact contrat** : aucun changement de structure — le champ garde son nom `activite`, seule sa valeur devient conforme à `50_ScenarioResponseContract.md` §4.5 (nouvelle section).
+- **Reste à faire** (non traité ici) : écho du bloc `referentiels` en sortie et WorkMetrics par activité — l'« entrepôt des activités » de `90_suivi_developpement_moteur.md` n'est implémenté que côté entrée.
+
+#### Obsolescences documentaires corrigées le même jour
+
+Le chantier de stabilisation SC-01 (phases A→D, 2026-03-30) n'avait pas été répercuté dans les documents d'audit et de migration, qui décrivaient encore SC-01 comme ignorant `dataSet.referentiels` :
+
+| Document | Correction |
+|---|---|
+| `92_audit_contrat_entree.md` | Bandeau d'obsolescence + §1.8, T-15, §3.2 et §4 annotés « ✅ Corrigé » |
+| `92_audit_scenario_sc-01.md` | Bandeau récapitulant C1→C4, I1→I4 ; passages faux barrés ; R1 marquée appliquée |
+| `90_plan_migration_temporaire_windev_vers_moteur.md` | Bloc `referentiels` : SC-01 n'est plus « hardcodé jusqu'en Phase 9 » |
+| `50_ScenarioResponseContract.md` | §4.4 : les compteurs `ignoredCreneaux` ne sont plus « toujours 0 » en SC-01 |
+
+Les entrées de journal antérieures ne sont pas modifiées : elles restent l'historique daté des décisions.
+
+---
+
 ## Conclusion de l’audit actuel du moteur
 
 L’analyse globale du moteur montre que :

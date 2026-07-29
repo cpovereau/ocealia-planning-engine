@@ -254,6 +254,22 @@ public class Creneau implements Serializable {
         return activite;
     }
 
+    /**
+     * Code activité effectif : {@link #codeActiviteId} en priorité, {@link #activite} en repli.
+     *
+     * Applique en sortie la règle déjà utilisée avant résolution par
+     * {@code ScenarioSc03PreparationService} pour la jointure référentiel, afin que la
+     * restitution API expose la même clé que celle qui a servi au calcul.
+     *
+     * @return le code activité effectif, ou null si aucun des deux champs n'est renseigné
+     */
+    public String getCodeActiviteEffectif() {
+        if (codeActiviteId != null && !codeActiviteId.isBlank()) {
+            return codeActiviteId;
+        }
+        return (activite != null && !activite.isBlank()) ? activite : null;
+    }
+
     public String getPosteComptable() {
         return posteComptable;
     }

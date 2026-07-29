@@ -102,7 +102,7 @@ public class ScenarioResponseMapper {
 
     private CreneauPlanningDTO toCreneauPlanningDTO(Creneau creneau) {
         return new CreneauPlanningDTO(
-                creneau.getActivite(),
+                creneau.getCodeActiviteEffectif(),
                 creneau.getHeureDebut(),
                 creneau.getHeureFin(),
                 formatDuree(creneau),

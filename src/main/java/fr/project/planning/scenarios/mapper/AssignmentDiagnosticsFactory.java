@@ -59,7 +59,7 @@ public final class AssignmentDiagnosticsFactory {
                         creneau.getDate() != null ? creneau.getDate().toString() : null,
                         creneau.getHeureDebut() != null ? creneau.getHeureDebut().toString() : null,
                         creneau.getHeureFin() != null ? creneau.getHeureFin().toString() : null,
-                        creneau.getActivite() != null ? creneau.getActivite() : null,
+                        creneau.getCodeActiviteEffectif(),
                         status,
                         reason,
                         message
@@ -75,7 +75,7 @@ public final class AssignmentDiagnosticsFactory {
                         creneau.getDate() != null ? creneau.getDate().toString() : null,
                         creneau.getHeureDebut() != null ? creneau.getHeureDebut().toString() : null,
                         creneau.getHeureFin() != null ? creneau.getHeureFin().toString() : null,
-                        creneau.getActivite() != null ? creneau.getActivite() : null,
+                        creneau.getCodeActiviteEffectif(),
                         "VIRTUAL_ASSIGNED",
                         "POSTE_VIRTUEL_ASSIGNED",
                         "Créneau affecté à un poste virtuel"
