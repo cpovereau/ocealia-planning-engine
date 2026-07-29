@@ -812,9 +812,10 @@ Un champ est **fonctionnellement actif** uniquement à partir de : Transporté �
 
 | Champ | Transporté | Validé | Mappé domaine | Exploité solveur | Exploité scoring | Exploité diagnostics | Exploité WorkMetrics | Testé | Phase cible | Source de vérité (Phase 9) |
 |-------|:----------:|:------:|:-------------:|:----------------:|:----------------:|:--------------------:|:--------------------:|:-----:|-------------|---------------------------|
-| `referentiels` (bloc) | ✅ | — | ✅ | ✅ | — | — | — | ✅ | *(actif SC-03)* | — (stable SC-03 ; SC-01 reste hardcodé jusqu'en Phase 9) |
+| `referentiels` (bloc) | ✅ | — | ✅ | ✅ | — | — | — | ✅ | *(actif SC-01 et SC-03)* | — (stable) |
 
-> Phase 7 : `ScenarioResourceMapper.toReferentiel()` convertit le bloc vers `ReferentielComptabiliteActivite`. Utilisé par `ScenarioSc03PreparationService`. SC-01 conserve son référentiel hardcodé (`"travail"`) jusqu'en Phase 9.
+> Phase 7 : `ScenarioResourceMapper.toReferentiel()` convertit le bloc vers `ReferentielComptabiliteActivite`. Utilisé par `ScenarioSc03PreparationService`. ~~SC-01 conserve son référentiel hardcodé (`"travail"`) jusqu'en Phase 9.~~
+> **Mise à jour 2026-03-30 (chantier SC-01, tâches B1/B2)** : SC-01 lit lui aussi le bloc via `buildReferentielSc01()`. Le référentiel `{"travail": ...}` n'est plus qu'un fallback loggé lorsque `referentiels` est absent ou vide. Asymétrie résiduelle assumée : SC-03 rejette l'absence du bloc (guard IAE), SC-01 la tolère.
 > Redondance temporaire documentée : `activite` (libellé) / `codeActiviteId` / `referentiels` coexistent — cible Phase 9.
 
 ---
@@ -841,7 +842,7 @@ Un champ est **fonctionnellement actif** uniquement à partir de : Transporté �
 |--------------|-----------------|---------------|--------------------|
 | `sitesAutorises` | `axesOrganisationnels.lieuIds` | axes organisationnels | reporté (non traité en Phase 9) |
 | `activite` (libellé) | `codeActiviteId` | référentiel d'activités | reporté (non traité en Phase 9) |
-| `referentiels` JSON | référentiel hardcodé dans SC-01 | suppression du hardcodé SC-01 | reporté (non traité en Phase 9) |
+| `referentiels` JSON | référentiel hardcodé dans SC-01 | suppression du hardcodé SC-01 | ~~reporté (non traité en Phase 9)~~ → **traité le 2026-03-30** (chantier SC-01, B1/B2) — subsiste uniquement comme fallback loggé |
 | `contraintesReglementaires` salarié | `RegulatoryParameters` globaux | paramètres par salarié | En cours — `joursConsecutifsMaximum` et `amplitudeJournaliereMaximum` exploités (Phase 10/12) ; autres champs à activer progressivement |
 
 ---

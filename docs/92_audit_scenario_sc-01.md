@@ -1,8 +1,28 @@
 # Audit SC-01 — Rapport complet
 
+> ⚠️ **Rapport d'audit daté (2026-03-27) — largement traité depuis. Ne pas lire comme l'état du code.**
+> Ce document a servi de base au chantier de stabilisation SC-01, dont les phases A→D sont
+> **terminées le 2026-03-30**. L'état à jour est dans `92_suivi_stabilisation_sc-01.md`.
+>
+> | Problème de l'audit | État réel | Tâche |
+> |---|---|---|
+> | C1 — référentiel `"travail"` hardcodé, `dataSet.referentiels` ignoré | Corrigé — bloc lu, référentiel interne réduit à un fallback loggé | B1, B2 |
+> | C2 — `dataSet.creneaux` ignoré sans avertissement | Corrigé — `log.warn` explicite | A1 |
+> | C3 — aucun partitioning pré-résolution | Corrigé — `computeIgnoredCreneaux()` | C1 |
+> | C4 — `IgnoredCreneauxDTO(0,0,0)` statique | Corrigé — calculé dynamiquement | C1 |
+> | I1 — absence de guards d'entrée | Corrigé — guards horizon, dates, `resourceRef`, `shiftStart` | A4, A5 |
+> | I2 — référentiel ignoré sans log | Sans objet — le référentiel n'est plus ignoré | A2, B1 |
+> | A4 — pas de log sur les comportements ignorés | Corrigé | A1, A2, A3 |
+> | I3 — `contraintesReglementaires` absorbées, `RegulatoryParameters.neutre()` | **Partiel** — `log.warn` ajouté (A3), exploitation toujours incomplète | A3 |
+> | I4 — DTO de requête sans base commune | **Toujours ouvert** — tâche C3 du chantier, reportée | C3 |
+>
+> ⚠️ Attention au double jeu de numéros : `C1…C4` ci-dessus sont les **problèmes de cet audit**,
+> `A1…D5` sont les **tâches du chantier** (`92_suivi_stabilisation_sc-01.md`). Les passages devenus
+> faux sont barrés et annotés en place.
+
 ## Synthèse exécutive
 
-SC-01 est **fonctionnel mais structurellement non conforme** à l'architecture stabilisée (Phase 9).
+~~SC-01 est **fonctionnel mais structurellement non conforme** à l'architecture stabilisée (Phase 9).~~
 Les écarts ne sont pas cosmétiques : plusieurs concernent le pipeline de données fondamental,
 rendant SC-01 impossible à faire évoluer proprement sans corrections ciblées.
 SC-01 viole le contrat d’entrée Phase 9 en acceptant des données sans les exploiter ni les signaler.
@@ -14,11 +34,11 @@ SC-01 viole le contrat d’entrée Phase 9 en acceptant des données sans les ex
 | Axe | SC-01 | SC-03 |
 |-----|-------|-------|
 | Source des créneaux | Générés par le builder (paramètres utilisateur) | Fournis dans `dataSet.creneaux` |
-| Référentiel activités | **Hardcodé** (`"travail"`) | Fourni dans `dataSet.referentiels` |
+| Référentiel activités | ~~**Hardcodé** (`"travail"`)~~ → Fourni dans `dataSet.referentiels`, fallback `"travail"` si absent (✅ B1/B2) | Fourni dans `dataSet.referentiels` |
 | Ressource cible | **1 seule** (via `resourceRef`) | Toutes les ressources du dataset |
 | Partitioning pré-résolution | Aucun | Activité inconnue + hors-horizon |
-| Validations d'entrée | Minimales (type scénario uniquement) | Guards complets (horizon, dates, créneaux, référentiels) |
-| `IgnoredCreneauxDTO` | Hardcodé `(0, 0, 0)` | Calculé dynamiquement |
+| Validations d'entrée | ~~Minimales (type scénario uniquement)~~ → Guards horizon, dates, `resourceRef`, `dailyAmplitudeHours`, `shiftStart` (✅ A4/A5) | Guards complets (horizon, dates, créneaux, référentiels) |
+| `IgnoredCreneauxDTO` | ~~Hardcodé `(0, 0, 0)`~~ → Calculé dynamiquement (✅ C1) | Calculé dynamiquement |
 
 ---
 
@@ -33,7 +53,7 @@ SC-01 viole le contrat d’entrée Phase 9 en acceptant des données sans les ex
 | `dataSet.creneaux` | **Ignoré** — builder génère les siens | ÉCART MAJEUR |
 | `dataSet.ressources.salaries` | Utilisé pour résoudre `resourceRef` + value range | OK partiel |
 | `dataSet.ressources.postesVirtuels` | Utilisé pour résoudre `resourceRef` + value range | OK partiel |
-| `dataSet.referentiels` | **Ignoré** — référentiel hardcodé | ÉCART MAJEUR |
+| `dataSet.referentiels` | ~~**Ignoré** — référentiel hardcodé~~ → **Utilisé** (fallback `"travail"` + warn si absent) | ✅ Corrigé (B1, B2) |
 | `dataSet.indisponibilites` | Utilisé (mappé et transmis) | OK |
 | `scenarioParameters.resourceRef` | Utilisé | OK |
 | `scenarioParameters.dailyAmplitudeHours` | Utilisé | OK |
@@ -43,9 +63,9 @@ SC-01 viole le contrat d’entrée Phase 9 en acceptant des données sans les ex
 | `scenarioParameters.workedDays` | Utilisé | OK |
 | `scenarioParameters.holidayDates` | Utilisé | OK |
 
-**Champs ignorés silencieusement :** `dataSet.creneaux`, `dataSet.referentiels`
+**Champs ignorés silencieusement :** ~~`dataSet.creneaux`, `dataSet.referentiels`~~ → aucun : `dataSet.creneaux` reste ignoré mais avec `log.warn` (A1), `dataSet.referentiels` est désormais lu (B1)
 
-**Champs implicites / reconstruits :** créneaux (générés par le builder), référentiel (hardcodé `"travail"`)
+**Champs implicites / reconstruits :** créneaux (générés par le builder) ~~, référentiel (hardcodé `"travail"`)~~
 
 ---
 
@@ -93,14 +113,20 @@ Logiques **spécifiques et exclusives à SC-01** dans `ScenarioDatasetBuilderSc0
 
 **Comportements hardcodés :**
 
-- `codeActiviteId` des créneaux générés : absent ou non renseigné depuis un référentiel (le builder ne lit aucun référentiel)
+- ~~`codeActiviteId` des créneaux générés : absent ou non renseigné depuis un référentiel (le builder ne lit aucun référentiel)~~ — ✅ Corrigé (B3) : le builder renseigne `codeActiviteId = "travail"`, clé de lookup du référentiel injecté
 - `isJourFerie` calculé depuis `holidayDates` en entrée — acceptable mais non issu du dataset
 
 ---
 
-### 2.5 Référentiel
+### 2.5 Référentiel — ✅ CORRIGÉ (Phase B, 2026-03-30)
 
-**C'est l'écart le plus grave.**
+> Le constat ci-dessous décrit le code **avant** la Phase B. Aujourd'hui,
+> `ScenarioSc01PreparationService.buildReferentielSc01()` appelle `resourceMapper.toReferentiel()`
+> dès que `dataSet.referentiels` est présent et non vide ; le bloc `map.put("travail", ...)` n'est
+> plus qu'un fallback assorti d'un `log.warn`. Les quatre conséquences listées ne s'appliquent donc
+> plus qu'au cas où WinDev n'envoie aucun référentiel — cas encore réel côté SC-01 (RF2).
+
+~~**C'est l'écart le plus grave.**~~
 
 `ScenarioSc01PreparationService` construit manuellement le référentiel :
 
@@ -114,8 +140,8 @@ ReferentielComptabiliteActivite referentiel = new ReferentielComptabiliteActivit
 
 Conséquences directes :
 
-- Si WinDev envoie `codeActiviteId = "ACT-SOIN"`, SC-01 ne connaît pas cette activité
-- `dataSet.referentiels` est transmis dans le contrat mais n'est **jamais lu**
+- Si WinDev envoie `codeActiviteId = "ACT-SOIN"`, SC-01 ne connaît pas cette activité — *reste vrai si aucun référentiel n'est transmis ; le compteur `activiteInconnue` le signale désormais (C1)*
+- ~~`dataSet.referentiels` est transmis dans le contrat mais n'est **jamais lu**~~ — ✅ lu depuis la Phase B
 - `WorkMetricsCalculator` cherche l'activité dans le référentiel : si absent → activité neutre (pas de comptage charge, pas de dette repos)
 - Les WorkMetrics sont calculés sur la base d'une activité fictive
 
@@ -164,17 +190,17 @@ le `WorkMetricsCalculator` applique le fallback neutre → `minutesTravaillees =
 
 | # | Problème | Impact |
 |---|----------|--------|
-| C1 | Référentiel "travail" hardcodé — `dataSet.referentiels` ignoré | WorkMetrics faux si codes activité différents de "travail" ; contrat trahi silencieusement |
-| C2 | `dataSet.creneaux` ignoré sans avertissement | WinDev peut envoyer des créneaux croyant qu'ils seront traités — ils ne le sont pas |
-| C3 | Aucun partitioning pré-résolution | Si SC-01 évolue pour accepter des créneaux externes, les créneaux invalides iront directement au solveur |
-| C4 | `IgnoredCreneauxDTO(0,0,0)` statique | Les diagnostics de sortie sont faux ; impossible de détecter des anomalies |
+| C1 | ~~Référentiel "travail" hardcodé — `dataSet.referentiels` ignoré~~ | ✅ **Corrigé** (B1, B2) — bloc lu, référentiel interne réduit à un fallback loggé |
+| C2 | ~~`dataSet.creneaux` ignoré sans avertissement~~ | ✅ **Corrigé** (A1) — `log.warn` émis avec le nombre de créneaux ignorés |
+| C3 | Aucun partitioning pré-résolution | ✅ **Corrigé** (C1) — `computeIgnoredCreneaux()` mesure activité inconnue / hors-horizon / sans ressource |
+| C4 | ~~`IgnoredCreneauxDTO(0,0,0)` statique~~ | ✅ **Corrigé** (C1) — calculé dynamiquement et propagé via `PreparedSc01Scenario` |
 
 ### Importants — risque de comportement incohérent
 
 | # | Problème | Impact |
 |---|----------|--------|
-| I1 | Absence de guards d'entrée (horizon null, dates incohérentes) | SC-01 peut planter ou se comporter bizarrement avec des entrées mal formées |
-| I2 | `dataSet.referentiels` ignoré sans log warn | Opacité totale — le développeur ne sait pas que son référentiel est court-circuité |
+| I1 | ~~Absence de guards d'entrée (horizon null, dates incohérentes)~~ | ✅ **Corrigé** (A4, A5) — guards horizon, dates, `resourceRef`, `dailyAmplitudeHours`, `shiftStart` |
+| I2 | ~~`dataSet.referentiels` ignoré sans log warn~~ | ✅ **Sans objet** (A2 puis B1) — le référentiel n'est plus court-circuité ; le warn ne subsiste que sur le fallback |
 | I3 | `ContraintesReglementairesDTO` mappé mais `RegulatoryParameters.neutre()` | Les contraintes réglementaires fournies sont absorbées en silence et ignorées |
 | I4 | DTOs de requête non alignés (pas de classe de base commune) | Duplication à maintenir, risque de divergence future |
 
@@ -191,12 +217,16 @@ le `WorkMetricsCalculator` applique le fallback neutre → `minutesTravaillees =
 
 ## 4. Recommandations
 
-### R1 — Injecter le référentiel depuis le contrat (adresse C1, I2)
+### R1 — Injecter le référentiel depuis le contrat (adresse C1, I2) — ✅ APPLIQUÉE (Phase B, 2026-03-30)
 
 Remplacer la construction inline du référentiel hardcodé dans `ScenarioSc01PreparationService`
 par un appel à `resourceMapper.toReferentiel()` en lisant `request.getDataSet().getReferentiels()`.
 
 Si `referentiels` est absent ou vide : construire un référentiel neutre **avec un `log.warn` explicite**.
+
+> Implémentée telle quelle dans `buildReferentielSc01()`, à une nuance près : le fallback n'est pas
+> un référentiel *neutre* (map vide) mais un référentiel minimal `{"travail": ...}`, pour que les
+> créneaux générés par le builder restent comptabilisés en l'absence de bloc `referentiels`.
 
 ### R2 — Avertir que `dataSet.creneaux` est ignoré (adresse C2)
 

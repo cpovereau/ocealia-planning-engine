@@ -4,6 +4,19 @@
 > **Périmètre** : SC-01 et SC-03
 > **Nature** : constat uniquement — aucune modification de code
 
+> ⚠️ **Snapshot daté — partiellement obsolète.**
+> Le chantier de stabilisation SC-01 (phases A→D, terminées le 2026-03-30 — voir
+> `92_suivi_stabilisation_sc-01.md`) a corrigé plusieurs constats de ce rapport.
+> Les passages concernés sont annotés **« ✅ Corrigé »** en place.
+>
+> | Constat d'origine | État réel du code | Réf. tâche |
+> |---|---|---|
+> | §1.8 et T-15 — `dataSet.referentiels` jamais lu par SC-01 | SC-01 appelle `resourceMapper.toReferentiel()` ; fallback `"travail"` + `log.warn` si le bloc est absent ou vide | B1, B2 |
+> | §3.2 — la notion d'activité inconnue ne s'applique pas à SC-01 | `IgnoredCreneauxDTO` est calculé dynamiquement en SC-01 (`computeIgnoredCreneaux()`) | C1 |
+> | §4 — en SC-01 `codeActiviteId = null` | le builder renseigne explicitement `codeActiviteId = "travail"` | B3 |
+>
+> Les constats non annotés n'ont pas été revérifiés à la date de cette note (2026-07-29).
+
 ---
 
 ## 1. Tableau principal — contrat d'entrée champ par champ
@@ -126,9 +139,11 @@
 
 ---
 
-### 1.8 Bloc `dataSet.referentiels` — SC-03 uniquement
+### 1.8 Bloc `dataSet.referentiels` — ~~SC-03 uniquement~~ SC-01 et SC-03
 
-> En **SC-01**, `dataSet.referentiels` est désérialisé mais **jamais lu** par `ScenarioSc01PreparationService`. Un référentiel hardcodé `{"travail": ...}` est utilisé à la place.
+> ~~En **SC-01**, `dataSet.referentiels` est désérialisé mais **jamais lu** par `ScenarioSc01PreparationService`. Un référentiel hardcodé `{"travail": ...}` est utilisé à la place.~~
+>
+> ✅ **Corrigé (Phase B, 2026-03-30)** — `ScenarioSc01PreparationService.buildReferentielSc01()` lit le bloc et appelle `resourceMapper.toReferentiel()`. Le référentiel minimal `{"travail": ...}` ne subsiste que comme **fallback** lorsque le bloc est absent ou vide, avec un `log.warn`. Les lignes du tableau ci-dessous s'appliquent donc désormais à SC-01 comme à SC-03.
 
 | Champ JSON | Bloc | Oblig. | Documenté | Désérialisé | Validé | Mappé domaine | Utilisé builder | Utilisé solveur / scoring / diagnostics / WorkMetrics | Statut | Commentaire |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -283,12 +298,12 @@
 
 ---
 
-### T-15 — `dataSet.referentiels` ignoré par SC-01
+### T-15 — `dataSet.referentiels` ignoré par SC-01 — ✅ CORRIGÉ (Phase B, 2026-03-30)
 
-- **Description** : `ScenarioSc01PreparationService` n'appelle pas `resourceMapper.toReferentiel()`. Un référentiel hardcodé `{"travail": ComptabiliteActivite(...)}` est utilisé à la place.
-- **Localisation** : `ScenarioSc01PreparationService.prepare()` lignes 106-115
-- **Type** : champ JSON ignoré, remplacement hardcodé
-- **Impact** : même si WinDev envoie un bloc `referentiels` complet dans une requête SC-01, il est ignoré
+- **Description** : ~~`ScenarioSc01PreparationService` n'appelle pas `resourceMapper.toReferentiel()`. Un référentiel hardcodé `{"travail": ComptabiliteActivite(...)}` est utilisé à la place.~~
+- **Correction** : `buildReferentielSc01()` appelle `resourceMapper.toReferentiel()` dès que le bloc est présent et non vide. Le référentiel `{"travail": ...}` n'est plus qu'un fallback assorti d'un `log.warn`.
+- **Localisation** : `ScenarioSc01PreparationService.buildReferentielSc01()`
+- **Reliquat** : le fallback silencieux-hors-log reste une tolérance assumée — WinDev n'envoie pas encore `referentiels` en SC-01 (cf. RF2 du suivi de stabilisation).
 
 ---
 
@@ -367,7 +382,9 @@ Pour chaque créneau de dataSet.creneaux :
 
 ### 3.2 Builder (SC-01)
 
-La notion d'activité inconnue ne s'applique pas à SC-01. Le builder génère ses propres créneaux avec `activite = "travail"` et un référentiel hardcodé contenant uniquement la clé `"travail"`. Il n'y a donc pas de chemin où une activité inconnue pourrait apparaître côté SC-01.
+~~La notion d'activité inconnue ne s'applique pas à SC-01. Le builder génère ses propres créneaux avec `activite = "travail"` et un référentiel hardcodé contenant uniquement la clé `"travail"`. Il n'y a donc pas de chemin où une activité inconnue pourrait apparaître côté SC-01.~~
+
+✅ **Corrigé (Phases B et C1, 2026-03-30)** — le builder renseigne `codeActiviteId = "travail"` et le référentiel provient désormais du contrat. Si le bloc `referentiels` fourni ne déclare pas `"travail"`, les créneaux générés deviennent des activités inconnues : `ScenarioSc01PreparationService.computeIgnoredCreneaux()` les compte et alimente `IgnoredCreneauxDTO` dynamiquement (le compteur n'est plus figé à `(0,0,0)`).
 
 ---
 
@@ -399,14 +416,14 @@ Le seul signal produit est `IgnoredCreneauxDTO.activiteInconnue` : un entier ind
 
 | Champ 1 | Champ 2 | Nature de la redondance | Statut actuel |
 |---|---|---|---|
-| `CreneauInputDTO.codeActiviteId` | `CreneauInputDTO.activite` | Clé stable vs libellé — le système utilise `codeActiviteId` en priorité, `activite` en fallback (pré-résolution). En SC-01, `codeActiviteId = null` et `activite = "travail"`. | Ambigu : `activite` peut être utilisé comme clé en l'absence de `codeActiviteId` — sémantique libellé/clé mélangée |
+| `CreneauInputDTO.codeActiviteId` | `CreneauInputDTO.activite` | Clé stable vs libellé — le système utilise `codeActiviteId` en priorité, `activite` en fallback (pré-résolution). ~~En SC-01, `codeActiviteId = null` et `activite = "travail"`.~~ ✅ Corrigé (B3) : le builder SC-01 renseigne les deux à `"travail"`. | Ambigu : `activite` peut être utilisé comme clé en l'absence de `codeActiviteId` — sémantique libellé/clé mélangée |
 | `SalarieInputDTO.sitesAutorises` | `SalarieInputDTO.axesOrganisationnels.lieuIds` | Ancienne source vs future source de vérité (documenté §D du plan de migration). | Redondance en cours : `sitesAutorises` est actif et mappé, `axesOrganisationnels.lieuIds` est ignoré |
 | `SalarieInputDTO.sitesAutorises` | `SalarieInputDTO.sitesAutorises` (alias `lieuxAutorises`) | Deux noms JSON pour le même champ (`@JsonAlias`). | Rétrocompatibilité — les deux sont acceptés |
 | `SalarieInputDTO.activitesCompatibles` | `SalarieInputDTO.activitesCompatibles` (alias `activitesAutorisees`) | Idem — deux noms JSON (`@JsonAlias`). | Rétrocompatibilité — les deux sont acceptés |
 | `IgnoredCreneauxDTO.aucuneRessourceDansDataset` | alias `sansRessource` | Deux noms JSON pour le même champ de sortie (`@JsonAlias` en lecture, `@JsonProperty` en écriture). | Rétrocompatibilité sortie |
 | `dataSet.creneaux` (SC-01) | Créneaux générés par `ScenarioDatasetBuilderSc01` | Même clé JSON `dataSet.creneaux`, comportement radicalement différent selon le scénario : ignorée en SC-01, source de vérité en SC-03. | Ambiguïté contractuelle — le même champ a deux sémantiques selon le scénario |
 | `Sc03ScenarioParametersDTO.periode` | `PlanningContextDTO.horizon` | `periode` est prévu pour surcharger `horizon`, mais ce n'est pas implémenté. L'horizon de `planningContext` est toujours utilisé. | Redondance non implémentée — `periode` est ignoré |
-| `dataSet.referentiels` (SC-01) | Référentiel hardcodé `{"travail":...}` dans `ScenarioSc01PreparationService` | Deux sources de référentiel selon le scénario — le champ JSON est ignoré en SC-01 au profit d'un référentiel hardcodé. | Incohérence SC-01 vs SC-03 |
+| `dataSet.referentiels` (SC-01) | Fallback `{"travail":...}` dans `ScenarioSc01PreparationService` | ~~Deux sources de référentiel selon le scénario — le champ JSON est ignoré en SC-01 au profit d'un référentiel hardcodé.~~ ✅ Corrigé (B1, B2) : le champ JSON est lu en SC-01 comme en SC-03 ; le référentiel interne n'est plus qu'un fallback loggé. | Résiduel : SC-03 rejette un `referentiels` absent (guard IAE), SC-01 le tolère avec un warn — asymétrie assumée |
 | `SalarieInputDTO.contraintesReglementaires` (individuelle) | `RegulatoryParameters.neutre()` (globale) | Deux niveaux de paramètres réglementaires coexistent sans articulation claire dans le contrat. Les paramètres globaux ne viennent pas du JSON. | Ambigu — les contraintes individuelles sont partiellement exploitées (joursConsecutifsMaximum), les globaux sont toujours neutres |
 | `PosteVirtuelInputDTO.activitesAutorisees` | `SalarieInputDTO.activitesCompatibles` | Même concept (quelles activités une ressource peut couvrir), nommage différent selon le type de ressource. | Cohérent dans l'intention, mais noms différents (`autorisees` vs `compatibles`) |
 

@@ -234,7 +234,7 @@ indépendamment du solveur et du builder.
 | `date`       | string | Date du créneau (ISO-8601)            |
 | `heureDebut` | string | Heure de début                        |
 | `heureFin`   | string | Heure de fin                          |
-| `activite`   | string | Code activité                         |
+| `activite`   | string | Code activité — `codeActiviteId` du créneau, avec repli sur le libellé `activite` s'il est absent (voir §4.5) |
 | `status`     | string | Statut d'affectation — voir ci-dessous |
 | `reasonCode` | string | Code raison — voir ci-dessous         |
 | `message`    | string | Message explicatif                    |
@@ -272,7 +272,35 @@ Ces compteurs sont calculés **en pré-résolution**, dans la couche de prépara
 | `activiteInconnue`           | integer | ✅ Phase 9  | Créneaux avec un `codeActiviteId` absent du référentiel d'activités |
 | `aucuneRessourceDansDataset` | integer | ✅ Phase 12 | Créneaux dont aucune ressource du dataset ne déclare l'activité (contrôle structurel pré-résolution) |
 
-> Pour SC-01, ces trois compteurs valent toujours 0 : les créneaux sont générés programmatiquement par le builder, sans filtrage pré-résolution.
+> ~~Pour SC-01, ces trois compteurs valent toujours 0 : les créneaux sont générés programmatiquement par le builder, sans filtrage pré-résolution.~~
+>
+> **Mise à jour 2026-03-30 (chantier SC-01, tâche C1)** — SC-01 calcule lui aussi ses compteurs, via
+> `ScenarioSc01PreparationService.computeIgnoredCreneaux()`, avec deux différences par rapport à SC-03 :
+> - `activiteInconnue` peut être **> 0** si le bloc `referentiels` transmis ne déclare pas l'activité
+>   `"travail"` utilisée par le builder ;
+> - `aucuneRessourceDansDataset` vaut toujours 0 (la ressource cible est résolue en amont) et
+>   `horsHorizon` vaut 0 par construction (les créneaux sont générés dans l'horizon) ;
+> - en SC-01 ces compteurs sont **diagnostiques uniquement** : aucun créneau n'est exclu avant le
+>   solveur, contrairement à SC-03 qui les partitionne réellement.
+
+### 4.5 Restitution du code activité
+
+Deux champs de sortie portent l'activité d'un créneau : `planning.jours[].creneaux[].activite` et
+`assignmentDiagnostics[].activite`. Les deux appliquent la même règle, alignée sur celle utilisée
+avant résolution pour la jointure référentiel :
+
+| Entrée | Valeur restituée |
+|---|---|
+| `codeActiviteId` renseigné | `codeActiviteId` |
+| `codeActiviteId` absent ou vide, `activite` renseigné | `activite` (libellé — champ déprécié) |
+| les deux absents | `null` |
+
+> **Correctif 2026-07-29** — la restitution lisait auparavant `activite` seul. Un client conforme
+> n'envoyant que `codeActiviteId` — cas nominal SC-03 — recevait `"activite": null` en sortie.
+> Implémenté par `Creneau.getCodeActiviteEffectif()`, utilisé par `ScenarioResponseMapper` et
+> `AssignmentDiagnosticsFactory`.
+>
+> Le champ de sortie conserve le nom `activite` : aucun changement de structure pour WinDev.
 
 ---
 
