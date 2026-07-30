@@ -35,3 +35,10 @@ out/
 
 ### VS Code ###
 .vscode/
+
+### FileAdapter - données d'exécution ###
+# Répertoires recréés au démarrage par FileAdapterConfiguration
+/data/file-adapter/inbox/
+/data/file-adapter/outbox/
+/data/file-adapter/archive/
+/data/file-adapter/error/
