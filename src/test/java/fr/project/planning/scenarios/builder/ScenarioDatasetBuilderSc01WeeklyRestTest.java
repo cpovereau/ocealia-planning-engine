@@ -178,6 +178,9 @@ class ScenarioDatasetBuilderSc01WeeklyRestTest {
         req.lunchBreakEnd = LocalTime.of(13, 0);
         req.workedDays = workedDays;
         req.holidayDates = Set.of();
+        // Code activité déclaré : ces tests portent sur le repos hebdomadaire, pas sur le repli
+        // de code activité. Le déclarer évite une alerte ACTIVITY_CODE_DEFAULTED parasite.
+        req.codeActiviteId = "ACT-TRAVAIL";
         return req;
     }
 }

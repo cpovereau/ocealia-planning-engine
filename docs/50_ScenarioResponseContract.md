@@ -237,6 +237,7 @@ Codes émis et gravité associée :
 | `INSUFFICIENT_WEEKLY_REST` | `ERROR` | Aucun jour de repos hebdomadaire configurable |
 | `TOO_MANY_NON_WORKED_DAYS` | `INFO` | Jours non travaillés au-delà du repos hebdomadaire |
 | `UNKNOWN_ACTIVITY` | `ERROR` | Code activité des créneaux générés absent du référentiel injecté — **sans `date`** |
+| `ACTIVITY_CODE_DEFAULTED` | `WARNING` | Aucun `codeActiviteId` déclaré en SC-01 : code historique `travail` appliqué — **sans `date`** |
 
 **Une alerte `INFO` n'est pas une anomalie.** Elle décrit une configuration atypique mais
 valide — un temps partiel à 4 jours travaillés relève de ce cas — et ne doit pas être

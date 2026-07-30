@@ -756,6 +756,17 @@ components:
             type: string
             format: date
           description: Jours fériés non travaillés dans la période
+        codeActiviteId:
+          type: string
+          minLength: 1
+          description: |
+            Code activité porté par les créneaux générés, exprimé dans le vocabulaire du
+            client. Doit figurer dans `dataSet.referentiels.activites` — sans quoi les
+            créneaux ne comptent pas dans la charge (alerte `UNKNOWN_ACTIVITY`).
+
+            **Optionnel pendant la transition.** Absent, le moteur applique son code
+            historique `travail` et retourne l'alerte `ACTIVITY_CODE_DEFAULTED` (WARNING).
+            Ce repli est transitoire : le champ deviendra obligatoire.
       required:
         - resourceRef
         - shiftStart
@@ -1087,6 +1098,8 @@ components:
         - `TOO_MANY_NON_WORKED_DAYS` (INFO) — jours non travaillés au-delà du repos hebdomadaire
         - `UNKNOWN_ACTIVITY` (ERROR) — code activité des créneaux générés absent du
           référentiel injecté ; émise sans `date` car elle porte sur le dataset
+        - `ACTIVITY_CODE_DEFAULTED` (WARNING) — aucun `codeActiviteId` déclaré en SC-01 :
+          le moteur a appliqué son code historique `travail` ; émise sans `date`
 
         Le champ `severity` porte la gravité : une alerte `INFO` signale une configuration
         atypique mais valide et ne doit pas être restituée comme une anomalie.

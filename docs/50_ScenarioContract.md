@@ -180,7 +180,9 @@ Construire un **planning de référence** conforme aux règles, sans historique.
 * shiftEndAlert (borne d’alerte, non bloquante) ;
 * lunchBreak (optionnel, défaut 12:00–13:00) ;
 * workedDays (DayOfWeek ISO : MONDAY…SUNDAY) ;
-* holidayDates (jours non travaillés).
+* holidayDates (jours non travaillés) ;
+* codeActiviteId (code activité des créneaux générés, issu du référentiel client —
+  optionnel pendant la transition, repli signalé sur `travail`).
 
 #### Données clés transmises
 

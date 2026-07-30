@@ -304,6 +304,7 @@ Dans le scénario `SC-01`, le builder `ScenarioDatasetBuilderSc01` construit les
 - jours fériés.
 
 Le builder applique ensuite plusieurs règles de génération :
+- attribution du code activité déclaré par l'appelant (`codeActiviteId`), avec repli signalé ;
 - qualification hebdomadaire des jours de repos (`RH` / `RHD`) ;
 - exclusion des jours fériés ;
 - exclusion des jours de repos ;
@@ -319,6 +320,7 @@ Le builder `SC-01` produit également des alertes de pré-résolution, parmi les
 | `INSUFFICIENT_WEEKLY_REST` | `ERROR` | Aucun jour de repos hebdomadaire configurable |
 | `TOO_MANY_NON_WORKED_DAYS` | `INFO` | Jours non travaillés au-delà du repos hebdomadaire |
 | `UNKNOWN_ACTIVITY` | `ERROR` | Code activité des créneaux générés absent du référentiel injecté |
+| `ACTIVITY_CODE_DEFAULTED` | `WARNING` | Aucun `codeActiviteId` déclaré : code historique `travail` appliqué |
 
 `UNKNOWN_ACTIVITY` ne porte pas de date : elle concerne le dataset, pas un jour.
 Elle est émise une seule fois — le code activité est commun à tous les créneaux générés.

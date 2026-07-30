@@ -571,6 +571,26 @@ Les entrées de journal antérieures ne sont pas modifiées : elles restent l'hi
 
 ---
 
+### 2026-07-30 (3) — Lot L1 : code activité déclaré par l'appelant en SC-01
+
+- **Origine** : lot L1 de `92_cadrage_donnees_amont_scenarios.md`, arbitrage §6.1. WinDev transmet des codes d'activité réels ; le moteur ne doit pas en imposer un.
+- **Constat** : SC-01 stampait `codeActiviteId = "travail"` en dur. Le client devait donc déclarer ce mot dans son propre référentiel pour que le moteur reconnaisse ses créneaux — ou construire une table de correspondance pour réintégrer un résultat exprimé dans un vocabulaire qui n'est pas le sien.
+- **Correction** : `scenarioParameters.codeActiviteId` ajouté au contrat SC-01. Le builder porte ce code sur tous les créneaux générés, `codeActiviteId` comme `activite` (champ legacy).
+- **Repli transitoire** : champ optionnel. Absent ou blanc, le moteur applique `CODE_ACTIVITE_DEFAUT = "travail"` et émet `ACTIVITY_CODE_DEFAULTED` (WARNING, sans date). Les intégrations existantes ne cassent pas, mais le repli n'est plus silencieux — il était jusqu'ici invisible pour le client.
+- **Effet sur `UNKNOWN_ACTIVITY`** : la vérification référentiel porte désormais sur le code effectif. L'alerte nomme le code réellement employé, plus une constante du moteur.
+- **Simplification** : `createCreneau()` recevait le `BuildRequest` sans jamais l'utiliser — remplacé par le code activité.
+- **Fichiers modifiés** :
+  - `scenarios/dto/request/Sc01ScenarioParametersDTO.java` — champ `codeActiviteId`
+  - `scenarios/builder/ScenarioDatasetBuilderSc01.java` — `resolveCodeActivite()`, `BuildRequest.codeActiviteId`, constante renommée `CODE_ACTIVITE_DEFAUT`, code `ACTIVITY_CODE_DEFAULTED`
+  - `scenarios/service/ScenarioSc01PreparationService.java` — propagation du paramètre
+- **Tests ajoutés** : `ScenarioDatasetBuilderSc01CodeActiviteTest` — 7 cas (code porté par les créneaux, champ legacy alimenté, pas d'alerte si déclaré, repli signalé sans date, chaîne blanche traitée comme absence, `UNKNOWN_ACTIVITY` nommant le code déclaré, configuration nominale sans aucune alerte).
+- **Ajustement de tests existants** : `ScenarioDatasetBuilderSc01WeeklyRestTest` déclare désormais un code activité — ses cas portent sur le repos hebdomadaire et n'ont pas à subir une alerte de repli parasite. Assertions inchangées.
+- **Résultat** : BUILD SUCCESSFUL — 330 tests, 0 échec.
+- **Impact contrat** : additif. **`scenario_sc_01_schema.json` déclare `additionalProperties: false`** sur `Sc01ScenarioParameters` : sans mise à jour, un envoi WinDev portant `codeActiviteId` aurait été rejeté à la validation. Schéma corrigé, ainsi que l'OpenAPI et le détail de contrat.
+- **Reste à faire** : rendre le champ obligatoire à une échéance annoncée, et retirer `CODE_ACTIVITE_DEFAUT`. À déclencher quand WinDev confirme transmettre le code sur tous ses appels SC-01.
+
+---
+
 ## Conclusion de l’audit actuel du moteur
 
 L’analyse globale du moteur montre que :

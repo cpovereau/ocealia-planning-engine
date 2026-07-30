@@ -280,7 +280,7 @@ Ordonné par dépendance, pas par valeur métier. Chaque lot est livrable seul.
 
 | Lot | Objet | Prérequis | Portée |
 |---|---|---|---|
-| **L1** | Code activité explicite en SC-01 | 6.1 ✅ | Contrat SC-01 + builder |
+| **L1** | Code activité explicite en SC-01 | 6.1 ✅ | Contrat SC-01 + builder — **livré 2026-07-30** |
 | **L2** | Restitution du lieu dans la réponse | 6.2 ✅ | Contrat de sortie |
 | **L3** | Référentiel de lieux (`id` + `libellé`) | L2 | Contrat d'entrée |
 | **L4** | Bloc `contrat` salarié | 6.3 ✅, 6.6 ✅ | Contrat d'entrée + domaine |

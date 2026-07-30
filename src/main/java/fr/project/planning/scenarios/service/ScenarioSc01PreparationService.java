@@ -151,6 +151,7 @@ public class ScenarioSc01PreparationService {
         br.workedDays = params.getWorkedDays() != null ? params.getWorkedDays() : Set.of();
         br.holidayDates = params.getHolidayDates() != null ? params.getHolidayDates() : Set.of();
         br.referentiel = referentiel;
+        br.codeActiviteId = params.getCodeActiviteId();
 
         // 3. Générer les créneaux via CreneauGenerationService (Phase D)
         ScenarioDatasetBuilderSc01.BuildResult buildResult = generationService.generate(br);

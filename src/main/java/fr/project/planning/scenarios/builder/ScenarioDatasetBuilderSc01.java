@@ -45,8 +45,14 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class ScenarioDatasetBuilderSc01 {
 
-    /** Code activité stampé sur tous les créneaux générés — clé de lookup du référentiel. */
-    static final String CODE_ACTIVITE_SC01 = "travail";
+    /**
+     * Code activité appliqué aux créneaux générés lorsque l'appelant n'en déclare aucun.
+     *
+     * Repli historique : SC-01 a longtemps imposé ce code. Il est conservé pour ne pas rompre
+     * les intégrations existantes, mais son emploi est signalé au client (ACTIVITY_CODE_DEFAULTED)
+     * — le moteur ne doit pas nommer une donnée métier à la place de l'appelant.
+     */
+    static final String CODE_ACTIVITE_DEFAUT = "travail";
 
     // =========================
     // API publique
@@ -58,6 +64,9 @@ public class ScenarioDatasetBuilderSc01 {
 
         List<ScenarioAlert> alerts = new ArrayList<>();
         List<Creneau> generated = new ArrayList<>();
+
+        // Code activité porté par les créneaux générés : déclaré par l'appelant, sinon défaut.
+        String codeActivite = resolveCodeActivite(req.codeActiviteId, alerts);
 
         // Prépare la qualification RH/RHD par semaine (lun->dim) en fonction des jours NON cochés
         Map<LocalDate, QualificationJour> weeklyRestQualification =
@@ -122,7 +131,7 @@ public class ScenarioDatasetBuilderSc01 {
                 ));
 
                 generated.add(createCreneau(
-                        req, seq.getAndIncrement(), date,
+                        codeActivite, seq.getAndIncrement(), date,
                         shiftStart, finPrevue,
                         TypePlageHoraire.JOUR,
                         false,
@@ -131,7 +140,7 @@ public class ScenarioDatasetBuilderSc01 {
             } else {
                 // Matin
                 generated.add(createCreneau(
-                        req, seq.getAndIncrement(), date,
+                        codeActivite, seq.getAndIncrement(), date,
                         shiftStart, lunchStart,
                         TypePlageHoraire.JOUR,
                         false,
@@ -139,7 +148,7 @@ public class ScenarioDatasetBuilderSc01 {
                 ));
                 // Après-midi
                 generated.add(createCreneau(
-                        req, seq.getAndIncrement(), date,
+                        codeActivite, seq.getAndIncrement(), date,
                         lunchEnd, finPrevue,
                         TypePlageHoraire.JOUR,
                         false,
@@ -148,9 +157,34 @@ public class ScenarioDatasetBuilderSc01 {
             }
         }
 
-        emitUnknownActivityAlert(req.referentiel, generated.size(), alerts);
+        emitUnknownActivityAlert(codeActivite, req.referentiel, generated.size(), alerts);
 
         return new BuildResult(generated, alerts);
+    }
+
+    /**
+     * Détermine le code activité porté par les créneaux générés.
+     *
+     * L'appelant est la source de vérité : c'est lui qui sait quelle activité le planning
+     * représente, et c'est son vocabulaire qui devra permettre de réintégrer le résultat.
+     * À défaut, le moteur applique son code historique et le signale — un repli silencieux
+     * imposerait au client un code qu'il n'a pas choisi.
+     */
+    private String resolveCodeActivite(String codeActiviteDeclare, List<ScenarioAlert> alerts) {
+        if (codeActiviteDeclare != null && !codeActiviteDeclare.isBlank()) {
+            return codeActiviteDeclare;
+        }
+
+        alerts.add(new ScenarioAlert(
+                AlertCode.ACTIVITY_CODE_DEFAULTED,
+                AlertSeverity.WARNING,
+                null,
+                "Aucun code activité déclaré (scenarioParameters.codeActiviteId) : les créneaux "
+                        + "générés portent le code par défaut '" + CODE_ACTIVITE_DEFAUT + "', "
+                        + "qui doit être déclaré dans dataSet.referentiels.activites."
+        ));
+
+        return CODE_ACTIVITE_DEFAUT;
     }
 
     /**
@@ -163,6 +197,7 @@ public class ScenarioDatasetBuilderSc01 {
      * L'alerte porte sur le dataset et non sur un jour : elle n'a pas de date.
      */
     private void emitUnknownActivityAlert(
+            String codeActivite,
             ReferentielComptabiliteActivite referentiel,
             int nbCreneauxGeneres,
             List<ScenarioAlert> alerts
@@ -170,7 +205,7 @@ public class ScenarioDatasetBuilderSc01 {
         if (referentiel == null || nbCreneauxGeneres == 0) {
             return;
         }
-        if (referentiel.contient(CODE_ACTIVITE_SC01)) {
+        if (referentiel.contient(codeActivite)) {
             return;
         }
 
@@ -178,7 +213,7 @@ public class ScenarioDatasetBuilderSc01 {
                 AlertCode.UNKNOWN_ACTIVITY,
                 AlertSeverity.ERROR,
                 null,
-                "Activité '" + CODE_ACTIVITE_SC01 + "' absente du référentiel fourni "
+                "Activité '" + codeActivite + "' absente du référentiel fourni "
                         + "(dataSet.referentiels.activites) : les " + nbCreneauxGeneres
                         + " créneaux générés ne compteront pas dans la charge."
         ));
@@ -189,7 +224,7 @@ public class ScenarioDatasetBuilderSc01 {
     // =========================
 
     private Creneau createCreneau(
-            BuildRequest req,
+            String codeActivite,
             int sequence,
             LocalDate date,
             LocalTime start,
@@ -209,8 +244,8 @@ public class ScenarioDatasetBuilderSc01 {
                 end,
                 dureeMinutes,
                 null,                 // lieu
-                CODE_ACTIVITE_SC01,   // codeActiviteId (SC-01) — clé de lookup référentiel
-                CODE_ACTIVITE_SC01,   // activite (fallback legacy)
+                codeActivite,         // codeActiviteId — clé de lookup référentiel
+                codeActivite,         // activite (fallback legacy)
                 null,                 // posteComptable
                 null,                 // priorite (PrioriteCreneau) -> null pour MVP
                 TypeCreneau.GENERE,
@@ -417,6 +452,7 @@ public class ScenarioDatasetBuilderSc01 {
 
         br.workedDays = params.getWorkedDays();
         br.holidayDates = params.getHolidayDates();
+        br.codeActiviteId = params.getCodeActiviteId();
 
         return build(br);
     }
@@ -490,6 +526,15 @@ public class ScenarioDatasetBuilderSc01 {
         public Set<DayOfWeek> workedDays;
 
         /**
+         * Code activité porté par les créneaux générés — optionnel.
+         *
+         * Déclaré par l'appelant dans le vocabulaire de son propre référentiel, afin que le
+         * résultat lui soit réintégrable sans table de correspondance. Absent, le moteur
+         * applique {@link #CODE_ACTIVITE_DEFAUT} et l'annonce dans ses alertes.
+         */
+        public String codeActiviteId;
+
+        /**
          * Référentiel d'activités injecté — optionnel.
          *
          * Sert uniquement à vérifier que le code activité stampé sur les créneaux générés
@@ -511,7 +556,8 @@ public class ScenarioDatasetBuilderSc01 {
         LUNCH_BREAK_OUTSIDE_AMPLITUDE,
         INSUFFICIENT_WEEKLY_REST,
         TOO_MANY_NON_WORKED_DAYS,
-        UNKNOWN_ACTIVITY
+        UNKNOWN_ACTIVITY,
+        ACTIVITY_CODE_DEFAULTED
     }
 
     /**

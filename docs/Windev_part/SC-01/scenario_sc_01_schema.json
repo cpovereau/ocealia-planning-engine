@@ -151,6 +151,12 @@
         "format": "date"
       },
       "description": "Liste des jours fériés."
+    },
+
+    "codeActiviteId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Code activité porté par les créneaux générés. Doit figurer dans dataSet.referentiels.activites. Optionnel pendant la transition : absent, le moteur applique le code historique 'travail' et retourne l'alerte ACTIVITY_CODE_DEFAULTED (WARNING). Deviendra obligatoire."
     }
   }
 },

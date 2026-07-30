@@ -27,6 +27,18 @@ public class Sc01ScenarioParametersDTO {
     /** Liste des jours fériés (non travaillés) */
     private Set<LocalDate> holidayDates;
 
+    /**
+     * Code activité porté par les créneaux générés — optionnel.
+     *
+     * Doit être un code du référentiel transmis dans dataSet.referentiels.activites,
+     * exprimé dans le vocabulaire du client : c'est lui qui permettra de réintégrer le
+     * résultat sans table de correspondance.
+     *
+     * Absent, le moteur applique son code historique "travail" et émet l'alerte
+     * ACTIVITY_CODE_DEFAULTED. Ce repli est transitoire.
+     */
+    private String codeActiviteId;
+
     // =========================
     // Getters / Setters
     // =========================
@@ -85,5 +97,13 @@ public class Sc01ScenarioParametersDTO {
 
     public void setHolidayDates(Set<LocalDate> holidayDates) {
         this.holidayDates = holidayDates;
+    }
+
+    public String getCodeActiviteId() {
+        return codeActiviteId;
+    }
+
+    public void setCodeActiviteId(String codeActiviteId) {
+        this.codeActiviteId = codeActiviteId;
     }
 }

@@ -55,6 +55,7 @@ Sémantique des stratégies :
 | `lunchBreak.end`      | string          | Oui si `lunchBreak` présent | `HH:mm` — ex : `"13:00"`        |                                                         |
 | `workedDays`          | tableau string  | Oui                         | valeurs Java `DayOfWeek` long    | Voir règle de normalisation — `50_interface_windev_moteur_contrat.md` §4.1 |
 | `holidayDates`        | tableau string  | Non                         | dates ISO-8601 `YYYY-MM-DD`      | Jours fériés exclus du planning                         |
+| `codeActiviteId`      | string          | Non *(transitoire)*         | code du référentiel client       | Code porté par les créneaux générés. Doit figurer dans `dataSet.referentiels.activites`. Absent → repli `travail` + alerte `ACTIVITY_CODE_DEFAULTED`. **Deviendra obligatoire** |
 
 Valeurs valides pour `workedDays` :
 
