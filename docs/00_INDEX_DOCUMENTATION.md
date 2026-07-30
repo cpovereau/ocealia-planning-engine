@@ -303,6 +303,7 @@ et le moteur de planification.
 | `90_SUIVI_DEVELOPPEMENT_MOTEUR.md`        | État d’avancement du moteur |
 | `91_JOURNAL_DEVELOPPEMENT_MOTEUR.md`      | Historique du développement |
 | `92_ARCHIVES_DES_DECISIONS_TECHNIQUES.md` | Historique des décisions    |
+| `92_cadrage_donnees_amont_scenarios.md`   | Données amont attendues de WinDev par scénario (SC-01 → SC-05) : état vérifié, arbitrages ouverts, découpage |
 
 ---
 
