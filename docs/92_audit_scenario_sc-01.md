@@ -106,10 +106,10 @@ Logiques **spécifiques et exclusives à SC-01** dans `ScenarioDatasetBuilderSc0
 
 | Logique | Description | Problème |
 |---------|-------------|----------|
-| Qualification RH/RHD | 2 jours non cochés → RH + RHD, 1 non coché → RHD | Règle métier hardcodée sans paramétrage |
+| Qualification RH/RHD | ~~2 jours non cochés → RH + RHD, 1 non coché → RHD~~ → Dimanche non travaillé = `RHD`, samedi = `RH`, jours restants = `NON_TRAVAILLE` ; `RH` reporté sur le 1er jour non coché si le week-end est travaillé (✅ 2026-07-30) | ~~Règle métier hardcodée sans paramétrage~~ → Règle adossée au week-end, sans seuil arbitraire |
 | Génération créneaux par amplitude | Calcul matin/après-midi depuis `shiftStart`, `dailyAmplitudeHours`, `lunchBreak` | Logique non partagée avec SC-03 |
 | IDs créneaux `SC01-YYYY-MM-DD-NNN` | Format propriétaire | Inconsistant avec SC-03 |
-| Alertes SHIFT / LUNCH / REST | 4 types d'alertes générées côté builder | Spécifique SC-01 |
+| Alertes SHIFT / LUNCH / REST | 4 types d'alertes générées côté builder, chacune portant une `severity` `INFO`/`WARNING`/`ERROR` (✅ 2026-07-30) | Spécifique SC-01 |
 
 **Comportements hardcodés :**
 

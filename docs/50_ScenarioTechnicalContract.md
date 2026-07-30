@@ -190,6 +190,7 @@ Il exécute uniquement une phase de génération déterministe.
   "workMetrics": { ... },
   "alerts": [ {
       "code": "SHIFT_END_EXCEEDED",
+      "severity": "WARNING",
       "date": "2026-02-23",
       "message": "Fin prévue (...)"
     } ],

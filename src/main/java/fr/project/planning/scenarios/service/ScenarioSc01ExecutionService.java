@@ -58,7 +58,7 @@ public class ScenarioSc01ExecutionService {
                 .toList());
 
         List<ScenarioAlertDTO> alerts = prepared.buildResult().alerts().stream()
-                .map(a -> new ScenarioAlertDTO(a.code().name(), a.date(), a.message()))
+                .map(a -> new ScenarioAlertDTO(a.code().name(), a.severity().name(), a.date(), a.message()))
                 .toList();
 
         return responseMapper.toResponse(

@@ -1079,15 +1079,41 @@ components:
       description: |
         Alerte émise lors de la génération ou de la préparation du dataset.
         Correspond à `ScenarioAlertDTO`.
-        Codes connus : `SHIFT_END_EXCEEDED`, `LUNCH_BREAK_OUTSIDE_AMPLITUDE`.
+
+        Codes connus :
+        - `SHIFT_END_EXCEEDED` (WARNING) — fin de poste au-delà de la borne d'alerte
+        - `LUNCH_BREAK_OUTSIDE_AMPLITUDE` (WARNING) — pause midi incohérente, un seul créneau généré
+        - `INSUFFICIENT_WEEKLY_REST` (ERROR) — aucun jour de repos hebdomadaire configurable
+        - `TOO_MANY_NON_WORKED_DAYS` (INFO) — jours non travaillés au-delà du repos hebdomadaire
+
+        Le champ `severity` porte la gravité : une alerte `INFO` signale une configuration
+        atypique mais valide et ne doit pas être restituée comme une anomalie.
+        Champ optionnel pour compatibilité ascendante — absent, il doit être interprété
+        comme `WARNING`.
       properties:
         code:
           type: string
           description: Code machine de l'alerte
+        severity:
+          type: string
+          enum: [INFO, WARNING, ERROR]
+          description: |
+            Gravité de l'alerte.
+            `INFO` = configuration atypique mais valide, aucune action requise.
+            `WARNING` = configuration acceptée mais dégradée ou hors borne d'alerte.
+            `ERROR` = configuration incohérente, résultat à considérer avec réserve.
         date:
           type: string
           format: date
-          description: Date concernée par l'alerte
+          description: |
+            Date concernée par l'alerte. Champ optionnel : lorsque l'alerte porte sur
+            le dataset ou la configuration et non sur un jour, la clé est **omise** de
+            la réponse — elle n'est jamais sérialisée à `null`.
+
+            Pour les alertes portant sur la configuration hebdomadaire
+            (`INSUFFICIENT_WEEKLY_REST`, `TOO_MANY_NON_WORKED_DAYS`), il s'agit du
+            début de l'horizon : l'alerte est émise une seule fois, quel que soit
+            le nombre de semaines couvertes.
         message:
           type: string
           description: Message lisible

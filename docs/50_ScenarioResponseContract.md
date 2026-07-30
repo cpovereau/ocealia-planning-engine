@@ -217,11 +217,33 @@ Particulièrement utile en phase d'intégration ou lors de l'analyse d'un scéna
 
 ### 4.2 Alertes (`alerts[]`)
 
-| Champ     | Type   | Description                                  |
-| --------- | ------ | -------------------------------------------- |
-| `code`    | string | Code d'alerte — ex : `"SHIFT_END_EXCEEDED"`  |
-| `date`    | string | Date concernée (ISO-8601)                    |
-| `message` | string | Message lisible                              |
+| Champ      | Type   | Description                                                          |
+| ---------- | ------ | -------------------------------------------------------------------- |
+| `code`     | string | Code d'alerte — ex : `"SHIFT_END_EXCEEDED"`                          |
+| `severity` | string | `INFO` \| `WARNING` \| `ERROR` — optionnel, absent = lire `WARNING`   |
+| `date`     | string | Date concernée (ISO-8601) — **optionnel, la clé est omise si absente** |
+| `message`  | string | Message lisible                                                      |
+
+`date` est omis — et non sérialisé à `null` — lorsque l'alerte ne porte pas sur un jour
+mais sur le dataset ou la configuration. Le client doit traiter l'absence de la clé,
+pas une valeur nulle.
+
+Codes émis et gravité associée :
+
+| Code | Sévérité | Signification |
+|------|----------|---------------|
+| `SHIFT_END_EXCEEDED` | `WARNING` | Fin de poste au-delà de la borne d'alerte |
+| `LUNCH_BREAK_OUTSIDE_AMPLITUDE` | `WARNING` | Pause midi incohérente : un seul créneau généré |
+| `INSUFFICIENT_WEEKLY_REST` | `ERROR` | Aucun jour de repos hebdomadaire configurable |
+| `TOO_MANY_NON_WORKED_DAYS` | `INFO` | Jours non travaillés au-delà du repos hebdomadaire |
+
+**Une alerte `INFO` n'est pas une anomalie.** Elle décrit une configuration atypique mais
+valide — un temps partiel à 4 jours travaillés relève de ce cas — et ne doit pas être
+restituée à l'utilisateur comme un défaut. Le client filtre sur `severity`, pas sur `code`.
+
+Les alertes portant sur la configuration hebdomadaire (`INSUFFICIENT_WEEKLY_REST`,
+`TOO_MANY_NON_WORKED_DAYS`) sont émises **une seule fois** par réponse, ancrées sur le
+début de l'horizon, quel que soit le nombre de semaines couvertes.
 
 ### 4.3 Diagnostics d'affectation (`assignmentDiagnostics[]`)
 

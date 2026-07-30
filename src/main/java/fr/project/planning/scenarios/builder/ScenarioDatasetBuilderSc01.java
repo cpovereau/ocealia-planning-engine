@@ -34,8 +34,10 @@ import java.util.concurrent.atomic.AtomicInteger;
  * - jours fériés (liste de dates, non travaillés)
  *
  * Règles RH/RHD (par bloc lun->dim) :
- * - 2 jours non cochés : 1er RH, 2e RHD
- * - 1 jour non coché : RHD
+ * - dimanche non travaillé : RHD (repos dominical)
+ * - samedi non travaillé : RH (repos hebdomadaire accolé)
+ * - week-end entièrement travaillé : RH reporté sur le 1er jour non coché
+ * - autres jours non cochés : NON_TRAVAILLE (horaire contractuel, pas un repos hebdomadaire)
  * - 0 jour non coché : alerte repos insuffisant
  *
  * Les jours fériés sont non travaillés.
@@ -89,6 +91,7 @@ public class ScenarioDatasetBuilderSc01 {
             if (finPrevue.isAfter(req.shiftEndAlert)) {
                 alerts.add(new ScenarioAlert(
                         AlertCode.SHIFT_END_EXCEEDED,
+                        AlertSeverity.WARNING,
                         date,
                         "Fin prévue (" + finPrevue + ") au-delà de la borne d'alerte (" + req.shiftEndAlert + ")."
                 ));
@@ -108,6 +111,7 @@ public class ScenarioDatasetBuilderSc01 {
             if (!canSplit) {
                 alerts.add(new ScenarioAlert(
                         AlertCode.LUNCH_BREAK_OUTSIDE_AMPLITUDE,
+                        AlertSeverity.WARNING,
                         date,
                         "Pause midi incohérente avec l'amplitude : génération d'un seul créneau (" +
                                 shiftStart + " -> " + finPrevue + ")."
@@ -203,6 +207,17 @@ public class ScenarioDatasetBuilderSc01 {
     ) {
         Map<LocalDate, QualificationJour> result = new HashMap<>();
 
+        List<DayOfWeek> nonWorked = new ArrayList<>();
+        for (DayOfWeek d : DayOfWeek.values()) {
+            if (!workedDays.contains(d)) {
+                nonWorked.add(d);
+            }
+        }
+        nonWorked.sort(Comparator.comparingInt(DayOfWeek::getValue));
+
+        // La semaine type est identique sur tout l'horizon : on la qualifie une seule fois.
+        Map<DayOfWeek, QualificationJour> semaineType = qualifyNonWorkedDays(nonWorked);
+
         LocalDate cursor = debut;
 
         while (!cursor.isAfter(fin)) {
@@ -212,34 +227,9 @@ public class ScenarioDatasetBuilderSc01 {
             LocalDate blockStart = weekStart.isBefore(debut) ? debut : weekStart;
             LocalDate blockEnd = weekEnd.isAfter(fin) ? fin : weekEnd;
 
-            List<DayOfWeek> nonWorked = new ArrayList<>();
-            for (DayOfWeek d : DayOfWeek.values()) {
-                if (!workedDays.contains(d)) {
-                    nonWorked.add(d);
-                }
-            }
-            nonWorked.sort(Comparator.comparingInt(DayOfWeek::getValue));
-
-            if (nonWorked.isEmpty()) {
-                alerts.add(new ScenarioAlert(
-                        AlertCode.INSUFFICIENT_WEEKLY_REST,
-                        blockStart,
-                        "Aucun jour de repos configuré sur une semaine (0 jour non coché)."
-                ));
-            }
-
-            if (nonWorked.size() > 2) {
-                alerts.add(new ScenarioAlert(
-                        AlertCode.TOO_MANY_NON_WORKED_DAYS,
-                        blockStart,
-                        "Plus de 2 jours non cochés dans la semaine : configuration atypique (" + nonWorked.size() + ")."
-                ));
-            }
-
             for (LocalDate d = blockStart; !d.isAfter(blockEnd); d = d.plusDays(1)) {
-                DayOfWeek dow = d.getDayOfWeek();
-                if (!workedDays.contains(dow)) {
-                    QualificationJour q = mapNonWorkedDayToQualification(nonWorked, dow);
+                QualificationJour q = semaineType.get(d.getDayOfWeek());
+                if (q != null) {
                     result.put(d, q);
                 }
             }
@@ -247,21 +237,88 @@ public class ScenarioDatasetBuilderSc01 {
             cursor = weekEnd.plusDays(1);
         }
 
+        // Alertes émises une seule fois : elles portent sur la configuration `workedDays`,
+        // pas sur une semaine particulière de l'horizon.
+        emitWeeklyRestAlerts(debut, nonWorked, semaineType, alerts);
+
         return result;
     }
 
-    private QualificationJour mapNonWorkedDayToQualification(List<DayOfWeek> nonWorkedSorted, DayOfWeek dow) {
-        if (nonWorkedSorted.size() == 1) {
-            return QualificationJour.RHD;
+    /**
+     * Qualifie les jours non cochés de la semaine type.
+     *
+     * Le repos dominical (RHD) est par définition le dimanche ; le repos hebdomadaire (RH)
+     * lui est accolé, donc le samedi lorsqu'il est non travaillé. Si le week-end est
+     * entièrement travaillé, le repos hebdomadaire est reporté sur le premier jour non coché.
+     *
+     * Les jours non cochés restants relèvent de l'horaire contractuel (temps partiel,
+     * horaire réduit) et non du repos hebdomadaire : ils sont qualifiés NON_TRAVAILLE.
+     */
+    private Map<DayOfWeek, QualificationJour> qualifyNonWorkedDays(List<DayOfWeek> nonWorkedSorted) {
+        Map<DayOfWeek, QualificationJour> qualification = new EnumMap<>(DayOfWeek.class);
+
+        if (nonWorkedSorted.isEmpty()) {
+            return qualification;
         }
-        if (nonWorkedSorted.size() >= 2) {
-            DayOfWeek first = nonWorkedSorted.get(0);
-            DayOfWeek second = nonWorkedSorted.get(1);
-            if (dow == first) return QualificationJour.RH;
-            if (dow == second) return QualificationJour.RHD;
-            return QualificationJour.RH;
+
+        for (DayOfWeek d : nonWorkedSorted) {
+            qualification.put(d, QualificationJour.NON_TRAVAILLE);
         }
-        return QualificationJour.OUVRE;
+
+        boolean samediRepos = qualification.containsKey(DayOfWeek.SATURDAY);
+        boolean dimancheRepos = qualification.containsKey(DayOfWeek.SUNDAY);
+
+        if (dimancheRepos) {
+            qualification.put(DayOfWeek.SUNDAY, QualificationJour.RHD);
+        }
+        if (samediRepos) {
+            qualification.put(DayOfWeek.SATURDAY, QualificationJour.RH);
+        }
+        if (!samediRepos && !dimancheRepos) {
+            qualification.put(nonWorkedSorted.get(0), QualificationJour.RH);
+        }
+
+        return qualification;
+    }
+
+    /**
+     * Alertes liées au repos hebdomadaire.
+     *
+     * Seule l'impossibilité de qualifier un repos hebdomadaire est une anomalie.
+     * Un volume de jours non cochés supérieur au repos hebdomadaire est une information
+     * de configuration (temps partiel), pas un défaut.
+     */
+    private void emitWeeklyRestAlerts(
+            LocalDate horizonDebut,
+            List<DayOfWeek> nonWorked,
+            Map<DayOfWeek, QualificationJour> semaineType,
+            List<ScenarioAlert> alerts
+    ) {
+        if (nonWorked.isEmpty()) {
+            alerts.add(new ScenarioAlert(
+                    AlertCode.INSUFFICIENT_WEEKLY_REST,
+                    AlertSeverity.ERROR,
+                    horizonDebut,
+                    "Aucun jour de repos configuré sur une semaine (0 jour non coché) : "
+                            + "repos hebdomadaire impossible à qualifier."
+            ));
+            return;
+        }
+
+        List<DayOfWeek> horsRepos = nonWorked.stream()
+                .filter(d -> semaineType.get(d) == QualificationJour.NON_TRAVAILLE)
+                .toList();
+
+        if (!horsRepos.isEmpty()) {
+            String jours = String.join(", ", horsRepos.stream().map(d -> d.name()).toList());
+            alerts.add(new ScenarioAlert(
+                    AlertCode.TOO_MANY_NON_WORKED_DAYS,
+                    AlertSeverity.INFO,
+                    horizonDebut,
+                    "Jours non travaillés au-delà du repos hebdomadaire : " + jours
+                            + ". Horaire réduit ou temps partiel — configuration valide."
+            ));
+        }
     }
 
     // =========================
@@ -401,12 +458,25 @@ public class ScenarioDatasetBuilderSc01 {
 
     public record BuildResult(List<Creneau> creneaux, List<ScenarioAlert> alerts) {}
 
-    public record ScenarioAlert(AlertCode code, LocalDate date, String message) {}
+    public record ScenarioAlert(AlertCode code, AlertSeverity severity, LocalDate date, String message) {}
 
     public enum AlertCode {
         SHIFT_END_EXCEEDED,
         LUNCH_BREAK_OUTSIDE_AMPLITUDE,
         INSUFFICIENT_WEEKLY_REST,
         TOO_MANY_NON_WORKED_DAYS
+    }
+
+    /**
+     * Niveau de gravité d'une alerte de pré-résolution.
+     *
+     * - INFO    : configuration atypique mais valide, aucune action requise
+     * - WARNING : configuration acceptée mais dégradée ou hors borne d'alerte
+     * - ERROR   : configuration incohérente, résultat à considérer avec réserve
+     */
+    public enum AlertSeverity {
+        INFO,
+        WARNING,
+        ERROR
     }
 }

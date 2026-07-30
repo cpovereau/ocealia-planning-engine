@@ -311,10 +311,22 @@ Le builder applique ensuite plusieurs règles de génération :
 - affectation initiale de chaque créneau à `RessourceNonAffectee.INSTANCE`.
 
 Le builder `SC-01` produit également des alertes de pré-résolution, parmi lesquelles :
-- `SHIFT_END_EXCEEDED`
-- `LUNCH_BREAK_OUTSIDE_AMPLITUDE`
-- `INSUFFICIENT_WEEKLY_REST`
-- `TOO_MANY_NON_WORKED_DAYS`
+
+| Code | Sévérité | Signification |
+|------|----------|---------------|
+| `SHIFT_END_EXCEEDED` | `WARNING` | Fin de poste au-delà de la borne d'alerte |
+| `LUNCH_BREAK_OUTSIDE_AMPLITUDE` | `WARNING` | Pause midi incohérente : un seul créneau généré |
+| `INSUFFICIENT_WEEKLY_REST` | `ERROR` | Aucun jour de repos hebdomadaire configurable |
+| `TOO_MANY_NON_WORKED_DAYS` | `INFO` | Jours non travaillés au-delà du repos hebdomadaire |
+
+Chaque alerte porte une `severity` (`INFO` / `WARNING` / `ERROR`).
+Une alerte `INFO` décrit une configuration atypique mais valide : elle ne doit pas être
+restituée comme une anomalie. Un temps partiel à 4 jours travaillés relève de ce cas.
+
+La qualification du repos hebdomadaire suit le week-end, pas l'ordre des jours :
+dimanche non travaillé → `RHD`, samedi non travaillé → `RH`. Les jours non cochés
+restants relèvent de l'horaire contractuel et sont qualifiés `NON_TRAVAILLE`.
+Si le week-end est entièrement travaillé, le `RH` est reporté sur le premier jour non coché.
 
 Ces alertes appartiennent au périmètre du builder.
 Elles ne proviennent ni du solveur, ni du score.

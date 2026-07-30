@@ -524,6 +524,36 @@ Les entrées de journal antérieures ne sont pas modifiées : elles restent l'hi
 
 ---
 
+### 2026-07-30 — Qualification du repos hebdomadaire SC-01 + sévérité des alertes
+
+- **Constat** : sur un export réel (`data/file-adapter/archive/2026/07/102100/`), un salarié à 4 jours travaillés (`MONDAY, TUESDAY, THURSDAY, FRIDAY`) déclenchait `TOO_MANY_NON_WORKED_DAYS` — restitué côté WinDev comme une anomalie. Le déclencheur était un seuil codé en dur, `nonWorked.size() > 2` : toute configuration à moins de 5 jours travaillés le franchissait, donc tout temps partiel.
+- **Cause réelle** : le seuil ne mesurait pas un défaut métier mais la limite de `mapNonWorkedDayToQualification`, qui ne savait qualifier que 1 ou 2 jours de repos. Au-delà, les jours excédentaires tombaient dans un repli `RH`. Le tri par `DayOfWeek.getValue()` qualifiait donc **mercredi en `RH`** et samedi en `RHD` — alors que `DetteReposSurReposHebdomadaire` suppose explicitement « samedi ou dimanche ».
+- **Correction (1) — qualification** : `qualifyNonWorkedDays()` remplace `mapNonWorkedDayToQualification()`. Le repos suit le week-end : dimanche non travaillé → `RHD`, samedi → `RH`, jours restants → `NON_TRAVAILLE` (horaire contractuel). Si le week-end est entièrement travaillé, le `RH` est reporté sur le premier jour non coché. Requalifier `RH` en `NON_TRAVAILLE` est sans effet sur la définition du travail : `20_DECISIONS_CONCEPTION_OPTAPLANNER.md` §5.2 range les deux dans la même famille non travaillée, et §5.5 interdit aux WorkMetrics d'interpréter `QualificationJour` comme du travail.
+- **Correction (2) — alerte** : le seuil `> 2` disparaît. L'alerte est dérivée de la qualification et liste les jours hors repos hebdomadaire. `INSUFFICIENT_WEEKLY_REST` (0 jour non coché) reste la seule anomalie de repos. La qualification de la semaine type sort de la boucle hebdomadaire : les alertes de configuration ne sont plus dupliquées sur un horizon multi-semaines.
+- **Correction (3) — sévérité** : `AlertSeverity { INFO, WARNING, ERROR }` portée par `ScenarioAlert` et `ScenarioAlertDTO`. `SHIFT_END_EXCEEDED` et `LUNCH_BREAK_OUTSIDE_AMPLITUDE` en `WARNING`, `INSUFFICIENT_WEEKLY_REST` en `ERROR`, `TOO_MANY_NON_WORKED_DAYS` en `INFO`. Sans ce champ, le client n'avait aucun moyen de distinguer une information d'un défaut.
+- **Fichiers modifiés** :
+  - `scenarios/builder/ScenarioDatasetBuilderSc01.java` — `qualifyNonWorkedDays()`, `emitWeeklyRestAlerts()`, enum `AlertSeverity`, record `ScenarioAlert`
+  - `scenarios/dto/ScenarioAlertDTO.java` — champ `severity`
+  - `scenarios/service/ScenarioSc01ExecutionService.java` — propagation de la sévérité
+- **Tests ajoutés** : `ScenarioDatasetBuilderSc01WeeklyRestTest` — 7 cas (horaire réduit en `INFO`, repos week-end préservé, aucun créneau sur jour non coché, semaine standard sans alerte, absence de repos en `ERROR`, report du `RH` si week-end travaillé, non-duplication sur 3 semaines).
+- **Résultat** : BUILD SUCCESSFUL — 315 tests, 0 échec. Planning généré strictement inchangé : les jours requalifiés `NON_TRAVAILLE` étaient déjà écartés par le filtre `workedDays`.
+- **Impact contrat** : additif et rétrocompatible — `severity` est optionnel, absent il doit être lu comme `WARNING`. **`50_ScenarioResponse.schema.json` déclarait `additionalProperties: false` sur `Alert`** : sans mise à jour, toute réponse portant `severity` aurait échoué à la validation. Schéma corrigé.
+- **Écarté volontairement** : rendre le seuil dépendant de la quotité de travail. Aucune donnée de quotité n'existe dans le contrat d'entrée (`quotite`, `tempsPartiel`, `dureeHebdo` : 0 occurrence dans le dépôt), et l'introduire violerait `20_dataset_builder.md` §6.4. À traiter comme un sujet de contrat d'entrée si WinDev transmet un jour la donnée.
+- **Reste à faire** : le code `TOO_MANY_NON_WORKED_DAYS` conserve un nom alarmant malgré sa sévérité `INFO` — renommage non fait pour ne pas casser un filtrage sur chaîne côté WinDev. Côté client, le filtrage des `INFO` reste à implémenter, sans quoi le symptôme demeure visible.
+
+#### Obsolescences documentaires corrigées le même jour
+
+| Document | Correction |
+|---|---|
+| `50_ScenarioResponse.schema.json` | `Alert` : ajout de `severity` (bloquant — `additionalProperties: false`) |
+| `50_ScenarioResponseContract.md` | §4.2 : champ `severity`, table des 4 codes et de leur gravité, règle « `INFO` ≠ anomalie », unicité des alertes de configuration |
+| `50_openapi_windev_moteur_v_1.yaml` | Schéma `ScenarioAlert` : `severity`, 4 codes documentés au lieu de 2, sémantique de `date` précisée |
+| `50_ScenarioTechnicalContract.md` | §7 : exemple de restitution complété avec `severity` |
+| `20_dataset_builder.md` | §7.1 : table codes/sévérités et règle de qualification RH/RHD adossée au week-end |
+| `92_audit_scenario_sc-01.md` | §2.4 : règle RH/RHD de l'audit barrée et annotée ; alertes annotées `severity` |
+
+---
+
 ## Conclusion de l’audit actuel du moteur
 
 L’analyse globale du moteur montre que :
