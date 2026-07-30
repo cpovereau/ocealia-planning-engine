@@ -4,6 +4,7 @@ import fr.project.planning.domain.creneau.Creneau;
 import fr.project.planning.domain.creneau.QualificationJour;
 import fr.project.planning.domain.creneau.TypeCreneau;
 import fr.project.planning.domain.creneau.TypePlageHoraire;
+import fr.project.planning.domain.metier.ReferentielComptabiliteActivite;
 import fr.project.planning.domain.ressource.Ressource;
 import fr.project.planning.domain.ressource.RessourceNonAffectee;
 import fr.project.planning.domain.ressource.SalarieReel;
@@ -43,6 +44,9 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Les jours fériés sont non travaillés.
  */
 public class ScenarioDatasetBuilderSc01 {
+
+    /** Code activité stampé sur tous les créneaux générés — clé de lookup du référentiel. */
+    static final String CODE_ACTIVITE_SC01 = "travail";
 
     // =========================
     // API publique
@@ -144,7 +148,40 @@ public class ScenarioDatasetBuilderSc01 {
             }
         }
 
+        emitUnknownActivityAlert(req.referentiel, generated.size(), alerts);
+
         return new BuildResult(generated, alerts);
+    }
+
+    /**
+     * Alerte si le code activité stampé sur les créneaux générés est absent du référentiel injecté.
+     *
+     * Sans cette alerte, la situation est silencieuse pour le client : le lookup échoue,
+     * les créneaux ne comptent pas dans la charge, les WorkMetrics tombent à zéro et les
+     * contraintes métier restent inertes — sans que rien ne le signale dans la réponse.
+     *
+     * L'alerte porte sur le dataset et non sur un jour : elle n'a pas de date.
+     */
+    private void emitUnknownActivityAlert(
+            ReferentielComptabiliteActivite referentiel,
+            int nbCreneauxGeneres,
+            List<ScenarioAlert> alerts
+    ) {
+        if (referentiel == null || nbCreneauxGeneres == 0) {
+            return;
+        }
+        if (referentiel.contient(CODE_ACTIVITE_SC01)) {
+            return;
+        }
+
+        alerts.add(new ScenarioAlert(
+                AlertCode.UNKNOWN_ACTIVITY,
+                AlertSeverity.ERROR,
+                null,
+                "Activité '" + CODE_ACTIVITE_SC01 + "' absente du référentiel fourni "
+                        + "(dataSet.referentiels.activites) : les " + nbCreneauxGeneres
+                        + " créneaux générés ne compteront pas dans la charge."
+        ));
     }
 
     // =========================
@@ -172,8 +209,8 @@ public class ScenarioDatasetBuilderSc01 {
                 end,
                 dureeMinutes,
                 null,                 // lieu
-                "travail",            // codeActiviteId (SC-01) — clé de lookup référentiel
-                "travail",            // activite (fallback legacy)
+                CODE_ACTIVITE_SC01,   // codeActiviteId (SC-01) — clé de lookup référentiel
+                CODE_ACTIVITE_SC01,   // activite (fallback legacy)
                 null,                 // posteComptable
                 null,                 // priorite (PrioriteCreneau) -> null pour MVP
                 TypeCreneau.GENERE,
@@ -452,6 +489,15 @@ public class ScenarioDatasetBuilderSc01 {
         /** jours cochés (MON..SUN) */
         public Set<DayOfWeek> workedDays;
 
+        /**
+         * Référentiel d'activités injecté — optionnel.
+         *
+         * Sert uniquement à vérifier que le code activité stampé sur les créneaux générés
+         * y est déclaré. Null désactive la vérification : le builder ne suppose pas qu'un
+         * référentiel lui soit fourni.
+         */
+        public ReferentielComptabiliteActivite referentiel;
+
         /** jours fériés dans la période (non travaillés) */
         public Set<LocalDate> holidayDates;
     }
@@ -464,7 +510,8 @@ public class ScenarioDatasetBuilderSc01 {
         SHIFT_END_EXCEEDED,
         LUNCH_BREAK_OUTSIDE_AMPLITUDE,
         INSUFFICIENT_WEEKLY_REST,
-        TOO_MANY_NON_WORKED_DAYS
+        TOO_MANY_NON_WORKED_DAYS,
+        UNKNOWN_ACTIVITY
     }
 
     /**

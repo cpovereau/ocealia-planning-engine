@@ -1085,6 +1085,8 @@ components:
         - `LUNCH_BREAK_OUTSIDE_AMPLITUDE` (WARNING) — pause midi incohérente, un seul créneau généré
         - `INSUFFICIENT_WEEKLY_REST` (ERROR) — aucun jour de repos hebdomadaire configurable
         - `TOO_MANY_NON_WORKED_DAYS` (INFO) — jours non travaillés au-delà du repos hebdomadaire
+        - `UNKNOWN_ACTIVITY` (ERROR) — code activité des créneaux générés absent du
+          référentiel injecté ; émise sans `date` car elle porte sur le dataset
 
         Le champ `severity` porte la gravité : une alerte `INFO` signale une configuration
         atypique mais valide et ne doit pas être restituée comme une anomalie.

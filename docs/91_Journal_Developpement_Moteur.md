@@ -554,6 +554,23 @@ Les entrées de journal antérieures ne sont pas modifiées : elles restent l'hi
 
 ---
 
+### 2026-07-30 (2) — Alerte « activité inconnue » remontée au client
+
+- **Constat** : la responsabilité « produire une alerte si une activité n'existe pas dans le référentiel amont » (`20_dataset_builder.md` §7) n'était pas tenue. La situation était bien **détectée** — `ScenarioSc01PreparationService.computeIgnoredCreneaux()` incrémente `ignoredCreneaux.activiteInconnue` et émet un `log.warn` par créneau — mais jamais **restituée** : le client recevait un compteur nu, sans message ni gravité, et le log restait côté serveur.
+- **Enjeu** : le builder stampe `codeActiviteId = "travail"` sur tous les créneaux qu'il génère. Si WinDev fournit un `dataSet.referentiels.activites` ne déclarant pas ce code, le lookup échoue en aval — les créneaux ne comptent pas dans la charge, les WorkMetrics tombent à zéro et les contraintes métier restent inertes. C'est le risque RT2 de `92_suivi_stabilisation_sc-01.md`, jusqu'ici sans signal côté client.
+- **Correction** : nouveau code `UNKNOWN_ACTIVITY` en `ERROR`, émis par le builder. `BuildRequest.referentiel` transporte le référentiel injecté ; `null` désactive la vérification, le builder ne suppose pas qu'on lui en fournisse un. Le code activité est extrait en constante `CODE_ACTIVITE_SC01` — il était dupliqué dans `createCreneau()`.
+- **Alerte sans date** : `UNKNOWN_ACTIVITY` porte sur le dataset, pas sur un jour. C'est le premier usage réel de l'optionalité de `date` introduite le même jour — la clé est omise de la réponse. Une seule alerte est émise, le code activité étant commun à tous les créneaux.
+- **Ordonnancement** : dans `ScenarioSc01PreparationService.prepare()`, la construction du référentiel remonte de l'étape 6 à l'étape 1 bis, avant la génération des créneaux. `buildReferentielSc01()` ne dépend que de `dataSet.referentiels` — le déplacement est sans effet de bord.
+- **Fichiers modifiés** :
+  - `scenarios/builder/ScenarioDatasetBuilderSc01.java` — `emitUnknownActivityAlert()`, `BuildRequest.referentiel`, constante `CODE_ACTIVITE_SC01`, code `UNKNOWN_ACTIVITY`
+  - `scenarios/service/ScenarioSc01PreparationService.java` — référentiel construit avant génération et injecté dans le `BuildRequest`
+- **Tests ajoutés** : `ScenarioDatasetBuilderSc01UnknownActivityTest` — 6 cas (référentiel incompatible → `ERROR`, alerte sans date, émission unique, référentiel compatible → rien, référentiel absent → rien, aucun créneau → rien). `ScenarioAlertDTOSerialisationTest` — 2 cas verrouillant l'omission de `date` et le format ISO-8601.
+- **Résultat** : BUILD SUCCESSFUL — 323 tests, 0 échec.
+- **Note de test** : le premier jet de `ScenarioAlertDTOSerialisationTest` utilisait un `ObjectMapper` nu, qui sérialise `LocalDate` en `[2026,7,27]`. Spring Boot désactive `WRITE_DATES_AS_TIMESTAMPS` par auto-configuration — d'où le `"2026-07-27"` observé en production. Le mapper de test reproduit désormais ce réglage explicitement.
+- **Reste à faire** : le fallback référentiel (`dataSet.referentiels` absent ou vide) reste un `log.warn` serveur non restitué — même angle mort que celui corrigé ici, à traiter dans un second temps. `ScenarioDatasetBuilderSc01.buildFromScenarioRequest()` n'est appelé par personne et ne renseigne pas `referentiel` : point d'entrée mort à supprimer ou à aligner.
+
+---
+
 ## Conclusion de l’audit actuel du moteur
 
 L’analyse globale du moteur montre que :

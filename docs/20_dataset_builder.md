@@ -318,6 +318,14 @@ Le builder `SC-01` produit également des alertes de pré-résolution, parmi les
 | `LUNCH_BREAK_OUTSIDE_AMPLITUDE` | `WARNING` | Pause midi incohérente : un seul créneau généré |
 | `INSUFFICIENT_WEEKLY_REST` | `ERROR` | Aucun jour de repos hebdomadaire configurable |
 | `TOO_MANY_NON_WORKED_DAYS` | `INFO` | Jours non travaillés au-delà du repos hebdomadaire |
+| `UNKNOWN_ACTIVITY` | `ERROR` | Code activité des créneaux générés absent du référentiel injecté |
+
+`UNKNOWN_ACTIVITY` ne porte pas de date : elle concerne le dataset, pas un jour.
+Elle est émise une seule fois — le code activité est commun à tous les créneaux générés.
+Sans elle, la situation serait silencieuse côté client : le lookup du référentiel échoue,
+les créneaux ne comptent pas dans la charge, les WorkMetrics tombent à zéro et les
+contraintes métier restent inertes. Le compteur `ignoredCreneaux.activiteInconnue`
+mesurait déjà le phénomène, sans jamais l'expliquer.
 
 Chaque alerte porte une `severity` (`INFO` / `WARNING` / `ERROR`).
 Une alerte `INFO` décrit une configuration atypique mais valide : elle ne doit pas être

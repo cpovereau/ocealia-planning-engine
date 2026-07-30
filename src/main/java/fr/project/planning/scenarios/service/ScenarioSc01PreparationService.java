@@ -127,6 +127,13 @@ public class ScenarioSc01PreparationService {
                 request.getDataSet(), params.getResourceRef()
         );
 
+        // 1 bis. Référentiel d'activités — Phase B : injecté depuis dataSet.referentiels (fallback si absent).
+        // Construit avant la génération : le builder l'utilise pour vérifier que le code activité
+        // qu'il stampe sur les créneaux y est bien déclaré.
+        ReferentielComptabiliteActivite referentiel = buildReferentielSc01(
+                request.getDataSet().getReferentiels()
+        );
+
         // 2. BuildRequest
         ScenarioDatasetBuilderSc01.BuildRequest br = new ScenarioDatasetBuilderSc01.BuildRequest();
         br.dateDebut = request.getPlanningContext().getHorizon().getDateDebut();
@@ -143,6 +150,7 @@ public class ScenarioSc01PreparationService {
 
         br.workedDays = params.getWorkedDays() != null ? params.getWorkedDays() : Set.of();
         br.holidayDates = params.getHolidayDates() != null ? params.getHolidayDates() : Set.of();
+        br.referentiel = referentiel;
 
         // 3. Générer les créneaux via CreneauGenerationService (Phase D)
         ScenarioDatasetBuilderSc01.BuildResult buildResult = generationService.generate(br);
@@ -163,10 +171,7 @@ public class ScenarioSc01PreparationService {
         // 5. Paramètres réglementaires
         RegulatoryParameters regulatoryParameters = RegulatoryParameters.neutre();
 
-        // 6. Référentiel d'activités — Phase B : injecté depuis dataSet.referentiels (fallback si absent)
-        ReferentielComptabiliteActivite referentiel = buildReferentielSc01(
-                request.getDataSet().getReferentiels()
-        );
+        // 6. Référentiel d'activités : construit en 1 bis, avant la génération des créneaux.
 
         // 7. Value range ressources
         List<Ressource> ressources = resourceMapper.toRessources(request.getDataSet());
