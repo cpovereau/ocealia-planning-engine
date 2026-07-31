@@ -123,6 +123,8 @@ Exemple :
       "date": "2026-02-23",
       "creneaux": [
         {
+          "id": "CRE-L-01",
+          "lieu": "HOPITAL-NORD",
           "activite": "travail",
           "heureDebut": "08:00",
           "heureFin": "16:00",
@@ -134,6 +136,30 @@ Exemple :
   ]
 }
 ```
+
+### 2.1 Champs d'un créneau du planning
+
+| Champ                 | Type   | Toujours présent | Notes                                                              |
+| --------------------- | ------ | :--------------: | ------------------------------------------------------------------ |
+| `id`                  | string | Oui              | Identifiant du créneau, restitué **à l'identique** de l'entrée      |
+| `lieu`                | string | Non              | Lieu reçu en entrée ; `null` si le créneau n'en portait pas         |
+| `activite`            | string | Oui              | Code activité — règle de restitution en §4.5                        |
+| `heureDebut`          | string | Oui              | `HH:mm`                                                             |
+| `heureFin`            | string | Oui              | `HH:mm`                                                             |
+| `duree`               | string | Oui              | `HH:MM`, issue de `Creneau.duree`                                   |
+| `ressourceAffecteeId` | string | Oui              | `"A_AFFECTER"` si aucune ressource réelle n'est affectée            |
+
+> **Champ `id` — clé de réintégration** : le moteur restitue l'identifiant reçu sans le modifier
+> ni l'interpréter. C'est ce champ qui permet à WinDev de rattacher chaque créneau du planning à
+> sa ligne d'origine. Pour les créneaux que le moteur génère lui-même (SC-01), l'identifiant porte
+> le préfixe `SC01-` et ne correspond à aucune ligne en base : WinDev reste seul décideur de la
+> clé primaire attribuée à la création. Le moteur ne fabrique jamais d'`Id_Journee`. Décision
+> documentée dans `20_DECISIONS_CONCEPTION_OPTAPLANNER.md`, convention d'entrée dans
+> `50_ScenarioContract.md` §3.5.
+
+> **Champ `lieu`** : restitué tel que reçu, sans normalisation ni résolution de libellé. Un créneau
+> généré par le moteur (SC-01) sort avec `lieu: null` — le moteur n'attribue pas de lieu. Le champ
+> est donc facultatif en sortie, jamais absent de la structure.
 
 > **Créneau non affecté** : un créneau sans ressource est représenté par la valeur `"A_AFFECTER"` dans le champ `ressourceAffecteeId`, jamais par `null`. Il est comptabilisé dans `solutionSummary.nbCreneauxNonAffectes` et dans `scoreBreakdown` via `METIER_SOFT_CRENEAU_NON_COUVERT`. La pseudo-ressource `A_AFFECTER` n'apparaît pas dans `workMetrics.byRessource`. Décision documentée dans `20_DECISIONS_CONCEPTION_OPTAPLANNER.md`.
 
@@ -356,6 +382,8 @@ Il ne remplace ni le détail des WorkMetrics, ni l'évaluation du solveur, ni le
 **Unité du `scoreBreakdown`** — l'unité de chaque ligne (`penaliteKey`, `unit`, `quantity`, `weightedImpact`) est déterminée par `PenaliteKey`. Décision documentée dans `20_DECISIONS_CONCEPTION_OPTAPLANNER.md`.
 
 **`workMetrics` et `A_AFFECTER`** — la pseudo-ressource `A_AFFECTER` n'apparaît jamais dans `workMetrics.byRessource`. Seules les ressources réelles y figurent.
+
+**Restitution des données d'identification** — toute donnée reçue permettant d'identifier ou de situer un créneau (`id`, `lieu`) est restituée à l'identique. Le moteur ne normalise pas ces valeurs et ne les remplace pas par une forme canonique.
 
 ---
 

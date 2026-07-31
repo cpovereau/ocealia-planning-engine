@@ -147,6 +147,7 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
+        "id",
         "activite",
         "heureDebut",
         "heureFin",
@@ -154,6 +155,14 @@
         "ressourceAffecteeId"
       ],
       "properties": {
+        "id": {
+          "type": "string",
+          "description": "Identifiant du créneau, restitué à l'identique de l'entrée. Chaîne opaque : le moteur ne l'interprète pas. Clé de réintégration côté appelant. Les créneaux générés par le moteur portent le préfixe SC01- et ne désignent aucune ligne en base."
+        },
+        "lieu": {
+          "type": ["string", "null"],
+          "description": "Lieu reçu en entrée, restitué sans normalisation. null si le créneau n'en portait pas — cas des créneaux générés par le moteur."
+        },
         "activite": {
           "type": "string"
         },

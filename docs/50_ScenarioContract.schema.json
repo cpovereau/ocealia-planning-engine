@@ -84,15 +84,14 @@
         "heureDebut",
         "heureFin",
         "lieu",
-        "activite",
-        "type"
+        "activite"
       ],
       "additionalProperties": false,
       "description": "Créneau à affecter. Les vérités réglementaires (nuit/dimanche/férié) proviennent de RegulatoryParameters et du calcul d'intersection temporelle, pas des flags indicatifs du créneau.",
       "properties": {
         "id": {
           "type": "string",
-          "description": "Identifiant unique du créneau"
+          "description": "Identifiant du créneau. Requis et unique sur l'ensemble du scénario, toutes origines confondues — exigence technique du solveur (@PlanningId), pas un simple confort de lecture. L'appelant le renseigne dans tous les cas : clé primaire de sa base (Id_Journee) pour un créneau servi, identifiant dédié (BES-00X) pour un besoin sans ligne en base. Un même scénario peut mêler les deux natures (cas de SC-03). Le moteur traite cette valeur comme une chaîne opaque : il la transporte et la restitue à l'identique dans planning.jours[].creneaux[].id, sans jamais l'interpréter. La convention de préfixe est lue par l'appelant seul. Voir 20_DECISIONS_CONCEPTION_OPTAPLANNER.md — Identité des créneaux et clé de réintégration WinDev."
         },
         "date": {
           "type": "string",
@@ -130,13 +129,15 @@
         "priorite": {
           "type": "integer",
           "minimum": 0,
-          "description": "Priorité du créneau (optionnel). 0 = neutre."
+          "deprecated": true,
+          "description": "OBSOLÈTE — champ retiré de CreneauInputDTO en Phase 10C. Encore accepté et silencieusement ignoré à la désérialisation ; ne plus émettre."
         },
 
         "type": {
           "type": "string",
           "enum": ["IMPOSE", "GENERE"],
-          "description": "Type de créneau (imposé ou généré)."
+          "deprecated": true,
+          "description": "OBSOLÈTE — champ retiré de CreneauInputDTO en Phase 10C, et retiré de 'required'. Le moteur qualifie lui-même l'origine du créneau : IMPOSE pour un créneau reçu, GENERE pour un créneau qu'il produit. Encore accepté et silencieusement ignoré ; ne plus émettre."
         },
 
         "isJourFerie": {
@@ -145,7 +146,8 @@
         },
         "isReposHebdo": {
           "type": "boolean",
-          "description": "INDICATIF (non réglementaire). Peut être utile pour des restitutions/diagnostics, mais ne remplace pas les règles moteur."
+          "deprecated": true,
+          "description": "OBSOLÈTE — absent de CreneauInputDTO. Encore accepté et silencieusement ignoré à la désérialisation ; ne plus émettre. Le repos hebdomadaire est qualifié par le référentiel d'activités (ReferentielComptabiliteActivite), pas par ce drapeau."
         },
         "segmentNuit": {
           "type": "boolean",
@@ -153,6 +155,8 @@
         },
         "axesOrganisationnels": {
           "type": "object",
+          "deprecated": true,
+          "description": "OBSOLÈTE — champ retiré de CreneauInputDTO en Phase 10C (la classe AxesOrganisationnelsDTO a été supprimée). Encore accepté et silencieusement ignoré ; ne plus émettre.",
           "properties": {
             "directionIds": { "type": "array", "items": { "type": "string" } },
             "serviceIds": { "type": "array", "items": { "type": "string" } },
@@ -183,9 +187,15 @@
           "items": { "type": "string" },
           "description": "Liste des idActivitePlanning compatibles (ex: 10101...). Doit être cohérente avec 'codeActiviteId' des créneaux."
         },
-        "axesOrganisationnels": { "$ref": "#/definitions/AxesOrganisationnels" },
+        "axesOrganisationnels": {
+          "$ref": "#/definitions/AxesOrganisationnels",
+          "deprecated": true,
+          "description": "OBSOLÈTE — champ retiré de SalarieInputDTO en Phase 10C. Encore accepté et silencieusement ignoré ; ne plus émettre."
+        },
         "contratTravail": {
           "type": "object",
+          "deprecated": true,
+          "description": "OBSOLÈTE — champ retiré de SalarieInputDTO en Phase 10C (la classe ContratTravailDTO a été supprimée). Un bloc 'contrat' salarié est prévu au lot L4 du cadrage 92, avec une structure différente. Ne plus émettre.",
           "properties": {
             "dateDebut": { "type": "string" },
             "dateFin": { "type": ["string", "null"] },

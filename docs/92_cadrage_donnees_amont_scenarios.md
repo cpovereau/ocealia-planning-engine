@@ -113,11 +113,13 @@ Aucune contrainte ne les exploite, et c'est un choix : il n'y a pas d'arbitrage 
 | `sitesAutorises` (salarié) | Transporté, mappé |
 | `sitesAutorises` (poste virtuel) | Transporté, mappé |
 | `lieu` (créneau, SC-03) | Transporté, mappé jusqu'au domaine |
-| **`lieu` dans la réponse** | **ABSENT** — `CreneauPlanningDTO` ne le porte pas |
+| **`lieu` dans la réponse** | ~~ABSENT~~ → **restitué** (L2, 2026-07-31) |
 | Référentiel de lieux | **ABSENT** — chaînes libres, aucun libellé |
 
-👉 **Écart identifié** : un planning entrant qui porte un lieu ressort sans. L'exigence
-« la donnée reçue doit être restituée » n'est pas tenue.
+👉 ~~**Écart identifié** : un planning entrant qui porte un lieu ressort sans.~~
+**Corrigé au lot L2 (2026-07-31)** : `lieu` et `id` sont désormais restitués dans
+`planning.jours[].creneaux[]`. L'exigence « la donnée reçue doit être restituée » est tenue
+pour ces deux champs.
 
 **Trajectoire** : le lieu doit pouvoir porter, dans un second temps, des plages de contrainte
 par jour (« ce site n'est ouvert que tels jours, à telles heures »). Le référentiel doit donc
@@ -249,6 +251,44 @@ lecture déduite du contenu des paquets, pas une règle écrite — à valider a
 
 ---
 
+### 6.7 Tranché — identité des créneaux et clé de réintégration
+
+`Id_Journee` est la **clé primaire d'une ligne de la base WinDev**, pas un identifiant métier.
+Le moteur la reçoit dans `creneaux[].id`, la transporte et la restitue — il n'en est jamais
+propriétaire.
+
+**Décision** : WinDev renseigne `id` dans tous les cas. Pour un créneau servi, c'est
+l'`Id_Journee`. Pour un besoin sans ligne en base, c'est un identifiant dédié sous préfixe
+distinct (`BES-00X`). Un même scénario peut mêler les deux natures — c'est le cas de SC-03,
+qui transmet des créneaux servis **et** des besoins potentiellement non servis.
+
+Motif : `Creneau.id` porte l'annotation `@PlanningId`. OptaPlanner exige une valeur non nulle
+et unique sur tous les créneaux d'un scénario. Un besoin arrivant sans identifiant ne dégrade
+pas la restitution — **il empêche la résolution**. La convention `BES-00X` satisfait la
+contrainte au lieu de la contourner, et laisse le contrat d'entrée inchangé : `id` y est déjà
+requis.
+
+**Trois règles pour le moteur** :
+
+1. `id` est une **chaîne opaque** — transportée, restituée, jamais interprétée. La convention
+   de préfixe est lue par WinDev seul.
+2. Le moteur ne fabrique **jamais** d'`Id_Journee`. Les créneaux qu'il génère portent son
+   propre préfixe, `SC01-<date>-<séquence>`, qui ne désigne aucune ligne en base.
+3. L'unicité vaut sur l'ensemble du scénario, toutes origines confondues.
+
+Point vérifié côté moteur : SC-01 respectait déjà cette convention sans qu'elle soit écrite —
+le builder produit `SC01-<date>-<séquence>`. Aucune correction de code n'était nécessaire de
+ce côté, seulement une mise par écrit.
+
+👉 **À confirmer côté WinDev** : que les créneaux servis partent avec leur `Id_Journee` telle
+quelle, sans préfixe susceptible de rejoindre un jour l'espace des besoins. Avec des clés
+primaires brutes d'un côté et `BES-` de l'autre, aucune collision n'est possible.
+
+Écrit dans : `20_DECISIONS_CONCEPTION_OPTAPLANNER.md` (invariant),
+`50_ScenarioContract.md` §3.5 (entrée), `50_ScenarioResponseContract.md` §2.1 (sortie).
+
+---
+
 ## 7. Ce que chaque scénario exige
 
 | Donnée | SC-01 | SC-02 | SC-03 | SC-04 | SC-05 |
@@ -281,7 +321,7 @@ Ordonné par dépendance, pas par valeur métier. Chaque lot est livrable seul.
 | Lot | Objet | Prérequis | Portée |
 |---|---|---|---|
 | **L1** | Code activité explicite en SC-01 | 6.1 ✅ | Contrat SC-01 + builder — **livré 2026-07-30** |
-| **L2** | Restitution du lieu dans la réponse | 6.2 ✅ | Contrat de sortie |
+| **L2** | Restitution du lieu **et de l'identifiant** dans la réponse | 6.2 ✅, 6.7 ✅ | Contrat de sortie — **livré 2026-07-31** |
 | **L3** | Référentiel de lieux (`id` + `libellé`) | L2 | Contrat d'entrée |
 | **L4** | Bloc `contrat` salarié | 6.3 ✅, 6.6 ✅ | Contrat d'entrée + domaine |
 | **L5** | Renommage `contraintesReglementaires` → `contraintesMetier` avec alias | 6.6 ✅ | Contrat + DTO + domaine + docs |
@@ -291,6 +331,12 @@ Ordonné par dépendance, pas par valeur métier. Chaque lot est livrable seul.
 
 **L1 et L2 sont immédiatement actionnables** — arbitrages tranchés, aucune dépendance, périmètre
 réduit. L2 corrige de surcroît un écart avéré.
+
+**L2 couvre `id` autant que `lieu`.** Les deux relèvent de la même exigence — « la donnée reçue
+doit être restituée » — et se corrigent au même endroit, `ScenarioResponseMapper`. Les traiter
+séparément imposerait deux migrations de contrat successives à WinDev. Sans `id` en sortie, le
+planning ne peut être réassocié aux lignes d'entrée que par triangulation
+(salarié + jour + horaires), ce qui devient ambigu dès que deux créneaux se ressemblent.
 
 **L5 précède L6 volontairement.** Renommer d'abord, enrichir ensuite : l'inverse ferait naître
 les nouveaux champs sous un nom qu'on sait devoir changer, et doublerait la migration côté WinDev.

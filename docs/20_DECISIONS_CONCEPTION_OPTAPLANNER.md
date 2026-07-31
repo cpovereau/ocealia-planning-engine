@@ -124,6 +124,50 @@ Règle fondamentale :
 
 ---
 
+## Décision — Identité des créneaux et clé de réintégration WinDev
+
+`Id_Journee` est la **clé primaire d'une ligne de la base WinDev**. Ce n'est pas un identifiant
+métier : c'est une clé technique appartenant au logiciel de planning, que le moteur reçoit,
+transporte et rend — sans jamais en être propriétaire.
+
+Trois règles en découlent.
+
+**1. Le champ `id` d'un créneau est une chaîne opaque.**
+
+Le moteur le transporte et le restitue à l'identique. Il ne l'interprète jamais, ne le découpe
+jamais, et ne déduit aucun comportement de sa forme. Aucune contrainte ni aucun calcul de
+métrique ne doit lire le *contenu* de cette chaîne.
+
+**2. Le moteur ne fabrique jamais d'`Id_Journee`.**
+
+Il ne produit d'identifiant que pour les créneaux qu'il génère lui-même, sous son propre préfixe
+(`SC01-<date>-<séquence>`). Un identifiant produit par le moteur ne désigne aucune ligne en
+base : il ne vaut que le temps de la résolution et de sa restitution.
+
+**3. L'unicité est une exigence technique, pas un confort de lecture.**
+
+`Creneau.id` porte l'annotation `@PlanningId`. OptaPlanner exige une valeur non nulle et unique
+sur l'ensemble des créneaux d'un scénario, toutes origines confondues. Un créneau sans
+identifiant n'est donc pas un défaut de restitution : c'est un défaut de résolution.
+
+### Conséquence — la convention de préfixe appartient à WinDev
+
+WinDev renseigne systématiquement `id`, y compris pour les besoins qui ne correspondent à
+aucune ligne enregistrée, sous un préfixe distinct. Le moteur y gagne l'identifiant non nul
+qu'exige `@PlanningId` ; WinDev conserve la capacité de reconnaître ses propres clés au retour
+et de décider seul entre mise à jour et création.
+
+| Forme de l'`id`          | Origine                      | Correspond à une ligne en base |
+| ------------------------ | ---------------------------- | :----------------------------: |
+| `Id_Journee`             | ligne de planning existante  | oui                            |
+| `BES-00X`                | besoin déclaré par WinDev    | non                            |
+| `SC01-<date>-<séquence>` | créneau généré par le moteur | non                            |
+
+Ce tableau décrit une convention **lue par WinDev seul**. Le moteur n'en connaît pas
+l'existence : pour lui, les trois formes sont des chaînes strictement équivalentes.
+
+---
+
 ## 4. Typologie des contraintes (décision structurante)
 
 Les contraintes sont classées selon **leur nature métier**, indépendamment de leur implémentation technique.
@@ -795,6 +839,8 @@ Ces sujets seront traités **après validation du socle conceptuel**.
 ## 11. Invariants à respecter pour la suite du projet
 
 * Pas de `null` pour représenter une absence d’affectation.
+* L’`id` d’un créneau est opaque : transporté, restitué, jamais interprété.
+* Le moteur ne fabrique jamais de clé appartenant à WinDev.
 * Toute règle doit être classable (physique / légale / métier / personnelle).
 * Les arbitrages doivent être explicables.
 * Les tests servent à verrouiller des capacités, pas à figer des implémentations.

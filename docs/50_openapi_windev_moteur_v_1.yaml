@@ -540,6 +540,20 @@ components:
       properties:
         id:
           type: string
+          description: |
+            Identifiant du créneau. **Requis et unique** sur l'ensemble du scénario,
+            quelle que soit l'origine du créneau — exigence technique du solveur
+            (`@PlanningId`), pas un simple confort de lecture.
+
+            L'appelant le renseigne dans tous les cas :
+              - créneau servi, enregistré en base → sa clé primaire (`Id_Journee`) ;
+              - besoin à couvrir, sans ligne en base → un identifiant dédié (`BES-00X`).
+
+            Un même scénario peut mêler les deux natures (cas de SC-03).
+
+            Le moteur traite cette valeur comme une **chaîne opaque** : il la transporte
+            et la restitue à l'identique dans `planning.jours[].creneaux[].id`, sans jamais
+            l'interpréter. La convention de préfixe est lue par l'appelant seul.
         date:
           type: string
           format: date
@@ -932,7 +946,23 @@ components:
         `ressourceAffecteeId` vaut "A_AFFECTER" si le créneau n'est pas couvert
         (jamais null — pseudo-ressource `RessourceNonAffectee`).
         `nature` est un champ de qualification du créneau (enum `CreneauNature`).
+        `id` et `lieu` sont des données reçues restituées à l'identique : le moteur ne les
+        interprète pas et ne les normalise pas.
       properties:
+        id:
+          type: string
+          description: |
+            Identifiant du créneau, restitué tel que reçu. Chaîne opaque pour le moteur —
+            la convention de préfixe appartient à l'appelant, qui l'utilise pour rattacher
+            chaque créneau à sa ligne d'origine.
+            Les créneaux générés par le moteur (SC-01) portent le préfixe
+            `SC01-<date>-<séquence>` et ne désignent aucune ligne en base.
+        lieu:
+          type: string
+          nullable: true
+          description: |
+            Lieu reçu en entrée, restitué sans normalisation.
+            null si le créneau n'en portait pas — cas des créneaux générés par le moteur.
         activite:
           type: string
         heureDebut:
@@ -952,7 +982,7 @@ components:
           type: string
           description: |
             Identifiant de la ressource affectée. "A_AFFECTER" si non couvert.
-      required: [activite, heureDebut, heureFin, duree, ressourceAffecteeId]
+      required: [id, activite, heureDebut, heureFin, duree, ressourceAffecteeId]
 
     PlanningDay:
       type: object

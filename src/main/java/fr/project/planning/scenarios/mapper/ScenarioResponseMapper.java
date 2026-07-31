@@ -100,8 +100,15 @@ public class ScenarioResponseMapper {
         return new ScenarioPlanningDTO(idSalarie, jours);
     }
 
+    /**
+     * {@code id} et {@code lieu} sont restitués tels que portés par le domaine, sans
+     * interprétation ni normalisation : ce sont des données reçues que l'appelant doit
+     * retrouver intactes pour réintégrer le planning.
+     */
     private CreneauPlanningDTO toCreneauPlanningDTO(Creneau creneau) {
         return new CreneauPlanningDTO(
+                creneau.getId(),
+                creneau.getLieu(),
                 creneau.getCodeActiviteEffectif(),
                 creneau.getHeureDebut(),
                 creneau.getHeureFin(),

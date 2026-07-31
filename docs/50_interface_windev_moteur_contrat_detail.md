@@ -74,7 +74,13 @@ Les formats abrégés (`MON`, `TUE`, etc.) sont **rejetés**.
 | `ressources`                | objet   | Oui    |                                                                     |
 | `ressources.salaries`       | tableau | Oui    | Liste des salariés disponibles                                      |
 | `ressources.postesVirtuels` | tableau | Non    | Postes virtuels (capacité de remplacement)                          |
-| `creneaux`                  | tableau | Non    | **Toléré mais ignoré** — DataSetDTO V1 ne mappe pas encore ce champ |
+| `creneaux`                  | tableau | Non    | **Toléré mais ignoré en SC-01** — le moteur génère ses propres créneaux |
+
+> **Portée de cette note** : `dataSet.creneaux` est bien mappé par le moteur — c'est l'entrée
+> principale de SC-03. C'est SC-01 qui l'ignore, parce qu'il produit lui-même les créneaux à
+> partir de `scenarioParameters`. Les créneaux ainsi générés portent un identifiant sous préfixe
+> `SC01-<date>-<séquence>` : il ne désigne aucune ligne de la base WinDev.
+> Voir `50_ScenarioContract.md` §3.5 — *Identité des créneaux*.
 
 ### 4.1 Structure d'un salarié (`ressources.salaries[]`)
 

@@ -100,6 +100,8 @@ scoreBreakdown
 Fonctionnalités incluses :
 * mapping de la solution via `ScenarioResponseMapper`
 * planning détaillé par créneau
+* restitution à l'identique de l'`id` et du `lieu` reçus (lot L2, 2026-07-31) — clé de
+  réintégration côté appelant, voir `92_cadrage_donnees_amont_scenarios.md` §6.7
 * gestion explicite des créneaux non couverts (`A_AFFECTER`)
 * résumé de solution
 * métriques par ressource et globales

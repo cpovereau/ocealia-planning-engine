@@ -136,6 +136,32 @@ les champs suivants peuvent être transmis sur les créneaux :
 Ces champs permettent de reconstruire la logique métier d’un besoin
 sans modifier le modèle conceptuel du moteur.
 
+### Identité des créneaux
+
+Le champ `id` d’un créneau est **requis et unique** sur l’ensemble d’un scénario,
+quelle que soit l’origine du créneau. Cette exigence est technique : elle conditionne
+la résolution elle-même, pas seulement la restitution.
+
+WinDev renseigne ce champ dans tous les cas :
+
+| Nature du créneau transmis                  | Contenu de l’`id`                    |
+| ------------------------------------------- | ------------------------------------ |
+| Créneau servi, enregistré en base           | la clé primaire WinDev (`Id_Journee`) |
+| Besoin à couvrir, sans ligne en base        | un identifiant dédié (`BES-00X`)      |
+
+Un scénario peut mêler les deux natures — c’est le cas de SC-03, qui transmet
+à la fois des créneaux actuellement servis et des besoins potentiellement non servis.
+
+**Le moteur traite `id` comme une chaîne opaque.** Il ne l’interprète pas, ne le parse pas,
+et n’en déduit aucun comportement. La convention de préfixe appartient à WinDev, qui est
+seul à la lire — au retour, pour décider entre mise à jour et création.
+
+Les créneaux que le moteur génère lui-même (cas de SC-01) reçoivent un identifiant sous
+son propre préfixe, `SC01-<date>-<séquence>`. Le moteur ne fabrique jamais d’`Id_Journee`.
+
+Voir `20_DECISIONS_CONCEPTION_OPTAPLANNER.md` — *Identité des créneaux et clé de
+réintégration WinDev*.
+
 ### Trajectoire d'évolution
 
 Deux niveaux sont définis :
@@ -337,6 +363,7 @@ mais avec une **lecture comparative ciblée**.
 * aucun scénario ne modifie le modèle conceptuel ;
 * aucun paramètre libre n’est transmis au solveur ;
 * toute décision est explicable via indicateurs ;
+* toute donnée d’identification reçue est restituée à l’identique ;
 * le moteur ne refuse pas : il **rend visible l’impossible**.
 
 ---
