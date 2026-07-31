@@ -200,9 +200,9 @@ Ils ne constituent pas la source de vérité actuelle du moteur.
 
 # 🧭 0 — Introduction
 
-| Document                     | Description                                                           |
-| ---------------------------- | --------------------------------------------------------------------- |
-| `00_PRINCIPE_OPTAPLANNER.md` | Introduction au fonctionnement du moteur et aux principes OptaPlanner |
+| Document                        | Description                                                                          |
+| ------------------------------- | ------------------------------------------------------------------------------------ |
+| `00_PRINCIPE_OPTAPLANNER.md`    | Introduction au fonctionnement du moteur et aux principes OptaPlanner                |
 
 ---
 
