@@ -49,6 +49,11 @@ public enum MotifCandidat {
             PenaliteKey.PHYSIQUE_HARD_CHEVAUCHEMENT_CRENEAUX,
             "Le créneau chevauche une affectation existante"),
 
+    /** Éliminatoire : R3 est une borne de légalité, pas une convention d'équité. Lot S7.2. */
+    NUITS_CONSECUTIVES_DEPASSEES(Severite.ERROR, true,
+            PenaliteKey.LEGAL_HARD_NUITS_CONSECUTIVES_MAX,
+            "Le nombre de nuits consécutives maximum serait dépassé"),
+
     // ---- Signalements non éliminatoires ----
 
     AMPLITUDE_DEPASSEE(Severite.WARNING, false,

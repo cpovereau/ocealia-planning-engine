@@ -47,6 +47,12 @@ class ScenarioControllerSc03RuntimeTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.solverResult.status").value("SOLVED"))
                 .andExpect(jsonPath("$.solverResult.score.hard").value(0))
+                // Garde-fou de score, posé au lot S7.2. Le chantier de remise en service du
+                // socle réglementaire rebranche une contrainte par lot ; sans valeur de
+                // référence, un écart passerait inaperçu ou resterait inattribuable.
+                // Une modification volontaire de cette valeur doit être consignée dans
+                // 92_cadrage_socle_reglementaire.md, avec le lot qui la produit.
+                .andExpect(jsonPath("$.solverResult.score.soft").value(-960))
                 .andExpect(jsonPath("$.planning").exists())
                 .andExpect(jsonPath("$.workMetrics").exists())
                 .andExpect(jsonPath("$.solutionSummary").exists())

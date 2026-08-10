@@ -4,7 +4,7 @@
 > jamais pour un client conforme au contrat. Ce document établit le constat, l'ordre de
 > réparation et le point de contrôle de chaque étape.
 >
-> **Statut** — S7.0 et S7.1 livrés. S7.2 à S7.8 à réaliser.
+> **Statut** — S7.0 à S7.2 livrés. S7.3 à S7.8 à réaliser.
 > **Contrat concerné** — `50_ScenarioContract.md` §3.7 · **Suivi** — `90_SUIVI_DEVELOPPEMENT_MOTEUR.md`
 
 ---
@@ -20,7 +20,7 @@ la contrainte ne produit **aucun match**.
 
 | Contrainte | Portée | Règle | Seconde cause d'extinction |
 |---|---|---|---|
-| `NuitsConsecutivesMax` | **HARD** | R3 | seuil global à 0, **sans garde** |
+| `NuitsConsecutivesMax` | **HARD** | R3 | seuil global à 0, **sans garde** — ✅ traitée en S7.2 |
 | `ReposObligatoireApresNuits` | **HARD** | R4 | seuil global à 0, garde interne |
 | `ReposHebdomadaireMin` | **HARD** | R7 | — (socle 7 j / 1 j off en dur) |
 | `ReposHebdomadaireGlissant` | **HARD** | R7 | seuil global à 0, garde interne |
@@ -96,8 +96,8 @@ L'ordre va du moins au plus perturbant, pour qu'une surprise reste imputable.
 | Lot | Objet | Effet attendu sur le score |
 |---|---|---|
 | **S7.0** ✅ | Socle : seuils portés au salarié, règle d'activation, **test de référence** | **Aucun** — point de contrôle |
-| **S7.1** ✅ | `DimanchesTravaillesMax` — repli + `dimanchesTravaillesMaximum` | **Aucun** — mesuré (§7) |
-| S7.2 | `NuitsConsecutivesMax` — repli + `nuitsConsecutivesMaximum` | HARD |
+| **S7.1** ✅ | `DimanchesTravaillesMax` — repli + `dimanchesTravaillesMaximum` | **Aucun** — mesuré (§7.1) |
+| **S7.2** ✅ | `NuitsConsecutivesMax` — repli + `nuitsConsecutivesMaximum` | **Aucun** — mesuré (§7.2) |
 | S7.3 | `ReposObligatoireApresNuits` — repli + `joursReposMinimumApresNuits` | HARD |
 | S7.4 | `ReposHebdomadaireGlissant` — repli + paire de seuils | HARD |
 | S7.5 | `ReposHebdomadaireMin` — repli seul (socle légal, sans seuil individuel) | HARD |
@@ -141,7 +141,34 @@ réveillera pas.
 
 ---
 
-## 5. Réalisé — lot S7.0
+## 5. Dette repérée en cours de route
+
+Les neuf contraintes déjà pourvues du repli le **réimplémentent en ligne** :
+
+```java
+String codeActivite = (creneau.getCodeActiviteId() != null && !creneau.getCodeActiviteId().isBlank())
+        ? creneau.getCodeActiviteId() : creneau.getActivite();
+```
+
+C'est exactement le corps de `Creneau.getCodeActiviteEffectif()`. Les contraintes remises en
+service au titre de S7 appellent la méthode. **À unifier au lot S7.8** : tant que la règle existe
+en dix exemplaires, une évolution du repli en oubliera un.
+
+---
+
+## 6. Suites
+
+Avant S7.6, arbitrer la sémantique de `heuresMaximumParJour` : plafond de **durée travaillée**
+par journée, à distinguer de `amplitudeJournaliereMaximum` (première à dernière heure, pauses
+comprises), déjà appliqué par `AmplitudeJournaliere`. Les deux coexistent et ne mesurent pas la
+même chose.
+
+## 7. Journal des lots
+
+> Une section par lot livré, dans l'ordre. Chacune consigne l'écart de score mesuré —
+> c'est la raison d'être du découpage.
+
+### 7.0 — Socle
 
 **Aucune contrainte n'a été modifiée. Le score est inchangé** — 434 tests, 0 échec (413 avant).
 
@@ -156,7 +183,7 @@ réveillera pas.
 | Test de mapping (9 cas) | `scenarios/mapper/SeuilsIndividuelsMappingTest.java` |
 | Contrat §3.7, schéma JSON, OpenAPI | `50_*` |
 
-### Une correction non prévue : `getByCode(null)`
+#### Une correction non prévue : `getByCode(null)`
 
 `ReferentielComptabiliteActivite.getByCode` déléguait directement à `Map.get`. Le comportement
 dépend alors de l'implémentation : `HashMap` — celle des mappers — renvoie `null`, là où
@@ -164,7 +191,7 @@ dépend alors de l'implémentation : `HashMap` — celle des mappers — renvoie
 et faisait échouer le calcul de score en test. Le garde explicite aligne les deux et supprime une
 NPE latente. `contient()` a été aligné de même.
 
-### Ce que S7.0 ne fait pas
+#### Ce que S7.0 ne fait pas
 
 Aucune contrainte ne lit encore les cinq nouveaux seuils. Les renseigner n'a **aujourd'hui aucun
 effet** sur le résultat. C'est délibéré : le lot est le point zéro à partir duquel les écarts des
@@ -172,7 +199,7 @@ lots suivants deviennent mesurables.
 
 ---
 
-## 6. Réalisé — lot S7.1 : dimanches travaillés
+### 7.1 — `DimanchesTravaillesMax` (SOFT, R9)
 
 **Écart de score : aucun.** 438 tests, 0 échec.
 
@@ -184,7 +211,7 @@ lots suivants deviennent mesurables.
 | Bloc `Reveillees` (4 cas) | `constraints/SocleReglementaireBaselineTest.java` |
 | Seuil individuel + `codeActiviteId` + 2 cas d'activation | `constraints/Phase13ConstraintsTest.java` |
 
-### Trois choix à retenir
+#### Trois choix à retenir
 
 **Seuls les dépassements produisent un match.** L'implémentation antérieure pénalisait de 0
 lorsque le plafond était respecté, ce qui inscrivait une ligne à impact nul au `scoreBreakdown`.
@@ -200,7 +227,7 @@ plus reste une décision possible, elle doit être rendue visible et non interdi
 `Penalites.depassementMaxDimanchesTravailles` est un poids de scoring — il arbitre entre familles
 de contraintes, il ne décrit pas une règle applicable à une personne.
 
-### Mesure de l'écart
+#### Mesure de l'écart
 
 SC-03 reste à `0hard/-960soft`, et `LEGAL_SOFT_DIMANCHES_TRAVAILLES_MAX` reste absent de son
 `scoreBreakdown`. Aucun jeu d'essai ni payload de référence ne transmet `dimanchesTravaillesMaximum` :
@@ -214,24 +241,40 @@ qui feront réellement bouger les scénarios existants.
 
 ---
 
-## 7. Dette repérée en cours de route
 
-Les neuf contraintes déjà pourvues du repli le **réimplémentent en ligne** :
+### 7.2 — `NuitsConsecutivesMax` (HARD, R3)
 
-```java
-String codeActivite = (creneau.getCodeActiviteId() != null && !creneau.getCodeActiviteId().isBlank())
-        ? creneau.getCodeActiviteId() : creneau.getActivite();
-```
+**Écart de score : aucun.** 448 tests, 0 échec.
 
-C'est exactement le corps de `Creneau.getCodeActiviteEffectif()`. Les contraintes remises en
-service au titre de S7 appellent la méthode. **À unifier au lot S7.8** : tant que la règle existe
-en dix exemplaires, une évolution du repli en oubliera un.
+| Livrable | Fichier |
+|---|---|
+| Repli d'activité + plafond individuel | `constraints/legales/NuitsConsecutivesMax.java` |
+| Motif SC-06 `NUITS_CONSECUTIVES_DEPASSEES` (éliminatoire) | `scenarios/dto/MotifCandidat.java` |
+| Couverture dédiée — 9 cas, elle n'en avait aucune | `constraints/NuitsConsecutivesMaxConstraintsTest.java` |
+| Garde-fou de score SC-03 | `scenarios/sc03/api/ScenarioControllerSc03RuntimeTest.java` |
 
----
+#### La contrainte la plus piégeuse du lot
 
-## 8. Suites
+C'est ici que les deux défauts s'annulaient le plus dangereusement : plafond global à **0** et
+**aucune garde**. Réparer le seul repli d'activité aurait rendu toute deuxième nuit consécutive
+immédiatement HARD, pour tout le monde, sans qu'aucune donnée d'entrée ne l'ait demandé. C'est la
+raison de l'ordre des lots — S7.0 devait poser la règle d'activation avant tout réveil.
 
-Avant S7.6, arbitrer la sémantique de `heuresMaximumParJour` : plafond de **durée travaillée**
-par journée, à distinguer de `amplitudeJournaliereMaximum` (première à dernière heure, pauses
-comprises), déjà appliqué par `AmplitudeJournaliere`. Les deux coexistent et ne mesurent pas la
-même chose.
+#### Éliminatoire, contrairement aux dimanches
+
+R3 borne la légalité, pas l'équité : enchaîner trop de nuits n'est pas un arbitrage possible.
+Le motif SC-06 est donc `ERROR` et éliminatoire, au même titre que le repos quotidien.
+
+#### Le garde-fou de score est désormais permanent
+
+La mesure d'écart était faite à la main, lot après lot. Elle est maintenant **asserée** :
+`ScenarioControllerSc03RuntimeTest` vérifie `soft = -960` en plus de `hard = 0`. Stabilité
+confirmée sur trois exécutions consécutives. Toute variation de score des lots suivants fera
+échouer ce test, avec le lot en cours pour seul suspect — c'est précisément ce qui manquait.
+
+#### Couverture créée de zéro
+
+Aucun test n'interrogeait cette contrainte : elle était enregistrée, muette, et personne ne la
+regardait. Les neuf cas ajoutés fixent notamment ce que « consécutif » veut dire — comptage par
+date distincte, une journée intercalée ne prolonge pas une séquence de nuits, une activité hors
+charge l'interrompt.

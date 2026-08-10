@@ -228,7 +228,7 @@ Le paramétrage du scoring est désormais centralisé et stable, permettant d’
 | Repos hebdomadaire minimum (R7 socle) | HARD | ⛔ dormante — S7.5 | –                         | Non                    | Non                                       | Non            | 92_cadrage_socle_reglementaire |
 | Repos obligatoire après nuits (R4)    | HARD | ⛔ dormante — S7.3 | –                         | Non                    | Non                                       | Non            | 92_cadrage_socle_reglementaire |
 | Durée maximale légale par salarié     | HARD | ⛔ dormante — S7.6 | –                         | Non                    | Non                                       | Non            | 92_cadrage_socle_reglementaire |
-| Nuits consécutives max (R3)           | HARD | ⛔ dormante — S7.2 | maxNuitsConsecutivesObservees | Oui                 | Non                                       | Non            | 92_cadrage_socle_reglementaire |
+| Nuits consécutives max (R3)           | HARD | ✅ lot S7.2  | maxNuitsConsecutivesObservees | Oui                    | Non                                       | Oui (si violation) | 92_cadrage_socle_reglementaire |
 | Jours consécutifs max (R1)            | SOFT | ✅            | maxJoursConsecutifsObservees  | Oui                    | Non                                       | Non            | 40_REGLES_COMBINATOIRES     |
 | Alternance jour / nuit (R5+R6)        | SOFT | ✅            | –                             | Non                    | Non                                       | Oui            | 40_REGLES_COMBINATOIRES     |
 | Amplitude journalière max (R10)       | SOFT | ✅            | –                             | Non                    | Non                                       | Oui            | 40_REGLES_COMBINATOIRES     |
@@ -680,3 +680,27 @@ Une capacité n’est considérée comme acquise que lorsqu’elle est :
 * observée en exécution.
 
 Ce document doit rester **la photographie fidèle du moteur à un instant donné**.
+
+### Socle réglementaire — lot S7.2 : nuits consécutives (2026-08-11)
+
+`NuitsConsecutivesMax` (HARD, R3) remise en service : repli d'activité via
+`getCodeActiviteEffectif()` et plafond lu sur le salarié
+(`contraintesReglementaires.nuitsConsecutivesMaximum`).
+
+C'était la contrainte la plus piégeuse du chantier : plafond global à **0** et **aucune garde**.
+Réparer le seul repli d'activité aurait rendu toute deuxième nuit consécutive immédiatement HARD,
+pour tout le monde, sans qu'aucune donnée d'entrée ne l'ait demandé.
+
+* Motif SC-06 `NUITS_CONSECUTIVES_DEPASSEES` (ERROR, **éliminatoire**) : R3 borne la légalité et
+  non l'équité — enchaîner trop de nuits n'est pas un arbitrage possible.
+* `NuitsConsecutivesMaxConstraintsTest` : 9 cas, créés de zéro. Aucun test n'interrogeait cette
+  contrainte. Ils fixent notamment ce que « consécutif » veut dire — comptage par date distincte,
+  une journée intercalée ne prolonge pas une séquence de nuits, une activité hors charge
+  l'interrompt.
+* **Garde-fou de score permanent** : `ScenarioControllerSc03RuntimeTest` asserte désormais
+  `soft = -960` en plus de `hard = 0`. La mesure d'écart n'est plus manuelle — toute variation
+  des lots suivants fera échouer ce test, avec le lot en cours pour seul suspect.
+
+**Écart de score mesuré : aucun.** SC-03 reste à `0hard/-960soft`.
+
+448 tests, 0 échec.

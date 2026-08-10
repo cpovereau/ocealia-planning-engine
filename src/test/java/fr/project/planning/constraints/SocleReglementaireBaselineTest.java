@@ -95,16 +95,6 @@ class SocleReglementaireBaselineTest {
     class ClientHistorique {
 
         @Test
-        void deuxNuitsConsecutives_violentLeSeuilNulDeNuitsConsecutives() {
-            // Seuil global = 0 et aucune garde : deux nuits d'affilée suffisent.
-            // C'est le piège de la réparation : réveiller le repli d'activité sans
-            // corriger le seuil rendrait toute nuit consécutive illégale.
-            verifier(NuitsConsecutivesMax::maxNuitsConsecutives)
-                    .given(faits(nuits(2, Champ.ACTIVITE)))
-                    .penalizesBy(1);
-        }
-
-        @Test
         void septJoursDAffilee_violentLeReposHebdomadaireMinimum() {
             verifier(ReposHebdomadaireMin::reposHebdomadaireMin)
                     .given(faits(semaineComplete(Champ.ACTIVITE)))
@@ -154,14 +144,6 @@ class SocleReglementaireBaselineTest {
     @Nested
     @DisplayName("Client conforme au contrat (champ 'codeActiviteId') — contraintes encore muettes")
     class ClientConformeAuContrat {
-
-        @Test
-        void nuitsConsecutivesMax_estDormante() {
-            // Réveil prévu au lot S7.2, avec le seuil porté au salarié.
-            verifier(NuitsConsecutivesMax::maxNuitsConsecutives)
-                    .given(faits(nuits(2, Champ.CODE_ACTIVITE_ID)))
-                    .penalizesBy(0);
-        }
 
         @Test
         void reposHebdomadaireMin_estDormante() {
@@ -245,6 +227,32 @@ class SocleReglementaireBaselineTest {
                     .given(faits(deuxDimanches(Champ.CODE_ACTIVITE_ID)))
                     .penalizesBy(0);
         }
+
+        /** Trois nuits d'affilée pour un plafond de deux. */
+        @Test
+        void nuitsConsecutivesMax_reagitAuChampDuContrat() {
+            verifier(NuitsConsecutivesMax::maxNuitsConsecutives)
+                    .given(faits(nuits(3, Champ.CODE_ACTIVITE_ID), salarieAvecPlafondNuits(2)))
+                    .penalizesBy(1);
+        }
+
+        @Test
+        void nuitsConsecutivesMax_reagitEncoreAuChampHistorique() {
+            verifier(NuitsConsecutivesMax::maxNuitsConsecutives)
+                    .given(faits(nuits(3, Champ.ACTIVITE), salarieAvecPlafondNuits(2)))
+                    .penalizesBy(1);
+        }
+
+        /**
+         * Sans plafond, trois nuits d'affilée ne déclenchent rien. C'est le cas de tous les
+         * payloads existants — et la raison pour laquelle ce lot ne déplace aucun score.
+         */
+        @Test
+        void nuitsConsecutivesMax_sansPlafondTransmis_resteInactive() {
+            verifier(NuitsConsecutivesMax::maxNuitsConsecutives)
+                    .given(faits(nuits(3, Champ.CODE_ACTIVITE_ID)))
+                    .penalizesBy(0);
+        }
     }
 
     // =====================================================================
@@ -287,6 +295,15 @@ class SocleReglementaireBaselineTest {
         salarie.setContraintesReglementaires(new ContraintesReglementairesSalarie(
                 null, null, null, null, null, null, null, null,
                 null, null, plafond, null, null));
+        return salarie;
+    }
+
+    /** Salarié dont seul le plafond de nuits consécutives est renseigné (lot S7.2). */
+    private static SalarieReel salarieAvecPlafondNuits(int plafond) {
+        SalarieReel salarie = TestPlanningRequestFactory.buildSalarie(SALARIE_ID);
+        salarie.setContraintesReglementaires(new ContraintesReglementairesSalarie(
+                null, null, null, null, null, null, null, null,
+                plafond, null, null, null, null));
         return salarie;
     }
 
