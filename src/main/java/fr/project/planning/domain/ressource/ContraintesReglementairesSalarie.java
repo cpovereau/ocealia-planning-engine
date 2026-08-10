@@ -12,12 +12,11 @@ package fr.project.planning.domain.ressource;
  * qu'un plafond de nuits consécutives ou de dimanches travaillés relève du contrat de la
  * personne, pas du contexte de calcul. Trois salariés = trois jeux de seuils.</p>
  *
- * <h3>Règle d'activation — un seuil absent ou nul désactive la contrainte</h3>
- * <p>Voir {@link #seuilActif(Number)}. Cette règle est la contrepartie de l'invariant
- * « un vide ne suppose jamais que la chose est possible » : le moteur ne devine pas un plafond
- * qu'on ne lui a pas donné, il s'abstient de juger. Le contrat demande à l'appelant d'
- * <strong>omettre</strong> le champ pour désactiver, jamais d'envoyer 0 ; un 0 reçu est tracé en
- * WARN par le mapper mais traité comme une désactivation, faute de pouvoir deviner l'intention.</p>
+ * <h3>Règle d'activation — seule l'absence désactive</h3>
+ * <p>Voir {@link #borneRenseignee(Number)}. Le moteur ne devine pas un plafond qu'on ne lui a pas
+ * donné : il s'abstient de juger, conformément à l'invariant « un vide ne suppose jamais que la
+ * chose est possible ». Une valeur <strong>0</strong> n'est pas un vide — elle est lue
+ * littéralement : un maximum à 0 interdit tout, un minimum à 0 n'exige rien.</p>
  */
 public class ContraintesReglementairesSalarie {
 
@@ -114,14 +113,39 @@ public class ContraintesReglementairesSalarie {
             new ContraintesReglementairesSalarie(null, null, null, null, null, null, null, null);
 
     /**
-     * Un seuil individuel est actif s'il est renseigné et strictement positif.
+     * Une borne individuelle est prise en compte dès qu'elle est renseignée — <strong>zéro
+     * compris</strong>.
+     *
+     * <h3>Lecture littérale du zéro (arbitrage du lot S7.7)</h3>
+     * <p>Un maximum à 0 interdit tout ; un minimum à 0 n'exige rien. Dans les deux cas le chiffre
+     * garde son sens arithmétique, et <strong>seule l'absence</strong> désactive une règle.</p>
+     *
+     * <p>Le lot S7.0 avait retenu l'inverse — 0 valant désactivation — par prudence de migration.
+     * Les données ont tranché : le jeu de référence SC-03 transmet
+     * {@code nuitsMaximumParSemaine: 0} pour un salarié et {@code 3} pour l'autre. L'intention est
+     * limpide, et la lire comme une désactivation aurait autorisé le premier à travailler toutes
+     * les nuits — l'exact contraire de ce qui était demandé, et une entorse à l'invariant
+     * « un vide ne suppose jamais que la chose est possible ».</p>
+     *
+     * <p>Une valeur négative n'a pas de sens comme borne : elle est traitée comme non renseignée
+     * plutôt qu'appliquée à la lettre.</p>
      *
      * <p>Source unique de la règle : toutes les contraintes réglementaires individuelles la
-     * consultent, aucune ne réimplémente son propre test de nullité. C'est ce qui garantit
-     * qu'« omettre » et « envoyer 0 » produisent le même comportement moteur — le seul écart
-     * entre les deux est la trace WARN émise à la cartographie.</p>
+     * consultent, aucune ne réimplémente son propre test.</p>
      */
-    public static boolean seuilActif(Number seuil) {
-        return seuil != null && seuil.doubleValue() > 0d;
+    public static boolean borneRenseignee(Number borne) {
+        return borne != null && borne.doubleValue() >= 0d;
+    }
+
+    /**
+     * Une largeur de fenêtre est prise en compte à partir de 1 jour.
+     *
+     * <p>Distinction avec {@link #borneRenseignee(Number)} : une fenêtre est une
+     * <strong>taille</strong>, pas une borne. « Au moins 2 jours off sur 0 jour » ne décrit
+     * aucune règle, là où « au plus 0 nuit » en décrit une parfaitement. Le zéro littéral n'a de
+     * sens que sur ce qui se compare, pas sur ce qui se mesure.</p>
+     */
+    public static boolean largeurRenseignee(Integer largeur) {
+        return largeur != null && largeur >= 1;
     }
 }

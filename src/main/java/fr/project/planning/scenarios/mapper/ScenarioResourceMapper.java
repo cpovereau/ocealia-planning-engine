@@ -81,19 +81,19 @@ public class ScenarioResourceMapper {
 
     private ContraintesReglementairesSalarie toContraintesReglementaires(String salarieId,
                                                                         ContraintesReglementairesDTO dto) {
-        signalerZeroInterdit(salarieId, "heuresMinimumParJour", dto.getHeuresMinimumParJour());
-        signalerZeroInterdit(salarieId, "heuresMaximumParJour", dto.getHeuresMaximumParJour());
-        signalerZeroInterdit(salarieId, "amplitudeJournaliereMaximum", dto.getAmplitudeJournaliereMaximum());
-        signalerZeroInterdit(salarieId, "reposQuotidienMinimum", dto.getReposQuotidienMinimum());
-        signalerZeroInterdit(salarieId, "heuresMinimumParSemaine", dto.getHeuresMinimumParSemaine());
-        signalerZeroInterdit(salarieId, "heuresMaximumParSemaine", dto.getHeuresMaximumParSemaine());
-        signalerZeroInterdit(salarieId, "nuitsMaximumParSemaine", dto.getNuitsMaximumParSemaine());
-        signalerZeroInterdit(salarieId, "joursConsecutifsMaximum", dto.getJoursConsecutifsMaximum());
-        signalerZeroInterdit(salarieId, "nuitsConsecutivesMaximum", dto.getNuitsConsecutivesMaximum());
-        signalerZeroInterdit(salarieId, "joursReposMinimumApresNuits", dto.getJoursReposMinimumApresNuits());
-        signalerZeroInterdit(salarieId, "dimanchesTravaillesMaximum", dto.getDimanchesTravaillesMaximum());
-        signalerZeroInterdit(salarieId, "reposHebdomadaireFenetreJours", dto.getReposHebdomadaireFenetreJours());
-        signalerZeroInterdit(salarieId, "reposHebdomadaireJoursOffMinimum", dto.getReposHebdomadaireJoursOffMinimum());
+        signalerBorneNegative(salarieId, "heuresMinimumParJour", dto.getHeuresMinimumParJour());
+        signalerBorneNegative(salarieId, "heuresMaximumParJour", dto.getHeuresMaximumParJour());
+        signalerBorneNegative(salarieId, "amplitudeJournaliereMaximum", dto.getAmplitudeJournaliereMaximum());
+        signalerBorneNegative(salarieId, "reposQuotidienMinimum", dto.getReposQuotidienMinimum());
+        signalerBorneNegative(salarieId, "heuresMinimumParSemaine", dto.getHeuresMinimumParSemaine());
+        signalerBorneNegative(salarieId, "heuresMaximumParSemaine", dto.getHeuresMaximumParSemaine());
+        signalerBorneNegative(salarieId, "nuitsMaximumParSemaine", dto.getNuitsMaximumParSemaine());
+        signalerBorneNegative(salarieId, "joursConsecutifsMaximum", dto.getJoursConsecutifsMaximum());
+        signalerBorneNegative(salarieId, "nuitsConsecutivesMaximum", dto.getNuitsConsecutivesMaximum());
+        signalerBorneNegative(salarieId, "joursReposMinimumApresNuits", dto.getJoursReposMinimumApresNuits());
+        signalerBorneNegative(salarieId, "dimanchesTravaillesMaximum", dto.getDimanchesTravaillesMaximum());
+        signalerBorneNegative(salarieId, "reposHebdomadaireFenetreJours", dto.getReposHebdomadaireFenetreJours());
+        signalerBorneNegative(salarieId, "reposHebdomadaireJoursOffMinimum", dto.getReposHebdomadaireJoursOffMinimum());
 
         signalerPaireIncomplete(salarieId, dto);
 
@@ -123,8 +123,8 @@ public class ScenarioResourceMapper {
      * qui est le comportement sûr — mais l'appelant croit probablement avoir posé une limite.</p>
      */
     private void signalerPaireIncomplete(String salarieId, ContraintesReglementairesDTO dto) {
-        boolean fenetre = ContraintesReglementairesSalarie.seuilActif(dto.getReposHebdomadaireFenetreJours());
-        boolean joursOff = ContraintesReglementairesSalarie.seuilActif(dto.getReposHebdomadaireJoursOffMinimum());
+        boolean fenetre = ContraintesReglementairesSalarie.largeurRenseignee(dto.getReposHebdomadaireFenetreJours());
+        boolean joursOff = ContraintesReglementairesSalarie.borneRenseignee(dto.getReposHebdomadaireJoursOffMinimum());
         if (fenetre != joursOff) {
             log.warn("[ScenarioResourceMapper] salarié id='{}' : repos hebdomadaire glissant déclaré "
                     + "à moitié (fenetreJours={}, joursOffMinimum={}) — la contrainte reste inactive. "
@@ -134,24 +134,23 @@ public class ScenarioResourceMapper {
     }
 
     /**
-     * Signale une contrainte réglementaire transmise à 0.
+     * Signale une borne réglementaire négative.
      *
-     * <p>Le contrat impose d'<strong>omettre le champ</strong> pour désactiver une limite, jamais
-     * d'envoyer 0. Un 0 reçu est une valeur ambiguë : selon le sens de la borne il signifie
-     * « aucune limite » ou « rien n'est permis ». Le moteur ne tranche pas à la place de
-     * l'appelant, il rend l'écart visible en intégration plutôt que silencieux.
-     * Voir {@code 92_cadrage_scenario_sc-06.md} §4.7.</p>
+     * <p>Depuis l'arbitrage du lot S7.7, <strong>0 n'est plus une anomalie</strong> : il est lu
+     * littéralement — un maximum à 0 interdit tout, un minimum à 0 n'exige rien — et seule
+     * l'absence du champ désactive une règle. Voir
+     * {@link ContraintesReglementairesSalarie#borneRenseignee(Number)}.</p>
      *
-     * <p>Pour les seuils rapatriés au lot S7.0, le moteur retient la lecture sûre — 0 désactive,
-     * cf. {@link ContraintesReglementairesSalarie#seuilActif(Number)} — car ces cinq champs sont
-     * absents des payloads existants : les faire déclencher sur une donnée non renseignée
-     * rendrait tout planning en cours illégal du jour au lendemain.</p>
+     * <p>Une valeur négative, elle, ne décrit rien : le moteur la traite comme non renseignée
+     * plutôt que de l'appliquer à la lettre, et rend l'écart visible en intégration plutôt que
+     * silencieux.</p>
      */
-    private void signalerZeroInterdit(String salarieId, String champ, Number valeur) {
-        if (valeur != null && valeur.doubleValue() == 0d) {
-            log.warn("[ScenarioResourceMapper] salarié id='{}' : contraintesReglementaires.{}=0 — "
-                    + "valeur ambiguë. Pour désactiver une limite, omettre le champ "
-                    + "plutôt que d'envoyer 0.", salarieId, champ);
+    private void signalerBorneNegative(String salarieId, String champ, Number valeur) {
+        if (valeur != null && valeur.doubleValue() < 0d) {
+            log.warn("[ScenarioResourceMapper] salarié id='{}' : contraintesReglementaires.{}={} — "
+                    + "une borne négative ne décrit aucune règle. Le champ est ignoré ; "
+                    + "l'omettre est la façon documentée de désactiver une limite.",
+                    salarieId, champ, valeur);
         }
     }
 

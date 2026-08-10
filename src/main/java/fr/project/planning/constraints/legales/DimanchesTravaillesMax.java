@@ -41,9 +41,10 @@ import java.time.DayOfWeek;
  * </ul>
  *
  * <h3>Activation</h3>
- * <p>Inactive si le seuil est absent ou nul, cf.
- * {@link ContraintesReglementairesSalarie#seuilActif(Number)}. Le filtre est appliqué en tête de
- * flux : un salarié sans plafond de dimanches ne produit aucun tuple.</p>
+ * <p>Inactive tant que le plafond n'est pas transmis, cf.
+ * {@link ContraintesReglementairesSalarie#borneRenseignee(Number)}. Un plafond à <strong>0</strong>
+ * est en revanche appliqué à la lettre : aucun dimanche travaillé n'est alors autorisé. Le filtre
+ * est appliqué en tête de flux — un salarié sans plafond ne produit aucun tuple.</p>
  *
  * <h3>Pénalité</h3>
  * <p>{@code Penalites.depassementMaxDimanchesTravailles} × dimanches en excédent. La valeur de la
@@ -109,7 +110,7 @@ public class DimanchesTravaillesMax {
     }
 
     private static boolean plafondRenseigne(SalarieReel salarie) {
-        return ContraintesReglementairesSalarie.seuilActif(
+        return ContraintesReglementairesSalarie.borneRenseignee(
                 salarie.contraintesOuAucune().getDimanchesTravaillesMaximum());
     }
 

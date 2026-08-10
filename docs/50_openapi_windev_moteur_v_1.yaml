@@ -502,7 +502,12 @@ components:
 
         **Tous les seuils sont individuels** : trois salariés = trois jeux de valeurs.
 
-        Pour désactiver une limite, **omettre le champ**. Ne jamais envoyer `0`.
+        Pour désactiver une limite, **omettre le champ**. Une valeur `0` est lue à la
+        lettre : un maximum à 0 interdit tout, un minimum à 0 n'exige rien. Une valeur
+        négative est ignorée et tracée en WARN.
+
+        Exception : `reposHebdomadaireFenetreJours` est une **taille**, pas une borne —
+        il est pris en compte à partir de 1 jour.
 
         Les cinq derniers champs ont été rapatriés au lot S7.0 depuis des seuils globaux
         qui n'étaient jamais alimentés. Leur contrainte est réactivée un lot à la fois :

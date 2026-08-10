@@ -37,7 +37,7 @@ import java.util.Map;
  * <p>Cas couverts :</p>
  * <ol>
  *   <li>Plafond non transmis → contrainte inactive</li>
- *   <li>Plafond transmis à 0 → contrainte inactive</li>
+ *   <li>Plafond transmis à 0 → aucune minute autorisée (lecture littérale, lot S7.7)</li>
  *   <li>Journée sous le plafond → pas de pénalité</li>
  *   <li>Journée exactement au plafond → pas de pénalité</li>
  *   <li>Journée au-dessus → pénalité = minutes excédentaires</li>
@@ -67,10 +67,12 @@ class DureeMaximaleParJourConstraintsTest {
     }
 
     @Test
-    void plafondTransmisAZero_contrainteInactive() {
+    void plafondTransmisAZero_aucuneMinuteAutorisee() {
+        // Lecture littérale (lot S7.7) : un plafond de 0 h n'autorise aucune minute
+        // travaillée. Toute la durée du créneau devient excédentaire.
         SalarieReel salarie = salarieAvecPlafond("SAL-DJ-02", 0.0);
 
-        verifier().given(faits(salarie, List.of(creneau("C-DJ-02", LUNDI, 720, salarie)))).penalizesBy(0);
+        verifier().given(faits(salarie, List.of(creneau("C-DJ-02", LUNDI, 720, salarie)))).penalizesBy(720);
     }
 
     // ---------------------------------------------------------

@@ -33,27 +33,50 @@ class SeuilsIndividuelsMappingTest {
     // =========================================================
 
     @Test
-    void seuilAbsent_estInactif() {
-        assertFalse(ContraintesReglementairesSalarie.seuilActif(null));
+    void borneAbsente_nEstPasRenseignee() {
+        // Seule l'absence désactive une règle : le moteur ne devine pas une limite
+        // qu'on ne lui a pas donnée.
+        assertFalse(ContraintesReglementairesSalarie.borneRenseignee(null));
     }
 
     @Test
-    void seuilNul_estInactif() {
-        // Le contrat demande d'omettre le champ. Un 0 reçu est ambigu ; le moteur retient
-        // la lecture sûre plutôt que de rendre toute affectation fautive.
-        assertFalse(ContraintesReglementairesSalarie.seuilActif(0));
-        assertFalse(ContraintesReglementairesSalarie.seuilActif(0.0d));
+    void borneNulle_estRenseignee() {
+        // Arbitrage du lot S7.7 : le 0 garde son sens arithmétique. Un maximum à 0
+        // interdit tout, un minimum à 0 n'exige rien — dans les deux cas la règle
+        // s'applique, elle n'est pas neutralisée.
+        assertTrue(ContraintesReglementairesSalarie.borneRenseignee(0));
+        assertTrue(ContraintesReglementairesSalarie.borneRenseignee(0.0d));
     }
 
     @Test
-    void seuilNegatif_estInactif() {
-        assertFalse(ContraintesReglementairesSalarie.seuilActif(-1));
+    void borneNegative_nEstPasRenseignee() {
+        // Une borne négative ne décrit rien : traitée comme absente plutôt
+        // qu'appliquée à la lettre.
+        assertFalse(ContraintesReglementairesSalarie.borneRenseignee(-1));
     }
 
     @Test
-    void seuilPositif_estActif() {
-        assertTrue(ContraintesReglementairesSalarie.seuilActif(1));
-        assertTrue(ContraintesReglementairesSalarie.seuilActif(0.5d));
+    void bornePositive_estRenseignee() {
+        assertTrue(ContraintesReglementairesSalarie.borneRenseignee(1));
+        assertTrue(ContraintesReglementairesSalarie.borneRenseignee(0.5d));
+    }
+
+    // =========================================================
+    // Largeur de fenêtre — une taille, pas une borne
+    // =========================================================
+
+    @Test
+    void largeurNulle_nEstPasRenseignee() {
+        // « Au moins 2 jours off sur 0 jour » ne décrit aucune règle, là où
+        // « au plus 0 nuit » en décrit une parfaitement. Le zéro littéral n'a de sens
+        // que sur ce qui se compare, pas sur ce qui se mesure.
+        assertFalse(ContraintesReglementairesSalarie.largeurRenseignee(0));
+        assertFalse(ContraintesReglementairesSalarie.largeurRenseignee(null));
+    }
+
+    @Test
+    void largeurDUnJour_estRenseignee() {
+        assertTrue(ContraintesReglementairesSalarie.largeurRenseignee(1));
     }
 
     // =========================================================
@@ -103,7 +126,7 @@ class SeuilsIndividuelsMappingTest {
         assertEquals(6, c.getJoursConsecutifsMaximum());
         assertNull(c.getNuitsConsecutivesMaximum());
         assertNull(c.getDimanchesTravaillesMaximum());
-        assertFalse(ContraintesReglementairesSalarie.seuilActif(c.getNuitsConsecutivesMaximum()));
+        assertFalse(ContraintesReglementairesSalarie.borneRenseignee(c.getNuitsConsecutivesMaximum()));
     }
 
     // =========================================================

@@ -37,9 +37,10 @@ import java.util.List;
  * sur le salarié — {@code contraintesReglementaires.joursReposMinimumApresNuits}.</p>
  *
  * <h3>Activation</h3>
- * <p>Inactive si le repos exigé est absent ou nul, cf.
- * {@link ContraintesReglementairesSalarie#seuilActif(Number)}. Le filtre est appliqué en tête de
- * flux, ce qui rend inutile la garde interne d'origine.</p>
+ * <p>Inactive tant que le repos exigé n'est pas transmis, cf.
+ * {@link ContraintesReglementairesSalarie#borneRenseignee(Number)}. Une valeur de <strong>0</strong>
+ * jour est appliquée à la lettre : la fenêtre de repos est vide, donc jamais violée. Le filtre est
+ * appliqué en tête de flux, ce qui rend inutile la garde interne d'origine.</p>
  *
  * <h3>À ne pas confondre avec le repos quotidien</h3>
  * <p>{@link ReposQuotidienMinimum} mesure des <em>heures</em> entre deux journées travaillées
@@ -101,7 +102,7 @@ public class ReposObligatoireApresNuits {
     }
 
     private static boolean reposRenseigne(SalarieReel salarie) {
-        return ContraintesReglementairesSalarie.seuilActif(
+        return ContraintesReglementairesSalarie.borneRenseignee(
                 salarie.contraintesOuAucune().getJoursReposMinimumApresNuits());
     }
 

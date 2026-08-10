@@ -55,7 +55,7 @@ import java.util.Map;
  *   <li>Activité sans charge → ne compte pas</li>
  *   <li>Jour non dimanche → non comptabilisé</li>
  *   <li>Seuil non transmis → contrainte inactive</li>
- *   <li>Seuil transmis à 0 → contrainte inactive</li>
+ *   <li>Seuil transmis à 0 → aucun dimanche autorisé (lecture littérale, lot S7.7)</li>
  * </ol>
  */
 class Phase13ConstraintsTest {
@@ -223,9 +223,10 @@ class Phase13ConstraintsTest {
     }
 
     @Test
-    void seuilTransmisAZero_contrainteInactive() {
-        // Le contrat impose d'omettre le champ. Un 0 reçu est tracé en WARN par le mapper
-        // et lu comme une désactivation — jamais comme « aucun dimanche autorisé ».
+    void seuilTransmisAZero_aucunDimancheAutorise() {
+        // Arbitrage du lot S7.7 : le 0 est lu littéralement. Un plafond de 0 dimanche
+        // n'autorise aucun dimanche travaillé — c'est l'intention manifeste d'un appelant
+        // qui renseigne le champ, et non une désactivation.
         SalarieReel salarie = salarieAvecMax("SAL-J", 0);
         PlanningContext context = contexte(dimanche1(), dimanche1().plusDays(13));
         ReferentielComptabiliteActivite ref = referentielAvecCharge();
@@ -233,7 +234,7 @@ class Phase13ConstraintsTest {
         Creneau c1 = creneauJour("C-91", dimanche1(),             salarie);
         Creneau c2 = creneauJour("C-92", dimanche1().plusDays(7), salarie);
 
-        verifier().given(salarie, c1, c2, ref, context).penalizesBy(0);
+        verifier().given(salarie, c1, c2, ref, context).penalizesBy(PENALITE_BASE * 2);
     }
 
     // ---------------------------------------------------------

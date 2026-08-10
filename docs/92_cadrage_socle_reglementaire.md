@@ -4,8 +4,8 @@
 > jamais pour un client conforme au contrat. Ce document établit le constat, l'ordre de
 > réparation et le point de contrôle de chaque étape.
 >
-> **Statut** — S7.0 à S7.6 livrés. Les six contraintes dormantes sont remises en service.
-> S7.7 et S7.8 à réaliser.
+> **Statut** — S7.0 à S7.7a livrés. Les six contraintes dormantes sont remises en service.
+> S7.7b et S7.8 à réaliser.
 > **Contrat concerné** — `50_ScenarioContract.md` §3.7 · **Suivi** — `90_SUIVI_DEVELOPPEMENT_MOTEUR.md`
 
 ---
@@ -76,17 +76,22 @@ et `DimanchesTravaillesMax` non.
 | # | Décision | Motif |
 |---|---|---|
 | D1 | **Les seuils sont individuels**, portés par `contraintesReglementaires` | Un plafond de nuits ou de dimanches relève du contrat de la personne, pas du contexte de calcul. Trois salariés = trois jeux de seuils. |
-| D2 | **Seuil absent ou nul ⇒ contrainte inactive** | Ces cinq champs sont absents de tous les payloads existants. Les faire déclencher sur une donnée non renseignée rendrait illégal tout planning en cours. `0` reste tracé en WARN. |
+| D2 | ~~Seuil absent ou nul ⇒ contrainte inactive~~ → **seule l'absence désactive** | Révisée au lot S7.7a sur arbitrage : le jeu SC-03 transmet `nuitsMaximumParSemaine: 0` pour signifier « aucune nuit ». Le zéro garde son sens arithmétique ; une valeur négative est ignorée. Exception : une **largeur** de fenêtre est prise en compte à partir de 1. Voir §7.7a. |
 | D3 | **Une contrainte par lot**, score réévalué à chaque fois | Six réveils simultanés rendraient tout écart de score inattribuable. |
 | D4 | La **paire** fenêtre / jours off est indissociable | Une fenêtre sans minimum de jours off ne décrit aucune règle. Transmise à moitié : contrainte inactive + WARN. |
 | D5 | `SeuilsDeTolerance` conserve ses trois champs de **tolérance globale** | `surchargeMaxParSalarie`, `violationsLegalesMax`, `violationsMetierMax` sont des bornes d'acceptabilité d'une solution, pas des règles individuelles. Ils restent à leur place. |
 
 ### D2 et l'invariant « un vide ne suppose jamais que la chose est possible »
 
-Il n'y a pas contradiction. Le moteur ne conclut pas que la nuit consécutive est autorisée : il
-constate qu'**on ne lui a donné aucun plafond à faire respecter**, et s'abstient de juger plutôt
-que d'inventer une limite. L'invariant interdit de déduire une permission d'un silence ; il
-n'oblige pas à fabriquer une interdiction à partir de rien.
+Sur l'**absence**, il n'y a pas contradiction. Le moteur ne conclut pas que la nuit consécutive
+est autorisée : il constate qu'**on ne lui a donné aucun plafond à faire respecter**, et
+s'abstient de juger plutôt que d'inventer une limite. L'invariant interdit de déduire une
+permission d'un silence ; il n'oblige pas à fabriquer une interdiction à partir de rien.
+
+Sur le **zéro**, la première rédaction de D2 était en revanche fautive. Un vide est une absence
+d'information ; un zéro est un chiffre. Les confondre revenait à traiter « aucune nuit
+autorisée » comme un silence — et donc, au titre de l'invariant lui-même, à en déduire une
+permission. La correction du lot S7.7a rétablit la distinction.
 
 ---
 
@@ -429,3 +434,45 @@ première à la dernière heure, **pauses comprises**. Une journée 08:00–12:0
 totalise 8 h travaillées pour 14 h d'amplitude. Les deux règles coexistent, et le contrat les
 restitue sous deux motifs de sévérité différente : le dépassement de durée est éliminatoire,
 celui d'amplitude reste un signalement.
+
+### 7.7a — Lecture littérale du zéro (correction de la décision D2)
+
+**Écart de score : aucun.** 490 tests, 0 échec.
+
+| Livrable | Fichier |
+|---|---|
+| `borneRenseignee()` et `largeurRenseignee()` remplacent `seuilActif()` | `domain/ressource/ContraintesReglementairesSalarie.java` |
+| WARN sur borne négative au lieu de WARN sur 0 | `scenarios/mapper/ScenarioResourceMapper.java` |
+| Correction d'un décompte de séquence | `constraints/legales/NuitsConsecutivesMax.java` |
+| Contrat §3.7, schéma JSON, OpenAPI, notice SC-06 | `50_*`, `Windev_part/SC-06/` |
+
+#### Ce que les données ont tranché
+
+La décision **D2** du lot S7.0 lisait `0` comme une désactivation. Le jeu de référence SC-03 l'a
+démentie : il transmet `nuitsMaximumParSemaine: 0` pour SAL-2001 et `3` pour SAL-2002.
+L'intention est limpide — le premier ne fait pas de nuit — et la lecture D2 lui aurait permis d'en
+faire toutes. L'exact contraire de ce qui était demandé.
+
+**La règle devient** : seule l'**absence** désactive. Le zéro garde son sens arithmétique — un
+maximum à 0 interdit tout, un minimum à 0 n'exige rien. Une valeur négative est ignorée et
+tracée : elle ne décrit rien.
+
+D2 n'était pas absurde, elle était prudente : les cinq seuils rapatriés étaient absents de tous
+les payloads, et les activer sur une donnée non renseignée aurait été brutal. Mais l'argument
+valait pour l'**absence**, pas pour le **zéro** — deux choses que la règle confondait.
+
+#### Une exception, et une seule
+
+`reposHebdomadaireFenetreJours` est une **taille**, pas une borne. « Au moins 2 jours off sur
+0 jour » ne décrit aucune règle, là où « au plus 0 nuit » en décrit une parfaitement. Le zéro
+littéral n'a de sens que sur ce qui se compare, pas sur ce qui se mesure. D'où deux méthodes
+distinctes plutôt qu'une seule, et un cas de test pour chacune.
+
+#### Un bug révélé par l'arbitrage
+
+`NuitsConsecutivesMax` ne testait le dépassement qu'en **prolongeant** une séquence, jamais en
+l'ouvrant. Conséquence : avec un plafond de 0, deux nuits d'affilée violaient mais une nuit
+isolée passait. L'incohérence était inatteignable tant que 0 n'était pas une valeur recevable ;
+la lecture littérale l'a rendue atteignable, et un test l'a immédiatement fait tomber. Le
+décompte est corrigé — c'est exactement le service qu'on attend d'un jeu de test qui suit une
+décision de contrat.

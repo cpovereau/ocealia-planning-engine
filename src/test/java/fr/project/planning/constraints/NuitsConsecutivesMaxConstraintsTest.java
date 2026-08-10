@@ -38,7 +38,7 @@ import java.util.Map;
  * <p>Cas couverts :</p>
  * <ol>
  *   <li>Plafond non transmis → contrainte inactive</li>
- *   <li>Plafond transmis à 0 → contrainte inactive</li>
+ *   <li>Plafond transmis à 0 → aucune nuit autorisée (lecture littérale, lot S7.7)</li>
  *   <li>Séquence égale au plafond → pas de violation</li>
  *   <li>Séquence supérieure au plafond → violation HARD</li>
  *   <li>Nuits non consécutives → pas de violation, même à effectif égal</li>
@@ -68,12 +68,21 @@ class NuitsConsecutivesMaxConstraintsTest {
     }
 
     @Test
-    void plafondTransmisAZero_contrainteInactive() {
-        // Le contrat impose d'omettre le champ ; un 0 reçu est lu comme une désactivation
-        // et non comme « aucune nuit consécutive autorisée ».
+    void plafondTransmisAZero_aucuneNuitAutorisee() {
+        // Arbitrage du lot S7.7 : lecture littérale. Un plafond de 0 nuit consécutive
+        // interdit toute séquence, donc toute nuit travaillée. C'est le cas de SAL-2001
+        // dans le jeu de référence SC-03.
         SalarieReel salarie = salarieAvecPlafond("SAL-NC-02", 0);
 
-        verifier().given(faits(salarie, nuits(salarie, 5))).penalizesBy(0);
+        verifier().given(faits(salarie, nuits(salarie, 2))).penalizesBy(1);
+    }
+
+    @Test
+    void plafondAZero_uneSeuleNuit_violeAussi() {
+        // Une nuit isolée forme déjà une séquence de 1, supérieure au plafond de 0.
+        SalarieReel salarie = salarieAvecPlafond("SAL-NC-02b", 0);
+
+        verifier().given(faits(salarie, nuits(salarie, 1))).penalizesBy(1);
     }
 
     // ---------------------------------------------------------

@@ -56,11 +56,21 @@ Le non-respect de l'une des trois produit une réponse **HTTP 422** avec un mess
 ### 3.3 Convention sur les limites — important
 
 > Pour **désactiver** une contrainte individuelle : **omettre le champ**.
-> **Ne jamais envoyer `0`.**
+> Pour **interdire complètement** quelque chose : **envoyer `0`**.
 
-Une valeur `0` active la contrainte avec un seuil nul : toute affectation devient fautive. Le
-moteur signale l'anomalie dans ses journaux mais **ne la corrige pas** — corriger reviendrait à
-deviner votre intention.
+Le zéro garde son sens arithmétique. `nuitsMaximumParSemaine: 0` signifie « ce salarié ne
+travaille aucune nuit », et c'est ainsi que le moteur l'applique. À l'inverse,
+`heuresMinimumParSemaine: 0` n'exige rien — un minimum de zéro est toujours atteint.
+
+Une valeur **négative** ne décrit aucune règle : elle est ignorée et signalée dans les journaux.
+
+**Une seule exception**, `reposHebdomadaireFenetreJours` : une fenêtre est une *taille*, pas une
+limite. « Au moins 2 jours off sur 0 jour » ne veut rien dire. Ce champ n'est pris en compte
+qu'à partir de 1 jour.
+
+> **Ce point a changé au lot S7.7.** La règle précédente traitait `0` comme une désactivation.
+> Vos payloads SC-03 envoient `nuitsMaximumParSemaine: 0` pour signifier « aucune nuit » : c'est
+> désormais ce que le moteur applique, et non plus l'inverse.
 
 ### 3.4 Valeurs à toujours transmettre
 

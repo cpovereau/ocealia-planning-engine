@@ -208,7 +208,7 @@
         },
         "contraintesReglementaires": {
           "type": "object",
-          "description": "Plafonds auxquels le salarié est soumis — prescriptif. Pour désactiver une limite, OMETTRE le champ : ne jamais envoyer 0. Tous les seuils sont individuels : trois salariés = trois jeux de valeurs.",
+          "description": "Plafonds auxquels le salarié est soumis — prescriptif. Tous les seuils sont individuels : trois salariés = trois jeux de valeurs. Pour désactiver une limite, OMETTRE le champ. Une valeur 0 est lue à la lettre : un maximum à 0 interdit tout, un minimum à 0 n'exige rien. Exception : reposHebdomadaireFenetreJours est une taille et non une borne, il est pris en compte à partir de 1.",
           "properties": {
             "heuresMinimumParJour": { "type": "number" },
             "heuresMaximumParJour": { "type": "number" },
@@ -232,7 +232,8 @@
             },
             "reposHebdomadaireFenetreJours": {
               "type": "integer",
-              "description": "[Lot S7.0] Largeur de la fenêtre glissante de repos hebdomadaire (jours). À transmettre avec reposHebdomadaireJoursOffMinimum : seuls, ces deux champs ne décrivent aucune règle et la contrainte reste inactive."
+              "minimum": 1,
+              "description": "[Lot S7.0] Largeur de la fenêtre glissante de repos hebdomadaire (jours). Taille et non borne : une valeur 0 laisse la contrainte inactive. À transmettre avec reposHebdomadaireJoursOffMinimum : seuls, ces deux champs ne décrivent aucune règle."
             },
             "reposHebdomadaireJoursOffMinimum": {
               "type": "integer",

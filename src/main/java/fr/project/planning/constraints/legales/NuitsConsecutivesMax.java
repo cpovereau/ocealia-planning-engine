@@ -42,9 +42,10 @@ import java.util.List;
  * le salarié — {@code contraintesReglementaires.nuitsConsecutivesMaximum}.</p>
  *
  * <h3>Activation</h3>
- * <p>Inactive si le plafond est absent ou nul, cf.
- * {@link ContraintesReglementairesSalarie#seuilActif(Number)}. Le filtre est appliqué en tête de
- * flux : un salarié sans plafond de nuits consécutives ne produit aucun tuple.</p>
+ * <p>Inactive tant que le plafond n'est pas transmis, cf.
+ * {@link ContraintesReglementairesSalarie#borneRenseignee(Number)}. Un plafond à <strong>0</strong>
+ * est appliqué à la lettre : le salarié ne peut alors travailler aucune nuit. Le filtre est
+ * appliqué en tête de flux — un salarié sans plafond ne produit aucun tuple.</p>
  *
  * <h3>Périmètre</h3>
  * <p>Seules les nuits comprises dans l'horizon de résolution sont comptées. Une séquence entamée
@@ -110,7 +111,7 @@ public class NuitsConsecutivesMax {
     }
 
     private static boolean plafondRenseigne(SalarieReel salarie) {
-        return ContraintesReglementairesSalarie.seuilActif(
+        return ContraintesReglementairesSalarie.borneRenseignee(
                 salarie.contraintesOuAucune().getNuitsConsecutivesMaximum());
     }
 
@@ -138,17 +139,22 @@ public class NuitsConsecutivesMax {
         if (datesTriees.isEmpty()) return false;
 
         // 2) Calcul de la plus longue séquence consécutive
-        int consecutives = 1;
+        //
+        // Le test de dépassement porte sur toute séquence, y compris celle qui vient de
+        // s'ouvrir. Il était auparavant enfermé dans la branche « prolongation » : une nuit
+        // isolée échappait donc à un plafond de 0, alors que deux nuits d'affilée le
+        // violaient — incohérence restée invisible tant que 0 n'était pas une valeur
+        // recevable. La lecture littérale du zéro (lot S7.7) l'a rendue atteignable.
+        int consecutives = 0;
         LocalDate precedente = null;
 
         for (LocalDate courante : datesTriees) {
-            if (precedente != null && courante.equals(precedente.plusDays(1))) {
-                consecutives++;
-                if (consecutives > maxAutorise) {
-                    return true;
-                }
-            } else {
-                consecutives = 1;
+            consecutives = (precedente != null && courante.equals(precedente.plusDays(1)))
+                    ? consecutives + 1
+                    : 1;
+
+            if (consecutives > maxAutorise) {
+                return true;
             }
             precedente = courante;
         }

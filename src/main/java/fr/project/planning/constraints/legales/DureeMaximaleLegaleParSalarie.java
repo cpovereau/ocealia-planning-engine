@@ -39,8 +39,10 @@ import fr.project.planning.domain.metier.ReferentielComptabiliteActivite;
  * mesurent des choses différentes et se complètent.</p>
  *
  * <h3>Activation</h3>
- * <p>Inactive si le plafond est absent ou nul, cf.
- * {@link ContraintesReglementairesSalarie#seuilActif(Number)}. Le plancher <em>physique</em>
+ * <p>Inactive tant que le plafond n'est pas transmis, cf.
+ * {@link ContraintesReglementairesSalarie#borneRenseignee(Number)}. Un plafond à <strong>0</strong>
+ * est appliqué à la lettre : toute minute travaillée devient excédentaire.
+ * Le plancher <em>physique</em>
  * — 24 h cumulées sur une journée, 12 h pour un créneau — reste assuré en toute circonstance par
  * {@code LimitePhysique}, qui ne dépend d'aucun seuil transmis.</p>
  */
@@ -94,7 +96,7 @@ public class DureeMaximaleLegaleParSalarie {
     }
 
     private static boolean plafondRenseigne(SalarieReel salarie) {
-        return ContraintesReglementairesSalarie.seuilActif(
+        return ContraintesReglementairesSalarie.borneRenseignee(
                 salarie.contraintesOuAucune().getHeuresMaximumParJour());
     }
 

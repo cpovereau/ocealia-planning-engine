@@ -800,3 +800,25 @@ trois mesures du bloc `impacts[]` sont désormais adossées à une contrainte ; 
 **Écart de score mesuré : aucun.** SC-03 reste à `0hard/-960soft`, garde-fou asserté.
 
 **Les six contraintes dormantes sont remises en service.** 486 tests, 0 échec.
+
+### Socle réglementaire — lot S7.7a : lecture littérale du zéro (2026-08-11)
+
+Correction de la décision **D2** posée au lot S7.0, sur arbitrage. `0` n'est plus lu comme une
+désactivation : **seule l'absence désactive**, le zéro garde son sens arithmétique.
+
+Ce sont les données qui ont tranché : le jeu SC-03 transmet `nuitsMaximumParSemaine: 0` pour
+SAL-2001 et `3` pour SAL-2002. La lecture D2 aurait autorisé le premier à travailler toutes les
+nuits — l'exact contraire de l'intention.
+
+* `seuilActif()` devient `borneRenseignee()` — renseigné et positif ou nul.
+* `largeurRenseignee()` la complète pour `reposHebdomadaireFenetreJours` : une fenêtre est une
+  **taille**, pas une borne, et 0 jour ne décrit aucune règle. Seule exception du contrat.
+* Le WARN du mapper porte désormais sur les **valeurs négatives** — 0 n'est plus une anomalie.
+* **Bug corrigé dans `NuitsConsecutivesMax`** : le dépassement n'était testé qu'en prolongeant
+  une séquence, jamais en l'ouvrant. Avec un plafond de 0, deux nuits d'affilée violaient mais
+  une nuit isolée passait. L'incohérence était inatteignable tant que 0 n'était pas recevable.
+
+**Écart de score mesuré : aucun.** SC-03 reste à `0hard/-960soft` — aucune des cinq contraintes
+concernées ne rencontre de seuil à 0 dans les jeux actuels.
+
+490 tests, 0 échec.

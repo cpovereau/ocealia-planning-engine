@@ -37,7 +37,7 @@ import java.util.Map;
  * <p>Cas couverts :</p>
  * <ol>
  *   <li>Seuil non transmis → contrainte inactive</li>
- *   <li>Seuil transmis à 0 → contrainte inactive</li>
+ *   <li>Seuil transmis à 0 → fenêtre de repos vide, jamais violée</li>
  *   <li>Repos respecté → pas de violation</li>
  *   <li>Reprise dans la fenêtre → violation HARD</li>
  *   <li>Reprise le premier jour après la fenêtre → pas de violation (borne exacte)</li>
@@ -67,7 +67,10 @@ class ReposObligatoireApresNuitsConstraintsTest {
     }
 
     @Test
-    void seuilTransmisAZero_contrainteInactive() {
+    void seuilTransmisAZero_fenetreVideDoncJamaisViolee() {
+        // Lecture littérale (lot S7.7) : 0 jour de repos exigé. La contrainte s'applique,
+        // mais sa fenêtre [J+1 ; J+0] est vide — aucune reprise ne peut y tomber.
+        // Le résultat coïncide avec une désactivation, pour une raison différente.
         SalarieReel salarie = salarieAvecRepos("SAL-RN-02", 0);
 
         verifier().given(faits(salarie, nuitsPuisRepriseA(salarie, 2, 2))).penalizesBy(0);

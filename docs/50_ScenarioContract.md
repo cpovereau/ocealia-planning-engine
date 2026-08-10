@@ -223,19 +223,25 @@ Le bloc compte treize champs. Les cinq derniers ont été rapatriés au **lot S7
 Les deux derniers forment une **paire indissociable** : une fenêtre sans minimum de jours off
 n'interdit rien. Transmis seul, l'un des deux laisse la contrainte inactive et déclenche un WARN.
 
-### Omettre, jamais envoyer 0
+### Seule l'absence désactive — le 0 est lu à la lettre
 
 > Pour désactiver une limite : **omettre le champ**.
+> Pour interdire complètement quelque chose : **envoyer 0**.
 
-Un `0` reçu est ambigu — selon le sens de la borne il signifie « aucune limite » ou « rien n'est
-permis ». Le moteur ne devine pas : il trace l'anomalie en WARN et retient la lecture sûre,
-**seuil absent ou nul = contrainte inactive**. Ce n'est pas une tolérance mais une nécessité de
-migration : ces cinq champs sont absents de tous les payloads existants, et les faire déclencher
-sur une donnée non renseignée rendrait illégal du jour au lendemain tout planning en cours.
+| Ce que vous envoyez | Ce que le moteur applique |
+|---|---|
+| champ absent | aucune règle — le moteur s'abstient de juger |
+| `nuitsMaximumParSemaine: 0` | **aucune nuit autorisée** |
+| `heuresMinimumParSemaine: 0` | aucun minimum exigé |
+| valeur négative | ignorée, tracée en WARN — une borne négative ne décrit rien |
 
-Cette lecture ne contredit pas l'invariant « un vide ne suppose jamais que la chose est
-possible ». Le moteur ne conclut pas que la nuit consécutive est autorisée : il constate qu'on ne
-lui a donné aucun plafond à faire respecter, et s'abstient de juger plutôt que d'inventer.
+Le zéro garde son sens arithmétique : un **maximum** à 0 interdit tout, un **minimum** à 0
+n'exige rien. C'est l'invariant « un vide ne suppose jamais que la chose est possible » appliqué
+au bon niveau — un vide est une absence d'information, pas un chiffre.
+
+**Une exception, `reposHebdomadaireFenetreJours`.** Une fenêtre est une *taille*, pas une borne :
+« au moins 2 jours off sur 0 jour » ne décrit aucune règle. Ce champ est donc pris en compte à
+partir de 1 jour ; à 0, la contrainte reste inactive.
 
 ### Renseigner un seuil ne suffit pas à le voir appliqué
 

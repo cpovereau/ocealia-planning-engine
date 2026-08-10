@@ -98,8 +98,8 @@ public class ReposHebdomadaireGlissant {
     /** Les deux seuils, et pas un seul : voir « Une paire indissociable » ci-dessus. */
     private static boolean paireRenseignee(SalarieReel salarie) {
         ContraintesReglementairesSalarie c = salarie.contraintesOuAucune();
-        return ContraintesReglementairesSalarie.seuilActif(c.getReposHebdomadaireFenetreJours())
-                && ContraintesReglementairesSalarie.seuilActif(c.getReposHebdomadaireJoursOffMinimum());
+        return ContraintesReglementairesSalarie.largeurRenseignee(c.getReposHebdomadaireFenetreJours())
+                && ContraintesReglementairesSalarie.borneRenseignee(c.getReposHebdomadaireJoursOffMinimum());
     }
 
     /** N'est appelé qu'après {@link #paireRenseignee(SalarieReel)} : la valeur est non nulle. */

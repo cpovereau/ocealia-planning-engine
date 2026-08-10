@@ -36,7 +36,7 @@ import java.util.Map;
  *   <li>Paire non transmise → contrainte inactive</li>
  *   <li>Fenêtre seule → contrainte inactive (la paire est indissociable)</li>
  *   <li>Minimum de jours off seul → contrainte inactive</li>
- *   <li>Paire transmise avec une valeur à 0 → contrainte inactive</li>
+ *   <li>Minimum de jours off à 0 → aucune exigence ; fenêtre à 0 → contrainte inactive</li>
  *   <li>Jours off suffisants → pas de violation</li>
  *   <li>Jours off exactement au minimum → pas de violation</li>
  *   <li>Jours off insuffisants → violation HARD</li>
@@ -80,8 +80,20 @@ class ReposHebdomadaireGlissantConstraintsTest {
     }
 
     @Test
-    void paireAvecUneValeurAZero_contrainteInactive() {
+    void minimumAZero_aucuneExigence() {
+        // Lecture littérale (lot S7.7) : 0 jour off exigé sur une fenêtre de 7.
+        // La contrainte s'applique et n'est jamais violée — un minimum de zéro est
+        // toujours atteint. C'est le pendant du maximum à zéro, qui interdit tout.
         SalarieReel salarie = salarieAvecPaire("SAL-RG-04", 7, 0);
+
+        verifier().given(faits(salarie, joursTravailles(salarie, 0, 1, 2, 3, 4, 5, 6))).penalizesBy(0);
+    }
+
+    @Test
+    void fenetreAZero_contrainteInactive() {
+        // Une fenêtre est une TAILLE, pas une borne : 0 jour ne décrit aucune règle.
+        // Seul champ du contrat où le zéro n'a aucune lecture littérale possible.
+        SalarieReel salarie = salarieAvecPaire("SAL-RG-04b", 0, 2);
 
         verifier().given(faits(salarie, joursTravailles(salarie, 0, 1, 2, 3, 4, 5, 6))).penalizesBy(0);
     }
