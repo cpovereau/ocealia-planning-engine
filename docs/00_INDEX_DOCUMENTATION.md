@@ -304,6 +304,7 @@ et le moteur de planification.
 | `91_JOURNAL_DEVELOPPEMENT_MOTEUR.md`      | Historique du développement |
 | `92_ARCHIVES_DES_DECISIONS_TECHNIQUES.md` | Historique des décisions    |
 | `92_cadrage_donnees_amont_scenarios.md`   | Données amont attendues de WinDev par scénario (SC-01 → SC-05) : état vérifié, arbitrages ouverts, découpage |
+| `92_cadrage_scenario_sc-06.md`            | Cadrage SC-06 — désignation de la ressource la plus à même de couvrir un besoin : intention, arbitrages tranchés, contrats d'entrée/sortie, découpage en lots S1→S7 |
 
 ---
 
