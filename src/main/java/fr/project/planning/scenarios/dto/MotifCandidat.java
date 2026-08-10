@@ -54,6 +54,15 @@ public enum MotifCandidat {
             PenaliteKey.LEGAL_HARD_NUITS_CONSECUTIVES_MAX,
             "Le nombre de nuits consécutives maximum serait dépassé"),
 
+    /**
+     * Éliminatoire : R4 exige des journées entières de récupération après une séquence de nuits.
+     * À distinguer de {@link #REPOS_QUOTIDIEN_INSUFFISANT}, qui mesure des heures entre deux
+     * journées travaillées. Lot S7.3.
+     */
+    REPOS_APRES_NUITS_INSUFFISANT(Severite.ERROR, true,
+            PenaliteKey.LEGAL_HARD_REPOS_OBLIGATOIRE_APRES_NUITS,
+            "Le repos obligatoire après une séquence de nuits ne serait pas respecté"),
+
     // ---- Signalements non éliminatoires ----
 
     AMPLITUDE_DEPASSEE(Severite.WARNING, false,

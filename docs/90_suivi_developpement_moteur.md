@@ -226,7 +226,7 @@ Le paramétrage du scoring est désormais centralisé et stable, permettant d’
 | Travail sur repos hebdomadaire (R8)   | SOFT | ✅            | heuresReposHebdoTravaille     | Oui                    | Non                                       | Oui            | 40_WORKMETRICS              |
 | Repos hebdomadaire min glissant (R7)  | HARD | ⛔ dormante — S7.4 | –                         | Non                    | Non                                       | Non            | 92_cadrage_socle_reglementaire |
 | Repos hebdomadaire minimum (R7 socle) | HARD | ⛔ dormante — S7.5 | –                         | Non                    | Non                                       | Non            | 92_cadrage_socle_reglementaire |
-| Repos obligatoire après nuits (R4)    | HARD | ⛔ dormante — S7.3 | –                         | Non                    | Non                                       | Non            | 92_cadrage_socle_reglementaire |
+| Repos obligatoire après nuits (R4)    | HARD | ✅ lot S7.3  | –                             | Non                    | Non                                       | Oui (si violation) | 92_cadrage_socle_reglementaire |
 | Durée maximale légale par salarié     | HARD | ⛔ dormante — S7.6 | –                         | Non                    | Non                                       | Non            | 92_cadrage_socle_reglementaire |
 | Nuits consécutives max (R3)           | HARD | ✅ lot S7.2  | maxNuitsConsecutivesObservees | Oui                    | Non                                       | Oui (si violation) | 92_cadrage_socle_reglementaire |
 | Jours consécutifs max (R1)            | SOFT | ✅            | maxJoursConsecutifsObservees  | Oui                    | Non                                       | Non            | 40_REGLES_COMBINATOIRES     |
@@ -704,3 +704,25 @@ pour tout le monde, sans qu'aucune donnée d'entrée ne l'ait demandé.
 **Écart de score mesuré : aucun.** SC-03 reste à `0hard/-960soft`.
 
 448 tests, 0 échec.
+
+### Socle réglementaire — lot S7.3 : repos après nuits (2026-08-11)
+
+`ReposObligatoireApresNuits` (HARD, R4) remise en service : repli d'activité et repos exigé lu sur
+le salarié (`contraintesReglementaires.joursReposMinimumApresNuits`).
+
+Elle était éteinte **deux fois** — champ d'activité déprécié et seuil global nul, sa garde interne
+la neutralisant par surcroît. Corriger le seul repli d'activité ne l'aurait pas réveillée.
+
+* **Tri destructeur supprimé** : la vérification appelait `sort()` sur la liste produite par
+  `ConstraintCollectors.toList`, qui appartient à OptaPlanner — la trier sur place modifiait
+  l'état interne du calcul de score. Le tri n'était de surcroît pas utilisé.
+* Motif SC-06 `REPOS_APRES_NUITS_INSUFFISANT` (ERROR, **éliminatoire**). R4 exige des journées
+  entières de récupération : à distinguer de `REPOS_QUOTIDIEN_INSUFFISANT`, qui mesure des heures
+  entre deux journées travaillées.
+* `ReposObligatoireApresNuitsConstraintsTest` : 8 cas, créés de zéro. Ils fixent la borne exacte
+  de la fenêtre de repos, le comportement d'une séquence de nuits interrompue, et le fait qu'une
+  activité hors charge dans la fenêtre n'est pas une reprise de travail.
+
+**Écart de score mesuré : aucun.** SC-03 reste à `0hard/-960soft`, garde-fou asserté.
+
+457 tests, 0 échec.

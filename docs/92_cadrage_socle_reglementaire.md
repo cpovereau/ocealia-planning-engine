@@ -4,7 +4,7 @@
 > jamais pour un client conforme au contrat. Ce document établit le constat, l'ordre de
 > réparation et le point de contrôle de chaque étape.
 >
-> **Statut** — S7.0 à S7.2 livrés. S7.3 à S7.8 à réaliser.
+> **Statut** — S7.0 à S7.3 livrés. S7.4 à S7.8 à réaliser.
 > **Contrat concerné** — `50_ScenarioContract.md` §3.7 · **Suivi** — `90_SUIVI_DEVELOPPEMENT_MOTEUR.md`
 
 ---
@@ -21,7 +21,7 @@ la contrainte ne produit **aucun match**.
 | Contrainte | Portée | Règle | Seconde cause d'extinction |
 |---|---|---|---|
 | `NuitsConsecutivesMax` | **HARD** | R3 | seuil global à 0, **sans garde** — ✅ traitée en S7.2 |
-| `ReposObligatoireApresNuits` | **HARD** | R4 | seuil global à 0, garde interne |
+| `ReposObligatoireApresNuits` | **HARD** | R4 | seuil global à 0, garde interne — ✅ traitée en S7.3 |
 | `ReposHebdomadaireMin` | **HARD** | R7 | — (socle 7 j / 1 j off en dur) |
 | `ReposHebdomadaireGlissant` | **HARD** | R7 | seuil global à 0, garde interne |
 | `DureeMaximaleLegaleParSalarie` | **HARD** | — | maille erronée (§1.3) |
@@ -98,7 +98,7 @@ L'ordre va du moins au plus perturbant, pour qu'une surprise reste imputable.
 | **S7.0** ✅ | Socle : seuils portés au salarié, règle d'activation, **test de référence** | **Aucun** — point de contrôle |
 | **S7.1** ✅ | `DimanchesTravaillesMax` — repli + `dimanchesTravaillesMaximum` | **Aucun** — mesuré (§7.1) |
 | **S7.2** ✅ | `NuitsConsecutivesMax` — repli + `nuitsConsecutivesMaximum` | **Aucun** — mesuré (§7.2) |
-| S7.3 | `ReposObligatoireApresNuits` — repli + `joursReposMinimumApresNuits` | HARD |
+| **S7.3** ✅ | `ReposObligatoireApresNuits` — repli + `joursReposMinimumApresNuits` | **Aucun** — mesuré (§7.3) |
 | S7.4 | `ReposHebdomadaireGlissant` — repli + paire de seuils | HARD |
 | S7.5 | `ReposHebdomadaireMin` — repli seul (socle légal, sans seuil individuel) | HARD |
 | S7.6 | `DureeMaximaleLegaleParSalarie` — **correction de maille** + `heuresMaximumParJour` | HARD, le plus sensible |
@@ -278,3 +278,33 @@ Aucun test n'interrogeait cette contrainte : elle était enregistrée, muette, e
 regardait. Les neuf cas ajoutés fixent notamment ce que « consécutif » veut dire — comptage par
 date distincte, une journée intercalée ne prolonge pas une séquence de nuits, une activité hors
 charge l'interrompt.
+
+### 7.3 — `ReposObligatoireApresNuits` (HARD, R4)
+
+**Écart de score : aucun.** 457 tests, 0 échec.
+
+| Livrable | Fichier |
+|---|---|
+| Repli d'activité + seuil individuel + retrait d'un tri destructeur | `constraints/legales/ReposObligatoireApresNuits.java` |
+| Motif SC-06 `REPOS_APRES_NUITS_INSUFFISANT` (éliminatoire) | `scenarios/dto/MotifCandidat.java` |
+| Couverture dédiée — 8 cas, elle n'en avait aucune | `constraints/ReposObligatoireApresNuitsConstraintsTest.java` |
+
+#### Un tri qui mutait l'état du solveur
+
+La méthode de vérification appelait `creneauxTravail.sort(...)` sur la liste produite par
+`ConstraintCollectors.toList`. Cette liste appartient à OptaPlanner : la trier sur place revient à
+modifier l'état interne du calcul de score. Le tri n'était en outre **pas utilisé** — les dates de
+nuit sont retriées juste après, et la boucle de détection parcourt la liste sans ordre. Supprimé.
+
+#### Une récupération, pas une coupure
+
+R4 exige des **journées entières** après une séquence de nuits. À ne pas confondre avec
+`ReposQuotidienMinimum`, qui mesure des **heures** entre deux journées travaillées successives.
+Les deux règles peuvent être satisfaites ou violées indépendamment, et le contrat les expose sous
+deux motifs distincts.
+
+#### La garde interne devient superflue
+
+`reposExige <= 0 → false` protégeait la contrainte du seuil global nul. Le filtre d'activation
+étant désormais appliqué en tête de flux, cette garde est retirée : une seule règle décide qu'un
+seuil est actif, et elle est commune à toutes les contraintes du chantier.

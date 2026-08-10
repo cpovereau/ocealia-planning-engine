@@ -64,13 +64,13 @@ import java.util.function.Function;
  * consiste à déplacer une assertion d'un bloc à l'autre. Un écart de score non voulu se lit
  * ici, sur une contrainte isolée, avant de se lire dans un scénario complet.</p>
  *
- * <p><strong>Lots traités</strong> : S7.1 — {@code DimanchesTravaillesMax}.</p>
+ * <p><strong>Lots traités</strong> : S7.1 {@code DimanchesTravaillesMax} · S7.2 {@code NuitsConsecutivesMax} · S7.3 {@code ReposObligatoireApresNuits}.</p>
  *
  * <h2>Deux causes d'extinction, pas une</h2>
- * <p>{@code ReposObligatoireApresNuits} et {@code ReposHebdomadaireGlissant} sont muettes même
- * pour le client historique : leurs seuils globaux valent 0 en production et leur garde interne
- * les désactive. Réparer le repli d'activité seul ne les réveillerait pas — et réveillerait en
- * revanche brutalement {@code NuitsConsecutivesMax}, dont le seuil vaut 0 sans aucune garde.</p>
+ * <p>{@code ReposHebdomadaireGlissant} est muette même pour le client historique : son seuil
+ * global vaut 0 en production et sa garde interne la désactive. Réparer le repli d'activité seul
+ * ne la réveillerait pas. {@code ReposObligatoireApresNuits} était dans le même cas avant le lot
+ * S7.3 ; {@code NuitsConsecutivesMax}, elle, n'avait aucune garde — d'où l'ordre des lots.</p>
  */
 class SocleReglementaireBaselineTest {
 
@@ -116,19 +116,6 @@ class SocleReglementaireBaselineTest {
         }
 
         @Test
-        void reposApresNuits_resteMuetteMemeAvecLeChampHistorique() {
-            // Seconde cause d'extinction : joursReposMinimumApresNuits vaut 0 et la
-            // garde interne (reposExige <= 0) neutralise la contrainte. Le repli
-            // d'activité ne suffira pas à la réveiller — lot S7.3.
-            List<Creneau> nuitsPuisReprise = new ArrayList<>(nuits(2, Champ.ACTIVITE));
-            nuitsPuisReprise.add(journee("C-REPRISE", LUNDI.plusDays(2), Champ.ACTIVITE));
-
-            verifier(ReposObligatoireApresNuits::reposObligatoireApresNuits)
-                    .given(faits(nuitsPuisReprise))
-                    .penalizesBy(0);
-        }
-
-        @Test
         void reposHebdoGlissant_resteMuetteMemeAvecLeChampHistorique() {
             // Idem : fenetreJours vaut 0, la garde interne neutralise — lot S7.4.
             verifier(ReposHebdomadaireGlissant::reposHebdoGlissant)
@@ -162,17 +149,6 @@ class SocleReglementaireBaselineTest {
 
             verifier(DureeMaximaleLegaleParSalarie::dureeMaximaleLegaleParSalarie)
                     .given(faits(deuxJours))
-                    .penalizesBy(0);
-        }
-
-        @Test
-        void reposObligatoireApresNuits_estDormante() {
-            // Réveil prévu au lot S7.3 (repli d'activité + seuil individuel).
-            List<Creneau> nuitsPuisReprise = new ArrayList<>(nuits(2, Champ.CODE_ACTIVITE_ID));
-            nuitsPuisReprise.add(journee("C-REPRISE", LUNDI.plusDays(2), Champ.CODE_ACTIVITE_ID));
-
-            verifier(ReposObligatoireApresNuits::reposObligatoireApresNuits)
-                    .given(faits(nuitsPuisReprise))
                     .penalizesBy(0);
         }
 
@@ -253,6 +229,28 @@ class SocleReglementaireBaselineTest {
                     .given(faits(nuits(3, Champ.CODE_ACTIVITE_ID)))
                     .penalizesBy(0);
         }
+
+        /** Deux nuits, puis reprise le surlendemain, alors que deux jours de repos sont exigés. */
+        @Test
+        void reposApresNuits_reagitAuChampDuContrat() {
+            verifier(ReposObligatoireApresNuits::reposObligatoireApresNuits)
+                    .given(faits(nuitsPuisReprise(Champ.CODE_ACTIVITE_ID), salarieAvecReposApresNuits(2)))
+                    .penalizesBy(1);
+        }
+
+        @Test
+        void reposApresNuits_reagitEncoreAuChampHistorique() {
+            verifier(ReposObligatoireApresNuits::reposObligatoireApresNuits)
+                    .given(faits(nuitsPuisReprise(Champ.ACTIVITE), salarieAvecReposApresNuits(2)))
+                    .penalizesBy(1);
+        }
+
+        @Test
+        void reposApresNuits_sansSeuilTransmis_resteInactive() {
+            verifier(ReposObligatoireApresNuits::reposObligatoireApresNuits)
+                    .given(faits(nuitsPuisReprise(Champ.CODE_ACTIVITE_ID)))
+                    .penalizesBy(0);
+        }
     }
 
     // =====================================================================
@@ -298,6 +296,15 @@ class SocleReglementaireBaselineTest {
         return salarie;
     }
 
+    /** Salarié dont seul le repos après nuits est renseigné (lot S7.3). */
+    private static SalarieReel salarieAvecReposApresNuits(int jours) {
+        SalarieReel salarie = TestPlanningRequestFactory.buildSalarie(SALARIE_ID);
+        salarie.setContraintesReglementaires(new ContraintesReglementairesSalarie(
+                null, null, null, null, null, null, null, null,
+                null, jours, null, null, null));
+        return salarie;
+    }
+
     /** Salarié dont seul le plafond de nuits consécutives est renseigné (lot S7.2). */
     private static SalarieReel salarieAvecPlafondNuits(int plafond) {
         SalarieReel salarie = TestPlanningRequestFactory.buildSalarie(SALARIE_ID);
@@ -305,6 +312,13 @@ class SocleReglementaireBaselineTest {
                 null, null, null, null, null, null, null, null,
                 plafond, null, null, null, null));
         return salarie;
+    }
+
+    /** Deux nuits (lundi, mardi) puis reprise de jour le mercredi. */
+    private static List<Creneau> nuitsPuisReprise(Champ champ) {
+        List<Creneau> creneaux = new ArrayList<>(nuits(2, champ));
+        creneaux.add(journee("C-REPRISE", LUNDI.plusDays(2), champ));
+        return creneaux;
     }
 
     /** Deux dimanches calendaires distincts, à une semaine d'écart. */
