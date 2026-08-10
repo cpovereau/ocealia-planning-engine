@@ -350,7 +350,13 @@ lieu d'en chercher une, par énumération exhaustive des candidats éligibles, c
 Classement par paliers lexicographiques : conformité → couverture → mono-ressource → déjà en
 poste → score SOFT → charge relative au contrat.
 
-Reste à livrer : bloc `impacts[]` (S5), FileAdapter et documentation série 50 (S6).
+Chaque candidat porte ses **impacts chiffrés** (lot S5) : amplitude journalière, heures du jour
+et heures de la semaine, en avant / après / delta, avec le plafond individuel du salarié.
+Une entrée par ressource réelle mobilisée. ⚠️ Un `depassement` signalé décrit une conséquence,
+il ne garantit pas qu'une contrainte la sanctionne — c'est notamment le cas de `heuresJour`,
+mesuré alors que `heuresMaximumParJour` n'est pas encore individualisé (lot S7).
+
+Reste à livrer : FileAdapter et documentation série 50 (S6).
 Voir `92_cadrage_scenario_sc-06.md`.
 
 ### Planning existant et créneaux figés — lot S1 (2026-08-10)

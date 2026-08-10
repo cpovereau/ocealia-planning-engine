@@ -1,7 +1,6 @@
 package fr.project.planning.scenarios.service;
 
 import fr.project.planning.domain.creneau.Creneau;
-import fr.project.planning.domain.metier.ComptabiliteActivite;
 import fr.project.planning.domain.ressource.Indisponibilite;
 import fr.project.planning.domain.ressource.PosteVirtuel;
 import fr.project.planning.domain.ressource.Ressource;
@@ -407,46 +406,17 @@ public class Sc06CandidatEnumerationService {
                 return Double.MAX_VALUE;
             }
 
-            int minutes = minutesSemaine(prepared, salarie.getId())
-                    + minutesBesoinAffectees(prepared, affectations, salarie.getId());
+            // Même calcul que celui restitué dans impacts[].heuresSemaine : le classement et la
+            // réponse ne peuvent pas diverger, ils passent par les mêmes primitives.
+            List<Creneau> apres = Sc06ChargeCalculator.avecLeBesoin(
+                    Sc06ChargeCalculator.planningFige(prepared, salarie.getId()),
+                    Sc06ChargeCalculator.partDuBesoin(prepared, affectations, salarie.getId()));
+
+            int minutes = Sc06ChargeCalculator.minutesTravaillees(apres, prepared.referentiel());
             double ratio = minutes / (salarie.getContrat().getHeuresHebdomadairesHabituelles() * 60.0);
             pire = Math.max(pire, ratio);
         }
         return pire;
-    }
-
-    private int minutesSemaine(PreparedSc06Scenario prepared, String ressourceId) {
-        int total = 0;
-        for (Creneau creneau : prepared.problem().getCreneaux()) {
-            if (creneau.isFige()
-                    && creneau.getRessourceAffectee() != null
-                    && ressourceId.equals(creneau.getRessourceAffectee().getId())
-                    && compteDansCharge(prepared, creneau)) {
-                total += creneau.getDuree();
-            }
-        }
-        return total;
-    }
-
-    private int minutesBesoinAffectees(PreparedSc06Scenario prepared,
-                                       Map<String, Ressource> affectations,
-                                       String ressourceId) {
-        int total = 0;
-        for (Creneau creneau : prepared.creneauxBesoin()) {
-            Ressource affectee = affectations.get(creneau.getId());
-            if (affectee != null && ressourceId.equals(affectee.getId()) && compteDansCharge(prepared, creneau)) {
-                total += creneau.getDuree();
-            }
-        }
-        return total;
-    }
-
-    private boolean compteDansCharge(PreparedSc06Scenario prepared, Creneau creneau) {
-        if (Boolean.TRUE.equals(creneau.getEstSegmentDePause())) {
-            return false;
-        }
-        ComptabiliteActivite activite = prepared.referentiel().getByCode(creneau.getCodeActiviteEffectif());
-        return activite != null && activite.isCompteDansCharge();
     }
 
     // =========================================================

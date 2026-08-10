@@ -13,6 +13,7 @@ import fr.project.planning.scenarios.dto.MotifCandidat;
 import fr.project.planning.scenarios.dto.MotifCandidatDTO;
 import fr.project.planning.scenarios.dto.Sc06ScenarioRequestDTO;
 import fr.project.planning.scenarios.dto.ScenarioResponseDTO;
+import fr.project.planning.scenarios.mapper.Sc06ImpactFactory;
 import fr.project.planning.scenarios.mapper.ScenarioResponseMapper;
 import fr.project.planning.scenarios.mapper.ScoreBreakdownFactory;
 import fr.project.planning.solution.PlanningProblem;
@@ -175,6 +176,7 @@ public class ScenarioSc06ExecutionService {
                     candidat.couvertureComplete(),
                     candidat.nature().name(),
                     affectations,
+                    Sc06ImpactFactory.build(prepared, candidat),
                     motifs
             ));
         }

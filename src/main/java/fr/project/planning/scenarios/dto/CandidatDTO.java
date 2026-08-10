@@ -10,8 +10,8 @@ import java.util.List;
  * distinction s'efface, mais elle est nécessaire dès qu'un besoin se répartit entre plusieurs
  * personnes.</p>
  *
- * <p>Le bloc {@code impacts} viendra au lot S5 : conséquences chiffrées sur l'amplitude
- * journalière et les volumes horaires de chaque ressource mobilisée.</p>
+ * <p>{@code affectations} répond à « qui », {@code impacts} à « à quel prix », {@code motifs}
+ * à « pourquoi ce rang ».</p>
  */
 public class CandidatDTO {
 
@@ -30,6 +30,12 @@ public class CandidatDTO {
     /** Une entrée par créneau du besoin. */
     private List<AffectationCandidatDTO> affectations;
 
+    /**
+     * [Lot S5] Conséquences chiffrées, une entrée par ressource réelle mobilisée.
+     * Vide lorsque la solution ne repose sur aucun salarié réel.
+     */
+    private List<ImpactCandidatDTO> impacts;
+
     /** Raisons expliquant le rang et la conformité. Jamais nul, éventuellement vide. */
     private List<MotifCandidatDTO> motifs;
 
@@ -37,12 +43,15 @@ public class CandidatDTO {
     }
 
     public CandidatDTO(int rang, boolean conforme, boolean couvertureComplete, String nature,
-                       List<AffectationCandidatDTO> affectations, List<MotifCandidatDTO> motifs) {
+                       List<AffectationCandidatDTO> affectations,
+                       List<ImpactCandidatDTO> impacts,
+                       List<MotifCandidatDTO> motifs) {
         this.rang = rang;
         this.conforme = conforme;
         this.couvertureComplete = couvertureComplete;
         this.nature = nature;
         this.affectations = affectations;
+        this.impacts = impacts;
         this.motifs = motifs;
     }
 
@@ -60,6 +69,9 @@ public class CandidatDTO {
 
     public List<AffectationCandidatDTO> getAffectations() { return affectations; }
     public void setAffectations(List<AffectationCandidatDTO> affectations) { this.affectations = affectations; }
+
+    public List<ImpactCandidatDTO> getImpacts() { return impacts; }
+    public void setImpacts(List<ImpactCandidatDTO> impacts) { this.impacts = impacts; }
 
     public List<MotifCandidatDTO> getMotifs() { return motifs; }
     public void setMotifs(List<MotifCandidatDTO> motifs) { this.motifs = motifs; }

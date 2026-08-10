@@ -409,12 +409,33 @@ Les impacts sont exprimés en **heures décimales**, comme `workMetrics.byRessou
 contrat de sortie). `plafond` reprend la valeur individuelle du salarié ; `null` si la contrainte
 est inactive pour lui.
 
-> **État au 2026-08-10** — le lot S4 restitue `candidats[]` avec `rang`, `conforme`,
-> `couvertureComplete`, `nature`, `affectations[]` et `motifs[]`. **Le bloc `impacts[]` reste à
-> livrer (S5).** Ce partage n'était pas explicite au découpage initial ; il est retenu parce
-> qu'un endpoint qui ne restitue rien n'est pas testable, et que les impacts forment un bloc
-> autonome. La clé `candidats` est **absente** — et non vide — pour SC-01 et SC-03, afin qu'une
-> réponse sans classement ne laisse pas croire à une capacité inexistante.
+✅ **Bloc `impacts[]` livré au lot S5, 2026-08-10.** Quatre points de lecture :
+
+- **Une entrée par ressource *réelle* mobilisée.** Un poste virtuel ne porte ni contrat ni
+  contraintes individuelles : mesurer son amplitude n'aurait pas de sens. Une solution
+  `RESSOURCE_A_POURVOIR` a donc des impacts **vides** — ce n'est pas une omission.
+- **Une limite absente n'est pas une limite à zéro.** `plafond` vaut `null` quand le champ n'est
+  pas transmis, et `depassement` reste alors `false`.
+- ⚠️ **Un dépassement signalé n'est pas une règle appliquée.** Ce bloc décrit des conséquences,
+  il ne préjuge pas de ce que le moteur sanctionne. `heuresJour` est mesuré et son plafond
+  restitué, alors qu'aucune contrainte ne lit encore `heuresMaximumParJour` — la contrainte
+  existante compare à une constante en dur, et son individualisation relève du lot **S7**.
+  L'écart est donc **visible** dans la réponse plutôt que masqué, conformément à la posture du
+  projet ; il ne doit pas être lu comme une garantie.
+- **Les candidats non conformes portent aussi leurs impacts.** Une solution écartée doit rester
+  lisible : c'est ce qui permet de comprendre pourquoi elle l'a été.
+
+**Source unique de mesure** : `Sc06ChargeCalculator` sert à la fois au palier 6 du classement et
+à ce bloc, et l'amplitude est déléguée à `AmplitudeJournaliere.calculerAmplitudeMinutes()` — la
+réponse mesure donc exactement ce que la contrainte mesure. Deux définitions concurrentes de
+« heures de la semaine » auraient tôt ou tard fait dire une chose à la réponse pendant que le
+classement en appliquait une autre.
+
+> **Note de découpage** — S4 avait déjà livré `candidats[]` sans `impacts[]`. Ce partage n'était
+> pas explicite au découpage initial ; il a été retenu parce qu'un endpoint qui ne restitue rien
+> n'est pas testable, et que les impacts forment un bloc autonome. La clé `candidats` est
+> **absente** — et non vide — pour SC-01 et SC-03, afin qu'une réponse sans classement ne laisse
+> pas croire à une capacité inexistante.
 
 ### 6.2 Codes de motif prévus
 
@@ -516,8 +537,8 @@ champs qui n'y figuraient pas dans la cible sont bien attendus par le métier. I
 | Figement d'un créneau | ~~ABSENT~~ → `Creneau.fige` annoté `@PlanningPin` | ✅ S1 |
 | Bloc `contrat` salarié | ~~ABSENT~~ → **TRANSPORTÉ ET MAPPÉ** — `ContratSalarieDTO` → `ContratSalarie` | ✅ S2 |
 | Énumération et classement de candidats | ~~ABSENT~~ → `Sc06CandidatEnumerationService` | ✅ S4 |
-| Bloc `candidats[]` | ~~ABSENT~~ → `candidats[]` restitué, **sans `impacts[]`** | ✅ S4 (impacts → S5) |
-| Impacts avant/après | **ABSENT** | **S5** |
+| Bloc `candidats[]` | ~~ABSENT~~ → restitué | ✅ S4 |
+| Impacts avant/après | ~~ABSENT~~ → `candidats[].impacts[]`, `Sc06ImpactFactory` | ✅ S5 |
 | Endpoint SC-06 | ~~ABSENT~~ → `POST /scenarios/sc06/solve` | ✅ S4 |
 | FileAdapter SC-06 | **ABSENT** | **S6** |
 
@@ -544,7 +565,7 @@ Ordonné par dépendance. Numérotation **S**, distincte des lots **L** du cadra
 | **S2** | Bloc `contrat` salarié : 4 champs, transport + domaine, sans exploitation de `estAnnualise` | **S** — 1 à 2 j | — · ✅ **livré 2026-08-10** |
 | **S3** | Les deux règles exigées : repos quotidien minimum, heures maximum hebdomadaires | **M** — 2 à 3 j | — · ✅ **livré 2026-08-10** |
 | **S4** | Le scénario : endpoint, DTO de requête, filtre d'éligibilité, énumération, classement, restitution `candidats[]` | **L** — 4 à 6 j | S1 · ✅ **livré 2026-08-10** |
-| **S5** | Impacts avant/après dans `candidats[].impacts[]` | **M** — 2 à 3 j | S2, S3, S4 |
+| **S5** | Impacts avant/après dans `candidats[].impacts[]` | **M** — 2 à 3 j | S2, S3, S4 · ✅ **livré 2026-08-10** |
 | **S6** | FileAdapter SC-06, schémas JSON, OpenAPI, jeux d'essai, documentation séries 50 et 90 | **M** — 2 à 3 j | S4, S5 |
 | **S7** | Activation progressive des 3 contraintes restantes + correction de la constante 780 | 0,5 à 1 j par règle | S3 |
 
