@@ -324,7 +324,10 @@ Aligner le contrat d’entrée du moteur avec les structures réelles du logicie
 
 ### Données portées par la ressource
 
-* contrat de travail
+* contrat de travail — bloc `contrat` livré au lot S2 (2026-08-10) : durée journalière moyenne,
+  durée hebdomadaire habituelle, jours travaillés par semaine (défaut 5), salarié annualisé.
+  Transporté et mappé vers `ContratSalarie` ; **aucune contrainte ne le lit à ce stade**.
+  Voir `92_cadrage_scenario_sc-06.md` §4.6.
 * contraintes réglementaires
 
 ### Structuration des besoins

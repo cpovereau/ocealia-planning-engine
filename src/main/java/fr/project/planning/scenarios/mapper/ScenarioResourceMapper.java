@@ -3,6 +3,7 @@ package fr.project.planning.scenarios.mapper;
 import fr.project.planning.domain.metier.ComptabiliteActivite;
 import fr.project.planning.domain.metier.ReferentielComptabiliteActivite;
 import fr.project.planning.domain.ressource.ContraintesReglementairesSalarie;
+import fr.project.planning.domain.ressource.ContratSalarie;
 import fr.project.planning.domain.ressource.Indisponibilite;
 import fr.project.planning.domain.ressource.PosteVirtuel;
 import fr.project.planning.domain.ressource.Ressource;
@@ -11,6 +12,7 @@ import fr.project.planning.domain.ressource.SalarieReel;
 import fr.project.planning.domain.ressource.TypePosteVirtuel;
 import fr.project.planning.scenarios.dto.DataSetDTO;
 import fr.project.planning.scenarios.dto.input.ContraintesReglementairesDTO;
+import fr.project.planning.scenarios.dto.input.ContratSalarieDTO;
 import fr.project.planning.scenarios.dto.input.IndisponibilitesDTO;
 import fr.project.planning.scenarios.dto.input.PosteVirtuelInputDTO;
 import fr.project.planning.scenarios.dto.input.ReferentielsDTO;
@@ -65,14 +67,29 @@ public class ScenarioResourceMapper {
         // Phase 3 : contraintes réglementaires individuelles
         if (dto.getContraintesReglementaires() != null) {
             salarie.setContraintesReglementaires(
-                    toContraintesReglementaires(dto.getContraintesReglementaires())
+                    toContraintesReglementaires(dto.getId(), dto.getContraintesReglementaires())
             );
+        }
+
+        // [Lot S2] contrat de travail — descriptif, non exploité par le solveur
+        if (dto.getContrat() != null) {
+            salarie.setContrat(toContrat(dto.getContrat()));
         }
 
         return salarie;
     }
 
-    private ContraintesReglementairesSalarie toContraintesReglementaires(ContraintesReglementairesDTO dto) {
+    private ContraintesReglementairesSalarie toContraintesReglementaires(String salarieId,
+                                                                        ContraintesReglementairesDTO dto) {
+        signalerZeroInterdit(salarieId, "heuresMinimumParJour", dto.getHeuresMinimumParJour());
+        signalerZeroInterdit(salarieId, "heuresMaximumParJour", dto.getHeuresMaximumParJour());
+        signalerZeroInterdit(salarieId, "amplitudeJournaliereMaximum", dto.getAmplitudeJournaliereMaximum());
+        signalerZeroInterdit(salarieId, "reposQuotidienMinimum", dto.getReposQuotidienMinimum());
+        signalerZeroInterdit(salarieId, "heuresMinimumParSemaine", dto.getHeuresMinimumParSemaine());
+        signalerZeroInterdit(salarieId, "heuresMaximumParSemaine", dto.getHeuresMaximumParSemaine());
+        signalerZeroInterdit(salarieId, "nuitsMaximumParSemaine", dto.getNuitsMaximumParSemaine());
+        signalerZeroInterdit(salarieId, "joursConsecutifsMaximum", dto.getJoursConsecutifsMaximum());
+
         return new ContraintesReglementairesSalarie(
                 dto.getHeuresMinimumParJour(),
                 dto.getHeuresMaximumParJour(),
@@ -82,6 +99,38 @@ public class ScenarioResourceMapper {
                 dto.getHeuresMaximumParSemaine(),
                 dto.getNuitsMaximumParSemaine(),
                 dto.getJoursConsecutifsMaximum()
+        );
+    }
+
+    /**
+     * Signale une contrainte réglementaire transmise à 0.
+     *
+     * <p>Le moteur active une contrainte dès que son seuil est non nul — règle SC-03 conservée.
+     * Une valeur 0 l'active donc avec un seuil nul, ce qui rend toute affectation fautive. Le
+     * contrat impose d'<strong>omettre le champ</strong> pour désactiver une limite.</p>
+     *
+     * <p>Le moteur ne corrige pas la valeur : corriger reviendrait à deviner l'intention. Il
+     * rend l'écart visible en intégration plutôt que silencieux.
+     * Voir {@code 92_cadrage_scenario_sc-06.md} §4.7.</p>
+     */
+    private void signalerZeroInterdit(String salarieId, String champ, Number valeur) {
+        if (valeur != null && valeur.doubleValue() == 0d) {
+            log.warn("[ScenarioResourceMapper] salarié id='{}' : contraintesReglementaires.{}=0 — "
+                    + "la contrainte est activée avec un seuil nul. Pour désactiver une limite, "
+                    + "omettre le champ plutôt que d'envoyer 0.", salarieId, champ);
+        }
+    }
+
+    /**
+     * Convertit le bloc contrat du salarié.
+     * [Lot S2] Transport et mapping uniquement — aucune contrainte ne lit cet objet.
+     */
+    private ContratSalarie toContrat(ContratSalarieDTO dto) {
+        return new ContratSalarie(
+                dto.getHeuresMoyennesParJour(),
+                dto.getHeuresHebdomadairesHabituelles(),
+                dto.getJoursTravaillesParSemaine(),
+                dto.getEstAnnualise()
         );
     }
 

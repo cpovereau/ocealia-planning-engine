@@ -159,15 +159,32 @@ Le lieu doit être **restitué** partout où il a été reçu.
 
 | Champ | État actuel |
 |---|---|
-| Durée journalière travaillée moyenne | ABSENT |
-| Durée hebdomadaire | ABSENT |
-| Nombre de jours travaillés par semaine | ABSENT |
+| Durée journalière travaillée moyenne | ~~ABSENT~~ → `contrat.heuresMoyennesParJour` — **transporté** |
+| Durée hebdomadaire | ~~ABSENT~~ → `contrat.heuresHebdomadairesHabituelles` — **transporté** |
+| Nombre de jours travaillés par semaine | ~~ABSENT~~ → `contrat.joursTravaillesParSemaine` — **transporté**, défaut 5 |
 | Travaille de nuit | Existe à la racine du salarié — **EXPLOITÉ** |
-| Travaille le week-end | ABSENT |
+| Travaille le week-end | **ABSENT** — toujours pas au contrat |
 | Travaille les jours fériés | Existe à la racine du salarié — **EXPLOITÉ** |
+| *(ajout)* Salarié annualisé | `contrat.estAnnualise` — **transporté, non exploité** |
 
 Ce bloc décrit **ce que le salarié fait normalement**. Il ne décrit pas ce qui lui est interdit —
 c'est l'objet des contraintes individuelles.
+
+> **Réalisé au lot S2 de SC-06, 2026-08-10** — voir `92_cadrage_scenario_sc-06.md` §4.6.
+> Trois écarts par rapport à la cible ci-dessus, tous arbitrés :
+>
+> - **`travailDeNuit` et `travailleJourFerie` restent à la racine.** Les migrer dans le bloc
+>   serait une rupture de contrat pour SC-03, déjà en service, sans contrepartie. La cible reste
+>   valide comme trajectoire ; elle n'est pas ouverte.
+> - **« Travaille le week-end » n'a pas été ajouté** — aucun besoin exprimé, et les dimanches
+>   sont déjà couverts par `DimanchesTravaillesMax`.
+> - **`estAnnualise` s'ajoute à la cible.** Motif métier : un dépassement hebdomadaire est moins
+>   grave pour un salarié annualisé. Transporté sans exploitation — le critère cible porte sur le
+>   cumul d'heures excédentaires sur la période d'annualisation, et deux données manquent encore
+>   au contrat pour le calculer.
+>
+> Les **dates de début et de fin de contrat**, un temps envisagées, ont été écartées : le filtrage
+> des salariés hors contrat relève de WinDev, en amont.
 
 ### 6.4 Tranché — contraintes métier, attachées au salarié
 
@@ -323,7 +340,7 @@ Ordonné par dépendance, pas par valeur métier. Chaque lot est livrable seul.
 | **L1** | Code activité explicite en SC-01 | 6.1 ✅ | Contrat SC-01 + builder — **livré 2026-07-30** |
 | **L2** | Restitution du lieu **et de l'identifiant** dans la réponse | 6.2 ✅, 6.7 ✅ | Contrat de sortie — **livré 2026-07-31** |
 | **L3** | Référentiel de lieux (`id` + `libellé`) | L2 | Contrat d'entrée |
-| **L4** | Bloc `contrat` salarié | 6.3 ✅, 6.6 ✅ | Contrat d'entrée + domaine |
+| **L4** | Bloc `contrat` salarié | 6.3 ✅, 6.6 ✅ | Contrat d'entrée + domaine — **livré 2026-08-10** (lot S2 de SC-06) |
 | **L5** | Renommage `contraintesReglementaires` → `contraintesMetier` avec alias | 6.6 ✅ | Contrat + DTO + domaine + docs |
 | **L6** | Contraintes métier : compléter les 2 manquantes, rapatrier les 3 seuils globaux | L5, 6.5 | Contrat + domaine + 3 contraintes |
 | **L7** | Activation progressive des règles | L6 | Une règle à la fois, avec évaluation du scoring |

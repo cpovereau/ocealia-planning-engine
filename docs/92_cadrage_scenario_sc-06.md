@@ -140,7 +140,7 @@ Les restituer en queue de classement satisfait l'invariant sans jamais recommand
 
 ### 4.6 Tranché — bloc `contrat` salarié, sans les dates
 
-Quatre champs, tous facultatifs sauf mention :
+✅ **Livré au lot S2, 2026-08-10.** Quatre champs, tous facultatifs :
 
 | Champ | Rôle | Exploitation |
 |---|---|---|
@@ -148,6 +148,19 @@ Quatre champs, tous facultatifs sauf mention :
 | `heuresHebdomadairesHabituelles` | volume hebdomadaire habituel | palier 6, impacts |
 | `joursTravaillesParSemaine` | défaut **5** si non renseigné | impacts |
 | `estAnnualise` | booléen | **transporté, non exploité** — §10.1 |
+
+**Valeur absente et valeur transmise restent distinguables.** `ContratSalarie` conserve les
+valeurs brutes telles que reçues, `null` compris, et expose en regard des méthodes
+`…Effectif()` portant la valeur réellement appliquée. Le défaut de 5 jours n'écrase donc
+jamais l'information « WinDev n'a rien transmis » — il l'accompagne. Même motif pour
+`estAnnualise()`, qui lit `null` comme « non annualisé » : *un vide ne suppose jamais que la
+chose est possible*.
+
+**Le bloc est strict** : `ContratSalarieDTO` ne porte pas de `@JsonIgnoreProperties`, alors que
+`SalarieInputDTO` qui le contient est tolérant. L'annotation étant portée par classe, la
+tolérance du parent ne se propage pas — vérifié par test. Un `dateDebutContrat` envoyé par
+erreur est donc rejeté au lieu d'être silencieusement absorbé, ce qui rend visible l'arbitrage
+« les dates relèvent de WinDev » plutôt que de le laisser deviner.
 
 **Les dates de début et de fin de contrat sont écartées.** Le filtrage des salariés hors contrat
 à la date visée relève de WinDev, en amont. Le moteur n'a pas à connaître la vie administrative
@@ -169,6 +182,12 @@ deviendrait une violation.
 Le moteur émet un **WARN** à la réception d'un `0` sur l'une des huit contraintes, afin que
 l'écart soit visible en intégration plutôt que silencieux. Il ne le corrige pas : corriger
 reviendrait à deviner l'intention.
+
+✅ **Implémenté au lot S2, 2026-08-10** — `ScenarioResourceMapper.signalerZeroInterdit()`, appelé
+sur les huit champs, avec l'identifiant du salarié et le nom du champ dans le message. Ce geste
+n'appartenait explicitement ni à S2 ni à S3 ; il a été rattaché à S2 parce qu'il vit dans le
+mapper que ce lot modifiait déjà, et parce qu'un arbitrage tranché sans porteur finit par se
+perdre.
 
 ### 4.8 Tranché — semaine et horizon
 
@@ -440,7 +459,7 @@ champs qui n'y figuraient pas dans la cible sont bien attendus par le métier. I
 |---|---|---|
 | `ressourceAffecteeId` sur un créneau d'entrée | **ABSENT** de `CreneauInputDTO` | **S1** |
 | Figement d'un créneau | **ABSENT** — `Creneau` n'a pas de `@PlanningPin` | **S1** |
-| Bloc `contrat` salarié | **ABSENT** | **S2** |
+| Bloc `contrat` salarié | ~~ABSENT~~ → **TRANSPORTÉ ET MAPPÉ** — `ContratSalarieDTO` → `ContratSalarie` | ✅ S2 |
 | Énumération et classement de candidats | **ABSENT** — aucune notion de candidat dans le code | **S4** |
 | Bloc `candidats[]` et impacts avant/après | **ABSENT** | **S5** |
 | Endpoint SC-06 et FileAdapter SC-06 | **ABSENT** | S4 / S6 |
@@ -465,7 +484,7 @@ Ordonné par dépendance. Numérotation **S**, distincte des lots **L** du cadra
 | Lot | Objet | Taille | Dépend de |
 |---|---|---|---|
 | **S1** | Planning existant affecté et figé : `ressourceAffecteeId`, `@PlanningPin`, mapping, non-régression SC-01/SC-03 | **M** — 2 à 3 j | — |
-| **S2** | Bloc `contrat` salarié : 4 champs, transport + domaine, sans exploitation de `estAnnualise` | **S** — 1 à 2 j | — |
+| **S2** | Bloc `contrat` salarié : 4 champs, transport + domaine, sans exploitation de `estAnnualise` | **S** — 1 à 2 j | — · ✅ **livré 2026-08-10** |
 | **S3** | Les deux règles exigées : repos quotidien minimum, heures maximum hebdomadaires | **M** — 2 à 3 j | — · ✅ **livré 2026-08-10** |
 | **S4** | Le scénario : endpoint, DTO de requête, filtre d'éligibilité, énumération, classement | **L** — 4 à 6 j | S1 |
 | **S5** | Impacts avant/après et restitution `candidats[]` | **M** — 2 à 3 j | S2, S3, S4 |

@@ -13,6 +13,10 @@ import java.util.Set;
  * Accepte les anciens noms de champs (activitesAutorisees, lieuxAutorises)
  * pour la rétrocompatibilité avec les JSON SC-01 existants.
  *
+ * [Lot S2] Ajout du bloc `contrat` (descriptif). À ne pas confondre avec l'ancien
+ * `contratTravail` supprimé en Phase 10C : celui-ci portait des champs jamais exploités
+ * et une structure différente. Le nouveau bloc est arbitré au §4.6 du cadrage SC-06.
+ *
  * [Phase 10C] Champs IGNORÉS supprimés : axesOrganisationnels, contratTravail.
  * @JsonIgnoreProperties conservé : SC-01 envoie type:"SALARIE" et capaciteCible
  * dans ses objets salarié — ces champs inconnus doivent être absorbés silencieusement.
@@ -32,8 +36,11 @@ public class SalarieInputDTO {
 
     private Set<String> postesComptablesCompatibles;
 
-    // contraintes réglementaires individuelles (8 champs)
+    // contraintes réglementaires individuelles (8 champs) — prescriptif
     private ContraintesReglementairesDTO contraintesReglementaires;
+
+    // [Lot S2] contrat de travail — descriptif, transporté et mappé, non exploité
+    private ContratSalarieDTO contrat;
 
     // statut de travail de nuit : null | "permanent" | "occasionnel"
     private String travailDeNuit;
@@ -68,6 +75,9 @@ public class SalarieInputDTO {
 
     public ContraintesReglementairesDTO getContraintesReglementaires() { return contraintesReglementaires; }
     public void setContraintesReglementaires(ContraintesReglementairesDTO contraintesReglementaires) { this.contraintesReglementaires = contraintesReglementaires; }
+
+    public ContratSalarieDTO getContrat() { return contrat; }
+    public void setContrat(ContratSalarieDTO contrat) { this.contrat = contrat; }
 
     public String getTravailDeNuit() { return travailDeNuit; }
     public void setTravailDeNuit(String travailDeNuit) { this.travailDeNuit = travailDeNuit; }

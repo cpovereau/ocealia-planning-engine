@@ -28,8 +28,11 @@ public class SalarieReel extends Ressource {
     private LocalTime heureFinNuit;
     private Boolean travailleJourFerie;
 
-    // Phase 3 — contraintes réglementaires individuelles
+    // Phase 3 — contraintes réglementaires individuelles (prescriptif)
     private ContraintesReglementairesSalarie contraintesReglementaires;
+
+    // Lot S2 — contrat de travail (descriptif) : mappé, non exploité par le solveur
+    private ContratSalarie contrat;
 
     public SalarieReel(
             String id,
@@ -77,6 +80,13 @@ public class SalarieReel extends Ressource {
     public void setContraintesReglementaires(ContraintesReglementairesSalarie contraintesReglementaires) {
         this.contraintesReglementaires = contraintesReglementaires;
     }
+
+    // =========================
+    // Getters/Setters lot S2 — contrat de travail
+    // =========================
+
+    public ContratSalarie getContrat() { return contrat; }
+    public void setContrat(ContratSalarie contrat) { this.contrat = contrat; }
 
     // =========================
     // Méthodes utilitaires Phase 6 — nuit par salarié
