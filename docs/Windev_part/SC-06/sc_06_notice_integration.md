@@ -103,9 +103,13 @@ moteur ne refuse pas : il rend visible l'impossible. C'est ce qui vous permet d'
 ### 4.3 Point de vigilance sur les impacts
 
 ⚠️ **Un `depassement: true` décrit une conséquence, il ne garantit pas que le moteur la
-sanctionne.** C'est aujourd'hui le cas de `heuresJour`, mesuré et comparé à son plafond alors
-qu'aucune contrainte ne l'applique encore. N'en faites pas une règle de gestion sans vérifier
-l'état d'avancement dans `90_SUIVI_DEVELOPPEMENT_MOTEUR.md`.
+sanctionne.** N'en faites pas une règle de gestion sans vérifier l'état d'avancement dans
+`90_SUIVI_DEVELOPPEMENT_MOTEUR.md`.
+
+**Mise à jour — lot S7.6** : `heuresJour` faisait précisément exception, mesuré sans qu'aucune
+contrainte ne l'applique. Ce n'est plus le cas : `heuresMaximumParJour` est désormais appliqué, et
+un dépassement produit un motif éliminatoire `DUREE_JOURNALIERE_DEPASSEE`. Les trois mesures du
+bloc `impacts[]` sont maintenant adossées à une contrainte.
 
 ---
 

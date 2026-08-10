@@ -86,7 +86,7 @@
       "type": "object",
       "additionalProperties": false,
       "required": ["avant", "apres", "delta", "depassement"],
-      "description": "Grandeur mesurée avant et après affectation du besoin, en heures décimales. ATTENTION : un dépassement signalé décrit une conséquence, il ne garantit pas qu'une contrainte la sanctionne — c'est le cas de heuresJour, dont le plafond individuel n'est pas encore exploité par le moteur.",
+      "description": "Grandeur mesurée avant et après affectation du besoin, en heures décimales. ATTENTION : un dépassement signalé décrit une conséquence, il ne garantit pas qu'une contrainte la sanctionne. Depuis le lot S7.6, les trois mesures sont adossées à une contrainte ; vérifier 90_SUIVI_DEVELOPPEMENT_MOTEUR.md avant d'en faire une règle de gestion.",
       "properties": {
         "avant": { "type": "number" },
         "apres": { "type": "number" },
@@ -125,6 +125,7 @@
             "REPOS_APRES_NUITS_INSUFFISANT",
             "REPOS_HEBDOMADAIRE_GLISSANT_INSUFFISANT",
             "SEMAINE_SANS_JOUR_DE_REPOS",
+            "DUREE_JOURNALIERE_DEPASSEE",
             "AMPLITUDE_DEPASSEE",
             "JOURS_CONSECUTIFS_DEPASSES",
             "DIMANCHES_TRAVAILLES_DEPASSES",

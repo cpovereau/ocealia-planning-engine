@@ -455,10 +455,14 @@ Chaque mesure porte `avant`, `apres`, `delta`, `plafond` et `depassement`, en **
 `plafond` vaut `null` quand la limite individuelle n'est pas transmise, et `depassement` reste
 alors `false` : **une limite absente n'est pas une limite à zéro**.
 
-> ⚠️ **Un dépassement signalé n'est pas une règle appliquée.** Ce bloc décrit des conséquences ;
-> il ne préjuge pas de ce que le moteur sanctionne. `heuresJour` est ainsi mesuré et son plafond
-> restitué, alors qu'aucune contrainte ne lit encore `heuresMaximumParJour`. L'écart est rendu
-> visible plutôt que masqué — il ne doit pas être lu comme une garantie.
+> **Depuis le lot S7.6, les trois mesures sont adossées à une contrainte.** `heuresJour` est
+> désormais appliqué : `heuresMaximumParJour` est lu par `DureeMaximaleLegaleParSalarie`, et un
+> dépassement produit un motif éliminatoire `DUREE_JOURNALIERE_DEPASSEE`. Cet avertissement
+> annonçait auparavant l'inverse.
+>
+> ⚠️ La règle générale demeure : **ce bloc décrit des conséquences, il ne préjuge pas de ce que le
+> moteur sanctionne**. Avant de faire d'un `depassement: true` une règle de gestion, vérifier
+> l'état de la contrainte correspondante dans `90_SUIVI_DEVELOPPEMENT_MOTEUR.md`.
 
 ### 6.5 `motifs[]`
 
@@ -476,6 +480,7 @@ sévérité, pas sur le code.**
 | `REPOS_APRES_NUITS_INSUFFISANT` | ERROR | ✅ |
 | `REPOS_HEBDOMADAIRE_GLISSANT_INSUFFISANT` | ERROR | ✅ |
 | `SEMAINE_SANS_JOUR_DE_REPOS` | ERROR | ✅ |
+| `DUREE_JOURNALIERE_DEPASSEE` | ERROR | ✅ |
 | `AMPLITUDE_DEPASSEE` | WARNING | — |
 | `JOURS_CONSECUTIFS_DEPASSES` | WARNING | — |
 | `DIMANCHES_TRAVAILLES_DEPASSES` | WARNING | — |

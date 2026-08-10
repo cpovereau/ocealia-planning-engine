@@ -4,7 +4,8 @@
 > jamais pour un client conforme au contrat. Ce document établit le constat, l'ordre de
 > réparation et le point de contrôle de chaque étape.
 >
-> **Statut** — S7.0 à S7.5 livrés. S7.6 à S7.8 à réaliser.
+> **Statut** — S7.0 à S7.6 livrés. Les six contraintes dormantes sont remises en service.
+> S7.7 et S7.8 à réaliser.
 > **Contrat concerné** — `50_ScenarioContract.md` §3.7 · **Suivi** — `90_SUIVI_DEVELOPPEMENT_MOTEUR.md`
 
 ---
@@ -24,7 +25,7 @@ la contrainte ne produit **aucun match**.
 | `ReposObligatoireApresNuits` | **HARD** | R4 | seuil global à 0, garde interne — ✅ traitée en S7.3 |
 | `ReposHebdomadaireMin` | **HARD** | R7 | — (socle 7 j / 1 j off en dur) — ✅ traitée en S7.5 |
 | `ReposHebdomadaireGlissant` | **HARD** | R7 | seuil global à 0, garde interne — ✅ traitée en S7.4 |
-| `DureeMaximaleLegaleParSalarie` | **HARD** | — | maille erronée (§1.3) |
+| `DureeMaximaleLegaleParSalarie` | **HARD** | — | maille erronée (§1.3) — ✅ traitée en S7.6 |
 | `DimanchesTravaillesMax` | SOFT | R9 | seuil global à 0, **sans garde** — ✅ traitée en S7.1 |
 
 Neuf autres contraintes portent bien le repli, posé en Phase 10A :
@@ -101,7 +102,7 @@ L'ordre va du moins au plus perturbant, pour qu'une surprise reste imputable.
 | **S7.3** ✅ | `ReposObligatoireApresNuits` — repli + `joursReposMinimumApresNuits` | **Aucun** — mesuré (§7.3) |
 | **S7.4** ✅ | `ReposHebdomadaireGlissant` — repli + paire de seuils | **Aucun** — mesuré (§7.4) |
 | **S7.5** ✅ | `ReposHebdomadaireMin` — repli seul (socle légal, sans seuil individuel) | **Aucun** — mesuré (§7.5) |
-| S7.6 | `DureeMaximaleLegaleParSalarie` — **correction de maille** + `heuresMaximumParJour` | HARD, le plus sensible |
+| **S7.6** ✅ | `DureeMaximaleLegaleParSalarie` — **correction de maille** + `heuresMaximumParJour` | **Aucun** — mesuré (§7.6) |
 | S7.7 | Contraintes absentes : `heuresMinimumParSemaine`, `nuitsMaximumParSemaine` | nouvelles |
 | S7.8 | Nettoyage : code mort, retrait des cinq champs de `SeuilsDeTolerance`, doc | Aucun |
 
@@ -375,3 +376,56 @@ au salarié, et la seule contrainte que la remise en service active inconditionn
 Un salarié qui transmettrait exactement 7 jours / 1 jour off verrait les deux contraintes se
 déclencher sur la même situation. Ce n'est pas un double comptage fautif : deux règles distinctes
 sont alors violées, restituées sous deux clés de pénalité et deux motifs différents.
+
+### 7.6 — `DureeMaximaleLegaleParSalarie` (HARD, durée journalière)
+
+**Écart de score : aucun.** 486 tests, 0 échec. Les six contraintes dormantes sont remises en
+service.
+
+| Livrable | Fichier |
+|---|---|
+| Correction de maille + plafond individuel + repli | `constraints/legales/DureeMaximaleLegaleParSalarie.java` |
+| Clé de pénalité renommée et unité corrigée | `scoring/PenaliteKey.java` |
+| Motif SC-06 `DUREE_JOURNALIERE_DEPASSEE` (éliminatoire) | `scenarios/dto/MotifCandidat.java` |
+| Couverture dédiée — 9 cas, elle n'en avait aucune | `constraints/DureeMaximaleParJourConstraintsTest.java` |
+
+#### Le seul défaut du chantier qui n'était pas un défaut de branchement
+
+Les cinq autres contraintes étaient correctes mais débranchées. Celle-ci était **fausse** : son
+`groupBy` agrégeait sur tout l'horizon et comparait ce cumul à une constante de 780 minutes, qui
+est une valeur journalière. Elle mesurait une période et la comparait à un jour. Réveillée en
+l'état, deux journées ordinaires l'auraient violée.
+
+Trois corrections : agrégation par `(salarié, date)`, plafond lu sur le salarié via
+`heuresMaximumParJour`, suppression de la constante globale. Quatre cas de test existent
+uniquement pour interdire le retour de ce défaut de maille.
+
+#### Une clé de pénalité renommée
+
+`LEGAL_HARD_DUREE_MAX_LEGALE_PAR_PERIODE` devient `LEGAL_HARD_DUREE_MAX_PAR_JOUR`, et son unité
+passe de `JOUR` à `MINUTE_PONDEREE` — la pénalité a toujours été exprimée en minutes. Une clé qui
+annonce une période là où elle mesure une journée aurait trompé le client durablement. Le
+renommage est sans risque : la contrainte étant dormante, cette clé n'a **jamais** été émise dans
+un `scoreBreakdown`.
+
+#### Le plancher physique n'est pas concerné
+
+Supprimer la constante globale ne laisse aucun trou : `LimitePhysique` continue d'interdire
+inconditionnellement plus de 24 h cumulées sur une journée et plus de 12 h pour un créneau. Ce
+sont des impossibilités physiques, pas des règles négociables au contrat, et elles ne dépendent
+d'aucun seuil transmis.
+
+#### Un écart de contrat refermé
+
+La notice SC-06 signalait que `heuresJour` était mesuré et son plafond restitué **alors qu'aucune
+contrainte ne l'appliquait**. Ce lot referme cet écart : les trois mesures du bloc `impacts[]`
+sont désormais adossées à une contrainte. La notice, le contrat de sortie et le schéma JSON ont
+été corrigés — ils annonçaient l'inverse.
+
+#### Durée travaillée et amplitude, deux notions complémentaires
+
+`heuresMaximumParJour` plafonne le **temps de travail** ; `amplitudeJournaliereMaximum` borne la
+première à la dernière heure, **pauses comprises**. Une journée 08:00–12:00 puis 18:00–22:00
+totalise 8 h travaillées pour 14 h d'amplitude. Les deux règles coexistent, et le contrat les
+restitue sous deux motifs de sévérité différente : le dépassement de durée est éliminatoire,
+celui d'amplitude reste un signalement.

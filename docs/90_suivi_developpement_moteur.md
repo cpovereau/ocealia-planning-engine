@@ -209,11 +209,15 @@ Le paramétrage du scoring est désormais centralisé et stable, permettant d’
 | ⏳ | partielle : effective, mais tous les cas ne sont pas couverts |
 | ⛔ | **dormante** — écrite et enregistrée, mais ne produit aucun match en production |
 
-> ⛔ ne veut pas dire « non écrite ». Ces contraintes sont dans
-> `ConstraintProviderImpl`, leurs tests sont verts, et elles ne servent à rien : elles lisent le
-> champ d'activité déprécié, que les clients n'envoient plus. Une métrique peut donc compter un
+> ⛔ ne veut pas dire « non écrite ». Une contrainte dormante est dans
+> `ConstraintProviderImpl`, ses tests sont verts, et elle ne sert à rien : elle lit le champ
+> d'activité déprécié, que les clients n'envoient plus. Une métrique peut alors compter un
 > dimanche travaillé pendant que la contrainte censée le plafonner reste muette.
-> Constat détaillé et plan de réparation : `92_cadrage_socle_reglementaire.md`.
+>
+> **Aucune contrainte n'est plus dans cet état** : les six identifiées ont été remises en service
+> par les lots S7.1 à S7.6. Le marqueur est conservé — c'est un état que la cartographie doit
+> pouvoir décrire, et ne pas savoir le nommer est précisément ce qui a permis à l'écart de durer.
+> Constat et journal des lots : `92_cadrage_socle_reglementaire.md`.
 
 ---
 
@@ -227,7 +231,7 @@ Le paramétrage du scoring est désormais centralisé et stable, permettant d’
 | Repos hebdo glissant (R7 conventionnel) | HARD | ✅ lot S7.4 | –                          | Non                    | Non                                       | Oui (si violation) | 92_cadrage_socle_reglementaire |
 | Repos hebdomadaire minimum (R7 socle) | HARD | ✅ lot S7.5  | –                             | Non                    | Non                                       | Oui (si violation) | 92_cadrage_socle_reglementaire |
 | Repos obligatoire après nuits (R4)    | HARD | ✅ lot S7.3  | –                             | Non                    | Non                                       | Oui (si violation) | 92_cadrage_socle_reglementaire |
-| Durée maximale légale par salarié     | HARD | ⛔ dormante — S7.6 | –                         | Non                    | Non                                       | Non            | 92_cadrage_socle_reglementaire |
+| Durée travaillée max par jour         | HARD | ✅ lot S7.6  | –                             | Non                    | Non                                       | Oui (si violation) | 92_cadrage_socle_reglementaire |
 | Nuits consécutives max (R3)           | HARD | ✅ lot S7.2  | maxNuitsConsecutivesObservees | Oui                    | Non                                       | Oui (si violation) | 92_cadrage_socle_reglementaire |
 | Jours consécutifs max (R1)            | SOFT | ✅            | maxJoursConsecutifsObservees  | Oui                    | Non                                       | Non            | 40_REGLES_COMBINATOIRES     |
 | Alternance jour / nuit (R5+R6)        | SOFT | ✅            | –                             | Non                    | Non                                       | Oui            | 40_REGLES_COMBINATOIRES     |
@@ -767,3 +771,32 @@ Reste **S7.6 comme unique lot susceptible de faire bouger les scores**, pour une
 différente : sa maille de calcul est fausse, pas seulement son repli d'activité.
 
 475 tests, 0 échec.
+
+### Socle réglementaire — lot S7.6 : durée journalière (2026-08-11)
+
+`DureeMaximaleLegaleParSalarie` remise en service, **et corrigée**. C'est le seul défaut du
+chantier qui n'était pas un simple défaut de branchement : son `groupBy` agrégeait sur tout
+l'horizon et comparait ce cumul à une constante de 780 minutes, qui est une valeur journalière.
+Elle mesurait une période et la comparait à un jour.
+
+* Agrégation par `(salarié, date)`, plafond lu sur le salarié via `heuresMaximumParJour`,
+  constante globale supprimée.
+* Clé renommée : `LEGAL_HARD_DUREE_MAX_LEGALE_PAR_PERIODE` → `LEGAL_HARD_DUREE_MAX_PAR_JOUR`,
+  unité `JOUR` → `MINUTE_PONDEREE`. Sans risque : la contrainte étant dormante, cette clé n'a
+  jamais été émise.
+* Le plancher **physique** reste inconditionnel : `LimitePhysique` interdit toujours plus de 24 h
+  cumulées par jour et plus de 12 h par créneau, sans dépendre d'aucun seuil transmis.
+* Motif SC-06 `DUREE_JOURNALIERE_DEPASSEE` (ERROR, **éliminatoire**), distinct de
+  `AMPLITUDE_DEPASSEE` qui reste un signalement : durée travaillée et amplitude ne mesurent pas
+  la même chose.
+* `DureeMaximaleParJourConstraintsTest` : 9 cas, créés de zéro, dont quatre pour interdire le
+  retour du défaut de maille.
+
+**Écart de contrat refermé** : la notice SC-06 et le contrat de sortie signalaient que
+`heuresJour` était mesuré et son plafond restitué alors qu'aucune contrainte ne l'appliquait. Les
+trois mesures du bloc `impacts[]` sont désormais adossées à une contrainte ; la documentation a
+été corrigée.
+
+**Écart de score mesuré : aucun.** SC-03 reste à `0hard/-960soft`, garde-fou asserté.
+
+**Les six contraintes dormantes sont remises en service.** 486 tests, 0 échec.

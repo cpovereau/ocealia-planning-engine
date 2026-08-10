@@ -77,6 +77,16 @@ public enum MotifCandidat {
             PenaliteKey.LEGAL_HARD_REPOS_HEBDOMADAIRE_MIN,
             "Le salarié travaillerait sept jours d'affilée, sans aucun jour de repos"),
 
+    /**
+     * Durée <em>travaillée</em> de la journée. À ne pas confondre avec
+     * {@link #AMPLITUDE_DEPASSEE}, qui borne la première à la dernière heure, pauses comprises —
+     * cette dernière reste un simple signalement là où le dépassement de durée est éliminatoire.
+     * Lot S7.6.
+     */
+    DUREE_JOURNALIERE_DEPASSEE(Severite.ERROR, true,
+            PenaliteKey.LEGAL_HARD_DUREE_MAX_PAR_JOUR,
+            "La durée de travail maximale sur la journée serait dépassée"),
+
     // ---- Signalements non éliminatoires ----
 
     AMPLITUDE_DEPASSEE(Severite.WARNING, false,

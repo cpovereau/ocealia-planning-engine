@@ -64,7 +64,7 @@ import java.util.function.Function;
  * consiste à déplacer une assertion d'un bloc à l'autre. Un écart de score non voulu se lit
  * ici, sur une contrainte isolée, avant de se lire dans un scénario complet.</p>
  *
- * <p><strong>Lots traités</strong> : S7.1 {@code DimanchesTravaillesMax} · S7.2 {@code NuitsConsecutivesMax} · S7.3 {@code ReposObligatoireApresNuits} · S7.4 {@code ReposHebdomadaireGlissant} · S7.5 {@code ReposHebdomadaireMin}.</p>
+ * <p><strong>Lots traités</strong> : S7.1 {@code DimanchesTravaillesMax} · S7.2 {@code NuitsConsecutivesMax} · S7.3 {@code ReposObligatoireApresNuits} · S7.4 {@code ReposHebdomadaireGlissant} · S7.5 {@code ReposHebdomadaireMin} · S7.6 {@code DureeMaximaleLegaleParSalarie}.</p>
  *
  * <h2>Deux causes d'extinction, pas une</h2>
  * <p>{@code ReposObligatoireApresNuits} et {@code ReposHebdomadaireGlissant} étaient muettes même
@@ -80,9 +80,6 @@ class SocleReglementaireBaselineTest {
     /** Valeur de Penalites.depassementMaxDimanchesTravailles dans le contexte neutre. */
     private static final int PENALITE_DIMANCHE = 5_000;
 
-    /** Constante DUREE_MAX_LEGALE de DureeMaximaleLegaleParSalarie (minutes). */
-    private static final int DUREE_MAX_LEGALE = 780;
-
     private final ConstraintVerifier<ConstraintProviderImpl, PlanningProblem> constraintVerifier =
             ConstraintVerifier.build(new ConstraintProviderImpl(), PlanningProblem.class, Creneau.class);
 
@@ -94,19 +91,6 @@ class SocleReglementaireBaselineTest {
     @DisplayName("Client historique (champ 'activite') — les situations sont bien fautives")
     class ClientHistorique {
 
-        @Test
-        void cumulSuperieurAQuatorzeHeures_violeLaDureeMaximaleLegale() {
-            // Le seuil est un plafond JOURNALIER (13 h) comparé à un cumul sur tout
-            // l'horizon : deux journées ordinaires suffisent à le franchir.
-            // Ce défaut de maille est traité au lot S7.6.
-            List<Creneau> deuxJours = List.of(
-                    journee("C-J1", LUNDI, Champ.ACTIVITE),
-                    journee("C-J2", LUNDI.plusDays(1), Champ.ACTIVITE));
-
-            verifier(DureeMaximaleLegaleParSalarie::dureeMaximaleLegaleParSalarie)
-                    .given(faits(deuxJours))
-                    .penalizesBy(2 * DUREE_JOURNEE - DUREE_MAX_LEGALE);
-        }
 
     }
 
@@ -117,18 +101,6 @@ class SocleReglementaireBaselineTest {
     @Nested
     @DisplayName("Client conforme au contrat (champ 'codeActiviteId') — contraintes encore muettes")
     class ClientConformeAuContrat {
-
-        @Test
-        void dureeMaximaleLegale_estDormante() {
-            // Réveil prévu au lot S7.6, après correction de la maille (jour, pas horizon).
-            List<Creneau> deuxJours = List.of(
-                    journee("C-J1", LUNDI, Champ.CODE_ACTIVITE_ID),
-                    journee("C-J2", LUNDI.plusDays(1), Champ.CODE_ACTIVITE_ID));
-
-            verifier(DureeMaximaleLegaleParSalarie::dureeMaximaleLegaleParSalarie)
-                    .given(faits(deuxJours))
-                    .penalizesBy(0);
-        }
 
     }
 
@@ -260,6 +232,56 @@ class SocleReglementaireBaselineTest {
                     .penalizesBy(1);
         }
 
+        /**
+         * Deux journées de 8 h pour un plafond journalier de 6 h : deux dépassements de 120 min.
+         * Avant la correction de maille, ces deux journées auraient été additionnées puis
+         * comparées à un seuil journalier — le défaut que le lot S7.6 corrige.
+         */
+        @Test
+        void dureeMaximaleParJour_reagitAuChampDuContrat() {
+            List<Creneau> deuxJours = List.of(
+                    journee("C-J1", LUNDI, Champ.CODE_ACTIVITE_ID),
+                    journee("C-J2", LUNDI.plusDays(1), Champ.CODE_ACTIVITE_ID));
+
+            verifier(DureeMaximaleLegaleParSalarie::dureeMaximaleLegaleParSalarie)
+                    .given(faits(deuxJours, salarieAvecPlafondJournalier(6.0)))
+                    .penalizesBy(2 * (DUREE_JOURNEE - 360));
+        }
+
+        @Test
+        void dureeMaximaleParJour_reagitEncoreAuChampHistorique() {
+            List<Creneau> deuxJours = List.of(
+                    journee("C-J1", LUNDI, Champ.ACTIVITE),
+                    journee("C-J2", LUNDI.plusDays(1), Champ.ACTIVITE));
+
+            verifier(DureeMaximaleLegaleParSalarie::dureeMaximaleLegaleParSalarie)
+                    .given(faits(deuxJours, salarieAvecPlafondJournalier(6.0)))
+                    .penalizesBy(2 * (DUREE_JOURNEE - 360));
+        }
+
+        /** La maille est bien la journée : deux journées de 8 h ne se cumulent pas. */
+        @Test
+        void dureeMaximaleParJour_neCumulePasLesJournees() {
+            List<Creneau> deuxJours = List.of(
+                    journee("C-J1", LUNDI, Champ.CODE_ACTIVITE_ID),
+                    journee("C-J2", LUNDI.plusDays(1), Champ.CODE_ACTIVITE_ID));
+
+            verifier(DureeMaximaleLegaleParSalarie::dureeMaximaleLegaleParSalarie)
+                    .given(faits(deuxJours, salarieAvecPlafondJournalier(10.0)))
+                    .penalizesBy(0);
+        }
+
+        @Test
+        void dureeMaximaleParJour_sansPlafondTransmis_resteInactive() {
+            List<Creneau> deuxJours = List.of(
+                    journee("C-J1", LUNDI, Champ.CODE_ACTIVITE_ID),
+                    journee("C-J2", LUNDI.plusDays(1), Champ.CODE_ACTIVITE_ID));
+
+            verifier(DureeMaximaleLegaleParSalarie::dureeMaximaleLegaleParSalarie)
+                    .given(faits(deuxJours))
+                    .penalizesBy(0);
+        }
+
         /** Six jours travaillés : le plancher est respecté sans qu'aucun seuil soit transmis. */
         @Test
         void reposHebdomadaireMin_unJourOff_nePenalisePas() {
@@ -324,6 +346,15 @@ class SocleReglementaireBaselineTest {
         salarie.setContraintesReglementaires(new ContraintesReglementairesSalarie(
                 null, null, null, null, null, null, null, null,
                 null, null, plafond, null, null));
+        return salarie;
+    }
+
+    /** Salarié dont seul le plafond de durée journalière est renseigné (lot S7.6). */
+    private static SalarieReel salarieAvecPlafondJournalier(double heures) {
+        SalarieReel salarie = TestPlanningRequestFactory.buildSalarie(SALARIE_ID);
+        salarie.setContraintesReglementaires(new ContraintesReglementairesSalarie(
+                null, heures, null, null, null, null, null, null,
+                null, null, null, null, null));
         return salarie;
     }
 

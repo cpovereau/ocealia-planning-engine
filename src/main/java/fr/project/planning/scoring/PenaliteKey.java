@@ -70,7 +70,16 @@ public enum PenaliteKey {
     LEGAL_HARD_REPOS_OBLIGATOIRE_APRES_NUITS(ScoreBreakdownUnit.JOUR),
     LEGAL_HARD_REPOS_HEBDOMADAIRE_GLISSANT(ScoreBreakdownUnit.JOUR),
     LEGAL_HARD_REPOS_HEBDOMADAIRE_MIN(ScoreBreakdownUnit.JOUR),
-    LEGAL_HARD_DUREE_MAX_LEGALE_PAR_PERIODE(ScoreBreakdownUnit.JOUR),
+    /**
+     * Durée travaillée maximale par <strong>journée</strong>.
+     *
+     * <p>Renommée au lot S7.6, avec son unité. L'ancien nom
+     * {@code LEGAL_HARD_DUREE_MAX_LEGALE_PAR_PERIODE} annonçait un cumul sur la période, alors
+     * que le seuil comparé était journalier — la contrainte mesurait une chose et en nommait une
+     * autre. Le renommage est sans effet sur les clients : la contrainte étant dormante, cette
+     * clé n'a jamais été émise dans un {@code scoreBreakdown}.</p>
+     */
+    LEGAL_HARD_DUREE_MAX_PAR_JOUR(ScoreBreakdownUnit.MINUTE_PONDEREE),
 
     // =========================
     // Contraintes physiques (SOFT)
