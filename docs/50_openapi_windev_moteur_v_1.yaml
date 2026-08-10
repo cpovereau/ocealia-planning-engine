@@ -257,6 +257,114 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
+  /scenarios/sc06/solve:
+    post:
+      tags: [Scenarios-Dataset]
+      summary: Désigner la ressource la plus à même de couvrir un besoin (SC-06)
+      description: |
+        **Mode désignation** : parmi les ressources dont le planning de la semaine est transmis,
+        le moteur classe les manières de couvrir un besoin de 1 à n créneaux sur une même journée.
+
+        Il **n'appelle pas le solveur**. SC-06 classe des possibilités au lieu d'en chercher une :
+        énumération exhaustive des candidats éligibles, chacun évalué sans recherche. D'où trois
+        propriétés qu'une résolution heuristique ne garantit pas — **déterminisme** (même entrée,
+        même podium), **exhaustivité** (aucun candidat éligible oublié) et **explicabilité**
+        (un motif attaché à chaque rang).
+
+        Le moteur **insère, il ne redistribue pas** : `dataSet.creneaux` est intégralement figé.
+
+        Route réelle : `POST /scenarios/sc06/solve`
+        Controller : `ScenarioController.solveSc06()`
+        DTO d'entrée : `Sc06ScenarioRequestDTO` + `Sc06ScenarioParametersDTO`
+        DTO de sortie : `ScenarioResponseDTO`, enrichi du bloc `candidats[]`
+
+        Également accessible par le **FileAdapter** (`scenarioType: SC-06`).
+      operationId: solveSc06
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Sc06ScenarioRequest'
+            examples:
+              sc06_minimal:
+                summary: Un besoin d'un créneau, deux candidats possibles
+                value:
+                  requestId: REQ-20260511-SC06-001
+                  metadata:
+                    clientId: CLIENT-WINDEV
+                    timestamp: '2026-05-10T09:00:00Z'
+                    source: WINDEV
+                  scenarioType: SC-06
+                  planningContext:
+                    strategieScoring: ANALYSE_RH
+                    horizon:
+                      dateDebut: '2026-05-11'
+                      dateFin: '2026-05-17'
+                  scenarioParameters:
+                    besoin:
+                      date: '2026-05-13'
+                      creneaux:
+                        - id: BES-001
+                          heureDebut: '14:00'
+                          heureFin: '22:00'
+                          codeActiviteId: ACT-SOIN
+                          lieu: HOPITAL-NORD
+                  dataSet:
+                    referentiels:
+                      activites:
+                        - codeActiviteId: ACT-SOIN
+                          compteDansCharge: true
+                          genereDetteRepos: false
+                          estServiceCritique: true
+                    ressources:
+                      salaries:
+                        - id: SAL-2001
+                          activitesCompatibles: [ACT-SOIN]
+                          contrat:
+                            heuresHebdomadairesHabituelles: 35.0
+                            joursTravaillesParSemaine: 5
+                            estAnnualise: false
+                          contraintesReglementaires:
+                            amplitudeJournaliereMaximum: 14.0
+                            reposQuotidienMinimum: 11.0
+                            heuresMaximumParSemaine: 44.0
+                            joursConsecutifsMaximum: 6
+                      postesVirtuels: []
+                    creneaux:
+                      - id: PLN-2001-ME
+                        date: '2026-05-13'
+                        heureDebut: '08:00'
+                        heureFin: '12:00'
+                        codeActiviteId: ACT-SOIN
+                        lieu: HOPITAL-NORD
+                        ressourceAffecteeId: SAL-2001
+      responses:
+        '200':
+          description: |
+            Podium produit. Le bloc `candidats[]` porte au plus trois solutions classées.
+
+            Une liste plus courte n'est pas une anomalie : elle signifie qu'il n'existe pas
+            davantage de manières distinctes de couvrir ce besoin.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScenarioResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          description: |
+            Requête bien formée mais incohérente. Cas les plus fréquents :
+            horizon ne couvrant pas la semaine pleine du besoin, créneau du `dataSet` sans
+            `ressourceAffecteeId`, activité du besoin absente du référentiel, ressource affectée
+            introuvable, dataset sans salarié.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
 components:
 
   responses:
@@ -449,11 +557,16 @@ components:
             type: string
         contraintesReglementaires:
           $ref: '#/components/schemas/ContraintesReglementaires'
+        contrat:
+          $ref: '#/components/schemas/ContratSalarie'
         travailDeNuit:
           type: string
           description: |
             Statut travail de nuit. Valeurs connues : "permanent", "occasionnel".
             Null si non travailleur de nuit.
+
+            Reste à la racine du salarié : ce champ est exploité par une contrainte depuis la
+            Phase 3, le déplacer dans `contrat` romprait SC-03 sans contrepartie.
         heureDebutNuit:
           type: string
           pattern: '^([01]\d|2[0-3]):[0-5]\d$'
@@ -466,6 +579,53 @@ components:
           type: boolean
           description: Autorisation individuelle de travailler les jours fériés
       required: [id]
+
+    ContratSalarie:
+      type: object
+      description: |
+        [Lot S2] Ce que le salarié **fait normalement** — bloc descriptif.
+
+        À ne pas confondre avec `contraintesReglementaires`, qui décrit ce à quoi il **est
+        soumis** : le premier est descriptif, le second prescriptif.
+
+        Contrat strict : tout champ inconnu est rejeté. Les **dates de début et de fin de
+        contrat** sont volontairement absentes — le filtrage des salariés hors contrat à la date
+        visée relève de l'appelant, en amont du moteur.
+
+        Transporté et mappé ; aucune contrainte ne le lit à ce jour. Exploité par le classement
+        SC-06 (palier de départage) et par les impacts restitués.
+      properties:
+        heuresMoyennesParJour:
+          type: number
+          format: double
+          description: Durée journalière travaillée moyenne, en heures
+        heuresHebdomadairesHabituelles:
+          type: number
+          format: double
+          description: |
+            Durée hebdomadaire habituelle, en heures.
+
+            **Toujours transmettre cette valeur.** En SC-06, un salarié qui ne la déclare pas est
+            classé en dernier au palier de départage : à égalité par ailleurs, le moteur préfère
+            la personne dont il peut mesurer l'impact.
+        joursTravaillesParSemaine:
+          type: integer
+          description: |
+            Nombre de jours travaillés par semaine. **Défaut 5** appliqué par le moteur si absent.
+
+            La valeur brute reste néanmoins distinguable d'une valeur transmise : le défaut
+            accompagne l'information manquante, il ne l'écrase pas.
+        estAnnualise:
+          type: boolean
+          description: |
+            Salarié annualisé. **Transporté, non exploité à ce jour.**
+
+            Cible : un dépassement hebdomadaire est moins grave pour un salarié annualisé, le
+            critère se déplaçant vers le cumul d'heures excédentaires sur la période
+            d'annualisation. Deux données manquent encore au contrat pour ce calcul — les bornes
+            de la période et le cumul à date.
+
+            Absent ⇒ lu comme « non annualisé ». Un vide ne vaut jamais autorisation.
 
     PosteVirtuelInput:
       type: object
@@ -597,6 +757,19 @@ components:
         estSegmentDePause:
           type: boolean
           description: "[Phase 5] Vrai si ce créneau représente une pause segmentée"
+        ressourceAffecteeId:
+          type: string
+          description: |
+            [Lot S1] Identifiant de la ressource qui sert déjà ce créneau.
+
+            Renseigné lorsque le créneau relève d'un **planning existant** transmis comme fait
+            acquis. Le scénario décide alors de figer ce créneau : le solveur le voit, les
+            contraintes l'évaluent, mais aucune décision ne peut le modifier.
+
+            - **SC-06** : requis sur tous les créneaux du `dataSet`. Un créneau de planning sans
+              affectation n'a pas de sens et la requête est refusée.
+            - **SC-01 / SC-03** : sans objet. Le champ est ignoré, tous les créneaux restent des
+              variables de décision.
       required: [id, date, heureDebut, heureFin, codeActiviteId]
 
     # ──────────────────────────────────────────────
@@ -881,6 +1054,129 @@ components:
                   items:
                     $ref: '#/components/schemas/CreneauInput'
       required: [requestId, metadata, scenarioType, planningContext, dataSet]
+
+    # ──────────────────────────────────────────────
+    # REQUÊTE — SC-06
+    # ──────────────────────────────────────────────
+
+    BesoinCreneau:
+      type: object
+      description: |
+        Un créneau du besoin à couvrir. Correspond à `BesoinCreneauDTO`.
+
+        Volontairement distinct de `CreneauInput`, pour deux raisons structurelles :
+        - **pas de `date`** — elle est portée une seule fois par le besoin, ce qui rend
+          l'invariant « tous les créneaux du besoin tombent le même jour » impossible à violer ;
+        - **pas de `ressourceAffecteeId`** — un besoin est la question posée, jamais une
+          affectation. Le champ n'existe pas, donc ne peut pas être renseigné par mégarde.
+
+        Contrat strict : tout champ inconnu est rejeté.
+      properties:
+        id:
+          type: string
+          description: |
+            Identifiant du créneau de besoin, fourni par l'appelant, unique sur tout le scénario.
+            Convention : préfixe dédié (`BES-00X`). Chaîne opaque pour le moteur, restituée
+            à l'identique.
+        heureDebut:
+          type: string
+          pattern: '^([01]\d|2[0-3]):[0-5]\d$'
+        heureFin:
+          type: string
+          pattern: '^([01]\d|2[0-3]):[0-5]\d$'
+          description: Peut être antérieure à `heureDebut` — le créneau traverse alors minuit.
+        codeActiviteId:
+          type: string
+          description: |
+            Activité à servir. **Doit figurer au référentiel transmis**, faute de quoi la requête
+            est refusée : une activité inconnue ne pèse sur aucune règle, et le besoin serait
+            couvert sans jamais avoir été évalué.
+        lieu:
+          type: string
+          description: |
+            Lieu où servir l'activité. **Transporté et restitué ; ne restreint pas les candidats.**
+            `sitesAutorises` n'est exploité par aucune contrainte ni aucun filtre à ce jour.
+        posteComptable:
+          type: string
+        segmentNuit:
+          type: boolean
+        isJourFerie:
+          type: boolean
+      required: [id, heureDebut, heureFin, codeActiviteId]
+
+    Besoin:
+      type: object
+      description: |
+        Le besoin à couvrir : de 1 à n créneaux, **tous sur la même journée**.
+        Correspond à `BesoinDTO`.
+      properties:
+        date:
+          type: string
+          format: date
+          description: Jour du besoin, commun à tous ses créneaux.
+        creneaux:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/BesoinCreneau'
+      required: [date, creneaux]
+
+    Sc06ScenarioParameters:
+      type: object
+      description: |
+        Paramètres du scénario SC-06. Correspond à `Sc06ScenarioParametersDTO`.
+
+        Un seul paramètre : le besoin. Le nombre de solutions restituées n'est pas paramétrable —
+        trois, toujours.
+      properties:
+        besoin:
+          $ref: '#/components/schemas/Besoin'
+      required: [besoin]
+
+    Sc06ScenarioRequest:
+      type: object
+      description: |
+        Corps de requête pour SC-06 — désignation de la ressource la plus à même de couvrir
+        un besoin. Correspond à `Sc06ScenarioRequestDTO`.
+
+        **Principe structurant** — deux populations de créneaux, de statuts opposés :
+
+        - `dataSet.creneaux` = le passé, **intégralement figé**. Chaque créneau porte son
+          `ressourceAffecteeId`. Le moteur n'y touche pas : il insère, il ne redistribue pas.
+        - `scenarioParameters.besoin` = la question posée, **seule variable de décision**.
+
+        **Trois exigences de l'appelant**, sans lesquelles la requête est refusée :
+
+        1. `planningContext.horizon` couvre **exactement la semaine calendaire lundi → dimanche**
+           contenant la date du besoin, pour **toutes** les ressources candidates. Une semaine
+           tronquée sous-évalue le total hebdomadaire, ne détecte aucun dépassement, et
+           déclarerait conformes des candidats qui ne le sont pas.
+        2. Tout créneau du `dataSet` porte son `ressourceAffecteeId`.
+        3. L'activité du besoin figure au référentiel transmis.
+
+        **Convention sur les limites** : pour désactiver une contrainte individuelle, **omettre
+        le champ** — ne jamais envoyer `0`. Une valeur `0` active la contrainte avec un seuil nul.
+        Le moteur émet un avertissement dans ses journaux mais ne corrige pas : corriger
+        reviendrait à deviner l'intention.
+      properties:
+        requestId:
+          type: string
+          description: Identifiant unique de la requête pour la traçabilité (obligatoire)
+        metadata:
+          $ref: '#/components/schemas/Metadata'
+        scenarioType:
+          type: string
+          const: SC-06
+        planningContext:
+          $ref: '#/components/schemas/PlanningContext'
+        scenarioParameters:
+          $ref: '#/components/schemas/Sc06ScenarioParameters'
+        dataSet:
+          allOf:
+            - $ref: '#/components/schemas/DataSet'
+            - type: object
+              required: [referentiels, ressources]
+      required: [requestId, metadata, scenarioType, planningContext, scenarioParameters, dataSet]
 
     # ──────────────────────────────────────────────
     # RÉPONSE — SOLVERRESULT
@@ -1239,17 +1535,167 @@ components:
     # RÉPONSE GLOBALE
     # ──────────────────────────────────────────────
 
+    ImpactMesure:
+      type: object
+      description: |
+        [Lot S5] Une grandeur mesurée avant et après affectation du besoin, en **heures
+        décimales** — même unité que `workMetrics.byRessource`.
+
+        ⚠️ **Un dépassement signalé n'est pas une règle appliquée.** Ce bloc décrit des
+        conséquences ; il ne préjuge pas de ce que le moteur sanctionne. `heuresJour` est ainsi
+        mesuré et son plafond restitué, alors qu'aucune contrainte ne lit encore
+        `heuresMaximumParJour`.
+      properties:
+        avant:
+          type: number
+          format: double
+          description: Situation sans le besoin — le planning existant seul.
+        apres:
+          type: number
+          format: double
+          description: Situation avec la part du besoin confiée à cette ressource.
+        delta:
+          type: number
+          format: double
+          description: "`apres` − `avant`"
+        plafond:
+          type: number
+          format: double
+          nullable: true
+          description: |
+            Limite individuelle du salarié, ou `null` si elle n'est pas renseignée.
+            Une limite absente n'est pas une limite à zéro.
+        depassement:
+          type: boolean
+          description: "`apres` dépasse `plafond`. Toujours `false` si `plafond` est null."
+      required: [avant, apres, delta, depassement]
+
+    ImpactCandidat:
+      type: object
+      description: |
+        [Lot S5] Ce que le besoin coûte à une ressource. Une entrée par ressource **réelle**
+        mobilisée.
+
+        Un poste virtuel n'y figure pas : il ne porte ni contrat ni contraintes individuelles.
+        Une solution `RESSOURCE_A_POURVOIR` a donc des impacts **vides** — ce n'est pas une
+        omission.
+      properties:
+        ressourceId:
+          type: string
+        amplitudeJournaliere:
+          $ref: '#/components/schemas/ImpactMesure'
+        heuresJour:
+          $ref: '#/components/schemas/ImpactMesure'
+        heuresSemaine:
+          $ref: '#/components/schemas/ImpactMesure'
+        heuresHabituellesSemaine:
+          type: number
+          format: double
+          nullable: true
+          description: Volume hebdomadaire habituel déclaré au contrat, en heures.
+      required: [ressourceId, amplitudeJournaliere, heuresJour, heuresSemaine]
+
+    AffectationCandidat:
+      type: object
+      description: |
+        Un créneau du besoin et la ressource proposée pour le servir.
+        C'est la réponse attendue de SC-06 : une identité, l'activité à servir, le lieu.
+      properties:
+        creneauId:
+          type: string
+          description: Identifiant du créneau de besoin, restitué à l'identique.
+        ressourceId:
+          type: string
+          description: "`A_AFFECTER` si aucune ressource ne prend ce créneau en charge."
+        activite:
+          type: string
+        lieu:
+          type: string
+        heureDebut:
+          type: string
+        heureFin:
+          type: string
+      required: [creneauId, ressourceId]
+
+    MotifCandidat:
+      type: object
+      description: |
+        Raison expliquant la conformité ou le rang d'un candidat.
+
+        Même forme que `diagnostics.alerts[]` : le client filtre sur la **sévérité**, pas sur le
+        code. Un motif `ERROR` sur une règle éliminatoire entraîne `conforme = false`.
+
+        Codes éliminatoires : `REPOS_QUOTIDIEN_INSUFFISANT`, `HEURES_HEBDO_DEPASSEES`,
+        `JOUR_FERIE_NON_AUTORISE`, `INDISPONIBILITE`, `CHEVAUCHEMENT`.
+
+        Codes informatifs : `AMPLITUDE_DEPASSEE`, `JOURS_CONSECUTIFS_DEPASSES`,
+        `NUIT_SALARIE_NON_NUIT`, `RAPPEL_SUR_REPOS`, `BESOIN_PARTIELLEMENT_COUVERT`,
+        `AUCUNE_RESSOURCE_ELIGIBLE`.
+      properties:
+        code:
+          type: string
+        severite:
+          type: string
+          enum: [INFO, WARNING, ERROR]
+        message:
+          type: string
+      required: [code, severite]
+
+    Candidat:
+      type: object
+      description: |
+        [SC-06] Une manière de couvrir le besoin, et son rang.
+
+        Un candidat n'est pas une personne mais une **solution** : l'affectation complète des
+        créneaux du besoin. Lorsqu'une seule personne couvre tout — le cas préféré — la
+        distinction s'efface, mais elle est nécessaire dès qu'un besoin se répartit.
+
+        **Ordre de classement**, palier par palier, chacun ne départageant que les ex æquo du
+        précédent : conformité → couverture complète → une seule personne, salarié réel avant
+        poste virtuel → personne déjà en poste ce jour-là → score SOFT → charge rapportée au
+        volume hebdomadaire habituel.
+      properties:
+        rang:
+          type: integer
+          description: 1 = la solution la plus favorable.
+        conforme:
+          type: boolean
+          description: |
+            `false` si la solution viole une règle éliminatoire — voir `motifs`.
+
+            Ces solutions sont **restituées et classées en dernier**, jamais masquées :
+            le moteur ne refuse pas, il rend visible l'impossible.
+        couvertureComplete:
+          type: boolean
+          description: "`false` si une partie du besoin reste sur `A_AFFECTER`."
+        nature:
+          type: string
+          enum: [MONO_RESSOURCE, COMPOSEE, RESSOURCE_A_POURVOIR]
+        affectations:
+          type: array
+          items:
+            $ref: '#/components/schemas/AffectationCandidat'
+        impacts:
+          type: array
+          items:
+            $ref: '#/components/schemas/ImpactCandidat'
+        motifs:
+          type: array
+          items:
+            $ref: '#/components/schemas/MotifCandidat'
+      required: [rang, conforme, couvertureComplete, nature, affectations]
+
     ScenarioResponse:
       type: object
       description: |
-        Corps de réponse HTTP 200 pour SC-01 et SC-03.
+        Corps de réponse HTTP 200 pour SC-01, SC-03 et SC-06.
         Correspond directement à `ScenarioResponseDTO` — pas d'enveloppe transport.
         L'enveloppe `{requestId, status, response}` est propre au FileAdapter
         et ne s'applique pas à ce contrat API.
       properties:
         scenarioType:
           type: string
-          description: Valeur reflétée depuis la requête (SC-01 ou SC-03)
+          description: Valeur reflétée depuis la requête (SC-01, SC-03 ou SC-06)
         solverResult:
           $ref: '#/components/schemas/SolverResult'
         planning:
@@ -1260,6 +1706,20 @@ components:
           $ref: '#/components/schemas/SolutionSummary'
         diagnostics:
           $ref: '#/components/schemas/Diagnostics'
+        candidats:
+          type: array
+          description: |
+            **Propre à SC-06.** Manières de couvrir le besoin, classées, trois au plus.
+
+            La clé est **absente** — et non vide — pour SC-01 et SC-03 : une réponse sans
+            classement ne doit pas laisser croire à une capacité inexistante.
+
+            En SC-06, `planning` et `workMetrics` décrivent la **solution de rang 1, et elle
+            seule** : `planning` ne porte que les créneaux du besoin, `workMetrics` que les
+            ressources qu'elle mobilise. Le planning existant n'est pas réémis — l'appelant le
+            possède déjà.
+          items:
+            $ref: '#/components/schemas/Candidat'
       required: [scenarioType, solverResult, planning, workMetrics, solutionSummary, diagnostics]
 
     # ──────────────────────────────────────────────

@@ -15,8 +15,8 @@
   "properties": {
     "scenarioType": {
       "type": "string",
-      "enum": ["SC-01", "SC-02", "SC-03", "SC-04", "SC-05"],
-      "description": "Identifiant du scénario métier"
+      "enum": ["SC-01", "SC-02", "SC-03", "SC-04", "SC-05", "SC-06"],
+      "description": "Identifiant du scénario métier. SC-06 : désignation de la ressource la plus à même de couvrir un besoin — son besoin est porté par scenarioParameters.besoin, décrit en détail dans 50_openapi_windev_moteur_v_1.yaml (schéma Sc06ScenarioRequest)."
     },
     "planningContext": {
       "type": "object",
@@ -167,7 +167,11 @@
         "groupeBesoinId": { "type": "string" },
         "blocJourId": { "type": "string" },
         "ordreDansBloc": { "type": "integer" },
-        "estSegmentDePause": { "type": "boolean" }   
+        "estSegmentDePause": { "type": "boolean" },
+        "ressourceAffecteeId": {
+          "type": "string",
+          "description": "[Lot S1] Ressource qui sert déjà ce créneau. Renseigné lorsque le créneau relève d'un planning existant transmis comme fait acquis : le scénario le fige alors, et le solveur ne peut plus le modifier. Requis sur tous les créneaux du dataSet en SC-06. Sans objet en SC-01 et SC-03, où le champ est ignoré."
+        }
       }
     },
 
@@ -204,6 +208,7 @@
         },
         "contraintesReglementaires": {
           "type": "object",
+          "description": "Plafonds auxquels le salarié est soumis — prescriptif. Pour désactiver une limite, OMETTRE le champ : ne jamais envoyer 0, qui active la contrainte avec un seuil nul.",
           "properties": {
             "heuresMinimumParJour": { "type": "number" },
             "heuresMaximumParJour": { "type": "number" },
@@ -213,6 +218,17 @@
             "heuresMaximumParSemaine": { "type": "number" },
             "nuitsMaximumParSemaine": { "type": "integer" },
             "joursConsecutifsMaximum": { "type": "integer" }
+          }
+        },
+        "contrat": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "[Lot S2] Ce que le salarié fait normalement — descriptif. Ne pas confondre avec contraintesReglementaires, qui est prescriptif. Les dates de contrat sont volontairement absentes : le filtrage des salariés hors contrat relève de l'appelant.",
+          "properties": {
+            "heuresMoyennesParJour": { "type": "number" },
+            "heuresHebdomadairesHabituelles": { "type": "number" },
+            "joursTravaillesParSemaine": { "type": "integer" },
+            "estAnnualise": { "type": "boolean" }
           }
         }
       }

@@ -187,6 +187,22 @@ des scénarios existants.
 
 ---
 
+## 3.6 Planning existant et créneaux figés
+
+Un créneau du `dataSet` peut porter `ressourceAffecteeId` : l'identifiant de la ressource qui le
+sert déjà. Le créneau relève alors d'un **planning existant transmis comme fait acquis**.
+
+Le **scénario** décide de ce qu'il en fait — l'appelant ne pilote pas le figement, il désigne une
+affectation. SC-06 fige tout son `dataSet` ; SC-01 et SC-03 ignorent le champ et conservent leur
+liberté de décision entière.
+
+Un créneau figé reste **pleinement visible des contraintes** : c'est ce qui permet à un planning
+existant de peser sur les décisions restantes sans être lui-même remis en cause.
+
+Voir `20_DECISIONS_CONCEPTION_OPTAPLANNER.md` — *Créneau figé : un fait d'entrée, pas une décision*.
+
+---
+
 ## 4. Scénarios supportés (V1)
 
 ---
@@ -354,6 +370,89 @@ il arbitre **l’affectation relative**.
 Ce scénario **ne nécessite aucune nouvelle variable de décision** :
 il exploite les mêmes affectations que les autres scénarios,
 mais avec une **lecture comparative ciblée**.
+
+---
+
+### 🟠 SC-06 — Désignation de la ressource la plus à même de couvrir un besoin
+
+> Inscrit au contrat le 2026-08-10. Cadrage complet : `92_cadrage_scenario_sc-06.md`.
+
+#### 🎯 Intention métier
+
+Un besoin apparaît sur une journée. Parmi les personnes dont le planning de la semaine est connu,
+**qui est la plus à même de le prendre en charge, et à quel prix pour elle ?**
+
+Le moteur ne réorganise rien. Il **insère** dans des plannings qu'il traite comme des faits
+acquis, et il **classe** les manières de couvrir le besoin.
+
+#### Ce qui distingue SC-06
+
+| | SC-06 |
+|---|---|
+| Ce qui est décidé | l'affectation des seuls créneaux du besoin |
+| Ce qui est figé | l'intégralité du planning transmis |
+| Ce qui est restitué | un **classement** de solutions, pas un planning optimisé |
+
+Par rapport aux scénarios voisins : **SC-02** part d'une absence identifiée et d'une liste de
+remplaçants imposée, quand SC-06 part d'un besoin nu et évalue tout le monde ; **SC-03** réaffecte
+un sous-ensemble de créneaux, quand SC-06 n'en réaffecte aucun ; **SC-05** compare deux salariés
+désignés, quand SC-06 les découvre.
+
+#### Principe structurant — énumération, pas optimisation
+
+> Le besoin n'est pas d'optimiser un planning, mais de **classer des possibilités**.
+
+SC-06 **n'appelle pas le solveur**. Il énumère les candidats éligibles et évalue chacun sans
+lancer de recherche. Trois propriétés en découlent, qu'aucune résolution heuristique n'offre :
+**déterminisme** (même entrée, même podium), **exhaustivité** (aucun candidat éligible oublié),
+**explicabilité** (un motif attaché à chaque rang).
+
+#### Paramètres spécifiques
+
+* `besoin.date` — jour du besoin, commun à tous ses créneaux ;
+* `besoin.creneaux[]` — de 1 à n créneaux : `id`, `heureDebut`, `heureFin`, `codeActiviteId`,
+  `lieu`, `posteComptable`.
+
+Le nombre de solutions restituées **n'est pas paramétrable** : trois.
+
+#### Données clés transmises
+
+* le **planning existant de la semaine**, chaque créneau portant son `ressourceAffecteeId` —
+  intégralement figé ;
+* les salariés avec leur bloc `contrat` et leurs `contraintesReglementaires` ;
+* le référentiel d'activités et les indisponibilités.
+
+> **`dataSet.creneaux` = le passé, figé. `scenarioParameters.besoin` = la question posée, seule
+> variable de décision.** L'alternative — un créneau sans ressource affectée vaut besoin — rendrait
+> la question implicite : un `ressourceAffecteeId` omis par erreur deviendrait silencieusement un
+> besoin à couvrir.
+
+#### Trois exigences, sans lesquelles la demande est refusée
+
+1. **Semaine pleine.** `planningContext.horizon` couvre exactement la semaine calendaire
+   lundi → dimanche du besoin, pour **toutes** les ressources candidates. Une semaine tronquée
+   sous-évalue le total hebdomadaire et déclarerait conformes des candidats qui ne le sont pas.
+2. **Affectations complètes.** Tout créneau du `dataSet` porte son `ressourceAffecteeId`.
+3. **Activité connue.** L'activité du besoin figure au référentiel transmis.
+
+> **Convention sur les limites** : pour désactiver une contrainte individuelle, **omettre le
+> champ** — ne jamais envoyer `0`, qui l'activerait avec un seuil nul. Le moteur signale la
+> valeur `0` dans ses journaux mais ne la corrige pas : corriger reviendrait à deviner l'intention.
+
+#### Restitution attendue
+
+Un bloc `candidats[]` — voir `50_ScenarioResponseContract.md` §6 — portant au plus trois
+solutions classées, chacune avec :
+
+* **qui** : `affectations[]` — identité, activité, lieu ;
+* **à quel prix** : `impacts[]` — amplitude journalière, heures du jour, heures de la semaine,
+  en avant / après / delta ;
+* **pourquoi ce rang** : `motifs[]`.
+
+Une solution qui viole une règle éliminatoire est **restituée, marquée `conforme: false` et
+classée en dernier** — jamais masquée. Écarter ces solutions rendrait inexplicable la disparition
+d'une personne, et renverrait une liste vide sans raison le jour où aucune solution conforme
+n'existe.
 
 ---
 

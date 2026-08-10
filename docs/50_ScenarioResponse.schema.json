@@ -30,9 +30,109 @@
     },
     "diagnostics": {
       "$ref": "#/$defs/Diagnostics"
+    },
+    "candidats": {
+      "type": "array",
+      "description": "Propre à SC-06 : manières de couvrir le besoin, classées, trois au plus. La clé est ABSENTE — et non vide — pour SC-01 et SC-03 : une réponse sans classement ne doit pas laisser croire à une capacité inexistante.",
+      "items": { "$ref": "#/$defs/Candidat" }
     }
   },
   "$defs": {
+    "Candidat": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rang", "conforme", "couvertureComplete", "nature", "affectations"],
+      "description": "Une manière de couvrir le besoin, et son rang. Un candidat est une solution, pas une personne : l'affectation complète des créneaux du besoin. Classement par paliers : conformité → couverture complète → une seule personne et salarié réel d'abord → personne déjà en poste ce jour-là → score SOFT → charge rapportée au volume hebdomadaire habituel.",
+      "properties": {
+        "rang": { "type": "integer", "description": "1 = la solution la plus favorable" },
+        "conforme": {
+          "type": "boolean",
+          "description": "false si une règle éliminatoire est violée. Ces solutions sont restituées et classées en dernier, jamais masquées : le moteur ne refuse pas, il rend visible l'impossible."
+        },
+        "couvertureComplete": { "type": "boolean" },
+        "nature": {
+          "type": "string",
+          "enum": ["MONO_RESSOURCE", "COMPOSEE", "RESSOURCE_A_POURVOIR"]
+        },
+        "affectations": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/AffectationCandidat" }
+        },
+        "impacts": {
+          "type": "array",
+          "description": "Une entrée par ressource RÉELLE mobilisée. Vide pour une solution portée par un poste virtuel, qui ne porte ni contrat ni contraintes individuelles.",
+          "items": { "$ref": "#/$defs/ImpactCandidat" }
+        },
+        "motifs": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/MotifCandidat" }
+        }
+      }
+    },
+    "AffectationCandidat": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["creneauId", "ressourceId"],
+      "properties": {
+        "creneauId": { "type": "string" },
+        "ressourceId": { "type": "string", "description": "A_AFFECTER si aucune ressource ne prend ce créneau en charge" },
+        "activite": { "type": ["string", "null"] },
+        "lieu": { "type": ["string", "null"] },
+        "heureDebut": { "type": "string" },
+        "heureFin": { "type": "string" }
+      }
+    },
+    "ImpactMesure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["avant", "apres", "delta", "depassement"],
+      "description": "Grandeur mesurée avant et après affectation du besoin, en heures décimales. ATTENTION : un dépassement signalé décrit une conséquence, il ne garantit pas qu'une contrainte la sanctionne — c'est le cas de heuresJour, dont le plafond individuel n'est pas encore exploité par le moteur.",
+      "properties": {
+        "avant": { "type": "number" },
+        "apres": { "type": "number" },
+        "delta": { "type": "number" },
+        "plafond": { "type": ["number", "null"], "description": "Limite individuelle du salarié, ou null si non renseignée. Une limite absente n'est pas une limite à zéro." },
+        "depassement": { "type": "boolean" }
+      }
+    },
+    "ImpactCandidat": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ressourceId", "amplitudeJournaliere", "heuresJour", "heuresSemaine"],
+      "properties": {
+        "ressourceId": { "type": "string" },
+        "amplitudeJournaliere": { "$ref": "#/$defs/ImpactMesure" },
+        "heuresJour": { "$ref": "#/$defs/ImpactMesure" },
+        "heuresSemaine": { "$ref": "#/$defs/ImpactMesure" },
+        "heuresHabituellesSemaine": { "type": ["number", "null"] }
+      }
+    },
+    "MotifCandidat": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "severite"],
+      "description": "Même forme que diagnostics.alerts[] : le client filtre sur la sévérité, pas sur le code.",
+      "properties": {
+        "code": {
+          "type": "string",
+          "enum": [
+            "REPOS_QUOTIDIEN_INSUFFISANT",
+            "HEURES_HEBDO_DEPASSEES",
+            "JOUR_FERIE_NON_AUTORISE",
+            "INDISPONIBILITE",
+            "CHEVAUCHEMENT",
+            "AMPLITUDE_DEPASSEE",
+            "JOURS_CONSECUTIFS_DEPASSES",
+            "NUIT_SALARIE_NON_NUIT",
+            "RAPPEL_SUR_REPOS",
+            "BESOIN_PARTIELLEMENT_COUVERT",
+            "AUCUNE_RESSOURCE_ELIGIBLE"
+          ]
+        },
+        "severite": { "type": "string", "enum": ["INFO", "WARNING", "ERROR"] },
+        "message": { "type": "string" }
+      }
+    },
     "SolverResult": {
       "type": "object",
       "additionalProperties": false,

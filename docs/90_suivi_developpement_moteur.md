@@ -356,7 +356,14 @@ Une entrée par ressource réelle mobilisée. ⚠️ Un `depassement` signalé d
 il ne garantit pas qu'une contrainte la sanctionne — c'est notamment le cas de `heuresJour`,
 mesuré alors que `heuresMaximumParJour` n'est pas encore individualisé (lot S7).
 
-Reste à livrer : FileAdapter et documentation série 50 (S6).
+Accessible par **les deux canaux** (lot S6) : `POST /scenarios/sc06/solve` et FileAdapter
+(`scenarioType: SC-06`), qui produisent le même résultat — vérifié par test. SC-06 est inscrit au
+contrat série 50 : `50_ScenarioContract.md` §4, `50_ScenarioResponseContract.md` §6, OpenAPI et
+schémas JSON. Notice d'intégration : `Windev_part/SC-06/sc_06_notice_integration.md`.
+
+**Les lots S1 à S6 de SC-06 sont livrés.** Reste **S7** — activation des trois dernières
+contraintes individuelles, hors chemin critique du scénario mais désormais principal écart entre
+ce que le contrat annonce et ce que le moteur applique.
 Voir `92_cadrage_scenario_sc-06.md`.
 
 ### Planning existant et créneaux figés — lot S1 (2026-08-10)

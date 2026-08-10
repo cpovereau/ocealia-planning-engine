@@ -14,7 +14,8 @@ Pour la description de la requête champ par champ, voir `50_interface_windev_mo
 
 ## Principe de conception
 
-La réponse du moteur est structurée en cinq blocs fonctionnels indépendants.
+La réponse du moteur est structurée en blocs fonctionnels indépendants — cinq communs à tous les
+scénarios, un sixième propre à SC-06.
 
 | Bloc              | Rôle                                                                   |
 | ----------------- | ---------------------------------------------------------------------- |
@@ -23,6 +24,7 @@ La réponse du moteur est structurée en cinq blocs fonctionnels indépendants.
 | `workMetrics`     | Décrit les conséquences du planning sur les ressources                 |
 | `solutionSummary` | Fournit une lecture synthétique et pilotable de la solution produite   |
 | `diagnostics`     | Fournit des informations techniques utiles pour l'analyse et le debug  |
+| `candidats`       | **SC-06 uniquement** — classe les manières de couvrir un besoin        |
 
 Cette séparation garantit que :
 - le moteur reste un moteur d'optimisation,
@@ -40,6 +42,7 @@ Cette séparation garantit que :
 | `workMetrics`     | objet  | Oui              | Métriques de travail calculées après résolution  |
 | `solutionSummary` | objet  | Oui              | Résumé synthétique chiffré                       |
 | `diagnostics`     | objet  | Oui              | Alertes et diagnostics d'affectation             |
+| `candidats`       | tableau| **SC-06 seul**   | Solutions classées — **clé absente ailleurs**, voir §6 |
 
 ---
 
@@ -375,7 +378,165 @@ Il ne remplace ni le détail des WorkMetrics, ni l'évaluation du solveur, ni le
 
 ---
 
-## 6. Points d'attention contractuels
+## 6. `candidats` — Classement des solutions (SC-06 uniquement)
+
+Ce bloc est **propre à SC-06**. La clé est **absente** — et non vide — pour SC-01 et SC-03 :
+une réponse sans classement ne doit pas laisser croire à une capacité inexistante.
+
+Il porte **au plus trois solutions classées**, de la plus favorable à la moins favorable. Une
+liste plus courte n'est pas une anomalie : elle signifie qu'il n'existe pas davantage de manières
+distinctes de couvrir ce besoin.
+
+> **Un candidat est une solution, pas une personne** : l'affectation complète des créneaux du
+> besoin. Quand une seule personne couvre tout — le cas préféré — la distinction s'efface, mais
+> elle devient nécessaire dès qu'un besoin se répartit entre plusieurs personnes.
+
+### 6.1 Structure d'un candidat
+
+| Champ | Type | Description |
+|---|---|---|
+| `rang` | integer | 1 = la solution la plus favorable |
+| `conforme` | boolean | `false` si une règle éliminatoire est violée — voir `motifs` |
+| `couvertureComplete` | boolean | `false` si une partie du besoin reste sur `A_AFFECTER` |
+| `nature` | string | `MONO_RESSOURCE` \| `COMPOSEE` \| `RESSOURCE_A_POURVOIR` |
+| `affectations[]` | tableau | **qui** — une entrée par créneau du besoin |
+| `impacts[]` | tableau | **à quel prix** — une entrée par ressource réelle mobilisée |
+| `motifs[]` | tableau | **pourquoi ce rang** — même forme que `diagnostics.alerts[]` |
+
+### 6.2 Ordre de classement
+
+Paliers lexicographiques : chacun ne départage que les ex æquo du précédent.
+
+| Rang | Palier |
+|---|---|
+| 1 | **Conformité** — aucune règle éliminatoire violée |
+| 2 | **Couverture complète** avant couverture partielle |
+| 3 | **Une seule personne** avant plusieurs ; **salarié réel** avant poste virtuel |
+| 4 | **Personne déjà en poste ce jour-là** avant personne rappelée sur son repos |
+| 5 | **Score SOFT** du moteur |
+| 6 | **Charge** rapportée au volume hebdomadaire habituel |
+
+Le choix d'un ordre lexicographique plutôt que d'un score unique est délibéré : les pondérations
+du moteur ont été calibrées pour optimiser un planning, pas pour choisir une personne. Ici, chaque
+rang se lit ligne à ligne.
+
+> **Palier 6, donnée absente** : un salarié dont le contrat ne déclare pas
+> `heuresHebdomadairesHabituelles` est classé en dernier de ce palier. À égalité par ailleurs, le
+> moteur préfère la personne dont il peut mesurer l'impact — et rend ainsi visible un défaut
+> d'intégration au lieu de l'absorber.
+
+### 6.3 `affectations[]`
+
+| Champ | Type | Description |
+|---|---|---|
+| `creneauId` | string | Identifiant du créneau de besoin, restitué à l'identique |
+| `ressourceId` | string | `A_AFFECTER` si aucune ressource ne le prend en charge |
+| `activite` | string | Code activité |
+| `lieu` | string | Lieu reçu en entrée |
+| `heureDebut` / `heureFin` | string | `HH:mm` |
+
+### 6.4 `impacts[]`
+
+Une entrée par ressource **réelle** mobilisée. Un poste virtuel n'y figure pas : il ne porte ni
+contrat ni contraintes individuelles. Une solution `RESSOURCE_A_POURVOIR` a donc des impacts
+**vides** — ce n'est pas une omission.
+
+| Champ | Type | Description |
+|---|---|---|
+| `ressourceId` | string | Ressource concernée |
+| `amplitudeJournaliere` | objet | Du début du premier créneau à la fin du dernier, le jour du besoin |
+| `heuresJour` | objet | Heures travaillées le jour du besoin |
+| `heuresSemaine` | objet | Heures travaillées sur la semaine lundi → dimanche |
+| `heuresHabituellesSemaine` | double | Volume habituel déclaré au contrat ; `null` si absent |
+
+Chaque mesure porte `avant`, `apres`, `delta`, `plafond` et `depassement`, en **heures décimales**
+— même unité que `workMetrics.byRessource`.
+
+`plafond` vaut `null` quand la limite individuelle n'est pas transmise, et `depassement` reste
+alors `false` : **une limite absente n'est pas une limite à zéro**.
+
+> ⚠️ **Un dépassement signalé n'est pas une règle appliquée.** Ce bloc décrit des conséquences ;
+> il ne préjuge pas de ce que le moteur sanctionne. `heuresJour` est ainsi mesuré et son plafond
+> restitué, alors qu'aucune contrainte ne lit encore `heuresMaximumParJour`. L'écart est rendu
+> visible plutôt que masqué — il ne doit pas être lu comme une garantie.
+
+### 6.5 `motifs[]`
+
+Même forme que `diagnostics.alerts[]` : `code`, `severite`, `message`. **Le client filtre sur la
+sévérité, pas sur le code.**
+
+| Code | Sévérité | Éliminatoire |
+|---|---|:---:|
+| `REPOS_QUOTIDIEN_INSUFFISANT` | ERROR | ✅ |
+| `HEURES_HEBDO_DEPASSEES` | ERROR | ✅ |
+| `JOUR_FERIE_NON_AUTORISE` | ERROR | ✅ |
+| `INDISPONIBILITE` | ERROR | ✅ |
+| `CHEVAUCHEMENT` | ERROR | ✅ |
+| `AMPLITUDE_DEPASSEE` | WARNING | — |
+| `JOURS_CONSECUTIFS_DEPASSES` | WARNING | — |
+| `NUIT_SALARIE_NON_NUIT` | WARNING | — |
+| `RAPPEL_SUR_REPOS` | INFO | — |
+| `BESOIN_PARTIELLEMENT_COUVERT` | WARNING | — |
+| `AUCUNE_RESSOURCE_ELIGIBLE` | ERROR | — |
+
+Un motif n'est levé que si le candidat **aggrave** la situation de référence — le besoin non
+couvert. Cette mesure relative est nécessaire : le planning existant étant figé, il peut porter
+des violations préexistantes, qui ne doivent être imputées à aucun candidat.
+
+> **Éliminatoire ≠ contrainte HARD.** Le caractère éliminatoire relève du classement SC-06, pas
+> du solveur. `REPOS_QUOTIDIEN_INSUFFISANT` et `HEURES_HEBDO_DEPASSEES` reposent sur des
+> contraintes SOFT ; elles disqualifient néanmoins un candidat, parce qu'aucune recommandation
+> ne doit conduire à une situation illégale.
+
+### 6.6 `planning` et `workMetrics` en SC-06
+
+Ces deux blocs décrivent la **solution de rang 1, et elle seule** :
+
+* `planning` ne porte que **les créneaux du besoin**, affectés selon le rang 1. Le planning
+  existant n'est pas réémis — l'appelant le possède déjà, et le renvoyer pour toutes les
+  ressources candidates alourdirait la réponse sans rien apprendre ;
+* `workMetrics.byRessource` ne porte que **les ressources mobilisées** par le rang 1.
+
+### 6.7 Exemple
+
+```json
+"candidats": [
+  {
+    "rang": 1,
+    "conforme": true,
+    "couvertureComplete": true,
+    "nature": "MONO_RESSOURCE",
+    "affectations": [
+      {
+        "creneauId": "BES-001",
+        "ressourceId": "SAL-2001",
+        "activite": "ACT-SOIN",
+        "lieu": "HOPITAL-NORD",
+        "heureDebut": "14:00",
+        "heureFin": "22:00"
+      }
+    ],
+    "impacts": [
+      {
+        "ressourceId": "SAL-2001",
+        "amplitudeJournaliere": { "avant": 4.0,  "apres": 14.0, "delta": 10.0, "plafond": 14.0, "depassement": false },
+        "heuresJour":           { "avant": 4.0,  "apres": 12.0, "delta": 8.0,  "plafond": null, "depassement": false },
+        "heuresSemaine":        { "avant": 20.0, "apres": 28.0, "delta": 8.0,  "plafond": 44.0, "depassement": false },
+        "heuresHabituellesSemaine": 35.0
+      }
+    ],
+    "motifs": []
+  }
+]
+```
+
+Lecture : ce salarié travaille déjà de 08:00 à 12:00 ce jour-là. Lui confier le besoin étirerait
+sa journée jusqu'à 22:00, soit une amplitude de 14 h — au plafond, sans le dépasser — et porterait
+sa semaine de 20 h à 28 h.
+
+---
+
+## 7. Points d'attention contractuels
 
 **Séparation solveur / API** — la solution OptaPlanner est transformée en `ScenarioResponseDTO` par `ScenarioResponseMapper`. Cette couche garantit la stabilité du contrat API indépendamment des évolutions internes du solveur. Décision documentée dans `20_DECISIONS_CONCEPTION_OPTAPLANNER.md`.
 
@@ -387,7 +548,7 @@ Il ne remplace ni le détail des WorkMetrics, ni l'évaluation du solveur, ni le
 
 ---
 
-## 7. Évolution prévue
+## 8. Évolution prévue
 
 Ce contrat pourra être enrichi progressivement avec :
 - de nouvelles WorkMetrics (équité, écarts de charge, métriques contractuelles),

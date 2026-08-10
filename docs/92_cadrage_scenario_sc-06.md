@@ -540,7 +540,8 @@ champs qui n'y figuraient pas dans la cible sont bien attendus par le métier. I
 | Bloc `candidats[]` | ~~ABSENT~~ → restitué | ✅ S4 |
 | Impacts avant/après | ~~ABSENT~~ → `candidats[].impacts[]`, `Sc06ImpactFactory` | ✅ S5 |
 | Endpoint SC-06 | ~~ABSENT~~ → `POST /scenarios/sc06/solve` | ✅ S4 |
-| FileAdapter SC-06 | **ABSENT** | **S6** |
+| FileAdapter SC-06 | ~~ABSENT~~ → `Sc06FileScenarioExecutionFacade` | ✅ S6 |
+| Inscription au contrat série 50 | ~~ABSENT~~ → `50_ScenarioContract.md` §4, `50_ScenarioResponseContract.md` §6, OpenAPI, schémas JSON | ✅ S6 |
 
 **S1 correspond au lot L8** du cadrage général (« Planning existant + créneaux figés »), jamais
 réalisé, et **S2 au lot L4** (« Bloc `contrat` salarié »). L'investissement ne sert donc pas que
@@ -566,7 +567,7 @@ Ordonné par dépendance. Numérotation **S**, distincte des lots **L** du cadra
 | **S3** | Les deux règles exigées : repos quotidien minimum, heures maximum hebdomadaires | **M** — 2 à 3 j | — · ✅ **livré 2026-08-10** |
 | **S4** | Le scénario : endpoint, DTO de requête, filtre d'éligibilité, énumération, classement, restitution `candidats[]` | **L** — 4 à 6 j | S1 · ✅ **livré 2026-08-10** |
 | **S5** | Impacts avant/après dans `candidats[].impacts[]` | **M** — 2 à 3 j | S2, S3, S4 · ✅ **livré 2026-08-10** |
-| **S6** | FileAdapter SC-06, schémas JSON, OpenAPI, jeux d'essai, documentation séries 50 et 90 | **M** — 2 à 3 j | S4, S5 |
+| **S6** | FileAdapter SC-06, schémas JSON, OpenAPI, jeux d'essai, documentation séries 50 et 90 | **M** — 2 à 3 j | S4, S5 · ✅ **livré 2026-08-10** |
 | **S7** | Activation progressive des 3 contraintes restantes + correction de la constante 780 | 0,5 à 1 j par règle | S3 |
 
 **Chemin critique : 13 à 19 jours.** Estimations indicatives, à recalibrer.
