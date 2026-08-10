@@ -64,13 +64,13 @@ import java.util.function.Function;
  * consiste à déplacer une assertion d'un bloc à l'autre. Un écart de score non voulu se lit
  * ici, sur une contrainte isolée, avant de se lire dans un scénario complet.</p>
  *
- * <p><strong>Lots traités</strong> : S7.1 {@code DimanchesTravaillesMax} · S7.2 {@code NuitsConsecutivesMax} · S7.3 {@code ReposObligatoireApresNuits}.</p>
+ * <p><strong>Lots traités</strong> : S7.1 {@code DimanchesTravaillesMax} · S7.2 {@code NuitsConsecutivesMax} · S7.3 {@code ReposObligatoireApresNuits} · S7.4 {@code ReposHebdomadaireGlissant}.</p>
  *
  * <h2>Deux causes d'extinction, pas une</h2>
- * <p>{@code ReposHebdomadaireGlissant} est muette même pour le client historique : son seuil
- * global vaut 0 en production et sa garde interne la désactive. Réparer le repli d'activité seul
- * ne la réveillerait pas. {@code ReposObligatoireApresNuits} était dans le même cas avant le lot
- * S7.3 ; {@code NuitsConsecutivesMax}, elle, n'avait aucune garde — d'où l'ordre des lots.</p>
+ * <p>{@code ReposObligatoireApresNuits} et {@code ReposHebdomadaireGlissant} étaient muettes même
+ * pour le client historique : seuils globaux nuls et garde interne les désactivant. Réparer le
+ * repli d'activité seul ne les aurait pas réveillées. {@code NuitsConsecutivesMax}, à l'inverse,
+ * n'avait aucune garde et aurait explosé au premier réveil — d'où l'ordre des lots.</p>
  */
 class SocleReglementaireBaselineTest {
 
@@ -115,13 +115,6 @@ class SocleReglementaireBaselineTest {
                     .penalizesBy(2 * DUREE_JOURNEE - DUREE_MAX_LEGALE);
         }
 
-        @Test
-        void reposHebdoGlissant_resteMuetteMemeAvecLeChampHistorique() {
-            // Idem : fenetreJours vaut 0, la garde interne neutralise — lot S7.4.
-            verifier(ReposHebdomadaireGlissant::reposHebdoGlissant)
-                    .given(faits(semaineComplete(Champ.ACTIVITE)))
-                    .penalizesBy(0);
-        }
     }
 
     // =====================================================================
@@ -152,13 +145,6 @@ class SocleReglementaireBaselineTest {
                     .penalizesBy(0);
         }
 
-        @Test
-        void reposHebdomadaireGlissant_estDormante() {
-            // Réveil prévu au lot S7.4 (repli d'activité + paire de seuils individuels).
-            verifier(ReposHebdomadaireGlissant::reposHebdoGlissant)
-                    .given(faits(semaineComplete(Champ.CODE_ACTIVITE_ID)))
-                    .penalizesBy(0);
-        }
     }
 
     // =====================================================================
@@ -251,6 +237,37 @@ class SocleReglementaireBaselineTest {
                     .given(faits(nuitsPuisReprise(Champ.CODE_ACTIVITE_ID)))
                     .penalizesBy(0);
         }
+
+        /** Sept jours d'affilée pour une fenêtre de 7 exigeant 2 jours off. */
+        @Test
+        void reposHebdoGlissant_reagitAuChampDuContrat() {
+            verifier(ReposHebdomadaireGlissant::reposHebdoGlissant)
+                    .given(faits(semaineComplete(Champ.CODE_ACTIVITE_ID), salarieAvecReposHebdo(7, 2)))
+                    .penalizesBy(1);
+        }
+
+        @Test
+        void reposHebdoGlissant_reagitEncoreAuChampHistorique() {
+            verifier(ReposHebdomadaireGlissant::reposHebdoGlissant)
+                    .given(faits(semaineComplete(Champ.ACTIVITE), salarieAvecReposHebdo(7, 2)))
+                    .penalizesBy(1);
+        }
+
+        /**
+         * La paire est indissociable : la fenêtre seule ne décrit aucune règle et laisse la
+         * contrainte inactive, même sur une semaine travaillée sept jours sur sept.
+         */
+        @Test
+        void reposHebdoGlissant_paireIncomplete_resteInactive() {
+            SalarieReel salarie = TestPlanningRequestFactory.buildSalarie(SALARIE_ID);
+            salarie.setContraintesReglementaires(new ContraintesReglementairesSalarie(
+                    null, null, null, null, null, null, null, null,
+                    null, null, null, 7, null));   // fenêtre sans minimum de jours off
+
+            verifier(ReposHebdomadaireGlissant::reposHebdoGlissant)
+                    .given(faits(semaineComplete(Champ.CODE_ACTIVITE_ID), salarie))
+                    .penalizesBy(0);
+        }
     }
 
     // =====================================================================
@@ -293,6 +310,15 @@ class SocleReglementaireBaselineTest {
         salarie.setContraintesReglementaires(new ContraintesReglementairesSalarie(
                 null, null, null, null, null, null, null, null,
                 null, null, plafond, null, null));
+        return salarie;
+    }
+
+    /** Salarié dont seule la paire de repos hebdomadaire glissant est renseignée (lot S7.4). */
+    private static SalarieReel salarieAvecReposHebdo(int fenetre, int joursOff) {
+        SalarieReel salarie = TestPlanningRequestFactory.buildSalarie(SALARIE_ID);
+        salarie.setContraintesReglementaires(new ContraintesReglementairesSalarie(
+                null, null, null, null, null, null, null, null,
+                null, null, null, fenetre, joursOff));
         return salarie;
     }
 

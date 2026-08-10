@@ -4,7 +4,7 @@
 > jamais pour un client conforme au contrat. Ce document établit le constat, l'ordre de
 > réparation et le point de contrôle de chaque étape.
 >
-> **Statut** — S7.0 à S7.3 livrés. S7.4 à S7.8 à réaliser.
+> **Statut** — S7.0 à S7.4 livrés. S7.5 à S7.8 à réaliser.
 > **Contrat concerné** — `50_ScenarioContract.md` §3.7 · **Suivi** — `90_SUIVI_DEVELOPPEMENT_MOTEUR.md`
 
 ---
@@ -23,7 +23,7 @@ la contrainte ne produit **aucun match**.
 | `NuitsConsecutivesMax` | **HARD** | R3 | seuil global à 0, **sans garde** — ✅ traitée en S7.2 |
 | `ReposObligatoireApresNuits` | **HARD** | R4 | seuil global à 0, garde interne — ✅ traitée en S7.3 |
 | `ReposHebdomadaireMin` | **HARD** | R7 | — (socle 7 j / 1 j off en dur) |
-| `ReposHebdomadaireGlissant` | **HARD** | R7 | seuil global à 0, garde interne |
+| `ReposHebdomadaireGlissant` | **HARD** | R7 | seuil global à 0, garde interne — ✅ traitée en S7.4 |
 | `DureeMaximaleLegaleParSalarie` | **HARD** | — | maille erronée (§1.3) |
 | `DimanchesTravaillesMax` | SOFT | R9 | seuil global à 0, **sans garde** — ✅ traitée en S7.1 |
 
@@ -99,7 +99,7 @@ L'ordre va du moins au plus perturbant, pour qu'une surprise reste imputable.
 | **S7.1** ✅ | `DimanchesTravaillesMax` — repli + `dimanchesTravaillesMaximum` | **Aucun** — mesuré (§7.1) |
 | **S7.2** ✅ | `NuitsConsecutivesMax` — repli + `nuitsConsecutivesMaximum` | **Aucun** — mesuré (§7.2) |
 | **S7.3** ✅ | `ReposObligatoireApresNuits` — repli + `joursReposMinimumApresNuits` | **Aucun** — mesuré (§7.3) |
-| S7.4 | `ReposHebdomadaireGlissant` — repli + paire de seuils | HARD |
+| **S7.4** ✅ | `ReposHebdomadaireGlissant` — repli + paire de seuils | **Aucun** — mesuré (§7.4) |
 | S7.5 | `ReposHebdomadaireMin` — repli seul (socle légal, sans seuil individuel) | HARD |
 | S7.6 | `DureeMaximaleLegaleParSalarie` — **correction de maille** + `heuresMaximumParJour` | HARD, le plus sensible |
 | S7.7 | Contraintes absentes : `heuresMinimumParSemaine`, `nuitsMaximumParSemaine` | nouvelles |
@@ -308,3 +308,34 @@ deux motifs distincts.
 `reposExige <= 0 → false` protégeait la contrainte du seuil global nul. Le filtre d'activation
 étant désormais appliqué en tête de flux, cette garde est retirée : une seule règle décide qu'un
 seuil est actif, et elle est commune à toutes les contraintes du chantier.
+
+### 7.4 — `ReposHebdomadaireGlissant` (HARD, R7 conventionnel)
+
+**Écart de score : aucun.** 467 tests, 0 échec.
+
+| Livrable | Fichier |
+|---|---|
+| Repli d'activité + paire de seuils individuels | `constraints/legales/ReposHebdomadaireGlissant.java` |
+| Motif SC-06 `REPOS_HEBDOMADAIRE_GLISSANT_INSUFFISANT` (éliminatoire) | `scenarios/dto/MotifCandidat.java` |
+| Couverture dédiée — 9 cas, elle n'en avait aucune | `constraints/ReposHebdomadaireGlissantConstraintsTest.java` |
+
+#### Le seul cas du chantier où deux champs se conditionnent
+
+`reposHebdomadaireFenetreJours` et `reposHebdomadaireJoursOffMinimum` ne décrivent une règle
+qu'ensemble. Trois cas de test le fixent explicitement : fenêtre seule, minimum seul, et paire
+dont l'une des valeurs vaut 0 — dans les trois, la contrainte reste inactive, y compris sur une
+semaine travaillée sept jours sur sept. Le mapper émet un WARN dans le cas de la paire à moitié
+renseignée, parce que l'appelant croit alors avoir posé une limite.
+
+#### Deux volets distincts pour R7
+
+Ce lot traite le volet **conventionnel** — fenêtre paramétrée par le contrat. Le plancher légal,
+au moins un jour off sur sept, est porté par `ReposHebdomadaireMin` et **ne se paramètre pas** :
+c'est l'objet du lot S7.5. Les deux contraintes coexistent et portent deux clés de pénalité
+distinctes.
+
+#### Un jour de formation est un jour off
+
+Au sens de la charge, une activité dont `compteDansCharge` est faux ne remplit pas la journée.
+Une semaine couverte sept jours sur sept dont deux de formation satisfait une exigence de deux
+jours off — c'est cohérent avec la définition du jour travaillé retenue partout ailleurs.

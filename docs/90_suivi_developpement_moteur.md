@@ -224,7 +224,7 @@ Le paramétrage du scoring est désormais centralisé et stable, permettant d’
 | Créneau non couvert                   | SOFT | ✅            | nbCreneauxNonAffectes         | Oui                    | UNCOVERED / NO_RESOURCE_ASSIGNED          | Oui            | 50_ScenarioResponseContract |
 | Pénalisation poste virtuel            | SOFT | ✅            | –                             | Non                    | VIRTUAL_ASSIGNED / POSTE_VIRTUEL_ASSIGNED | Oui            | 50_ScenarioResponseContract |
 | Travail sur repos hebdomadaire (R8)   | SOFT | ✅            | heuresReposHebdoTravaille     | Oui                    | Non                                       | Oui            | 40_WORKMETRICS              |
-| Repos hebdomadaire min glissant (R7)  | HARD | ⛔ dormante — S7.4 | –                         | Non                    | Non                                       | Non            | 92_cadrage_socle_reglementaire |
+| Repos hebdo glissant (R7 conventionnel) | HARD | ✅ lot S7.4 | –                          | Non                    | Non                                       | Oui (si violation) | 92_cadrage_socle_reglementaire |
 | Repos hebdomadaire minimum (R7 socle) | HARD | ⛔ dormante — S7.5 | –                         | Non                    | Non                                       | Non            | 92_cadrage_socle_reglementaire |
 | Repos obligatoire après nuits (R4)    | HARD | ✅ lot S7.3  | –                             | Non                    | Non                                       | Oui (si violation) | 92_cadrage_socle_reglementaire |
 | Durée maximale légale par salarié     | HARD | ⛔ dormante — S7.6 | –                         | Non                    | Non                                       | Non            | 92_cadrage_socle_reglementaire |
@@ -726,3 +726,22 @@ la neutralisant par surcroît. Corriger le seul repli d'activité ne l'aurait pa
 **Écart de score mesuré : aucun.** SC-03 reste à `0hard/-960soft`, garde-fou asserté.
 
 457 tests, 0 échec.
+
+### Socle réglementaire — lot S7.4 : repos hebdomadaire glissant (2026-08-11)
+
+`ReposHebdomadaireGlissant` (HARD, volet **conventionnel** de R7) remise en service : repli
+d'activité et paire de seuils lue sur le salarié.
+
+* **La paire est indissociable.** `reposHebdomadaireFenetreJours` et
+  `reposHebdomadaireJoursOffMinimum` ne décrivent une règle qu'ensemble : fenêtre seule, minimum
+  seul, ou paire dont l'une des valeurs vaut 0 laissent la contrainte inactive, y compris sur une
+  semaine travaillée sept jours sur sept. C'est le seul cas du chantier où deux champs se
+  conditionnent ; le mapper émet un WARN sur une paire à moitié renseignée.
+* Motif SC-06 `REPOS_HEBDOMADAIRE_GLISSANT_INSUFFISANT` (ERROR, **éliminatoire**).
+* `ReposHebdomadaireGlissantConstraintsTest` : 9 cas, créés de zéro.
+* Distinction posée avec `ReposHebdomadaireMin`, plancher légal non paramétrable traité au lot
+  S7.5 : deux contraintes, deux clés de pénalité, deux motifs.
+
+**Écart de score mesuré : aucun.** SC-03 reste à `0hard/-960soft`, garde-fou asserté.
+
+467 tests, 0 échec.

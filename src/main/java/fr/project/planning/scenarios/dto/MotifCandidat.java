@@ -63,6 +63,11 @@ public enum MotifCandidat {
             PenaliteKey.LEGAL_HARD_REPOS_OBLIGATOIRE_APRES_NUITS,
             "Le repos obligatoire après une séquence de nuits ne serait pas respecté"),
 
+    /** Volet conventionnel de R7 — fenêtre glissante paramétrée par le contrat. Lot S7.4. */
+    REPOS_HEBDOMADAIRE_GLISSANT_INSUFFISANT(Severite.ERROR, true,
+            PenaliteKey.LEGAL_HARD_REPOS_HEBDOMADAIRE_GLISSANT,
+            "Le repos hebdomadaire glissant ne serait plus respecté"),
+
     // ---- Signalements non éliminatoires ----
 
     AMPLITUDE_DEPASSEE(Severite.WARNING, false,
