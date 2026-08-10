@@ -337,6 +337,17 @@ Aligner le contrat d’entrée du moteur avec les structures réelles du logicie
 * ordreDansBloc
 * estSegmentDePause
 
+### Planning existant et créneaux figés — lot S1 (2026-08-10)
+
+* `creneaux[].ressourceAffecteeId` : affectation existante transmise par l'appelant
+* `Creneau.fige` (`@PlanningPin`) : créneau soustrait aux décisions du solveur, mais toujours
+  visible des contraintes
+* `ScenarioCreneauMapper.toCreneauxFiges()` : résolution et figement
+
+Socle du lot L8 du cadrage général — ouvre SC-02, SC-04 et SC-06. **Sans effet sur SC-01 et
+SC-03**, qui passent par `toCreneaux()` et ne figent rien.
+Voir `20_DECISIONS_CONCEPTION_OPTAPLANNER.md` — *Créneau figé : un fait d'entrée, pas une décision*.
+
 ### Infrastructure de test
 
 Introduction d’un **dataset de référence technique** permettant de tester l’alimentation WebDev → moteur.

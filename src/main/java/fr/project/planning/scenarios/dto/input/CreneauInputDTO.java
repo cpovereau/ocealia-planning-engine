@@ -38,6 +38,17 @@ public class CreneauInputDTO {
     
     private String posteComptable;
 
+    /**
+     * [Lot S1] Identifiant de la ressource déjà affectée à ce créneau.
+     *
+     * Renseigné lorsque le créneau relève d'un planning existant transmis comme fait acquis.
+     * Absent lorsque le créneau est une décision à prendre — cas de SC-01 et SC-03, dont le
+     * comportement est inchangé.
+     *
+     * Le moteur ne résout ce champ que dans les scénarios qui figent leur planning d'entrée.
+     */
+    private String ressourceAffecteeId;
+
     private Boolean isJourFerie;
     private Boolean segmentNuit;
 
@@ -74,6 +85,9 @@ public class CreneauInputDTO {
 
     public String getPosteComptable() { return posteComptable; }
     public void setPosteComptable(String posteComptable) { this.posteComptable = posteComptable; }
+
+    public String getRessourceAffecteeId() { return ressourceAffecteeId; }
+    public void setRessourceAffecteeId(String ressourceAffecteeId) { this.ressourceAffecteeId = ressourceAffecteeId; }
 
     public Boolean getIsJourFerie() { return isJourFerie; }
     public void setIsJourFerie(Boolean isJourFerie) { this.isJourFerie = isJourFerie; }

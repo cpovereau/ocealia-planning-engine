@@ -103,6 +103,24 @@ question implicite. Un `ressourceAffecteeId` omis par erreur sur une ligne de pl
 deviendrait silencieusement un besoin à couvrir. La séparation explicite supprime cette classe
 d'anomalie et permet au moteur de garantir que **tout créneau du `dataSet` est figé, sans exception**.
 
+✅ **Socle livré au lot S1, 2026-08-10.** `CreneauInputDTO.ressourceAffecteeId` transporte
+l'affectation existante ; `Creneau.fige`, annoté `@PlanningPin`, la soustrait aux décisions du
+solveur ; `ScenarioCreneauMapper.toCreneauxFiges()` résout l'une et applique l'autre.
+
+Deux points de conception méritent d'être retenus :
+
+- **Le figement est décidé par le scénario, pas déclaré par l'appelant.** Aucun champ d'entrée
+  ne pilote le figement : WinDev désigne une affectation, le scénario décide de ce qu'il en fait.
+  SC-06 fige tout son `dataSet` ; SC-01 et SC-03 ne figent rien et gardent leur liberté entière.
+- **Un créneau figé porte toujours une ressource**, garanti par construction : `figerSur(Ressource)`
+  est l'unique moyen de figer et exige une ressource non nulle. Figer sans affectation laisserait
+  la solution non initialisée à jamais, le solveur n'ayant pas le droit d'y remédier. L'état
+  fautif n'est pas contrôlé — il est impossible à écrire. Invariant inscrit dans
+  `20_DECISIONS_CONCEPTION_OPTAPLANNER.md`.
+
+Le mapper **échoue** si un créneau référence une ressource absente du dataset : un planning
+incohérent produirait sinon un résultat faux plutôt qu'une erreur.
+
 ### 4.3 Tranché — podium de trois
 
 La meilleure solution et deux alternatives, classées. Nombre fixe, non paramétrable.
@@ -457,8 +475,8 @@ champs qui n'y figuraient pas dans la cible sont bien attendus par le métier. I
 
 | Élément | État | Lot |
 |---|---|---|
-| `ressourceAffecteeId` sur un créneau d'entrée | **ABSENT** de `CreneauInputDTO` | **S1** |
-| Figement d'un créneau | **ABSENT** — `Creneau` n'a pas de `@PlanningPin` | **S1** |
+| `ressourceAffecteeId` sur un créneau d'entrée | ~~ABSENT~~ → **présent** dans `CreneauInputDTO` | ✅ S1 |
+| Figement d'un créneau | ~~ABSENT~~ → `Creneau.fige` annoté `@PlanningPin` | ✅ S1 |
 | Bloc `contrat` salarié | ~~ABSENT~~ → **TRANSPORTÉ ET MAPPÉ** — `ContratSalarieDTO` → `ContratSalarie` | ✅ S2 |
 | Énumération et classement de candidats | **ABSENT** — aucune notion de candidat dans le code | **S4** |
 | Bloc `candidats[]` et impacts avant/après | **ABSENT** | **S5** |
@@ -483,7 +501,7 @@ Ordonné par dépendance. Numérotation **S**, distincte des lots **L** du cadra
 
 | Lot | Objet | Taille | Dépend de |
 |---|---|---|---|
-| **S1** | Planning existant affecté et figé : `ressourceAffecteeId`, `@PlanningPin`, mapping, non-régression SC-01/SC-03 | **M** — 2 à 3 j | — |
+| **S1** | Planning existant affecté et figé : `ressourceAffecteeId`, `@PlanningPin`, mapping, non-régression SC-01/SC-03 | **M** — 2 à 3 j | — · ✅ **livré 2026-08-10** |
 | **S2** | Bloc `contrat` salarié : 4 champs, transport + domaine, sans exploitation de `estAnnualise` | **S** — 1 à 2 j | — · ✅ **livré 2026-08-10** |
 | **S3** | Les deux règles exigées : repos quotidien minimum, heures maximum hebdomadaires | **M** — 2 à 3 j | — · ✅ **livré 2026-08-10** |
 | **S4** | Le scénario : endpoint, DTO de requête, filtre d'éligibilité, énumération, classement | **L** — 4 à 6 j | S1 |

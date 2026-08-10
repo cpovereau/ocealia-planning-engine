@@ -2,6 +2,7 @@ package fr.project.planning.domain.creneau;
 
 import fr.project.planning.domain.ressource.Ressource;
 import org.optaplanner.core.api.domain.entity.PlanningEntity;
+import org.optaplanner.core.api.domain.entity.PlanningPin;
 import org.optaplanner.core.api.domain.variable.PlanningVariable;
 import org.optaplanner.core.api.domain.lookup.PlanningId;
 
@@ -109,6 +110,25 @@ public class Creneau implements Serializable {
 
     @PlanningVariable(valueRangeProviderRefs = "ressourceRange")
     private Ressource ressourceAffectee;
+
+    /**
+     * Créneau figé : son affectation est un fait acquis, pas une décision.
+     *
+     * <p>[Lot S1] Un créneau figé est retiré de l'espace de recherche du solveur, qui ne peut
+     * ni le déplacer ni le désaffecter. Il reste pleinement visible des contraintes : c'est
+     * précisément ce qui permet à un planning existant de peser sur les décisions restantes,
+     * sans être lui-même remis en cause.</p>
+     *
+     * <p>Vaut {@code false} par défaut — SC-01 et SC-03 ne figent rien et conservent donc leur
+     * comportement, tous leurs créneaux restant des variables de décision.</p>
+     *
+     * <p><strong>Invariant</strong> : un créneau figé porte toujours une ressource. Figer un
+     * créneau sans affectation laisserait la solution éternellement non initialisée, le solveur
+     * n'ayant pas le droit de lui en attribuer une. {@link #figerSur(Ressource)} est l'unique
+     * moyen de figer, et rend cet état impossible à construire.</p>
+     */
+    @PlanningPin
+    private boolean fige;
 
     /* =========================
        Calcul des intersections
@@ -304,6 +324,31 @@ public class Creneau implements Serializable {
        
     public void setRessourceAffectee(Ressource ressourceAffectee) {
         this.ressourceAffectee = ressourceAffectee;
+    }
+
+    // Lot S1 — figement
+
+    /**
+     * Indique si ce créneau est figé, c'est-à-dire soustrait aux décisions du solveur.
+     */
+    public boolean isFige() {
+        return fige;
+    }
+
+    /**
+     * Fige ce créneau sur une ressource : l'affectation devient un fait d'entrée.
+     *
+     * <p>Unique moyen de figer un créneau. Aucun {@code setFige(boolean)} n'est exposé :
+     * figer et affecter sont indissociables, et les séparer permettrait de construire un
+     * créneau figé sans ressource — état qui bloquerait la résolution (voir {@link #fige}).</p>
+     *
+     * @param ressource ressource sur laquelle figer le créneau, jamais {@code null}
+     * @throws NullPointerException si {@code ressource} est {@code null}
+     */
+    public void figerSur(Ressource ressource) {
+        this.ressourceAffectee = java.util.Objects.requireNonNull(
+                ressource, "Un créneau figé porte toujours une ressource.");
+        this.fige = true;
     }
 
     // Phase 5 — structuration des besoins

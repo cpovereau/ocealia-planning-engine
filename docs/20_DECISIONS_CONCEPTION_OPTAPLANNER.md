@@ -836,11 +836,49 @@ Ces sujets seront traités **après validation du socle conceptuel**.
 
 ---
 
+### Décision — Créneau figé : un fait d'entrée, pas une décision
+
+**Contexte.** À partir de SC-06, le moteur reçoit des plannings existants qu'il ne doit pas
+réorganiser : il insère dans l'existant, il ne redistribue pas. Il lui faut donc distinguer un
+créneau **décidé par le solveur** d'un créneau **subi comme donnée**.
+
+**Décision.** `Creneau` porte un champ `fige` annoté `@PlanningPin`. Un créneau figé est retiré
+de l'espace de recherche : le solveur ne peut ni le déplacer ni le désaffecter. Il reste en
+revanche **pleinement visible des contraintes** — c'est précisément ce qui permet à un planning
+existant de peser sur les décisions restantes sans être lui-même remis en cause.
+
+**Invariant — un créneau figé porte toujours une ressource.**
+
+Figer un créneau sans affectation laisserait la solution éternellement non initialisée : le
+solveur n'aurait pas le droit de lui attribuer une valeur, et le score resterait `-Ninit`. La
+faute serait silencieuse et difficile à diagnostiquer.
+
+L'invariant est garanti **par construction** et non par contrôle : `figerSur(Ressource)` est
+l'unique moyen de figer un créneau, il exige une ressource non nulle, et aucun `setFige(boolean)`
+n'est exposé. L'état fautif n'est pas détecté — il est impossible à écrire.
+
+**Corollaire — affecter n'est pas figer.** `setRessourceAffectee()` reste une simple affectation,
+sur laquelle le solveur peut revenir. Les deux notions sont volontairement séparées.
+
+**Portée.** `fige` vaut `false` par défaut : SC-01 et SC-03 ne figent rien et conservent
+l'intégralité de leur liberté de décision. Le figement est décidé par le scénario, non déclaré
+par l'appelant — aucun champ d'entrée ne pilote le figement, seul `ressourceAffecteeId` désigne
+l'affectation existante.
+
+Vérifié par un test de solveur encadré d'un témoin : le même créneau, non figé, est effectivement
+déplacé par le solveur. Sans ce témoin, le test de figement passerait même si `@PlanningPin`
+n'était pas honoré.
+
+Lot S1 de SC-06 — voir `92_cadrage_scenario_sc-06.md` §4.2.
+
+---
+
 ## 11. Invariants à respecter pour la suite du projet
 
 * Pas de `null` pour représenter une absence d’affectation.
 * L’`id` d’un créneau est opaque : transporté, restitué, jamais interprété.
 * Le moteur ne fabrique jamais de clé appartenant à WinDev.
+* Un créneau figé porte toujours une ressource — invariant garanti par construction.
 * Toute règle doit être classable (physique / légale / métier / personnelle).
 * Les arbitrages doivent être explicables.
 * Les tests servent à verrouiller des capacités, pas à figer des implémentations.
