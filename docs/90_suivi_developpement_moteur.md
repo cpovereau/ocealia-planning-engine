@@ -337,6 +337,22 @@ Aligner le contrat d’entrée du moteur avec les structures réelles du logicie
 * ordreDansBloc
 * estSegmentDePause
 
+### Scénario SC-06 — désignation de la ressource la plus à même de couvrir un besoin (lot S4, 2026-08-10)
+
+`POST /scenarios/sc06/solve`. Restitue un **podium de trois solutions classées** dans un bloc
+`candidats[]` propre à ce scénario — clé absente pour SC-01 et SC-03.
+
+Particularité architecturale : **SC-06 n'appelle pas le solveur**. Il classe des possibilités au
+lieu d'en chercher une, par énumération exhaustive des candidats éligibles, chacun évalué par
+`SolutionManager.explain()`. D'où trois propriétés qu'un `solve()` n'offre pas — déterminisme
+(vérifié par test), exhaustivité, et un motif attaché à chaque rang.
+
+Classement par paliers lexicographiques : conformité → couverture → mono-ressource → déjà en
+poste → score SOFT → charge relative au contrat.
+
+Reste à livrer : bloc `impacts[]` (S5), FileAdapter et documentation série 50 (S6).
+Voir `92_cadrage_scenario_sc-06.md`.
+
 ### Planning existant et créneaux figés — lot S1 (2026-08-10)
 
 * `creneaux[].ressourceAffecteeId` : affectation existante transmise par l'appelant

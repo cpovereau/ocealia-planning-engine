@@ -1,0 +1,115 @@
+{
+  "requestId": "REQ-SC06-COMP-001",
+  "metadata": {
+    "clientId": "WINDEV",
+    "timestamp": "2026-05-10T09:00:00",
+    "source": "TEST"
+  },
+  "scenarioType": "SC-06",
+  "planningContext": {
+    "horizon": {
+      "dateDebut": "2026-05-11",
+      "dateFin": "2026-05-17"
+    },
+    "strategieScoring": "ANALYSE_RH"
+  },
+  "scenarioParameters": {
+    "besoin": {
+      "date": "2026-05-13",
+      "creneaux": [
+        {
+          "id": "BES-NORD",
+          "heureDebut": "14:00",
+          "heureFin": "20:00",
+          "codeActiviteId": "ACT-SOIN",
+          "lieu": "HOPITAL-NORD"
+        },
+        {
+          "id": "BES-SUD",
+          "heureDebut": "14:00",
+          "heureFin": "20:00",
+          "codeActiviteId": "ACT-SOIN",
+          "lieu": "HOPITAL-SUD"
+        }
+      ]
+    }
+  },
+  "dataSet": {
+    "referentiels": {
+      "activites": [
+        {
+          "codeActiviteId": "ACT-SOIN",
+          "libelle": "Soins infirmiers",
+          "compteDansCharge": true,
+          "genereDetteRepos": false,
+          "estServiceCritique": true
+        }
+      ]
+    },
+    "ressources": {
+      "salaries": [
+        {
+          "id": "SAL-A",
+          "statut": "CDI",
+          "activitesCompatibles": ["ACT-SOIN"],
+          "contrat": {
+            "heuresHebdomadairesHabituelles": 35.0,
+            "joursTravaillesParSemaine": 5
+          },
+          "contraintesReglementaires": {
+            "reposQuotidienMinimum": 11.0,
+            "heuresMaximumParSemaine": 44.0,
+            "joursConsecutifsMaximum": 6
+          },
+          "travailleJourFerie": true
+        },
+        {
+          "id": "SAL-B",
+          "statut": "CDI",
+          "activitesCompatibles": ["ACT-SOIN"],
+          "contrat": {
+            "heuresHebdomadairesHabituelles": 35.0,
+            "joursTravaillesParSemaine": 5
+          },
+          "contraintesReglementaires": {
+            "reposQuotidienMinimum": 11.0,
+            "heuresMaximumParSemaine": 44.0,
+            "joursConsecutifsMaximum": 6
+          },
+          "travailleJourFerie": true
+        }
+      ],
+      "postesVirtuels": [
+        {
+          "id": "PV-001",
+          "type": "POTENTIEL",
+          "capaciteCible": 2400,
+          "activitesAutorisees": ["ACT-SOIN"]
+        }
+      ]
+    },
+    "creneaux": [
+      {
+        "id": "PLN-A-L",
+        "date": "2026-05-11",
+        "heureDebut": "08:00",
+        "heureFin": "16:00",
+        "lieu": "HOPITAL-NORD",
+        "codeActiviteId": "ACT-SOIN",
+        "ressourceAffecteeId": "SAL-A"
+      },
+      {
+        "id": "PLN-B-L",
+        "date": "2026-05-11",
+        "heureDebut": "08:00",
+        "heureFin": "16:00",
+        "lieu": "HOPITAL-SUD",
+        "codeActiviteId": "ACT-SOIN",
+        "ressourceAffecteeId": "SAL-B"
+      }
+    ],
+    "indisponibilites": {
+      "items": []
+    }
+  }
+}

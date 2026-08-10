@@ -153,8 +153,12 @@ public class ScenarioCreneauMapper {
     /**
      * Calcule la durée en minutes entre heureDebut et heureFin.
      * Gère la traversée minuit (heureFin < heureDebut).
+     *
+     * <p>Exposée en statique : SC-06 construit ses créneaux de besoin hors de ce mapper et doit
+     * appliquer exactement la même règle de durée. Deux calculs concurrents divergeraient tôt
+     * ou tard.</p>
      */
-    private int calculerDureeMinutes(LocalTime heureDebut, LocalTime heureFin) {
+    public static int dureeMinutes(LocalTime heureDebut, LocalTime heureFin) {
         int debut = heureDebut.getHour() * 60 + heureDebut.getMinute();
         int fin   = heureFin.getHour()   * 60 + heureFin.getMinute();
         if (fin > debut) {
@@ -162,5 +166,9 @@ public class ScenarioCreneauMapper {
         }
         // traversée minuit
         return (24 * 60 - debut) + fin;
+    }
+
+    private int calculerDureeMinutes(LocalTime heureDebut, LocalTime heureFin) {
+        return dureeMinutes(heureDebut, heureFin);
     }
 }

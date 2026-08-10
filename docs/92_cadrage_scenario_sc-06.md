@@ -84,6 +84,23 @@ journée interagissent (amplitude, chevauchement, cumul), une somme de scores pa
 Ordre de grandeur : 30 salariés, 3 créneaux ⇒ environ 120 évaluations. Sans commune mesure
 avec les temps de résolution actuels.
 
+✅ **Livré au lot S4, 2026-08-10** — `Sc06CandidatEnumerationService`. Quatre précisions issues
+de la réalisation :
+
+- **Aucun appel au solveur.** `ScenarioSc06ExecutionService` n'utilise ni `SolverLauncher` ni
+  `PlanningService` : seulement `SolutionManager.explain()`. Le déterminisme est vérifié par test
+  — deux appels identiques produisent une réponse identique octet pour octet.
+- **La composition est bornée, et le dit.** Au plus 3 options retenues par créneau et
+  8 combinaisons réellement évaluées, les combinaisons étant parcourues de la plus prometteuse à
+  la moins prometteuse (somme des rangs individuels). Le nombre écarté est **journalisé** :
+  une troncature muette se lirait comme une couverture exhaustive.
+- **Le repli complète le podium** dès que les solutions réelles ne suffisent pas, y compris
+  quand une solution conforme existe. Restituer moins de trois lignes sans expliquer pourquoi
+  n'apprendrait rien à l'utilisateur.
+- **Une solution sur poste virtuel est `conforme`.** Elle ne viole aucune règle : c'est sa
+  `nature` qui la classe au palier 3, pas sa conformité. Confondre les deux ferait passer un
+  besoin non pourvu pour une infraction.
+
 ---
 
 ## 4. Arbitrages
@@ -145,6 +162,19 @@ l'utilisateur. Les paliers rendent chaque rang lisible ligne à ligne — et le 
 rôle, au palier 5, là où il est pertinent.
 
 Le palier 6 suppose le bloc `contrat` (lot **S2**).
+
+✅ **Livré au lot S4.** Deux précisions de réalisation :
+
+- **La conformité (palier 1) se mesure en delta.** Un motif n'est levé que si le candidat
+  *aggrave* la situation de référence — le besoin non couvert. Le planning existant étant figé,
+  il peut porter des violations préexistantes : les imputer aux candidats les disqualifierait
+  tous indifféremment et rendrait l'indicateur inutilisable. Cette mesure relative est ce qui
+  permet aux règles de rester SOFT tout en étant éliminatoires (§7.1).
+- **Palier 6, cas de la donnée absente.** Un salarié sans `heuresHebdomadairesHabituelles` est
+  classé en dernier de ce palier. C'est une décision, pas un effet de bord : à égalité par
+  ailleurs, on préfère la personne dont on peut mesurer l'impact. WinDev étant tenu de toujours
+  transmettre ce volume (§5.3), le cas traduit un défaut d'intégration — le classement le rend
+  visible au lieu de l'absorber.
 
 ### 4.5 Tranché — les solutions non conformes sont restituées, jamais masquées
 
@@ -379,6 +409,13 @@ Les impacts sont exprimés en **heures décimales**, comme `workMetrics.byRessou
 contrat de sortie). `plafond` reprend la valeur individuelle du salarié ; `null` si la contrainte
 est inactive pour lui.
 
+> **État au 2026-08-10** — le lot S4 restitue `candidats[]` avec `rang`, `conforme`,
+> `couvertureComplete`, `nature`, `affectations[]` et `motifs[]`. **Le bloc `impacts[]` reste à
+> livrer (S5).** Ce partage n'était pas explicite au découpage initial ; il est retenu parce
+> qu'un endpoint qui ne restitue rien n'est pas testable, et que les impacts forment un bloc
+> autonome. La clé `candidats` est **absente** — et non vide — pour SC-01 et SC-03, afin qu'une
+> réponse sans classement ne laisse pas croire à une capacité inexistante.
+
 ### 6.2 Codes de motif prévus
 
 | Code | Sévérité | Éliminatoire |
@@ -478,9 +515,11 @@ champs qui n'y figuraient pas dans la cible sont bien attendus par le métier. I
 | `ressourceAffecteeId` sur un créneau d'entrée | ~~ABSENT~~ → **présent** dans `CreneauInputDTO` | ✅ S1 |
 | Figement d'un créneau | ~~ABSENT~~ → `Creneau.fige` annoté `@PlanningPin` | ✅ S1 |
 | Bloc `contrat` salarié | ~~ABSENT~~ → **TRANSPORTÉ ET MAPPÉ** — `ContratSalarieDTO` → `ContratSalarie` | ✅ S2 |
-| Énumération et classement de candidats | **ABSENT** — aucune notion de candidat dans le code | **S4** |
-| Bloc `candidats[]` et impacts avant/après | **ABSENT** | **S5** |
-| Endpoint SC-06 et FileAdapter SC-06 | **ABSENT** | S4 / S6 |
+| Énumération et classement de candidats | ~~ABSENT~~ → `Sc06CandidatEnumerationService` | ✅ S4 |
+| Bloc `candidats[]` | ~~ABSENT~~ → `candidats[]` restitué, **sans `impacts[]`** | ✅ S4 (impacts → S5) |
+| Impacts avant/après | **ABSENT** | **S5** |
+| Endpoint SC-06 | ~~ABSENT~~ → `POST /scenarios/sc06/solve` | ✅ S4 |
+| FileAdapter SC-06 | **ABSENT** | **S6** |
 
 **S1 correspond au lot L8** du cadrage général (« Planning existant + créneaux figés »), jamais
 réalisé, et **S2 au lot L4** (« Bloc `contrat` salarié »). L'investissement ne sert donc pas que
@@ -504,8 +543,8 @@ Ordonné par dépendance. Numérotation **S**, distincte des lots **L** du cadra
 | **S1** | Planning existant affecté et figé : `ressourceAffecteeId`, `@PlanningPin`, mapping, non-régression SC-01/SC-03 | **M** — 2 à 3 j | — · ✅ **livré 2026-08-10** |
 | **S2** | Bloc `contrat` salarié : 4 champs, transport + domaine, sans exploitation de `estAnnualise` | **S** — 1 à 2 j | — · ✅ **livré 2026-08-10** |
 | **S3** | Les deux règles exigées : repos quotidien minimum, heures maximum hebdomadaires | **M** — 2 à 3 j | — · ✅ **livré 2026-08-10** |
-| **S4** | Le scénario : endpoint, DTO de requête, filtre d'éligibilité, énumération, classement | **L** — 4 à 6 j | S1 |
-| **S5** | Impacts avant/après et restitution `candidats[]` | **M** — 2 à 3 j | S2, S3, S4 |
+| **S4** | Le scénario : endpoint, DTO de requête, filtre d'éligibilité, énumération, classement, restitution `candidats[]` | **L** — 4 à 6 j | S1 · ✅ **livré 2026-08-10** |
+| **S5** | Impacts avant/après dans `candidats[].impacts[]` | **M** — 2 à 3 j | S2, S3, S4 |
 | **S6** | FileAdapter SC-06, schémas JSON, OpenAPI, jeux d'essai, documentation séries 50 et 90 | **M** — 2 à 3 j | S4, S5 |
 | **S7** | Activation progressive des 3 contraintes restantes + correction de la constante 780 | 0,5 à 1 j par règle | S3 |
 
