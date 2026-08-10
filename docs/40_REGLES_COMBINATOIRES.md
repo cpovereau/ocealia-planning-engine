@@ -269,6 +269,86 @@ Faible
 
 ---
 
+## 6 bis. Bornes individuelles de durée et de repos
+
+Ces deux règles se distinguent des précédentes sur un point : leur seuil n'est pas global mais
+**porté par le salarié**, via `contraintesReglementaires`. Elles sont inactives pour tout salarié
+dont le champ correspondant n'est pas renseigné.
+
+### R12 — Repos quotidien minimum entre deux journées travaillées
+
+**Description**
+Entre la fin de la dernière activité d'une journée travaillée et le début de la première activité
+de la journée travaillée suivante, une durée minimale de repos doit être respectée.
+
+**Définition technique**
+La mesure porte sur les **journées travaillées successives**, prises dans l'ordre chronologique —
+et non sur les jours calendaires adjacents. Un jour de repos intercalé produit mécaniquement un
+repos long, donc sans déficit ; il n'y a pas lieu de tester l'adjacence des dates.
+
+Un créneau dont l'heure de fin n'est pas postérieure à son heure de début se termine le lendemain :
+sa fin réelle est reportée de 24 h. C'est le cas d'usage principal de la règle.
+
+**Seuil**
+`contraintesReglementaires.reposQuotidienMinimum` (heures), par salarié.
+
+**Périmètre**
+Segments de pause exclus, activités `compteDansCharge = false` exclues.
+
+**Unité de pénalité**
+Minutes manquantes, cumulées sur toutes les transitions en défaut.
+
+**Population**
+Tous salariés disposant d'un seuil configuré
+
+**Nature**
+Légale
+
+**Type**
+SOFT (fort)
+
+**Priorité relative**
+Très élevée
+
+---
+
+### R13 — Durée hebdomadaire maximale de travail
+
+**Description**
+Limiter le volume horaire travaillé sur une semaine.
+
+**Définition technique**
+La semaine est **calendaire, du lundi au dimanche**, identifiée par la date de son lundi.
+Un créneau est rattaché **en entier** à la semaine de sa `date`, y compris lorsqu'il franchit
+minuit du dimanche au lundi : `Creneau.duree` est une donnée d'entrée atomique, jamais scindée
+par le moteur.
+
+La règle mesure ce qu'elle reçoit. Une semaine transmise incomplète produit un total
+sous-évalué et aucun dépassement détecté — d'où l'exigence de semaine pleine formulée par SC-06.
+
+**Seuil**
+`contraintesReglementaires.heuresMaximumParSemaine` (heures), par salarié.
+
+**Périmètre**
+Segments de pause exclus, activités `compteDansCharge = false` exclues.
+
+**Unité de pénalité**
+Minutes de dépassement, par semaine en dépassement.
+
+**Population**
+Tous salariés disposant d'un seuil configuré
+
+**Nature**
+Légale / conventionnelle
+
+**Type**
+SOFT (fort)
+
+**Priorité relative**
+Très élevée
+
+---
+
 ## 7. Règles volontairement hors périmètre
 
 Les règles suivantes sont connues mais **non implémentées à ce stade** :

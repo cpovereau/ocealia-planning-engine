@@ -32,6 +32,19 @@ public enum PenaliteKey {
 
     LEGAL_SOFT_JOURS_CONSECUTIFS_MAX(ScoreBreakdownUnit.JOUR),
     LEGAL_SOFT_HEURES_MIN_PAR_JOUR(ScoreBreakdownUnit.MINUTE_PONDEREE),
+
+    /**
+     * Lot S3 — Repos insuffisant entre deux journées travaillées successives.
+     * Exploite ContraintesReglementairesSalarie.reposQuotidienMinimum.
+     */
+    LEGAL_SOFT_REPOS_QUOTIDIEN_MINIMUM(ScoreBreakdownUnit.MINUTE_PONDEREE),
+
+    /**
+     * Lot S3 — Dépassement de la durée hebdomadaire maximale (semaine lundi → dimanche).
+     * Exploite ContraintesReglementairesSalarie.heuresMaximumParSemaine.
+     */
+    LEGAL_SOFT_HEURES_MAX_PAR_SEMAINE(ScoreBreakdownUnit.MINUTE_PONDEREE),
+
     LEGAL_SOFT_ALTERNANCE_JOUR_NUIT(ScoreBreakdownUnit.OCCURRENCE),
     LEGAL_SOFT_DIMANCHES_TRAVAILLES_MAX(ScoreBreakdownUnit.JOUR),
     LEGAL_SOFT_TRAVAIL_NUIT_MINUTES(ScoreBreakdownUnit.MINUTE_PONDEREE),
