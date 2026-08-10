@@ -68,6 +68,15 @@ public enum MotifCandidat {
             PenaliteKey.LEGAL_HARD_REPOS_HEBDOMADAIRE_GLISSANT,
             "Le repos hebdomadaire glissant ne serait plus respecté"),
 
+    /**
+     * Plancher légal de R7, non paramétrable — contrairement à
+     * {@link #REPOS_HEBDOMADAIRE_GLISSANT_INSUFFISANT}, il ne dépend d'aucun seuil transmis.
+     * Lot S7.5.
+     */
+    SEMAINE_SANS_JOUR_DE_REPOS(Severite.ERROR, true,
+            PenaliteKey.LEGAL_HARD_REPOS_HEBDOMADAIRE_MIN,
+            "Le salarié travaillerait sept jours d'affilée, sans aucun jour de repos"),
+
     // ---- Signalements non éliminatoires ----
 
     AMPLITUDE_DEPASSEE(Severite.WARNING, false,

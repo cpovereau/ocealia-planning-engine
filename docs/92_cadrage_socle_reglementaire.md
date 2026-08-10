@@ -4,7 +4,7 @@
 > jamais pour un client conforme au contrat. Ce document établit le constat, l'ordre de
 > réparation et le point de contrôle de chaque étape.
 >
-> **Statut** — S7.0 à S7.4 livrés. S7.5 à S7.8 à réaliser.
+> **Statut** — S7.0 à S7.5 livrés. S7.6 à S7.8 à réaliser.
 > **Contrat concerné** — `50_ScenarioContract.md` §3.7 · **Suivi** — `90_SUIVI_DEVELOPPEMENT_MOTEUR.md`
 
 ---
@@ -22,7 +22,7 @@ la contrainte ne produit **aucun match**.
 |---|---|---|---|
 | `NuitsConsecutivesMax` | **HARD** | R3 | seuil global à 0, **sans garde** — ✅ traitée en S7.2 |
 | `ReposObligatoireApresNuits` | **HARD** | R4 | seuil global à 0, garde interne — ✅ traitée en S7.3 |
-| `ReposHebdomadaireMin` | **HARD** | R7 | — (socle 7 j / 1 j off en dur) |
+| `ReposHebdomadaireMin` | **HARD** | R7 | — (socle 7 j / 1 j off en dur) — ✅ traitée en S7.5 |
 | `ReposHebdomadaireGlissant` | **HARD** | R7 | seuil global à 0, garde interne — ✅ traitée en S7.4 |
 | `DureeMaximaleLegaleParSalarie` | **HARD** | — | maille erronée (§1.3) |
 | `DimanchesTravaillesMax` | SOFT | R9 | seuil global à 0, **sans garde** — ✅ traitée en S7.1 |
@@ -100,7 +100,7 @@ L'ordre va du moins au plus perturbant, pour qu'une surprise reste imputable.
 | **S7.2** ✅ | `NuitsConsecutivesMax` — repli + `nuitsConsecutivesMaximum` | **Aucun** — mesuré (§7.2) |
 | **S7.3** ✅ | `ReposObligatoireApresNuits` — repli + `joursReposMinimumApresNuits` | **Aucun** — mesuré (§7.3) |
 | **S7.4** ✅ | `ReposHebdomadaireGlissant` — repli + paire de seuils | **Aucun** — mesuré (§7.4) |
-| S7.5 | `ReposHebdomadaireMin` — repli seul (socle légal, sans seuil individuel) | HARD |
+| **S7.5** ✅ | `ReposHebdomadaireMin` — repli seul (socle légal, sans seuil individuel) | **Aucun** — mesuré (§7.5) |
 | S7.6 | `DureeMaximaleLegaleParSalarie` — **correction de maille** + `heuresMaximumParJour` | HARD, le plus sensible |
 | S7.7 | Contraintes absentes : `heuresMinimumParSemaine`, `nuitsMaximumParSemaine` | nouvelles |
 | S7.8 | Nettoyage : code mort, retrait des cinq champs de `SeuilsDeTolerance`, doc | Aucun |
@@ -339,3 +339,39 @@ distinctes.
 Au sens de la charge, une activité dont `compteDansCharge` est faux ne remplit pas la journée.
 Une semaine couverte sept jours sur sept dont deux de formation satisfait une exigence de deux
 jours off — c'est cohérent avec la définition du jour travaillé retenue partout ailleurs.
+
+### 7.5 — `ReposHebdomadaireMin` (HARD, R7 plancher légal)
+
+**Écart de score : aucun — et c'est une surprise.** 475 tests, 0 échec.
+
+| Livrable | Fichier |
+|---|---|
+| Repli d'activité (aucun seuil individuel) | `constraints/legales/ReposHebdomadaireMin.java` |
+| Motif SC-06 `SEMAINE_SANS_JOUR_DE_REPOS` (éliminatoire) | `scenarios/dto/MotifCandidat.java` |
+| Couverture dédiée — 7 cas, elle n'en avait aucune | `constraints/ReposHebdomadaireMinConstraintsTest.java` |
+
+#### Une prévision démentie
+
+Ce lot devait être l'un des deux à déplacer les scores : le plancher légal n'a **aucun seuil
+individuel**, le repli d'activité seul suffit donc à l'activer pour tout le monde, sans qu'aucune
+donnée d'entrée ne l'ait demandé. Ce raisonnement était juste ; sa conclusion ne l'était pas.
+
+La mesure montre un écart nul. Le seul test rouge après la modification était l'assertion de
+dormance du fichier de référence — celle que le lot devait précisément déplacer. **Aucun jeu
+d'essai ne fait travailler sept jours d'affilée** : la contrainte s'active, mais ne rencontre
+aucune situation à sanctionner. Les scénarios existants sont conformes au plancher légal, ce qui
+est en soi une information utile.
+
+Reste donc **S7.6 comme unique lot susceptible de faire bouger les scores** — et pour une raison
+différente : sa maille est fausse, pas seulement son repli.
+
+#### Pas de seuil individuel, et c'est délibéré
+
+Un plancher légal ne se négocie pas au contrat. C'est le seul lot du chantier où rien n'est porté
+au salarié, et la seule contrainte que la remise en service active inconditionnellement.
+
+#### Coexistence assumée avec le volet conventionnel
+
+Un salarié qui transmettrait exactement 7 jours / 1 jour off verrait les deux contraintes se
+déclencher sur la même situation. Ce n'est pas un double comptage fautif : deux règles distinctes
+sont alors violées, restituées sous deux clés de pénalité et deux motifs différents.

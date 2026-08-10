@@ -15,16 +15,29 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * ReposHebdomadaireMin (HARD)
+ * ReposHebdomadaireMin (HARD) — plancher légal de R7
  *
- * Socle légal : éviter une semaine à 7/7.
- * Implémentation volontairement simple :
- * - Sur toute fenêtre glissante de 7 jours, il faut au moins 1 jour OFF
- * - "Jour travaillé" = au moins un créneau dont l’activité "compte dans la charge" (référentiel)
+ * <p>Socle légal : éviter une semaine à 7/7. Sur toute fenêtre glissante de 7 jours, il faut au
+ * moins 1 jour OFF. « Jour travaillé » = au moins un créneau dont l'activité compte dans la
+ * charge — et non les codes RH/RHD, qui sont des codes de repos attendus, pas du travail.</p>
  *
- * Remarque :
- * - On ne se base PAS sur RH/RHD (qui sont des codes REPOS attendus, pas du travail),
- * - On se base sur la notion "compte dans la charge".
+ * <h3>Lot S7.5 — remise en service</h3>
+ * <p>Cette contrainte était dormante pour une seule raison : elle lisait l'activité via
+ * {@code getActivite()}, le champ déprécié. Elle est désormais lue via
+ * {@link Creneau#getCodeActiviteEffectif()}.</p>
+ *
+ * <h3>Pourquoi elle n'a pas de seuil individuel</h3>
+ * <p>C'est le seul lot du chantier où aucun seuil n'est porté au salarié, et c'est délibéré :
+ * un plancher légal ne se négocie pas au contrat. Conséquence directe — <strong>ce lot active la
+ * contrainte pour tout le monde</strong>, sans qu'aucune donnée d'entrée ne l'ait demandé, là où
+ * les lots précédents restaient sans effet faute de seuil transmis.</p>
+ *
+ * <h3>Coexistence avec {@link ReposHebdomadaireGlissant}</h3>
+ * <p>Les deux volets de R7 cohabitent : ce plancher s'applique toujours, le volet conventionnel
+ * s'ajoute lorsque le contrat transmet sa paire de seuils. Un salarié qui transmettrait
+ * exactement 7 jours / 1 jour off verrait les deux contraintes se déclencher sur la même
+ * situation. Ce n'est pas une erreur de comptage : deux règles distinctes sont alors violées, et
+ * le contrat les restitue sous deux clés de pénalité et deux motifs différents.</p>
  */
 public class ReposHebdomadaireMin {
     private ReposHebdomadaireMin() {
@@ -78,7 +91,7 @@ public class ReposHebdomadaireMin {
         Set<LocalDate> joursTravailles = creneaux.stream()
             .filter(c -> c.getDate() != null && horizon.contient(c.getDate()))
             .filter(c -> {
-                ComptabiliteActivite ca = ref.getByCode(c.getActivite());
+                ComptabiliteActivite ca = ref.getByCode(c.getCodeActiviteEffectif());
                 return ca != null && ca.isCompteDansCharge();
             })
             .map(Creneau::getDate)

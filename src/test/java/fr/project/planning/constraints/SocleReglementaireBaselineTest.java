@@ -64,7 +64,7 @@ import java.util.function.Function;
  * consiste à déplacer une assertion d'un bloc à l'autre. Un écart de score non voulu se lit
  * ici, sur une contrainte isolée, avant de se lire dans un scénario complet.</p>
  *
- * <p><strong>Lots traités</strong> : S7.1 {@code DimanchesTravaillesMax} · S7.2 {@code NuitsConsecutivesMax} · S7.3 {@code ReposObligatoireApresNuits} · S7.4 {@code ReposHebdomadaireGlissant}.</p>
+ * <p><strong>Lots traités</strong> : S7.1 {@code DimanchesTravaillesMax} · S7.2 {@code NuitsConsecutivesMax} · S7.3 {@code ReposObligatoireApresNuits} · S7.4 {@code ReposHebdomadaireGlissant} · S7.5 {@code ReposHebdomadaireMin}.</p>
  *
  * <h2>Deux causes d'extinction, pas une</h2>
  * <p>{@code ReposObligatoireApresNuits} et {@code ReposHebdomadaireGlissant} étaient muettes même
@@ -95,13 +95,6 @@ class SocleReglementaireBaselineTest {
     class ClientHistorique {
 
         @Test
-        void septJoursDAffilee_violentLeReposHebdomadaireMinimum() {
-            verifier(ReposHebdomadaireMin::reposHebdomadaireMin)
-                    .given(faits(semaineComplete(Champ.ACTIVITE)))
-                    .penalizesBy(1);
-        }
-
-        @Test
         void cumulSuperieurAQuatorzeHeures_violeLaDureeMaximaleLegale() {
             // Le seuil est un plafond JOURNALIER (13 h) comparé à un cumul sur tout
             // l'horizon : deux journées ordinaires suffisent à le franchir.
@@ -124,14 +117,6 @@ class SocleReglementaireBaselineTest {
     @Nested
     @DisplayName("Client conforme au contrat (champ 'codeActiviteId') — contraintes encore muettes")
     class ClientConformeAuContrat {
-
-        @Test
-        void reposHebdomadaireMin_estDormante() {
-            // Réveil prévu au lot S7.5.
-            verifier(ReposHebdomadaireMin::reposHebdomadaireMin)
-                    .given(faits(semaineComplete(Champ.CODE_ACTIVITE_ID)))
-                    .penalizesBy(0);
-        }
 
         @Test
         void dureeMaximaleLegale_estDormante() {
@@ -257,6 +242,35 @@ class SocleReglementaireBaselineTest {
          * La paire est indissociable : la fenêtre seule ne décrit aucune règle et laisse la
          * contrainte inactive, même sur une semaine travaillée sept jours sur sept.
          */
+        /**
+         * Plancher légal : aucun seuil individuel, donc actif pour tout le monde. C'est le seul
+         * réveil du chantier qui ne dépend d'aucune donnée transmise.
+         */
+        @Test
+        void reposHebdomadaireMin_reagitAuChampDuContrat() {
+            verifier(ReposHebdomadaireMin::reposHebdomadaireMin)
+                    .given(faits(semaineComplete(Champ.CODE_ACTIVITE_ID)))
+                    .penalizesBy(1);
+        }
+
+        @Test
+        void reposHebdomadaireMin_reagitEncoreAuChampHistorique() {
+            verifier(ReposHebdomadaireMin::reposHebdomadaireMin)
+                    .given(faits(semaineComplete(Champ.ACTIVITE)))
+                    .penalizesBy(1);
+        }
+
+        /** Six jours travaillés : le plancher est respecté sans qu'aucun seuil soit transmis. */
+        @Test
+        void reposHebdomadaireMin_unJourOff_nePenalisePas() {
+            List<Creneau> sixJours = new ArrayList<>(semaineComplete(Champ.CODE_ACTIVITE_ID))
+                    .subList(0, 6);
+
+            verifier(ReposHebdomadaireMin::reposHebdomadaireMin)
+                    .given(faits(sixJours))
+                    .penalizesBy(0);
+        }
+
         @Test
         void reposHebdoGlissant_paireIncomplete_resteInactive() {
             SalarieReel salarie = TestPlanningRequestFactory.buildSalarie(SALARIE_ID);

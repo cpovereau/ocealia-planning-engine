@@ -225,7 +225,7 @@ Le paramétrage du scoring est désormais centralisé et stable, permettant d’
 | Pénalisation poste virtuel            | SOFT | ✅            | –                             | Non                    | VIRTUAL_ASSIGNED / POSTE_VIRTUEL_ASSIGNED | Oui            | 50_ScenarioResponseContract |
 | Travail sur repos hebdomadaire (R8)   | SOFT | ✅            | heuresReposHebdoTravaille     | Oui                    | Non                                       | Oui            | 40_WORKMETRICS              |
 | Repos hebdo glissant (R7 conventionnel) | HARD | ✅ lot S7.4 | –                          | Non                    | Non                                       | Oui (si violation) | 92_cadrage_socle_reglementaire |
-| Repos hebdomadaire minimum (R7 socle) | HARD | ⛔ dormante — S7.5 | –                         | Non                    | Non                                       | Non            | 92_cadrage_socle_reglementaire |
+| Repos hebdomadaire minimum (R7 socle) | HARD | ✅ lot S7.5  | –                             | Non                    | Non                                       | Oui (si violation) | 92_cadrage_socle_reglementaire |
 | Repos obligatoire après nuits (R4)    | HARD | ✅ lot S7.3  | –                             | Non                    | Non                                       | Oui (si violation) | 92_cadrage_socle_reglementaire |
 | Durée maximale légale par salarié     | HARD | ⛔ dormante — S7.6 | –                         | Non                    | Non                                       | Non            | 92_cadrage_socle_reglementaire |
 | Nuits consécutives max (R3)           | HARD | ✅ lot S7.2  | maxNuitsConsecutivesObservees | Oui                    | Non                                       | Oui (si violation) | 92_cadrage_socle_reglementaire |
@@ -745,3 +745,25 @@ d'activité et paire de seuils lue sur le salarié.
 **Écart de score mesuré : aucun.** SC-03 reste à `0hard/-960soft`, garde-fou asserté.
 
 467 tests, 0 échec.
+
+### Socle réglementaire — lot S7.5 : plancher de repos hebdomadaire (2026-08-11)
+
+`ReposHebdomadaireMin` (HARD, plancher légal de R7) remise en service. Une seule modification
+suffisait : le repli d'activité. Cette contrainte n'a **aucun seuil individuel** — un plancher
+légal ne se négocie pas au contrat — et le repli seul l'active donc pour tout le monde.
+
+* Motif SC-06 `SEMAINE_SANS_JOUR_DE_REPOS` (ERROR, **éliminatoire**), distinct de
+  `REPOS_HEBDOMADAIRE_GLISSANT_INSUFFISANT` : deux volets de R7, deux clés, deux motifs.
+* `ReposHebdomadaireMinConstraintsTest` : 7 cas, créés de zéro. Une violation par salarié et non
+  par fenêtre ; une activité hors charge vaut jour off.
+
+**Écart de score mesuré : aucun — contrairement à la prévision.** Ce lot était annoncé comme l'un
+des deux susceptibles de déplacer les scores, puisqu'il s'active sans donnée d'entrée. La mesure
+le dément : **aucun jeu d'essai ne fait travailler sept jours d'affilée**. La contrainte est
+active mais ne rencontre aucune situation à sanctionner — les scénarios existants sont conformes
+au plancher légal. SC-03 reste à `0hard/-960soft`.
+
+Reste **S7.6 comme unique lot susceptible de faire bouger les scores**, pour une raison
+différente : sa maille de calcul est fausse, pas seulement son repli d'activité.
+
+475 tests, 0 échec.
