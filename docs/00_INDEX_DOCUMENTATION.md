@@ -305,6 +305,7 @@ et le moteur de planification.
 | `92_ARCHIVES_DES_DECISIONS_TECHNIQUES.md` | Historique des décisions    |
 | `92_cadrage_donnees_amont_scenarios.md`   | Données amont attendues de WinDev par scénario (SC-01 → SC-05) : état vérifié, arbitrages ouverts, découpage |
 | `92_cadrage_scenario_sc-06.md`            | Cadrage SC-06 — désignation de la ressource la plus à même de couvrir un besoin : intention, arbitrages tranchés, contrats d'entrée/sortie, découpage en lots S1→S7 |
+| `92_cadrage_socle_reglementaire.md`       | Lot S7 — six contraintes réglementaires enregistrées mais dormantes : constat, seuils portés au salarié, ordre de réparation lot par lot |
 | `Windev_part/SC-06/sc_06_notice_integration.md` | Notice d'intégration SC-06 pour WinDev : exigences, conventions, lecture de la réponse |
 
 ---

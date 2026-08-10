@@ -29,32 +29,50 @@ public final class SeuilsDeTolerance implements Serializable {
      */
     private final int violationsMetierMax;
 
+    // ================================================================
+    // Seuils en cours de rapatriement vers le salarié (lot S7)
+    //
+    // Ces cinq champs n'ont jamais été alimentés : aucun constructeur ne
+    // les prend en argument et defaultSeuilsDeTolerance() n'y touche pas,
+    // ils valent donc 0 en production. Ils relèvent du contrat de la
+    // personne, pas du contexte de calcul, et migrent vers
+    // ContraintesReglementairesSalarie, un lot par contrainte.
+    // Chaque champ disparaît quand sa contrainte a basculé.
+    // ================================================================
+
     /**
-     * Nome de nuit maximale par salarié
-     * dans une solution globale.
+     * @deprecated Lot S7 — remplacé par
+     *             {@code ContraintesReglementairesSalarie.nuitsConsecutivesMaximum}.
      */
+    @Deprecated(forRemoval = true)
     private int maxNuitsConsecutives;
 
-
     /**
-     * Nombre minimal de jours calendaires complets
-     * à respecter après une séquence de nuits.
+     * @deprecated Lot S7 — remplacé par
+     *             {@code ContraintesReglementairesSalarie.joursReposMinimumApresNuits}.
      */
+    @Deprecated(forRemoval = true)
     private int reposApresNuitsEnJours;
 
     /**
-     * Seuils pour le repos hebdomadaire
+     * @deprecated Lot S7 — remplacé par
+     *             {@code ContraintesReglementairesSalarie.reposHebdomadaireFenetreJours}.
      */
+    @Deprecated(forRemoval = true)
     private int reposHebdoFenetreJours;
 
-    /** 
-     * Nombre minimal de jours non travaillés 
+    /**
+     * @deprecated Lot S7 — remplacé par
+     *             {@code ContraintesReglementairesSalarie.reposHebdomadaireJoursOffMinimum}.
      */
+    @Deprecated(forRemoval = true)
     private int reposHebdoMinJoursOffDansFenetre;
 
-    /** 
-     * Nombre maximal de dimanches travaillés 
+    /**
+     * @deprecated Lot S7 — remplacé par
+     *             {@code ContraintesReglementairesSalarie.dimanchesTravaillesMaximum}.
      */
+    @Deprecated(forRemoval = true)
     private int maxDimanchesTravailles;
 
 
@@ -91,26 +109,38 @@ public final class SeuilsDeTolerance implements Serializable {
         return violationsMetierMax;
     }
 
+    /** @deprecated Lot S7 — voir {@link #maxNuitsConsecutives}. */
+    @Deprecated(forRemoval = true)
     public int getMaxNuitsConsecutives() {
         return maxNuitsConsecutives;
     }
 
+    /** @deprecated Lot S7 — voir {@link #reposApresNuitsEnJours}. */
+    @Deprecated(forRemoval = true)
     public int getReposApresNuitsEnJours() {
-    return reposApresNuitsEnJours;
-    } 
+        return reposApresNuitsEnJours;
+    }
 
+    /** @deprecated Lot S7 — voir {@link #reposHebdoFenetreJours}. */
+    @Deprecated(forRemoval = true)
     public int getReposHebdoFenetreJours() {
         return reposHebdoFenetreJours;
     }
 
+    /** @deprecated Lot S7 — voir {@link #reposHebdoMinJoursOffDansFenetre}. */
+    @Deprecated(forRemoval = true)
     public int getReposHebdoMinJoursOffDansFenetre() {
         return reposHebdoMinJoursOffDansFenetre;
     }
 
+    /** @deprecated Lot S7 — voir {@link #maxDimanchesTravailles}. */
+    @Deprecated(forRemoval = true)
     public int getMaxDimanchesTravailles() {
         return maxDimanchesTravailles;
     }
 
+    /** @deprecated Lot S7 — voir {@link #maxDimanchesTravailles}. */
+    @Deprecated(forRemoval = true)
     public void setMaxDimanchesTravailles(int maxDimanchesTravailles) {
         this.maxDimanchesTravailles = maxDimanchesTravailles;
     }

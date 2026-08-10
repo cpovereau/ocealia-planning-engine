@@ -499,7 +499,15 @@ components:
       description: |
         Contraintes réglementaires individuelles d'un salarié.
         Correspond à `ContraintesReglementairesDTO`.
-        Transporté en V1, non encore exploité par le builder (Phase 3).
+
+        **Tous les seuils sont individuels** : trois salariés = trois jeux de valeurs.
+
+        Pour désactiver une limite, **omettre le champ**. Ne jamais envoyer `0`.
+
+        Les cinq derniers champs ont été rapatriés au lot S7.0 depuis des seuils globaux
+        qui n'étaient jamais alimentés. Leur contrainte est réactivée un lot à la fois :
+        se reporter à `90_SUIVI_DEVELOPPEMENT_MOTEUR.md` pour l'état exact de chacune
+        avant d'en faire une règle de gestion.
       properties:
         heuresMinimumParJour:
           type: number
@@ -521,6 +529,24 @@ components:
           type: integer
         joursConsecutifsMaximum:
           type: integer
+        nuitsConsecutivesMaximum:
+          type: integer
+          description: '[S7.0] Nuits consécutives autorisées'
+        joursReposMinimumApresNuits:
+          type: integer
+          description: '[S7.0] Jours calendaires de repos exigés après une séquence de nuits'
+        dimanchesTravaillesMaximum:
+          type: integer
+          description: '[S7.0] Dimanches travaillés autorisés sur la période'
+        reposHebdomadaireFenetreJours:
+          type: integer
+          description: >-
+            [S7.0] Largeur de la fenêtre glissante (jours). Indissociable de
+            reposHebdomadaireJoursOffMinimum : transmis seul, il ne décrit aucune règle
+            et la contrainte reste inactive.
+        reposHebdomadaireJoursOffMinimum:
+          type: integer
+          description: '[S7.0] Jours non travaillés exigés dans la fenêtre ci-dessus'
 
     SalarieInput:
       type: object
@@ -1629,8 +1655,8 @@ components:
         `JOUR_FERIE_NON_AUTORISE`, `INDISPONIBILITE`, `CHEVAUCHEMENT`.
 
         Codes informatifs : `AMPLITUDE_DEPASSEE`, `JOURS_CONSECUTIFS_DEPASSES`,
-        `NUIT_SALARIE_NON_NUIT`, `RAPPEL_SUR_REPOS`, `BESOIN_PARTIELLEMENT_COUVERT`,
-        `AUCUNE_RESSOURCE_ELIGIBLE`.
+        `DIMANCHES_TRAVAILLES_DEPASSES`, `NUIT_SALARIE_NON_NUIT`, `RAPPEL_SUR_REPOS`,
+        `BESOIN_PARTIELLEMENT_COUVERT`, `AUCUNE_RESSOURCE_ELIGIBLE`.
       properties:
         code:
           type: string

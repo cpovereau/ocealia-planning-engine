@@ -59,6 +59,15 @@ public enum MotifCandidat {
             PenaliteKey.LEGAL_SOFT_JOURS_CONSECUTIFS_MAX,
             "Le nombre de jours travaillés consécutifs serait dépassé"),
 
+    /**
+     * Non éliminatoire, contrairement au repos quotidien : le plafond de dimanches est une borne
+     * conventionnelle d'équité, pas un seuil de légalité. Un dimanche de plus reste une décision
+     * possible ; elle doit être visible, pas interdite. Ajouté au lot S7.1.
+     */
+    DIMANCHES_TRAVAILLES_DEPASSES(Severite.WARNING, false,
+            PenaliteKey.LEGAL_SOFT_DIMANCHES_TRAVAILLES_MAX,
+            "Le nombre de dimanches travaillés maximum serait dépassé"),
+
     NUIT_SALARIE_NON_NUIT(Severite.WARNING, false,
             PenaliteKey.METIER_SOFT_NUIT_SALARIE_NON_NUIT,
             "Créneau de nuit confié à un salarié non déclaré travailleur de nuit"),

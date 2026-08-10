@@ -208,7 +208,7 @@
         },
         "contraintesReglementaires": {
           "type": "object",
-          "description": "Plafonds auxquels le salarié est soumis — prescriptif. Pour désactiver une limite, OMETTRE le champ : ne jamais envoyer 0, qui active la contrainte avec un seuil nul.",
+          "description": "Plafonds auxquels le salarié est soumis — prescriptif. Pour désactiver une limite, OMETTRE le champ : ne jamais envoyer 0. Tous les seuils sont individuels : trois salariés = trois jeux de valeurs.",
           "properties": {
             "heuresMinimumParJour": { "type": "number" },
             "heuresMaximumParJour": { "type": "number" },
@@ -217,7 +217,27 @@
             "heuresMinimumParSemaine": { "type": "number" },
             "heuresMaximumParSemaine": { "type": "number" },
             "nuitsMaximumParSemaine": { "type": "integer" },
-            "joursConsecutifsMaximum": { "type": "integer" }
+            "joursConsecutifsMaximum": { "type": "integer" },
+            "nuitsConsecutivesMaximum": {
+              "type": "integer",
+              "description": "[Lot S7.0] Nuits consécutives autorisées. Seuil précédemment global et jamais alimenté."
+            },
+            "joursReposMinimumApresNuits": {
+              "type": "integer",
+              "description": "[Lot S7.0] Jours calendaires de repos exigés après une séquence de nuits."
+            },
+            "dimanchesTravaillesMaximum": {
+              "type": "integer",
+              "description": "[Lot S7.0] Dimanches travaillés autorisés sur la période de résolution."
+            },
+            "reposHebdomadaireFenetreJours": {
+              "type": "integer",
+              "description": "[Lot S7.0] Largeur de la fenêtre glissante de repos hebdomadaire (jours). À transmettre avec reposHebdomadaireJoursOffMinimum : seuls, ces deux champs ne décrivent aucune règle et la contrainte reste inactive."
+            },
+            "reposHebdomadaireJoursOffMinimum": {
+              "type": "integer",
+              "description": "[Lot S7.0] Jours non travaillés exigés dans la fenêtre ci-dessus."
+            }
           }
         },
         "contrat": {

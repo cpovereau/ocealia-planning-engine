@@ -203,6 +203,48 @@ Voir `20_DECISIONS_CONCEPTION_OPTAPLANNER.md` — *Créneau figé : un fait d'en
 
 ---
 
+## 3.7 Les seuils réglementaires sont individuels
+
+Toute limite réglementaire est portée par le **salarié**, dans son bloc
+`contraintesReglementaires`. Trois salariés = trois jeux de seuils. Le moteur n'applique aucun
+plafond global : il n'a pas à supposer qu'une règle vaut pour tout le monde.
+
+Le bloc compte treize champs. Les cinq derniers ont été rapatriés au **lot S7.0** depuis
+`SeuilsDeTolerance`, où ils étaient globaux et — c'est le point — **jamais alimentés** :
+
+| Champ | Ce qu'il plafonne |
+|---|---|
+| `nuitsConsecutivesMaximum` | nuits d'affilée |
+| `joursReposMinimumApresNuits` | jours de repos exigés après une séquence de nuits |
+| `dimanchesTravaillesMaximum` | dimanches travaillés sur la période |
+| `reposHebdomadaireFenetreJours` | largeur de la fenêtre glissante |
+| `reposHebdomadaireJoursOffMinimum` | jours non travaillés exigés dans cette fenêtre |
+
+Les deux derniers forment une **paire indissociable** : une fenêtre sans minimum de jours off
+n'interdit rien. Transmis seul, l'un des deux laisse la contrainte inactive et déclenche un WARN.
+
+### Omettre, jamais envoyer 0
+
+> Pour désactiver une limite : **omettre le champ**.
+
+Un `0` reçu est ambigu — selon le sens de la borne il signifie « aucune limite » ou « rien n'est
+permis ». Le moteur ne devine pas : il trace l'anomalie en WARN et retient la lecture sûre,
+**seuil absent ou nul = contrainte inactive**. Ce n'est pas une tolérance mais une nécessité de
+migration : ces cinq champs sont absents de tous les payloads existants, et les faire déclencher
+sur une donnée non renseignée rendrait illégal du jour au lendemain tout planning en cours.
+
+Cette lecture ne contredit pas l'invariant « un vide ne suppose jamais que la chose est
+possible ». Le moteur ne conclut pas que la nuit consécutive est autorisée : il constate qu'on ne
+lui a donné aucun plafond à faire respecter, et s'abstient de juger plutôt que d'inventer.
+
+### Renseigner un seuil ne suffit pas à le voir appliqué
+
+Le transport d'un seuil et son application par une contrainte sont deux choses distinctes, et le
+second est en cours de rattrapage — un lot par contrainte. Avant de faire d'un champ une règle de
+gestion, vérifier son état dans `90_SUIVI_DEVELOPPEMENT_MOTEUR.md`.
+
+---
+
 ## 4. Scénarios supportés (V1)
 
 ---

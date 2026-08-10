@@ -89,6 +89,13 @@ public class ScenarioResourceMapper {
         signalerZeroInterdit(salarieId, "heuresMaximumParSemaine", dto.getHeuresMaximumParSemaine());
         signalerZeroInterdit(salarieId, "nuitsMaximumParSemaine", dto.getNuitsMaximumParSemaine());
         signalerZeroInterdit(salarieId, "joursConsecutifsMaximum", dto.getJoursConsecutifsMaximum());
+        signalerZeroInterdit(salarieId, "nuitsConsecutivesMaximum", dto.getNuitsConsecutivesMaximum());
+        signalerZeroInterdit(salarieId, "joursReposMinimumApresNuits", dto.getJoursReposMinimumApresNuits());
+        signalerZeroInterdit(salarieId, "dimanchesTravaillesMaximum", dto.getDimanchesTravaillesMaximum());
+        signalerZeroInterdit(salarieId, "reposHebdomadaireFenetreJours", dto.getReposHebdomadaireFenetreJours());
+        signalerZeroInterdit(salarieId, "reposHebdomadaireJoursOffMinimum", dto.getReposHebdomadaireJoursOffMinimum());
+
+        signalerPaireIncomplete(salarieId, dto);
 
         return new ContraintesReglementairesSalarie(
                 dto.getHeuresMinimumParJour(),
@@ -98,26 +105,53 @@ public class ScenarioResourceMapper {
                 dto.getHeuresMinimumParSemaine(),
                 dto.getHeuresMaximumParSemaine(),
                 dto.getNuitsMaximumParSemaine(),
-                dto.getJoursConsecutifsMaximum()
+                dto.getJoursConsecutifsMaximum(),
+                dto.getNuitsConsecutivesMaximum(),
+                dto.getJoursReposMinimumApresNuits(),
+                dto.getDimanchesTravaillesMaximum(),
+                dto.getReposHebdomadaireFenetreJours(),
+                dto.getReposHebdomadaireJoursOffMinimum()
         );
+    }
+
+    /**
+     * Signale une fenêtre de repos hebdomadaire déclarée à moitié.
+     *
+     * <p>{@code reposHebdomadaireFenetreJours} et {@code reposHebdomadaireJoursOffMinimum} ne
+     * décrivent une règle qu'ensemble : une fenêtre sans minimum de jours off n'interdit rien,
+     * un minimum sans fenêtre ne s'applique nulle part. La contrainte reste alors inactive, ce
+     * qui est le comportement sûr — mais l'appelant croit probablement avoir posé une limite.</p>
+     */
+    private void signalerPaireIncomplete(String salarieId, ContraintesReglementairesDTO dto) {
+        boolean fenetre = ContraintesReglementairesSalarie.seuilActif(dto.getReposHebdomadaireFenetreJours());
+        boolean joursOff = ContraintesReglementairesSalarie.seuilActif(dto.getReposHebdomadaireJoursOffMinimum());
+        if (fenetre != joursOff) {
+            log.warn("[ScenarioResourceMapper] salarié id='{}' : repos hebdomadaire glissant déclaré "
+                    + "à moitié (fenetreJours={}, joursOffMinimum={}) — la contrainte reste inactive. "
+                    + "Les deux champs doivent être renseignés ensemble.",
+                    salarieId, dto.getReposHebdomadaireFenetreJours(), dto.getReposHebdomadaireJoursOffMinimum());
+        }
     }
 
     /**
      * Signale une contrainte réglementaire transmise à 0.
      *
-     * <p>Le moteur active une contrainte dès que son seuil est non nul — règle SC-03 conservée.
-     * Une valeur 0 l'active donc avec un seuil nul, ce qui rend toute affectation fautive. Le
-     * contrat impose d'<strong>omettre le champ</strong> pour désactiver une limite.</p>
-     *
-     * <p>Le moteur ne corrige pas la valeur : corriger reviendrait à deviner l'intention. Il
-     * rend l'écart visible en intégration plutôt que silencieux.
+     * <p>Le contrat impose d'<strong>omettre le champ</strong> pour désactiver une limite, jamais
+     * d'envoyer 0. Un 0 reçu est une valeur ambiguë : selon le sens de la borne il signifie
+     * « aucune limite » ou « rien n'est permis ». Le moteur ne tranche pas à la place de
+     * l'appelant, il rend l'écart visible en intégration plutôt que silencieux.
      * Voir {@code 92_cadrage_scenario_sc-06.md} §4.7.</p>
+     *
+     * <p>Pour les seuils rapatriés au lot S7.0, le moteur retient la lecture sûre — 0 désactive,
+     * cf. {@link ContraintesReglementairesSalarie#seuilActif(Number)} — car ces cinq champs sont
+     * absents des payloads existants : les faire déclencher sur une donnée non renseignée
+     * rendrait tout planning en cours illégal du jour au lendemain.</p>
      */
     private void signalerZeroInterdit(String salarieId, String champ, Number valeur) {
         if (valeur != null && valeur.doubleValue() == 0d) {
             log.warn("[ScenarioResourceMapper] salarié id='{}' : contraintesReglementaires.{}=0 — "
-                    + "la contrainte est activée avec un seuil nul. Pour désactiver une limite, "
-                    + "omettre le champ plutôt que d'envoyer 0.", salarieId, champ);
+                    + "valeur ambiguë. Pour désactiver une limite, omettre le champ "
+                    + "plutôt que d'envoyer 0.", salarieId, champ);
         }
     }
 

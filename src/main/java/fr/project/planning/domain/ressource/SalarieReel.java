@@ -81,6 +81,22 @@ public class SalarieReel extends Ressource {
         this.contraintesReglementaires = contraintesReglementaires;
     }
 
+    /**
+     * Contraintes réglementaires du salarié, ou un bloc entièrement vide s'il n'en a transmis
+     * aucune — jamais {@code null}.
+     *
+     * <p>Destiné aux contraintes du solveur : « ce salarié n'a transmis aucune limite » et
+     * « ce salarié n'a pas transmis cette limite-ci » appellent la même conclusion — la règle ne
+     * s'applique pas — et n'ont donc pas à être distingués au moment d'évaluer un seuil. Le repli
+     * évite d'écrire deux tests de nullité imbriqués dans chaque contrainte, où l'oubli du
+     * premier est un {@code NullPointerException} en pleine résolution.</p>
+     */
+    public ContraintesReglementairesSalarie contraintesOuAucune() {
+        return contraintesReglementaires != null
+                ? contraintesReglementaires
+                : ContraintesReglementairesSalarie.AUCUNE;
+    }
+
     // =========================
     // Getters/Setters lot S2 — contrat de travail
     // =========================

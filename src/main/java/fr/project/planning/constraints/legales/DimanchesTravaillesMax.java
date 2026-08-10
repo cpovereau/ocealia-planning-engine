@@ -4,6 +4,7 @@ import fr.project.planning.domain.contexte.PlanningContext;
 import fr.project.planning.domain.creneau.Creneau;
 import fr.project.planning.domain.metier.ComptabiliteActivite;
 import fr.project.planning.domain.metier.ReferentielComptabiliteActivite;
+import fr.project.planning.domain.ressource.ContraintesReglementairesSalarie;
 import fr.project.planning.domain.ressource.SalarieReel;
 import fr.project.planning.scoring.PenaliteKey;
 
@@ -18,18 +19,35 @@ import java.time.DayOfWeek;
 /**
  * DimanchesTravaillesMax — contrainte SOFT (R9)
  *
- * Pénalise le dépassement du nombre maximal de dimanches travaillés
- * pour un salarié sur la période de résolution.
+ * <p>Pénalise le dépassement du nombre maximal de dimanches travaillés par un salarié sur la
+ * période de résolution.</p>
  *
- * Définition d'un dimanche travaillé (conforme à 40_WORKMETRICS et nbDimanchesTravailles) :
- *   dimanche calendaire (DayOfWeek.SUNDAY) comportant au moins un créneau
- *   dont l'activité compte dans la charge (compteDansCharge = true).
- *   Comptage par date distincte : plusieurs créneaux le même dimanche = 1 dimanche travaillé.
+ * <h3>Définition d'un dimanche travaillé</h3>
+ * <p>Conforme à {@code 40_WORKMETRICS} et à {@code nbDimanchesTravailles} : dimanche calendaire
+ * ({@link DayOfWeek#SUNDAY}) comportant au moins un créneau dont l'activité compte dans la
+ * charge. Le comptage se fait par date distincte — plusieurs créneaux le même dimanche valent un
+ * seul dimanche travaillé.</p>
  *
- * Seuil : SeuilsDeTolerance.maxDimanchesTravailles (global, conventionnel / métier).
- *   Pas de seuil individuel dans ContraintesReglementairesSalarie pour ce cas.
+ * <h3>Lot S7.1 — remise en service</h3>
+ * <p>Cette contrainte était <strong>dormante</strong>. Elle lisait l'activité via
+ * {@code getActivite()}, le champ déprécié, que les clients conformes au contrat n'envoient plus.
+ * Le référentiel ne trouvait rien, aucun match n'était produit — et son seuil était de surcroît
+ * un seuil global jamais alimenté, donc nul. Deux corrections :</p>
+ * <ul>
+ *   <li>l'activité est lue via {@link Creneau#getCodeActiviteEffectif()}, qui privilégie
+ *       {@code codeActiviteId} et retombe sur le champ historique ;</li>
+ *   <li>le seuil est lu sur le salarié — {@code contraintesReglementaires.dimanchesTravaillesMaximum}
+ *       — et non plus dans {@code SeuilsDeTolerance}.</li>
+ * </ul>
  *
- * Pénalité : Penalites.depassementMaxDimanchesTravailles × dimanches en excédent.
+ * <h3>Activation</h3>
+ * <p>Inactive si le seuil est absent ou nul, cf.
+ * {@link ContraintesReglementairesSalarie#seuilActif(Number)}. Le filtre est appliqué en tête de
+ * flux : un salarié sans plafond de dimanches ne produit aucun tuple.</p>
+ *
+ * <h3>Pénalité</h3>
+ * <p>{@code Penalites.depassementMaxDimanchesTravailles} × dimanches en excédent. La valeur de la
+ * pénalité reste globale : c'est un poids de scoring, pas une règle. Seul le seuil est individuel.</p>
  */
 public class DimanchesTravaillesMax {
 
@@ -40,8 +58,9 @@ public class DimanchesTravaillesMax {
     public static Constraint maxDimanchesTravailles(ConstraintFactory factory) {
 
         return factory
-            // 1) Salariés réels
+            // 1) Salariés réels dont le plafond de dimanches est renseigné
             .forEach(SalarieReel.class)
+            .filter(DimanchesTravaillesMax::plafondRenseigne)
 
             // 2) Jointure avec les créneaux du dimanche affectés à ce salarié
             //    Le filtre DayOfWeek.SUNDAY est appliqué à la source pour limiter le volume
@@ -60,7 +79,7 @@ public class DimanchesTravaillesMax {
             .ifExists(
                 ReferentielComptabiliteActivite.class,
                 Joiners.filtering((salarie, creneau, ref) -> {
-                    ComptabiliteActivite ca = ref.getByCode(creneau.getActivite());
+                    ComptabiliteActivite ca = ref.getByCode(creneau.getCodeActiviteEffectif());
                     return ca != null && ca.isCompteDansCharge();
                 })
             )
@@ -72,18 +91,30 @@ public class DimanchesTravaillesMax {
                 ConstraintCollectors.countDistinct((salarie, creneau) -> creneau.getDate())
             )
 
-            // 5) Jointure avec le contexte (seuil + valeur de pénalité)
+            // 5) Seuls les dépassements produisent un match : un salarié dans les clous
+            //    n'apparaît pas au scoreBreakdown avec un impact nul
+            .filter((salarie, nbDimanches) -> nbDimanches > plafond(salarie))
+
+            // 6) Jointure avec le contexte, pour la valeur de la pénalité
             .join(factory.forEach(PlanningContext.class))
 
-            // 6) Pénalité SOFT proportionnelle au dépassement
+            // 7) Pénalité SOFT proportionnelle au dépassement
             .penalize(
                 HardSoftScore.ONE_SOFT,
-                (salarie, nbDimanches, context) -> {
-                    int max = context.getSeuilsDeTolerance().getMaxDimanchesTravailles();
-                    int excedent = Math.max(0, nbDimanches - max);
-                    return context.getPenalites().getDepassementMaxDimanchesTravailles() * excedent;
-                }
+                (salarie, nbDimanches, context) ->
+                        context.getPenalites().getDepassementMaxDimanchesTravailles()
+                                * (nbDimanches - plafond(salarie))
             )
             .asConstraint(PenaliteKey.LEGAL_SOFT_DIMANCHES_TRAVAILLES_MAX.name());
+    }
+
+    private static boolean plafondRenseigne(SalarieReel salarie) {
+        return ContraintesReglementairesSalarie.seuilActif(
+                salarie.contraintesOuAucune().getDimanchesTravaillesMaximum());
+    }
+
+    /** N'est appelé qu'après {@link #plafondRenseigne(SalarieReel)} : la valeur est non nulle. */
+    private static int plafond(SalarieReel salarie) {
+        return salarie.contraintesOuAucune().getDimanchesTravaillesMaximum();
     }
 }

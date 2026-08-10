@@ -201,6 +201,20 @@ Le paramétrage du scoring est désormais centralisé et stable, permettant d’
 👉 Une métrique n’active jamais une contrainte.
 👉 Une contrainte peut être expliquée par une métrique.
 
+**Colonne « Implémentée » — trois états, pas deux :**
+
+| Marque | Sens |
+|---|---|
+| ✅ | écrite, enregistrée et **effective** pour un client conforme au contrat |
+| ⏳ | partielle : effective, mais tous les cas ne sont pas couverts |
+| ⛔ | **dormante** — écrite et enregistrée, mais ne produit aucun match en production |
+
+> ⛔ ne veut pas dire « non écrite ». Ces contraintes sont dans
+> `ConstraintProviderImpl`, leurs tests sont verts, et elles ne servent à rien : elles lisent le
+> champ d'activité déprécié, que les clients n'envoient plus. Une métrique peut donc compter un
+> dimanche travaillé pendant que la contrainte censée le plafonner reste muette.
+> Constat détaillé et plan de réparation : `92_cadrage_socle_reglementaire.md`.
+
 ---
 
 ### 📊 Tableau de cartographie
@@ -210,14 +224,17 @@ Le paramétrage du scoring est désormais centralisé et stable, permettant d’
 | Créneau non couvert                   | SOFT | ✅            | nbCreneauxNonAffectes         | Oui                    | UNCOVERED / NO_RESOURCE_ASSIGNED          | Oui            | 50_ScenarioResponseContract |
 | Pénalisation poste virtuel            | SOFT | ✅            | –                             | Non                    | VIRTUAL_ASSIGNED / POSTE_VIRTUEL_ASSIGNED | Oui            | 50_ScenarioResponseContract |
 | Travail sur repos hebdomadaire (R8)   | SOFT | ✅            | heuresReposHebdoTravaille     | Oui                    | Non                                       | Oui            | 40_WORKMETRICS              |
-| Repos hebdomadaire min glissant (R7)  | HARD | ✅            | –                             | Non                    | Non                                       | Non            | 40_REGLES_COMBINATOIRES     |
-| Nuits consécutives max (R3)           | HARD | ⏳ / partiel  | maxNuitsConsecutivesObservees | Oui                    | Non                                       | Non            | 40_REGLES_COMBINATOIRES     |
+| Repos hebdomadaire min glissant (R7)  | HARD | ⛔ dormante — S7.4 | –                         | Non                    | Non                                       | Non            | 92_cadrage_socle_reglementaire |
+| Repos hebdomadaire minimum (R7 socle) | HARD | ⛔ dormante — S7.5 | –                         | Non                    | Non                                       | Non            | 92_cadrage_socle_reglementaire |
+| Repos obligatoire après nuits (R4)    | HARD | ⛔ dormante — S7.3 | –                         | Non                    | Non                                       | Non            | 92_cadrage_socle_reglementaire |
+| Durée maximale légale par salarié     | HARD | ⛔ dormante — S7.6 | –                         | Non                    | Non                                       | Non            | 92_cadrage_socle_reglementaire |
+| Nuits consécutives max (R3)           | HARD | ⛔ dormante — S7.2 | maxNuitsConsecutivesObservees | Oui                 | Non                                       | Non            | 92_cadrage_socle_reglementaire |
 | Jours consécutifs max (R1)            | SOFT | ✅            | maxJoursConsecutifsObservees  | Oui                    | Non                                       | Non            | 40_REGLES_COMBINATOIRES     |
 | Alternance jour / nuit (R5+R6)        | SOFT | ✅            | –                             | Non                    | Non                                       | Oui            | 40_REGLES_COMBINATOIRES     |
 | Amplitude journalière max (R10)       | SOFT | ✅            | –                             | Non                    | Non                                       | Oui            | 40_REGLES_COMBINATOIRES     |
 | Repos quotidien minimum (R12)         | SOFT | ✅ lot S3     | –                             | Non                    | Non                                       | Oui            | 40_REGLES_COMBINATOIRES §6 bis |
 | Durée hebdomadaire maximale (R13)     | SOFT | ✅ lot S3     | –                             | Non                    | Non                                       | Oui            | 40_REGLES_COMBINATOIRES §6 bis |
-| Dimanches maximum (R9)                | SOFT | ✅            | nbDimanchesTravailles         | Oui                    | Non                                       | Non            | 40_REGLES_COMBINATOIRES     |
+| Dimanches maximum (R9)                | SOFT | ✅ lot S7.1  | nbDimanchesTravailles         | Oui                    | Non                                       | Oui (si dépassement) | 92_cadrage_socle_reglementaire |
 | Pénibilité nuit                       | SOFT | ✅            | heuresNuit                    | Oui                    | Non                                       | Oui            | 40_WORKMETRICS              |
 | Pénibilité jours fériés               | SOFT | ✅            | heuresJourFerie               | Oui                    | Non                                       | Oui            | 40_WORKMETRICS              |
 | Nuit affectée à salarié non-nuit      | SOFT | ✅            | nbCreneauxNuitNonNuit         | Oui                    | Non                                       | Oui            | 40_WORKMETRICS              |
@@ -361,10 +378,57 @@ Accessible par **les deux canaux** (lot S6) : `POST /scenarios/sc06/solve` et Fi
 contrat série 50 : `50_ScenarioContract.md` §4, `50_ScenarioResponseContract.md` §6, OpenAPI et
 schémas JSON. Notice d'intégration : `Windev_part/SC-06/sc_06_notice_integration.md`.
 
-**Les lots S1 à S6 de SC-06 sont livrés.** Reste **S7** — activation des trois dernières
-contraintes individuelles, hors chemin critique du scénario mais désormais principal écart entre
-ce que le contrat annonce et ce que le moteur applique.
-Voir `92_cadrage_scenario_sc-06.md`.
+**Les lots S1 à S6 de SC-06 sont livrés.** Voir `92_cadrage_scenario_sc-06.md`.
+
+Le lot S7 initialement prévu — activer les trois dernières contraintes individuelles — s'est
+révélé être le sommet d'un écart plus large : **six contraintes enregistrées ne se déclenchent
+jamais** pour un client conforme au contrat. Ce chantier fait l'objet de son propre cadrage et de
+son propre découpage : `92_cadrage_socle_reglementaire.md`.
+
+### Socle réglementaire — lot S7.0 (2026-08-10)
+
+Point zéro du chantier de remise en service. **Aucune contrainte modifiée, score inchangé** —
+c'est l'objet du lot : rendre mesurables les écarts des lots suivants.
+
+* Cinq seuils rapatriés de `SeuilsDeTolerance` vers `contraintesReglementaires` du salarié
+  (`nuitsConsecutivesMaximum`, `joursReposMinimumApresNuits`, `dimanchesTravaillesMaximum`,
+  `reposHebdomadaireFenetreJours`, `reposHebdomadaireJoursOffMinimum`) — ils étaient globaux et
+  n'ont jamais été alimentés : ils valaient 0 en production.
+* Règle d'activation unique : `ContraintesReglementairesSalarie.seuilActif()` — absent ou nul
+  ⇒ contrainte inactive, `0` tracé en WARN. WARN également si la paire fenêtre / jours off est
+  transmise à moitié.
+* `SocleReglementaireBaselineTest` : chaque situation fautive est jouée avec le champ historique
+  (elle déclenche) puis avec le champ du contrat (elle ne déclenche pas). Réveiller une
+  contrainte consiste à déplacer une assertion d'un bloc à l'autre.
+* `ReferentielComptabiliteActivite.getByCode(null)` rendu null-safe — son comportement dépendait
+  jusqu'ici de l'implémentation de `Map` (silencieux en production, NPE en test).
+* Contrat : `50_ScenarioContract.md` §3.7, schéma JSON et OpenAPI.
+
+434 tests, 0 échec.
+
+### Socle réglementaire — lot S7.1 : dimanches travaillés (2026-08-10)
+
+Première contrainte remise en service. `DimanchesTravaillesMax` (SOFT, R9) lit désormais
+l'activité via `Creneau.getCodeActiviteEffectif()` et son plafond sur le salarié
+(`contraintesReglementaires.dimanchesTravaillesMaximum`), et non plus dans `SeuilsDeTolerance`.
+
+* Seuls les **dépassements** produisent un match : un salarié dans les clous n'apparaît plus au
+  `scoreBreakdown` avec un impact nul.
+* Motif SC-06 `DIMANCHES_TRAVAILLES_DEPASSES` (WARNING, **non éliminatoire**) : le plafond de
+  dimanches est une borne conventionnelle d'équité, pas un seuil de légalité. Un dimanche de plus
+  doit être visible, pas interdit.
+* `SalarieReel.contraintesOuAucune()` : repli non nul, pour que les contraintes des lots suivants
+  évaluent un seuil sans imbriquer deux tests de nullité.
+* `Phase13ConstraintsTest` alimente maintenant `codeActiviteId` et non plus `activite` — c'est ce
+  détail qui rendait ces tests verts alors que la contrainte était morte. Deux cas ajoutés : seuil
+  absent et seuil à 0, tous deux inactifs.
+
+**Écart de score mesuré : aucun.** SC-03 reste à `0hard/-960soft`, et
+`LEGAL_SOFT_DIMANCHES_TRAVAILLES_MAX` reste absent de son `scoreBreakdown` — aucun jeu d'essai ni
+payload de référence ne transmet le plafond de dimanches, la contrainte demeure donc inactive
+faute de seuil. La remise en service est sans effet tant que WinDev n'envoie pas le champ.
+
+438 tests, 0 échec.
 
 ### Planning existant et créneaux figés — lot S1 (2026-08-10)
 
