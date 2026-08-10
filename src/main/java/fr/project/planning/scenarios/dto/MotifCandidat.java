@@ -87,6 +87,15 @@ public enum MotifCandidat {
             PenaliteKey.LEGAL_HARD_DUREE_MAX_PAR_JOUR,
             "La durée de travail maximale sur la journée serait dépassée"),
 
+    /**
+     * Volume de nuits sur la semaine, à distinguer de {@link #NUITS_CONSECUTIVES_DEPASSEES} qui
+     * borne l'enchaînement. Trois nuits lundi, mercredi et vendredi ne violent aucun
+     * enchaînement mais peuvent dépasser un volume de deux. Lot S7.7.
+     */
+    NUITS_HEBDOMADAIRES_DEPASSEES(Severite.ERROR, true,
+            PenaliteKey.LEGAL_SOFT_NUITS_MAX_PAR_SEMAINE,
+            "Le nombre de nuits autorisées sur la semaine serait dépassé"),
+
     // ---- Signalements non éliminatoires ----
 
     AMPLITUDE_DEPASSEE(Severite.WARNING, false,

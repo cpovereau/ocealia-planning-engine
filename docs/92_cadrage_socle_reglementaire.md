@@ -4,8 +4,8 @@
 > jamais pour un client conforme au contrat. Ce document établit le constat, l'ordre de
 > réparation et le point de contrôle de chaque étape.
 >
-> **Statut** — S7.0 à S7.7a livrés. Les six contraintes dormantes sont remises en service.
-> S7.7b et S7.8 à réaliser.
+> **Statut** — S7.0 à S7.7 livrés. Les six contraintes dormantes sont remises en service et les
+> deux contraintes manquantes sont écrites. Reste S7.8 (nettoyage).
 > **Contrat concerné** — `50_ScenarioContract.md` §3.7 · **Suivi** — `90_SUIVI_DEVELOPPEMENT_MOTEUR.md`
 
 ---
@@ -108,7 +108,8 @@ L'ordre va du moins au plus perturbant, pour qu'une surprise reste imputable.
 | **S7.4** ✅ | `ReposHebdomadaireGlissant` — repli + paire de seuils | **Aucun** — mesuré (§7.4) |
 | **S7.5** ✅ | `ReposHebdomadaireMin` — repli seul (socle légal, sans seuil individuel) | **Aucun** — mesuré (§7.5) |
 | **S7.6** ✅ | `DureeMaximaleLegaleParSalarie` — **correction de maille** + `heuresMaximumParJour` | **Aucun** — mesuré (§7.6) |
-| S7.7 | Contraintes absentes : `heuresMinimumParSemaine`, `nuitsMaximumParSemaine` | nouvelles |
+| **S7.7a** ✅ | Lecture littérale du zéro — révision de D2 sur arbitrage | **Aucun** — mesuré (§7.7a) |
+| **S7.7b** ✅ | Contraintes absentes : `heuresMinimumParSemaine`, `nuitsMaximumParSemaine` | **SC-03 : −960 → −66 960** (§7.7b) |
 | S7.8 | Nettoyage : code mort, retrait des cinq champs de `SeuilsDeTolerance`, doc | Aucun |
 
 ### Contenu type d'un lot S7.1 → S7.6
@@ -476,3 +477,70 @@ isolée passait. L'incohérence était inatteignable tant que 0 n'était pas une
 la lecture littérale l'a rendue atteignable, et un test l'a immédiatement fait tomber. Le
 décompte est corrigé — c'est exactement le service qu'on attend d'un jeu de test qui suit une
 décision de contrat.
+
+### 7.7b — Les deux contraintes qui n'existaient pas
+
+**Écart de score : SC-03 passe de −960 à −66 960.** C'est la seule variation de tout le
+chantier, et elle est voulue. 510 tests, 0 échec.
+
+| Livrable | Fichier |
+|---|---|
+| Sous-emploi hebdomadaire, deux volets | `constraints/legales/HeuresMinimumParSemaine.java` |
+| Plafond hebdomadaire de nuits | `constraints/legales/NuitsMaximumParSemaine.java` |
+| Trois clés de pénalité | `scoring/PenaliteKey.java` |
+| Motif SC-06 `NUITS_HEBDOMADAIRES_DEPASSEES` (éliminatoire) | `scenarios/dto/MotifCandidat.java` |
+| Couverture dédiée — 10 + 10 cas | `constraints/HeuresMinimumParSemaineConstraintsTest.java`, `NuitsMaximumParSemaineConstraintsTest.java` |
+| Garde-fou de score et d'affectation | `scenarios/sc03/api/ScenarioControllerSc03RuntimeTest.java` |
+
+#### Une première implémentation qui produisait l'inverse de l'effet voulu
+
+Le premier jet regroupait par `(salarié, semaine)` sur les créneaux existants — construction
+reprise de `HeuresMinimumParJour`. Mesure faite : le solveur a confié **les six créneaux au poste
+virtuel** et zéro aux deux salariés, là où il les répartissait auparavant entre eux.
+
+La cause est structurelle : un salarié sans créneau ne produit aucun tuple, donc aucune pénalité,
+tandis que lui confier un seul créneau déclenche le déficit entier. **Ne rien donner devenait le
+choix le moins cher.** Une contrainte censée lutter contre le sous-emploi le récompensait.
+
+Le correctif ajoute un second volet, `LEGAL_SOFT_SEMAINE_SANS_AFFECTATION` : les semaines
+complètes de l'horizon sont énumérées, et celles où le salarié n'a rien sont pénalisées au
+déficit maximal. L'ordre des coûts redevient correct — ne rien confier coûte 105 000, en confier
+trop peu coûte 33 000 — et toute affectation améliore le score. Après correctif, les six créneaux
+reviennent aux salariés réels et le poste virtuel est vide.
+
+Deux volets sont nécessaires parce que les jointures des Constraint Streams sont **internes** :
+faire exister un tuple pour un salarié qui n'a aucun créneau impose d'énumérer les semaines
+depuis l'horizon, puis d'exclure celles qui sont pourvues. Un test garde explicitement l'ordre
+des coûts — c'est lui qui interdira la régression.
+
+#### Ce que devient le score de SC-03
+
+`−66 960 = −960` (pénibilités) `− 66 000` (sous-emploi). Deux salariés à 35 h hebdomadaires pour
+48 h de travail disponible : le déficit de 11 h chacun est **inévitable**, et c'est bien ce que
+le contrat demande de rendre visible. La valeur absolue du score n'a pas de sens en soi ; ce qui
+compte est qu'elle départage correctement deux solutions du même problème, et c'est le cas — le
+déficit s'aggrave dès qu'un créneau part au poste virtuel.
+
+#### Seules les semaines complètes sont jugées
+
+Un minimum a un mode de défaillance dangereux, inverse de celui d'un maximum : sur une semaine
+tronquée le total est mécaniquement sous-évalué et la règle signalerait un déficit qui n'existe
+pas. Un maximum peut se permettre de mesurer ce qu'il reçoit — il sous-détecte, ce qui est sans
+danger. Un minimum, non.
+
+#### Volume et enchaînement, deux règles distinctes sur les nuits
+
+`NuitsMaximumParSemaine` borne un **volume** hebdomadaire ; `NuitsConsecutivesMax` borne un
+**enchaînement**. Trois nuits lundi, mercredi et vendredi ne violent aucun enchaînement mais
+peuvent dépasser un volume de deux. Deux clés, deux motifs.
+
+La règle s'est vérifiée sur SC-03 sans jamais apparaître au `scoreBreakdown` : la nuit du
+vendredi est allée à SAL-2002, dont le plafond est 3, et jamais à SAL-2001, plafonné à 0. Une
+contrainte muette parce qu'elle est respectée — la bonne signature.
+
+#### Aucun motif SC-06 pour le sous-emploi, et c'est volontaire
+
+Le classement SC-06 lève un motif quand un candidat **aggrave** la situation de référence. Or
+confier le besoin à un salarié *réduit* son déficit : le delta est toujours favorable, le motif
+ne serait jamais levé. Pire, il serait sémantiquement inversé — un salarié sous-employé est un
+**bon** candidat, pas un motif de rejet.

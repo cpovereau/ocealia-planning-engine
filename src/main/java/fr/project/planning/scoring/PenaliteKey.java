@@ -45,6 +45,21 @@ public enum PenaliteKey {
      */
     LEGAL_SOFT_HEURES_MAX_PAR_SEMAINE(ScoreBreakdownUnit.MINUTE_PONDEREE),
 
+    /** Sous-emploi hebdomadaire : minutes manquantes pour atteindre le minimum contractuel. Lot S7.7. */
+    LEGAL_SOFT_HEURES_MIN_PAR_SEMAINE(ScoreBreakdownUnit.MINUTE_PONDEREE),
+
+    /**
+     * Semaine complète sans aucune affectation, pour un salarié qui a un minimum contractuel.
+     *
+     * <p>Volet indispensable de {@link #LEGAL_SOFT_HEURES_MIN_PAR_SEMAINE} : sans lui, ne rien
+     * confier à un salarié coûterait moins cher que lui confier trop peu, et le solveur
+     * préférerait ne pas l'employer du tout. Voir {@code HeuresMinimumParSemaine}.</p>
+     */
+    LEGAL_SOFT_SEMAINE_SANS_AFFECTATION(ScoreBreakdownUnit.MINUTE_PONDEREE),
+
+    /** Nuits travaillées en excédent du plafond hebdomadaire individuel. Lot S7.7. */
+    LEGAL_SOFT_NUITS_MAX_PAR_SEMAINE(ScoreBreakdownUnit.OCCURRENCE),
+
     LEGAL_SOFT_ALTERNANCE_JOUR_NUIT(ScoreBreakdownUnit.OCCURRENCE),
     LEGAL_SOFT_DIMANCHES_TRAVAILLES_MAX(ScoreBreakdownUnit.JOUR),
     LEGAL_SOFT_TRAVAIL_NUIT_MINUTES(ScoreBreakdownUnit.MINUTE_PONDEREE),

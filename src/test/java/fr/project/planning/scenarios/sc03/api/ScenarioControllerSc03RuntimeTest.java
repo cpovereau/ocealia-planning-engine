@@ -52,7 +52,16 @@ class ScenarioControllerSc03RuntimeTest {
                 // référence, un écart passerait inaperçu ou resterait inattribuable.
                 // Une modification volontaire de cette valeur doit être consignée dans
                 // 92_cadrage_socle_reglementaire.md, avec le lot qui la produit.
-                .andExpect(jsonPath("$.solverResult.score.soft").value(-960))
+                //
+                // -960   pénibilités légales (la nuit du vendredi)
+                // -66000 sous-emploi : deux salariés à 35 h hebdo pour 48 h de travail
+                //        disponible — un déficit de 11 h chacun, inévitable et voulu visible.
+                //        Lot S7.7, seule variation de score de tout le chantier.
+                .andExpect(jsonPath("$.solverResult.score.soft").value(-66960))
+                // Le sous-emploi ne doit jamais pousser à ne pas employer : les six créneaux
+                // restent chez les salariés réels, le poste virtuel n'en reçoit aucun.
+                .andExpect(jsonPath("$.workMetrics.byRessource[?(@.resourceId=='PV-001')].heuresTravaillees")
+                        .value(org.hamcrest.Matchers.contains(0.0)))
                 .andExpect(jsonPath("$.planning").exists())
                 .andExpect(jsonPath("$.workMetrics").exists())
                 .andExpect(jsonPath("$.solutionSummary").exists())

@@ -238,6 +238,8 @@ Le paramétrage du scoring est désormais centralisé et stable, permettant d’
 | Amplitude journalière max (R10)       | SOFT | ✅            | –                             | Non                    | Non                                       | Oui            | 40_REGLES_COMBINATOIRES     |
 | Repos quotidien minimum (R12)         | SOFT | ✅ lot S3     | –                             | Non                    | Non                                       | Oui            | 40_REGLES_COMBINATOIRES §6 bis |
 | Durée hebdomadaire maximale (R13)     | SOFT | ✅ lot S3     | –                             | Non                    | Non                                       | Oui            | 40_REGLES_COMBINATOIRES §6 bis |
+| Durée hebdomadaire minimale (sous-emploi) | SOFT | ✅ lot S7.7 | –                        | Non                    | Non                                       | Oui (si déficit) | 92_cadrage_socle_reglementaire |
+| Nuits maximum par semaine             | SOFT | ✅ lot S7.7  | heuresNuit                    | Oui                    | Non                                       | Oui (si dépassement) | 92_cadrage_socle_reglementaire |
 | Dimanches maximum (R9)                | SOFT | ✅ lot S7.1  | nbDimanchesTravailles         | Oui                    | Non                                       | Oui (si dépassement) | 92_cadrage_socle_reglementaire |
 | Pénibilité nuit                       | SOFT | ✅            | heuresNuit                    | Oui                    | Non                                       | Oui            | 40_WORKMETRICS              |
 | Pénibilité jours fériés               | SOFT | ✅            | heuresJourFerie               | Oui                    | Non                                       | Oui            | 40_WORKMETRICS              |
@@ -822,3 +824,32 @@ nuits — l'exact contraire de l'intention.
 concernées ne rencontre de seuil à 0 dans les jeux actuels.
 
 490 tests, 0 échec.
+
+### Socle réglementaire — lot S7.7b : les deux contraintes manquantes (2026-08-11)
+
+`heuresMinimumParSemaine` et `nuitsMaximumParSemaine` étaient transportées depuis la Phase 1 sans
+qu'aucune contrainte ne les lise. C'est fait.
+
+* **`HeuresMinimumParSemaine`** (SOFT, 50 par minute manquante) — sous-emploi hebdomadaire, en
+  **deux volets**. Seules les semaines complètes de l'horizon sont jugées : sur une semaine
+  tronquée, un minimum signalerait un déficit qui n'existe pas.
+* **`NuitsMaximumParSemaine`** (SOFT, 5 000 par nuit excédentaire) — un **volume** hebdomadaire,
+  à distinguer de `NuitsConsecutivesMax` qui borne un **enchaînement**.
+* Motif SC-06 `NUITS_HEBDOMADAIRES_DEPASSEES` (ERROR, éliminatoire). Aucun motif pour le
+  sous-emploi : un salarié en déficit est un **bon** candidat, et le delta lui serait toujours
+  favorable.
+
+**Le premier jet produisait l'inverse de l'effet voulu.** Regroupé sur les seuls créneaux
+existants, il a conduit le solveur à confier les six créneaux de SC-03 au poste virtuel : un
+salarié sans créneau ne produisait aucun tuple, donc aucune pénalité, tandis que lui en confier
+un seul déclenchait le déficit entier. Le second volet
+(`LEGAL_SOFT_SEMAINE_SANS_AFFECTATION`) rétablit l'ordre des coûts en pénalisant les semaines
+complètes sans aucune affectation. Un test garde explicitement cet ordre.
+
+**Écart de score : SC-03 passe de `0hard/-960soft` à `0hard/-66960soft`.** Seule variation de
+tout le chantier, et elle est voulue : deux salariés à 35 h hebdomadaires pour 48 h de travail
+disponible, soit 11 h de déficit chacun — inévitable, et désormais visible. Le garde-fou de score
+est mis à jour, complété d'une assertion sur les affectations : le poste virtuel doit rester à
+0 h.
+
+510 tests, 0 échec.
