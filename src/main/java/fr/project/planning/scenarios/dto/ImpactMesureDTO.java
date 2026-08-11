@@ -14,7 +14,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
  * <p><strong>Un dépassement signalé n'est pas nécessairement une règle appliquée.</strong> Ce
  * bloc décrit des conséquences ; il ne préjuge pas de ce que le moteur sanctionne. À ce jour,
  * {@code heuresJour} est mesuré mais son plafond individuel n'est encore rattaché à aucune
- * contrainte (lot S7). Voir §6.3 de {@code 92_cadrage_scenario_sc-06.md}.</p>
+ * contrainte (lot S7). Voir §6.3 de {@code 92_CADRAGE_SCENARIO_SC-06.md}.</p>
  */
 @JsonInclude(JsonInclude.Include.ALWAYS)
 public class ImpactMesureDTO {

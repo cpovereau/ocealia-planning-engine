@@ -3,7 +3,7 @@
 > **Statut** : cadrage d'analyse, 2026-08-10. Les arbitrages de la §4 sont **tranchés**.
 > Le découpage de la §9 reste à valider. Ce document sert à découper le chantier, pas à le réaliser.
 >
-> Ce document ne modifie ni `50_ScenarioContract.md`, ni le code. L'inscription de SC-06 au
+> Ce document ne modifie ni `50_SCENARIO_CONTRACT.md`, ni le code. L'inscription de SC-06 au
 > contrat fonctionnel est une décision d'architecture, portée par le lot **S4**.
 
 ---
@@ -182,7 +182,7 @@ Une solution violant le repos quotidien ou le maximum hebdomadaire est **restitu
 `conforme: false`, classée en dernier**, avec le motif précis.
 
 Motif : l'invariant du contrat — *« le moteur ne refuse pas : il rend visible l'impossible »*
-(`50_ScenarioContract.md` §5). Écarter ces solutions rendrait inexplicable la disparition d'une
+(`50_SCENARIO_CONTRACT.md` §5). Écarter ces solutions rendrait inexplicable la disparition d'une
 personne, et renverrait une liste vide sans raison le jour où aucune solution conforme n'existe.
 Les restituer en queue de classement satisfait l'invariant sans jamais recommander l'illégal.
 
@@ -216,7 +216,7 @@ du contrat.
 
 **`travailDeNuit` et `travailleJourFerie` restent à la racine du salarié.** Ils y sont déjà
 exploités par deux contraintes ; les déplacer serait une rupture de contrat pour SC-03 sans
-contrepartie. La cible §6.3 de `92_cadrage_donnees_amont_scenarios.md` reste valide comme
+contrepartie. La cible §6.3 de `92_CADRAGE_DONNEES_AMONT_SCENARIOS.md` reste valide comme
 trajectoire, elle n'est pas ouverte par SC-06.
 
 ### 4.7 Tranché — sémantique de l'absence de limite
@@ -351,7 +351,7 @@ Aucune suppression, aucun renommage, aucun changement de sémantique sur l'exist
 4. **Valeurs par défaut toujours transmises** : `heuresMoyennesParJour`,
    `heuresHebdomadairesHabituelles`, `joursTravaillesParSemaine` (5 à défaut).
 5. **Identifiants du besoin sous préfixe dédié** (`BES-00X`), uniques sur l'ensemble du scénario —
-   convention déjà arbitrée (`92_cadrage_donnees_amont_scenarios.md` §6.7).
+   convention déjà arbitrée (`92_CADRAGE_DONNEES_AMONT_SCENARIOS.md` §6.7).
 6. **Filtrage amont** des salariés hors contrat à la date visée.
 
 ---
@@ -508,7 +508,7 @@ est partagé. Voir **§9.2**.
 
 Statuts établis par recherche des **appels réels** aux accesseurs dans `src/main/java`, en
 écartant les *getters*, les mappers et les tests — même méthode qu'en annexe de
-`92_cadrage_donnees_amont_scenarios.md`.
+`92_CADRAGE_DONNEES_AMONT_SCENARIOS.md`.
 
 ### 8.1 Les huit contraintes générales
 
@@ -541,7 +541,7 @@ champs qui n'y figuraient pas dans la cible sont bien attendus par le métier. I
 | Impacts avant/après | ~~ABSENT~~ → `candidats[].impacts[]`, `Sc06ImpactFactory` | ✅ S5 |
 | Endpoint SC-06 | ~~ABSENT~~ → `POST /scenarios/sc06/solve` | ✅ S4 |
 | FileAdapter SC-06 | ~~ABSENT~~ → `Sc06FileScenarioExecutionFacade` | ✅ S6 |
-| Inscription au contrat série 50 | ~~ABSENT~~ → `50_ScenarioContract.md` §4, `50_ScenarioResponseContract.md` §6, OpenAPI, schémas JSON | ✅ S6 |
+| Inscription au contrat série 50 | ~~ABSENT~~ → `50_SCENARIO_CONTRACT.md` §4, `50_SCENARIO_RESPONSE_CONTRACT.md` §6, OpenAPI, schémas JSON | ✅ S6 |
 
 **S1 correspond au lot L8** du cadrage général (« Planning existant + créneaux figés »), jamais
 réalisé, et **S2 au lot L4** (« Bloc `contrat` salarié »). L'investissement ne sert donc pas que

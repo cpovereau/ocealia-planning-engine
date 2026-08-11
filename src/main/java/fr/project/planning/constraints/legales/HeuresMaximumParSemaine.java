@@ -24,7 +24,7 @@ import java.time.temporal.TemporalAdjusters;
  *
  * <h3>Définition de la semaine</h3>
  * <p><strong>Lundi → dimanche calendaire</strong>, arbitrage tranché au §4.8 de
- * {@code 92_cadrage_scenario_sc-06.md}. Une semaine est identifiée par la date de son lundi.</p>
+ * {@code 92_CADRAGE_SCENARIO_SC-06.md}. Une semaine est identifiée par la date de son lundi.</p>
  *
  * <p>Un créneau est rattaché <strong>en entier</strong> à la semaine de sa {@code date}, y compris
  * lorsqu'il franchit minuit du dimanche au lundi. Sa durée n'est jamais scindée entre deux
@@ -35,7 +35,7 @@ import java.time.temporal.TemporalAdjusters;
  * <p>La règle mesure ce qu'elle reçoit. Si l'appelant ne transmet qu'une fraction de semaine, le
  * total est mécaniquement sous-évalué et aucun dépassement n'est détecté. C'est la raison pour
  * laquelle SC-06 exige une semaine pleine pour toutes les ressources candidates, et le vérifie —
- * voir {@code 92_cadrage_scenario_sc-06.md} §4.8 et §5.3.</p>
+ * voir {@code 92_CADRAGE_SCENARIO_SC-06.md} §4.8 et §5.3.</p>
  *
  * <h3>Périmètre du calcul</h3>
  * <p>Identique aux autres contraintes individuelles : segments de pause exclus, activités dont

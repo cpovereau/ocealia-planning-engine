@@ -8,7 +8,7 @@ Il complète la documentation technique existante.
 Il ne remplace pas le plan de migration.
 
 Document de référence principal :
-- `90_plan_migration_temporaire_windev_vers_moteur.md`
+- `90_PLAN_MIGRATION_TEMPORAIRE_WINDEV_VERS_MOTEUR.md`
 
 ---
 

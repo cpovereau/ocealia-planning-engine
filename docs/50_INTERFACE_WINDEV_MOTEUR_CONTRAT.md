@@ -4,8 +4,8 @@ Ce document décrit le **contrat d'appel entre WinDev et le moteur de planificat
 structure globale de la requête et de la réponse, règles générales, normalisation des champs,
 politique sur les champs inconnus, garanties du contrat et jalons d'évolution.
 
-Pour le détail champ par champ, voir `50_interface_windev_moteur_contrat_detail.md`.
-Pour les exemples JSON complets, voir `50_interface_windev_moteur_exemples.md`.
+Pour le détail champ par champ, voir `50_INTERFACE_WINDEV_MOTEUR_CONTRAT_DETAIL.md`.
+Pour les exemples JSON complets, voir `50_INTERFACE_WINDEV_MOTEUR_EXEMPLES.md`.
 
 ---
 
@@ -118,7 +118,7 @@ créneaux existants / créneaux imposés / créneaux libres
 besoins par lieu / besoins par activité / besoins par période
 ```
 
-Le plan de migration détaillé est dans `90_plan_migration_temporaire_windev_vers_moteur.md`.
+Le plan de migration détaillé est dans `90_PLAN_MIGRATION_TEMPORAIRE_WINDEV_VERS_MOTEUR.md`.
 
 ---
 
@@ -148,8 +148,8 @@ Description des blocs :
 | `solutionSummary`| Oui              | Résumé synthétique chiffré                      |
 | `diagnostics`    | Oui              | Alertes et diagnostics d'affectation            |
 
-Le contrat de sortie fonctionnel complet est documenté dans `50_ScenarioResponseContract.md`.
-Le détail champ par champ de la réponse est dans `50_interface_windev_moteur_contrat_detail.md`.
+Le contrat de sortie fonctionnel complet est documenté dans `50_SCENARIO_RESPONSE_CONTRACT.md`.
+Le détail champ par champ de la réponse est dans `50_INTERFACE_WINDEV_MOTEUR_CONTRAT_DETAIL.md`.
 
 ---
 
@@ -214,7 +214,7 @@ L'API garantit les propriétés suivantes :
 - déterminisme du résultat observable pour une même requête.
 
 Ces garanties sont validées automatiquement par la batterie de tests du moteur
-(voir `50_interface_windev_moteur_tests.md`).
+(voir `50_INTERFACE_WINDEV_MOTEUR_TESTS.md`).
 
 ---
 
@@ -241,7 +241,7 @@ Le flux typique d'utilisation est :
 | J4    | Gestion des besoins (groupeBesoinId, blocJourId) | Terminé  |
 | J5    | Scénarios avancés SC-02, SC-03, SC-04            | En cours |
 
-Le suivi d'avancement détaillé est dans `90_suivi_developpement_moteur.md`.
+Le suivi d'avancement détaillé est dans `90_SUIVI_DEVELOPPEMENT_MOTEUR.md`.
 
 ---
 

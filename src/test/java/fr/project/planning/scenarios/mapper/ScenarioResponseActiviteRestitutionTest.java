@@ -23,7 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 /**
  * Restitution du code activité dans la réponse scénario.
  *
- * Règle contractuelle (§ `50_ScenarioResponseContract.md` — `planning.jours[].creneaux[].activite`
+ * Règle contractuelle (§ `50_SCENARIO_RESPONSE_CONTRACT.md` — `planning.jours[].creneaux[].activite`
  * est décrit comme « Code activité ») : {@code codeActiviteId} en priorité, {@code activite}
  * (libellé déprécié) en repli.
  *

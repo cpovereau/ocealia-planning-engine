@@ -7,8 +7,8 @@ Il décrit :
 - la structure et les types de chaque champ,
 - les points d'attention contractuels.
 
-Pour les exemples JSON complets, voir `50_interface_windev_moteur_exemples.md`.
-Pour la description de la requête champ par champ, voir `50_interface_windev_moteur_contrat_detail.md`.
+Pour les exemples JSON complets, voir `50_INTERFACE_WINDEV_MOTEUR_EXEMPLES.md`.
+Pour la description de la requête champ par champ, voir `50_INTERFACE_WINDEV_MOTEUR_CONTRAT_DETAIL.md`.
 
 ---
 
@@ -158,7 +158,7 @@ Exemple :
 > le préfixe `SC01-` et ne correspond à aucune ligne en base : WinDev reste seul décideur de la
 > clé primaire attribuée à la création. Le moteur ne fabrique jamais d'`Id_Journee`. Décision
 > documentée dans `20_DECISIONS_CONCEPTION_OPTAPLANNER.md`, convention d'entrée dans
-> `50_ScenarioContract.md` §3.5.
+> `50_SCENARIO_CONTRACT.md` §3.5.
 
 > **Champ `lieu`** : restitué tel que reçu, sans normalisation ni résolution de libellé. Un créneau
 > généré par le moteur (SC-01) sort avec `lieu: null` — le moteur n'attribue pas de lieu. Le champ

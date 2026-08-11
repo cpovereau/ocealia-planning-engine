@@ -4,7 +4,7 @@
 > **Périmètre** : SC-03 uniquement
 > **Nature** : référence pour les intégrateurs — statut de chaque champ
 >
-> S'appuie sur : `92_audit_contrat_entree.md` (constat), phases 1–4 (instrumentation et signalements).
+> S'appuie sur : `92_AUDIT_CONTRAT_ENTREE.md` (constat), phases 1–4 (instrumentation et signalements).
 > Produit dans le cadre de la **Phase 5** du chantier de stabilisation du contrat d'entrée.
 
 ---

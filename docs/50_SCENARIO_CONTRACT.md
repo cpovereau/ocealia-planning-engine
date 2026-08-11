@@ -1,4 +1,4 @@
-# 📄 ScenarioContract.md
+# 📄 50_SCENARIO_CONTRACT.md
 
 **Contrat de scénarios — Interface WebDev ↔ Moteur de planification**
 
@@ -423,7 +423,7 @@ mais avec une **lecture comparative ciblée**.
 
 ### 🟠 SC-06 — Désignation de la ressource la plus à même de couvrir un besoin
 
-> Inscrit au contrat le 2026-08-10. Cadrage complet : `92_cadrage_scenario_sc-06.md`.
+> Inscrit au contrat le 2026-08-10. Cadrage complet : `92_CADRAGE_SCENARIO_SC-06.md`.
 
 #### 🎯 Intention métier
 
@@ -489,7 +489,7 @@ Le nombre de solutions restituées **n'est pas paramétrable** : trois.
 
 #### Restitution attendue
 
-Un bloc `candidats[]` — voir `50_ScenarioResponseContract.md` §6 — portant au plus trois
+Un bloc `candidats[]` — voir `50_SCENARIO_RESPONSE_CONTRACT.md` §6 — portant au plus trois
 solutions classées, chacune avec :
 
 * **qui** : `affectations[]` — identité, activité, lieu ;

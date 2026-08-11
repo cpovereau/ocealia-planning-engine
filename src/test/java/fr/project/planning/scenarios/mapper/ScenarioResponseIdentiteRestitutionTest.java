@@ -23,7 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 /**
  * Restitution de l'identifiant et du lieu d'un créneau.
  *
- * <p>Règle contractuelle (`50_ScenarioResponseContract.md` §2.1) : toute donnée reçue
+ * <p>Règle contractuelle (`50_SCENARIO_RESPONSE_CONTRACT.md` §2.1) : toute donnée reçue
  * permettant d'identifier ou de situer un créneau est restituée <b>à l'identique</b>.
  * L'{@code id} est la clé de réintégration côté appelant ; sans lui, le planning ne peut
  * être rattaché aux lignes d'entrée que par triangulation.

@@ -13,7 +13,7 @@ import java.time.LocalTime;
  * <p>Pour un créneau généré par le moteur (SC-01), {@code id} porte le préfixe {@code SC01-}
  * et ne désigne aucune ligne en base, et {@code lieu} vaut {@code null}.
  *
- * @see <a href="file:../../../../../../../docs/50_ScenarioResponseContract.md">50_ScenarioResponseContract.md §2.1</a>
+ * @see <a href="file:../../../../../../../docs/50_SCENARIO_RESPONSE_CONTRACT.md">50_SCENARIO_RESPONSE_CONTRACT.md §2.1</a>
  */
 public class CreneauPlanningDTO {
 

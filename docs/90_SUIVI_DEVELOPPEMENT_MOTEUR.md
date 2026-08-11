@@ -101,7 +101,7 @@ Fonctionnalités incluses :
 * mapping de la solution via `ScenarioResponseMapper`
 * planning détaillé par créneau
 * restitution à l'identique de l'`id` et du `lieu` reçus (lot L2, 2026-07-31) — clé de
-  réintégration côté appelant, voir `92_cadrage_donnees_amont_scenarios.md` §6.7
+  réintégration côté appelant, voir `92_CADRAGE_DONNEES_AMONT_SCENARIOS.md` §6.7
 * gestion explicite des créneaux non couverts (`A_AFFECTER`)
 * résumé de solution
 * métriques par ressource et globales
@@ -217,7 +217,7 @@ Le paramétrage du scoring est désormais centralisé et stable, permettant d’
 > **Aucune contrainte n'est plus dans cet état** : les six identifiées ont été remises en service
 > par les lots S7.1 à S7.6. Le marqueur est conservé — c'est un état que la cartographie doit
 > pouvoir décrire, et ne pas savoir le nommer est précisément ce qui a permis à l'écart de durer.
-> Constat et journal des lots : `92_cadrage_socle_reglementaire.md`.
+> Constat et journal des lots : `92_CADRAGE_SOCLE_REGLEMENTAIRE.md`.
 
 ---
 
@@ -350,7 +350,7 @@ Aligner le contrat d’entrée du moteur avec les structures réelles du logicie
 * contrat de travail — bloc `contrat` livré au lot S2 (2026-08-10) : durée journalière moyenne,
   durée hebdomadaire habituelle, jours travaillés par semaine (défaut 5), salarié annualisé.
   Transporté et mappé vers `ContratSalarie` ; **aucune contrainte ne le lit à ce stade**.
-  Voir `92_cadrage_scenario_sc-06.md` §4.6.
+  Voir `92_CADRAGE_SCENARIO_SC-06.md` §4.6.
 * contraintes réglementaires
 
 ### Structuration des besoins
@@ -381,15 +381,15 @@ mesuré alors que `heuresMaximumParJour` n'est pas encore individualisé (lot S7
 
 Accessible par **les deux canaux** (lot S6) : `POST /scenarios/sc06/solve` et FileAdapter
 (`scenarioType: SC-06`), qui produisent le même résultat — vérifié par test. SC-06 est inscrit au
-contrat série 50 : `50_ScenarioContract.md` §4, `50_ScenarioResponseContract.md` §6, OpenAPI et
+contrat série 50 : `50_SCENARIO_CONTRACT.md` §4, `50_SCENARIO_RESPONSE_CONTRACT.md` §6, OpenAPI et
 schémas JSON. Notice d'intégration : `Windev_part/SC-06/sc_06_notice_integration.md`.
 
-**Les lots S1 à S6 de SC-06 sont livrés.** Voir `92_cadrage_scenario_sc-06.md`.
+**Les lots S1 à S6 de SC-06 sont livrés.** Voir `92_CADRAGE_SCENARIO_SC-06.md`.
 
 Le lot S7 initialement prévu — activer les trois dernières contraintes individuelles — s'est
 révélé être le sommet d'un écart plus large : **six contraintes enregistrées ne se déclenchent
 jamais** pour un client conforme au contrat. Ce chantier fait l'objet de son propre cadrage et de
-son propre découpage : `92_cadrage_socle_reglementaire.md`.
+son propre découpage : `92_CADRAGE_SOCLE_REGLEMENTAIRE.md`.
 
 ### Socle réglementaire — lot S7.0 (2026-08-10)
 
@@ -408,7 +408,7 @@ c'est l'objet du lot : rendre mesurables les écarts des lots suivants.
   contrainte consiste à déplacer une assertion d'un bloc à l'autre.
 * `ReferentielComptabiliteActivite.getByCode(null)` rendu null-safe — son comportement dépendait
   jusqu'ici de l'implémentation de `Map` (silencieux en production, NPE en test).
-* Contrat : `50_ScenarioContract.md` §3.7, schéma JSON et OpenAPI.
+* Contrat : `50_SCENARIO_CONTRACT.md` §3.7, schéma JSON et OpenAPI.
 
 434 tests, 0 échec.
 
@@ -610,7 +610,7 @@ La définition fonctionnelle du scoring est dans `40_STRATEGIE_DE_SCORING.md`.
 ## Feuille de route — Interface WinDev / moteur
 
 Suivi des phases de stabilisation du contrat d'entrée.
-Le contrat détaillé champ par champ est dans `50_interface_windev_moteur_contrat_detail.md`.
+Le contrat détaillé champ par champ est dans `50_INTERFACE_WINDEV_MOTEUR_CONTRAT_DETAIL.md`.
 
 | Phase | Objectif                                             | Statut      |
 | ----- | ---------------------------------------------------- | ----------- |
@@ -656,7 +656,7 @@ et exposée via l’API.
 
 Voir :
 - 20_DECISIONS_CONCEPTION_OPTAPLANNER.md
-- 60_interface_windev_moteur_plan_documentaire.md
+- 50_SCENARIO_RESPONSE_CONTRACT.md
 
 ### Restitution du solveur
 
@@ -664,7 +664,8 @@ La restitution du solveur est désormais implémentée
 et expose les blocs principaux du contrat API.
 
 Voir :
-- 60_interface_windev_moteur_plan_documentaire.md
+- 50_SCENARIO_RESPONSE_CONTRACT.md
+- 50_INTERFACE_WINDEV_MOTEUR_CONTRAT.md
 
 ---
 
@@ -875,7 +876,7 @@ comportement d'aucune contrainte.
   l'expression réapparaît en ligne. Sans liste d'exemptions.
 
 **Deux dormances d'une autre famille, repérées en clôture.** Elles relèvent d'un lot distinct
-(voir `92_cadrage_socle_reglementaire.md` §6.1) :
+(voir `92_CADRAGE_SOCLE_REGLEMENTAIRE.md` §6.1) :
 
 1. **La valorisation du jour férié ne fonctionne pas.** `RegulatoryParameters.neutre()` porte une
    liste `joursFeries` vide et les trois services de préparation l'utilisent : `minutesFerie` vaut
@@ -1133,3 +1134,78 @@ HARD sur le calendrier. `AssignmentDiagnosticsFactory` lisait encore `isJourFeri
 seul alias d'entrée, jamais sérialisé — et exigeait un `saucuneRessourceDansDataset` inexistant.
 Avec `additionalProperties: false`, un client validant sa réponse contre le schéma publié la
 voyait rejetée. Un test confronte désormais les noms dans les deux sens.
+
+### Documentation — lot S8.5 : un nom, un seul, et un test qui le tient (2026-08-11)
+
+**Aucun changement de code métier.** 612 tests, 0 échec (609 avant, soit 3 tests ajoutés). Aucun
+écart de score : ce lot ne touche ni contrainte, ni mapper, ni DTO.
+
+**37 documents renommés** en `NN_SUJET_DU_DOCUMENT` majuscules, accents retirés, et **203
+citations réécrites** dans le corpus et le code.
+
+#### Ce que la casse cachait
+
+Le dépôt est configuré `core.ignorecase=true`. La casse d'un nom de fichier peut alors diverger
+entre le disque et l'index git **sans que rien ne le signale**. C'est arrivé à
+`90_SUIVI_DEVELOPPEMENT_MOTEUR.md` : git le suivait en minuscules pendant que le disque le portait
+en majuscules, et treize citations en majuscules pointaient donc dans le vide pour qui clone sur un
+système sensible à la casse. Un `git mv` ordinaire ne corrige pas cela — il faut passer par un nom
+intermédiaire pour forcer l'index.
+
+Trois documents portaient des accents, échappés en octal par git (`10_R\303\251f\303\251rentiel`)
+et rendus fragiles selon l'outil qui les lit.
+
+#### Les liens morts que le nettoyage a révélés
+
+Renommer a obligé à confronter chaque citation à la réalité. Dix-neuf étaient déjà fausses **avant**
+ce lot :
+
+* des citations **sans préfixe de série** — `WORKMETRICS`, `DATASET_BUILDER`, `PLANNING_CONTEXT`,
+  `ScenarioResponseContract` (sans leur préfixe de série) — qui ne désignaient aucun fichier ;
+* `30_UML_SOLVEUR_SIMPLIFIE`, cité par l'index et par le dataset builder, quand le fichier
+  s'est toujours appelé `SOLVER` ;
+* `HORIZON_TEMPOREL_ET_REGLEMENTAIRE`, cité deux fois, qui n'a jamais existé — le sujet vit
+  dans `20_PLANNING_CONTEXT.md` ;
+* `60_interface_windev_moteur_plan_documentaire`, cité quatre fois avec des renvois à ses §7 et
+  §8.7, et **jamais écrit**. Les sections sont irrécupérables : les renvois le disent désormais
+  plutôt que de faire croire à une source.
+
+#### L'index était incomplet d'un quart
+
+Onze documents existaient sans figurer nulle part à l'index — dont toute la série 92 des cadrages
+et audits, `92_CONTRAT_ENTREE_SC03.md` (la référence intégrateur), et le contexte agent. La série
+92 n'avait même pas de rubrique : elle était rangée sous « 90 — Suivi de développement », ce qui
+invite précisément à la confusion que la séparation 90/92 cherche à éviter.
+
+L'index gagne trois rubriques — 91, 92, contexte agent — et une note explicite : la série 92
+contient des **instantanés datés**, qui ne font pas autorité sur le code actuel.
+
+#### Le garde-fou
+
+`CorpusDocumentaireTest` verrouille trois choses : la convention de nommage, l'absence de lien
+mort dans le corpus **et dans le code**, la complétude de l'index. C'est lui qui a trouvé les dix-
+neuf liens morts ci-dessus — ils étaient invisibles à la lecture.
+
+Il inaugure un niveau **V0** dans `60_TESTING_STRATEGY_ENGINE.md` : des tests qui ne testent pas le
+moteur mais ce qui l'entoure, et qui existent tous parce qu'une dérive est déjà survenue sans
+qu'on la voie.
+
+#### Une décision d'architecture remise d'aplomb
+
+`20_DECISIONS_CONCEPTION_OPTAPLANNER.md` posait que « la mesure temporelle de la nuit reste globale
+et commune ». Le lot S8.1 avait tranché l'inverse sur arbitrage métier — un veilleur et un salarié
+de nuit occasionnel ne relèvent pas des mêmes horaires — sans que la décision soit mise à jour. Elle
+l'est, avec ce qui en reste vrai et le contrepoids posé en S8.2.
+
+#### Périmètre — ce qui n'a pas été renommé
+
+Deux exclusions assumées, écrites dans l'index et dans le test :
+
+* les **artefacts machine** (`*.schema.json`, `*.yaml`) — leur nom est une référence externe,
+  qu'un intégrateur peut avoir câblée ;
+* le sous-répertoire **`Windev_part/`** — partagé avec l'équipe WinDev. On ne renomme pas
+  unilatéralement les fichiers d'une autre équipe.
+
+> **Convention d'écriture** : un document *disparu* se cite **sans son extension**. Lui donner
+> son extension alors qu'il n'existe pas ferait échouer `CorpusDocumentaireTest`, qui ne peut pas
+> distinguer une citation d'un exemple.

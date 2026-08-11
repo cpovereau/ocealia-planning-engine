@@ -8,7 +8,7 @@
 > remises en service, les deux contraintes manquantes sont écrites, le code mort et la règle
 > dupliquée sont supprimés, la valorisation du jour férié fonctionne (S7.9a) et le repos
 > hebdomadaire est en service (S7.9b).
-> **Contrat concerné** — `50_ScenarioContract.md` §3.7 · **Suivi** — `90_SUIVI_DEVELOPPEMENT_MOTEUR.md`
+> **Contrat concerné** — `50_SCENARIO_CONTRACT.md` §3.7 · **Suivi** — `90_SUIVI_DEVELOPPEMENT_MOTEUR.md`
 
 ---
 
@@ -1130,7 +1130,7 @@ demandée est le plus parlant à restituer. Elle n'écarte plus personne.
 
 #### Ce que le contrat annonçait à tort
 
-`activitesCompatibles` était marqué **SUPPORTÉ** dans `92_contrat_entree_sc03.md`, ce qu'un
+`activitesCompatibles` était marqué **SUPPORTÉ** dans `92_CONTRAT_ENTREE_SC03.md`, ce qu'un
 intégrateur lit « le moteur respecte ma déclaration ». En SC-03, il n'alimente qu'un compteur de
 diagnostic et n'écarte personne : un salarié déclarant `["ACT-ADMIN"]` peut recevoir un créneau
 `ACT-SOIN` sans point HARD ni pénalité SOFT.
@@ -1145,7 +1145,7 @@ contraintes personnelles. La même correction s'applique à `activitesAutorisees
 
 #### Le piège à désamorcer avant ce lot
 
-`92_suivi_stabilisation_contrat_entree.md` (cas B) note que le matching doit porter
+`92_SUIVI_STABILISATION_CONTRAT_ENTREE.md` (cas B) note que le matching doit porter
 **exclusivement sur `codeActiviteId`**, jamais sur des libellés. Tant que la règle est un compteur
 de diagnostic, un libellé envoyé à la place d'un code produit un faux positif silencieux. **En
 HARD, le même écart rend tout créneau inaffectable** : chaque salarié déclare des libellés, aucun

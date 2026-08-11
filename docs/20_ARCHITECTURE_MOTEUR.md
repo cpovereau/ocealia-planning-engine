@@ -9,10 +9,10 @@ Ils servent de référence rapide pour comprendre :
 
 Ces diagrammes doivent rester synchronisés avec :
 
-- `DECISIONS_CONCEPTION_OPTAPLANNER.md`
-- `DATASET_BUILDER.md`
-- `PLANNING_CONTEXT.md`
-- `ScenarioResponseContract.md`
+- `20_DECISIONS_CONCEPTION_OPTAPLANNER.md`
+- `20_DATASET_BUILDER.md`
+- `20_PLANNING_CONTEXT.md`
+- `50_SCENARIO_RESPONSE_CONTRACT.md`
 
 ---
 

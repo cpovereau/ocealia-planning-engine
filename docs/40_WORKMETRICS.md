@@ -560,8 +560,8 @@ Cette séparation garantit l’absence de confusion entre :
 
 WorkMetrics est référencé par :
 
-* `UML_Optaplanner.md`
-* `STRATEGIE_SCORING.md`
-* `HORIZON_TEMPOREL_ET_REGLEMENTAIRE.md`
+* `30_UML_OPTAPLANNER.md`
+* `40_STRATEGIE_DE_SCORING.md`
+* `20_PLANNING_CONTEXT.md`
 
 Il constitue la **référence unique** pour les indicateurs du moteur.

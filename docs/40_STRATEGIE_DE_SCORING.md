@@ -529,7 +529,7 @@ Ce document complète :
 
 * le diagramme conceptuel,
 * le modèle UML,
-* `HORIZON_TEMPOREL_ET_REGLEMENTAIRE.md`,
+* `20_PLANNING_CONTEXT.md`,
 * les décisions de conception.
 
 Il sert de référence pour toute évolution des règles de scoring.

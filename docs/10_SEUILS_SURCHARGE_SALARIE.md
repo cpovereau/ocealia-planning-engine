@@ -12,8 +12,8 @@ Il précise :
 Il complète directement :
 
 * le référentiel métier (ZZ_T),
-* `REGLES_COMBINATOIRES.md`,
-* `WORKMETRICS.md`.
+* `40_REGLES_COMBINATOIRES.md`,
+* `40_WORKMETRICS.md`.
 
 ---
 

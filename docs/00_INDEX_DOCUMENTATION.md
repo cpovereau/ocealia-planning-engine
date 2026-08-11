@@ -29,7 +29,7 @@ end
 subgraph S30["⚙️ 30 — Modèle de résolution"]
   D1[Modèle conceptuel]
   D2[UML OptaPlanner]
-  D3[UML Solveur simplifié]
+  D3[UML solveur simplifié]
 end
 
 subgraph S40["📊 40 — Contraintes et scoring"]
@@ -39,8 +39,8 @@ subgraph S40["📊 40 — Contraintes et scoring"]
 end
 
 subgraph S50["🔌 50 — Contrats et interface"]
-  F1[ScenarioContract]
-  F2[ScenarioResponseContract]
+  F1[Contrat de scénario]
+  F2[Contrat de réponse]
   F3[Interface WinDev ↔ Moteur]
 end
 
@@ -48,10 +48,18 @@ subgraph S60["🧪 60 — Tests"]
   G1[Stratégie de test]
 end
 
-subgraph S90["📍 90 — Suivi et historique"]
+subgraph S90["📍 90 — État du moteur"]
   H1[Suivi développement]
-  H2[Journal développement]
-  H3[Archives décisions]
+end
+
+subgraph S91["📜 91 — Journal"]
+  I1[Journal développement]
+end
+
+subgraph S92["🗂 92 — Cadrages et audits"]
+  J1[Cadrages de chantier]
+  J2[Audits et références]
+  J3[Archives décisions]
 end
 
 A --> B1
@@ -61,6 +69,8 @@ D1 --> E2
 E2 --> F1
 F1 --> G1
 G1 --> H1
+H1 --> I1
+I1 --> J1
 ```
 ---
 
@@ -155,8 +165,8 @@ des règles dans le moteur.
 Les documents de la série **50** définissent les contrats d’échange entre le moteur et ses appelants.
 
 Deux sous-ensembles coexistent :
-- les **contrats fonctionnels stables** (`50_ScenarioContract*`, `50_ScenarioResponseContract*`) : référence normative indépendante de l’intégrateur
-- les **documents d’intégration WinDev** (`50_interface_windev_moteur*`) : implémentation concrète, exemples, jalons de migration.
+- les **contrats fonctionnels stables** (`50_SCENARIO_*`) : référence normative indépendante de l’intégrateur
+- les **documents d’intégration WinDev** (`50_INTERFACE_WINDEV_MOTEUR*`, `50_ECHANGE_WINDEV_MOTEUR_FICHIER_API.md`) : implémentation concrète, exemples, jalons de migration.
 
 Ces documents ne contiennent jamais de règles métier ni de décisions d’architecture.
 
@@ -195,6 +205,34 @@ Les documents de la série **91** conservent la mémoire du projet :
 - décisions prises pendant l’implémentation.
 
 Ils ne constituent pas la source de vérité actuelle du moteur.
+
+---
+
+## Série 92 — Cadrages, audits et archives
+
+Les documents de la série **92** portent la mémoire des chantiers : ce qui a été constaté avant
+d’agir, ce qui a été arbitré, et pourquoi.
+
+Plusieurs sont des **instantanés datés**. Ils décrivent un état passé et ne font pas autorité sur
+le code actuel — chacun le signale en tête de document. Les confondre avec l’état réel du moteur
+est l’erreur de lecture que cette série doit éviter : pour l’état réel, lire la série **90**.
+
+---
+
+## Convention de nommage
+
+Les documents de ce dossier portent un nom **en majuscules, sans accents**, préfixé du numéro de
+série : `NN_SUJET_DU_DOCUMENT suivi de .md`.
+
+Cette règle n’est pas cosmétique. Le dépôt est configuré `core.ignorecase=true` : la casse d’un
+nom de fichier peut diverger entre le disque et l’index git **sans que rien ne le signale**, et
+un lien correct sur un poste devient mort sur un autre. C’est arrivé à
+`90_SUIVI_DEVELOPPEMENT_MOTEUR.md`, suivi en minuscules par git pendant que le disque le portait
+en majuscules. Les accents posaient le même problème d’encodage selon les outils.
+
+Un test verrouille la convention et l’index — voir `60_TESTING_STRATEGY_ENGINE.md`. Deux
+exceptions assumées : les artefacts machine (`*.schema.json`, `*.yaml`), dont le nom est une
+référence externe, et le sous-répertoire `Windev_part/`, partagé avec une autre équipe.
 
 ---
 
@@ -237,7 +275,7 @@ Les document '20_' donnent les principes et invariants de l'information.
 | `30_MODELE_CONCEPTUEL.md`     | Modèle conceptuel du moteur       |
 | `30_DIAGRAMME_CONCEPTUEL.md`  | Diagrammes conceptuels du domaine |
 | `30_UML_OPTAPLANNER.md`       | UML du modèle OptaPlanner         |
-| `30_UML_SOLVEUR_SIMPLIFIE.md` | Vue simplifiée du solveur         |
+| `30_UML_SOLVER_SIMPLIFIE.md` | Vue simplifiée du solveur         |
 
 ---
 
@@ -261,8 +299,8 @@ Le moteur de planification s’appuie sur trois contrats principaux :
 Ces contrats constituent l’interface officielle entre le logiciel de planning
 et le moteur de planification.
 
-> **Note de lecture** : Les documents `50_ScenarioContract*` définissent le contrat
-> fonctionnel stable (référence normative). Les documents `50_interface_windev_moteur*`
+> **Note de lecture** : Les documents `50_SCENARIO_*` définissent le contrat
+> fonctionnel stable (référence normative). Les documents `50_INTERFACE_WINDEV_MOTEUR*`
 > décrivent l’implémentation concrète de ce contrat entre WinDev et le moteur,
 > y compris les phases de migration et les exemples d’intégration.
 
@@ -270,9 +308,9 @@ et le moteur de planification.
 
 | Document                            | Description                                |
 | ----------------------------------- | ------------------------------------------ |
-| `50_ScenarioContract.md`            | Contrat fonctionnel d’entrée du moteur     |
-| `50_ScenarioTechnicalContract.md`   | Spécification technique du contrat         |
-| `50_ScenarioResponseContract.md`    | Contrat de sortie du moteur                |
+| `50_SCENARIO_CONTRACT.md`            | Contrat fonctionnel d’entrée du moteur     |
+| `50_SCENARIO_TECHNICAL_CONTRACT.md`   | Spécification technique du contrat         |
+| `50_SCENARIO_RESPONSE_CONTRACT.md`    | Contrat de sortie du moteur                |
 | `50_ScenarioContract.schema.json`   | Schéma JSON du contrat d’entrée            |
 | `50_ScenarioResponse.schema.json`   | Schéma JSON de la réponse                  |
 
@@ -280,11 +318,13 @@ et le moteur de planification.
 
 | Document                                      | Description                                              |
 | --------------------------------------------- | -------------------------------------------------------- |
-| `50_interface_windev_moteur.md`               | Vue d’ensemble, chaîne de traitement, principes          |
-| `50_interface_windev_moteur_contrat.md`        | Endpoint, structure requête/réponse, règles, jalons      |
-| `50_interface_windev_moteur_contrat_detail.md` | Détail champ par champ, contraintes de validation        |
-| `50_interface_windev_moteur_tests.md`          | Batterie de tests automatisés de l’interface             |
-| `50_interface_windev_moteur_exemples.md`       | Exemples curl, JSON requête, JSON réponse complet        |
+| `50_INTERFACE_WINDEV_MOTEUR.md`               | Vue d’ensemble, chaîne de traitement, principes          |
+| `50_INTERFACE_WINDEV_MOTEUR_CONTRAT.md`        | Endpoint, structure requête/réponse, règles, jalons      |
+| `50_INTERFACE_WINDEV_MOTEUR_CONTRAT_DETAIL.md` | Détail champ par champ, contraintes de validation        |
+| `50_INTERFACE_WINDEV_MOTEUR_TESTS.md`          | Batterie de tests automatisés de l’interface             |
+| `50_INTERFACE_WINDEV_MOTEUR_EXEMPLES.md`       | Exemples curl, JSON requête, JSON réponse complet        |
+| `50_ECHANGE_WINDEV_MOTEUR_FICHIER_API.md`      | Échange par fichier — cadrage du mode d’intégration alternatif à l’API |
+| `50_openapi_windev_moteur_v_1.yaml`            | Spécification OpenAPI de l’API du moteur                 |
 
 ---
 
@@ -298,15 +338,82 @@ et le moteur de planification.
 
 # 📍 90 — Suivi de développement
 
-| Document                                  | Description                 |
-| ----------------------------------------- | --------------------------- |
-| `90_SUIVI_DEVELOPPEMENT_MOTEUR.md`        | État d’avancement du moteur |
-| `91_JOURNAL_DEVELOPPEMENT_MOTEUR.md`      | Historique du développement |
-| `92_ARCHIVES_DES_DECISIONS_TECHNIQUES.md` | Historique des décisions    |
-| `92_cadrage_donnees_amont_scenarios.md`   | Données amont attendues de WinDev par scénario (SC-01 → SC-05) : état vérifié, arbitrages ouverts, découpage |
-| `92_cadrage_scenario_sc-06.md`            | Cadrage SC-06 — désignation de la ressource la plus à même de couvrir un besoin : intention, arbitrages tranchés, contrats d'entrée/sortie, découpage en lots S1→S7 |
-| `92_cadrage_socle_reglementaire.md`       | Lot S7 (clos) — six contraintes réglementaires enregistrées mais dormantes : constat, seuils portés au salarié, réparation lot par lot S7.0→S7.8, journal des écarts de score. §6.1 : deux dormances restantes d'une autre famille (valorisation du jour férié, `DetteReposSurReposHebdomadaire`) |
-| `Windev_part/SC-06/sc_06_notice_integration.md` | Notice d'intégration SC-06 pour WinDev : exigences, conventions, lecture de la réponse |
+| Document                                             | Description                 |
+| ---------------------------------------------------- | --------------------------- |
+| `90_SUIVI_DEVELOPPEMENT_MOTEUR.md`                   | État d’avancement du moteur, lot par lot |
+| `90_PLAN_MIGRATION_TEMPORAIRE_WINDEV_VERS_MOTEUR.md` | Jalons de la migration WinDev → moteur |
+| `90_SUIVI_ECHANGE_WINDEV_MOTEUR_FICHIER_API.md`      | Suivi du chantier d’échange par fichier |
+
+---
+
+# 📜 91 — Journal de développement
+
+| Document                             | Description                 |
+| ------------------------------------ | --------------------------- |
+| `91_JOURNAL_DEVELOPPEMENT_MOTEUR.md` | Historique du développement, étape par étape |
+
+---
+
+# 🗂 92 — Cadrages, audits et archives
+
+Les documents de la série **92** portent la mémoire des chantiers : ce qui a été constaté,
+ce qui a été arbitré, et pourquoi. Plusieurs sont des **instantanés datés** — ils décrivent
+un état passé et ne font pas autorité sur le code actuel ; ils le disent en tête de document.
+
+### Cadrages
+
+| Document                                          | Description |
+| ------------------------------------------------- | ----------- |
+| `92_CADRAGE_DONNEES_AMONT_SCENARIOS.md`           | Données amont attendues de WinDev par scénario (SC-01 → SC-05) : état vérifié, arbitrages ouverts, découpage |
+| `92_CADRAGE_SCENARIO_SC-06.md`                    | Cadrage SC-06 — désignation de la ressource la plus à même de couvrir un besoin : intention, arbitrages tranchés, contrats d’entrée/sortie, découpage en lots S1→S7 |
+| `92_CADRAGE_SOCLE_REGLEMENTAIRE.md`               | Socle réglementaire — lots S7 (contraintes dormantes) puis S8 (cadre réglementaire au contrat, calculs faux, restitution des constats). Journal des écarts de score, lot par lot |
+| `92_CADRAGE_STABILISATION_SC-01.md`               | Cadrage du chantier de stabilisation SC-01 |
+| `92_CADRAGE_STABILISATION_CONTRAT_ENTREE_TEMP.md` | Cadrage du chantier de stabilisation du contrat d’entrée cible |
+
+### Audits et références de contrat
+
+| Document                      | Description |
+| ----------------------------- | ----------- |
+| `92_CONTRAT_ENTREE_SC03.md`   | **Référence intégrateur** — statut de chaque champ du contrat d’entrée SC-03 (SUPPORTÉ / TOLÉRÉ / DÉPRÉCIÉ / IGNORÉ) |
+| `92_AUDIT_CONTRAT_ENTREE.md`  | Instantané daté (2026-03-20) — état des lieux factuel du contrat d’entrée, partiellement obsolète |
+| `92_AUDIT_SCENARIO_SC-01.md`  | Instantané daté (2026-03-27) — audit SC-01, largement traité depuis |
+
+### Suivis de chantier
+
+| Document                                    | Description |
+| ------------------------------------------- | ----------- |
+| `92_SUIVI_STABILISATION_SC-01.md`           | Pilotage du chantier SC-01 — phases A→D, closes le 2026-03-30 |
+| `92_SUIVI_STABILISATION_CONTRAT_ENTREE.md`  | Pilotage du chantier de stabilisation du contrat d’entrée |
+
+### Archives
+
+| Document                                  | Description              |
+| ----------------------------------------- | ------------------------ |
+| `92_ARCHIVES_DES_DECISIONS_TECHNIQUES.md` | Historique des décisions techniques structurantes |
+
+---
+
+# 🤖 Contexte agent
+
+| Document                             | Description |
+| ------------------------------------ | ----------- |
+| `AI_CONTEXT_CLAUDE_CODE_MOTEUR.md`   | Contexte d’architecture, invariants et règles de modification pour une intervention assistée sur le moteur |
+
+---
+
+# 🤝 Documents partagés avec l’équipe WinDev
+
+Le sous-répertoire `Windev_part/` contient les artefacts échangés avec l’équipe WinDev —
+schémas JSON, jeux de référence et notices. **Ses noms de fichiers ne suivent pas la convention
+de la documentation moteur** : ce sont des références externes, que le moteur ne renomme pas
+unilatéralement.
+
+| Document | Description |
+| --- | --- |
+| `Windev_part/SC-06/sc_06_notice_integration.md` | Notice d’intégration SC-06 pour WinDev : exigences, conventions, lecture de la réponse |
+| `Windev_part/SC-01/sc_01_cadrage_produit.md`    | Cadrage produit SC-01 côté WinDev |
+| `Windev_part/SC-01/sc-01_mapping_ui.md`         | Correspondance écran ↔ contrat pour SC-01 |
+| `Windev_part/SC-03/sc_03_cadrage_produit_et_mapping_ui_json.md` | Cadrage produit et correspondance écran ↔ JSON pour SC-03 |
 
 ---
 
@@ -314,15 +421,15 @@ et le moteur de planification.
 
 | Question | Document |
 | --- | --- |
-| Qu’est-ce qu’un créneau, une ressource, un score ? | `10_glossaire_concepts.md` |
+| Qu’est-ce qu’un créneau, une ressource, un score ? | `10_GLOSSAIRE_CONCEPTS.md` |
 | Quelles contraintes le moteur applique-t-il ? | `40_REGLES_COMBINATOIRES.md` |
-| Quel JSON envoyer au moteur ? | `50_interface_windev_moteur_exemples.md` |
-| Quelle est la structure de la réponse API ? | `50_ScenarioResponseContract.md` |
+| Quel JSON envoyer au moteur ? | `50_INTERFACE_WINDEV_MOTEUR_EXEMPLES.md` |
+| Quelle est la structure de la réponse API ? | `50_SCENARIO_RESPONSE_CONTRACT.md` |
 | Qu’est-ce qui est implémenté aujourd’hui ? | `90_SUIVI_DEVELOPPEMENT_MOTEUR.md` |
 | Pourquoi telle décision d’architecture ? | `20_DECISIONS_CONCEPTION_OPTAPLANNER.md` |
 | Comment le moteur calcule les heures de nuit ? | `40_WORKMETRICS.md §2` |
 | Que signifie le score renvoyé ? | `40_STRATEGIE_DE_SCORING.md` |
-| Comment tester l’interface bout en bout ? | `50_interface_windev_moteur_tests.md` |
+| Comment tester l’interface bout en bout ? | `50_INTERFACE_WINDEV_MOTEUR_TESTS.md` |
 | Quelle est la prochaine étape de développement ? | `90_SUIVI_DEVELOPPEMENT_MOTEUR.md` |
 
 ---
@@ -331,10 +438,10 @@ et le moteur de planification.
 
 ### Nouveau contributeur au projet
 
-1. `00_Principe_Optaplanner.md` — comprendre le moteur
-2. `10_glossaire_concepts.md` — vocabulaire partagé
+1. `00_PRINCIPE_OPTAPLANNER.md` — comprendre le moteur
+2. `10_GLOSSAIRE_CONCEPTS.md` — vocabulaire partagé
 3. `20_ARCHITECTURE_MOTEUR.md` — vue globale de la chaîne
-4. `30_UML_SOLVEUR_SIMPLIFIE.md` — modèle visuel
+4. `30_UML_SOLVER_SIMPLIFIE.md` — modèle visuel
 5. `90_SUIVI_DEVELOPPEMENT_MOTEUR.md` — état réel aujourd’hui
 
 ### Développeur moteur (contraintes, scoring, WorkMetrics)
@@ -348,16 +455,16 @@ et le moteur de planification.
 
 ### Intégrateur WinDev
 
-1. `50_interface_windev_moteur.md` — vue d’ensemble
-2. `50_interface_windev_moteur_contrat.md` — endpoint, règles, jalons
-3. `50_interface_windev_moteur_contrat_detail.md` — détail des champs
-4. `50_interface_windev_moteur_exemples.md` — exemples JSON complets
-5. `50_ScenarioResponseContract.md` — structure de la réponse
+1. `50_INTERFACE_WINDEV_MOTEUR.md` — vue d’ensemble
+2. `50_INTERFACE_WINDEV_MOTEUR_CONTRAT.md` — endpoint, règles, jalons
+3. `50_INTERFACE_WINDEV_MOTEUR_CONTRAT_DETAIL.md` — détail des champs
+4. `50_INTERFACE_WINDEV_MOTEUR_EXEMPLES.md` — exemples JSON complets
+5. `50_SCENARIO_RESPONSE_CONTRACT.md` — structure de la réponse
 
 ### Chef de projet / pilotage
 
 1. `90_SUIVI_DEVELOPPEMENT_MOTEUR.md` — état et roadmap
-2. `90_plan_migration_temporaire_windev_vers_moteur.md` — jalons d’intégration
+2. `90_PLAN_MIGRATION_TEMPORAIRE_WINDEV_VERS_MOTEUR.md` — jalons d’intégration
 3. `40_STRATEGIE_DE_SCORING.md` — logique fonctionnelle
 
 ---

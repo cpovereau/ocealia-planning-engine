@@ -99,7 +99,7 @@ Conséquences :
 - les créneaux non couverts sont comptabilisés dans `solutionSummary.nbCreneauxNonAffectes` et dans le `scoreBreakdown` via la pénalité `METIER_SOFT_CRENEAU_NON_COUVERT` ;
 - les métriques RH (`workMetrics.byRessource`) n’incluent pas `A_AFFECTER`.
 
-Cet invariant est également listé en §11. La forme contractuelle de cette représentation est décrite dans `50_interface_windev_moteur.md`.
+Cet invariant est également listé en §11. La forme contractuelle de cette représentation est décrite dans `50_INTERFACE_WINDEV_MOTEUR.md`.
 
 ## Décision — Distinction créneaux ignorés / non affectés
 
@@ -579,14 +579,32 @@ Ils la complètent pour des usages ciblés :
 - pénalités différenciées,
 - diagnostics ou métriques RH.
 
-#### Règle fondamentale
-La mesure temporelle de la nuit reste globale et commune.
-La qualification “nuit” portée par un salarié reste locale à la ressource.
+#### Règle fondamentale — ⚠️ renversée au lot S8.1
 
-En conséquence :
-- `RegulatoryParameters` demeure la source de vérité pour mesurer la nuit ;
-- les champs salarié ne redéfinissent pas les volumes temporels globaux ;
-- toute logique spécifique au salarié doit s’appuyer sur cette séparation.
+> **Cette décision ne décrit plus le moteur.** Elle posait que la mesure temporelle de la nuit
+> restait globale et commune, `RegulatoryParameters` en étant la seule source. Le lot S8.1 a
+> tranché l'inverse, sur arbitrage métier : **la plage de nuit est une donnée de la personne.**
+>
+> Le motif est concret : on distingue des salariés **veilleurs** et des salariés qui font du
+> travail de nuit **occasionnel**, et leurs horaires de nuit ne sont pas les mêmes. Mesurer les
+> deux sur une plage commune revenait à nier une différence contractuelle réelle.
+>
+> **Règle en vigueur.** `TimeBreakdownCalculator` interroge la plage du salarié affecté lorsqu'il
+> en déclare une — `heureDebutNuit` / `heureFinNuit` — et retombe sur le cadre global sinon. Un
+> créneau non affecté, ou confié à un poste virtuel, relève toujours du cadre global.
+>
+> **Conséquence assumée** : les mêmes heures ne produisent plus les mêmes minutes de nuit selon
+> qui les exécute. Elle a une contrepartie mesurée : un veilleur déclarant une plage plus large
+> accumule mécaniquement plus de minutes pénibles qu'un salarié non-nuit sur le même créneau, et
+> le solveur préférait donc le salarié inadapté de 359 points. Le lot S8.2 a rétabli l'ordre en
+> posant le poids qui manquait à `NuitSalarieNonNuit`. Voir `92_CADRAGE_SOCLE_REGLEMENTAIRE.md`
+> §8.1 et §8.2.
+
+Ce qui reste vrai de la décision d'origine :
+- `RegulatoryParameters` demeure le **cadre par défaut**, appliqué à tout ce qui ne déclare rien ;
+- `travailDeNuit` reste une qualification RH, distincte de la plage horaire ;
+- la séparation entre *mesurer* la nuit et *qualifier* un salarié de travailleur de nuit tient
+  toujours — ce sont deux questions, et deux champs.
 
 ---
 
@@ -600,7 +618,7 @@ Cette explicabilité repose sur :
 - l’association à une unité de mesure cohérente (voir enum `ScoreBreakdownUnit` ci-dessous) ;
 - la possibilité d’agréger et de comparer les contributions.
 
-La forme contractuelle de restitution est décrite dans `50_ScenarioResponseContract.md`.
+La forme contractuelle de restitution est décrite dans `50_SCENARIO_RESPONSE_CONTRACT.md`.
 
 ---
 
@@ -639,7 +657,7 @@ les contributions des différentes pénalités.
 La structure de restitution du score est définie dans le contrat API
 (`ScenarioResponseDTO`) et documentée dans :
 
-- 50_interface_windev_moteur.md
+- 50_INTERFACE_WINDEV_MOTEUR.md
 
 ---
 
@@ -841,9 +859,9 @@ L’intégration du solveur OptaPlanner est réalisée dans le moteur.
 Les détails d’implémentation, la chaîne d’appel, les validations d’exécution,
 ainsi que le contrat API (`ScenarioResponseDTO`) sont documentés dans les documents :
 
-- 50_interface_windev_moteur.md
-- 90_suivi_developpement_moteur.md
-- 91_Journal_Developpement_Moteur.md
+- 50_INTERFACE_WINDEV_MOTEUR.md
+- 90_SUIVI_DEVELOPPEMENT_MOTEUR.md
+- 91_JOURNAL_DEVELOPPEMENT_MOTEUR.md
 
 Ce document ne décrit que les décisions de conception associées.
 
@@ -897,7 +915,7 @@ Vérifié par un test de solveur encadré d'un témoin : le même créneau, non 
 déplacé par le solveur. Sans ce témoin, le test de figement passerait même si `@PlanningPin`
 n'était pas honoré.
 
-Lot S1 de SC-06 — voir `92_cadrage_scenario_sc-06.md` §4.2.
+Lot S1 de SC-06 — voir `92_CADRAGE_SCENARIO_SC-06.md` §4.2.
 
 ---
 

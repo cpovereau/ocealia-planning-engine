@@ -319,7 +319,7 @@ Rendre le contrat d'entrée SC-03 lisible et fiable pour les intégrateurs.
 ### Travaux
 
 * classifier chaque champ : SUPPORTÉ / TOLÉRÉ / ⚠️ DÉPRÉCIÉ / IGNORÉ
-* produire le document de référence `92_contrat_entree_sc03.md`
+* produire le document de référence `92_CONTRAT_ENTREE_SC03.md`
 * tracer la décision de dépréciation sur `activite`
 * documenter les comportements implicites (partition, valeurs par défaut)
 * différer les décisions sur `prioriteCouverture` et `periode` (Phase 7+, décision métier requise)
@@ -356,7 +356,7 @@ Champs IGNORÉ sans signal pour l'instant (couverture Phase 4 non étendue aux r
 
 #### Document produit
 
-`docs/92_contrat_entree_sc03.md` — tableau complet SUPPORTÉ / TOLÉRÉ / ⚠️ DÉPRÉCIÉ / IGNORÉ pour tous les champs SC-03, comportements documentés, ordre de partition, sémantique des diagnostics.
+`docs/92_CONTRAT_ENTREE_SC03.md` — tableau complet SUPPORTÉ / TOLÉRÉ / ⚠️ DÉPRÉCIÉ / IGNORÉ pour tous les champs SC-03, comportements documentés, ordre de partition, sémantique des diagnostics.
 
 #### Décisions différées
 
@@ -474,7 +474,7 @@ Ces cas sont directement promus en ERROR sans passage préalable par WARN : ils 
 
 ### Champs devenant obligatoires
 
-À documenter dans `92_contrat_entree_sc03.md` comme **obligatoires** dès Phase 7 :
+À documenter dans `92_CONTRAT_ENTREE_SC03.md` comme **obligatoires** dès Phase 7 :
 
 * `planningContext.horizon.dateDebut`
 * `planningContext.horizon.dateFin`
@@ -494,7 +494,7 @@ Ces cas sont directement promus en ERROR sans passage préalable par WARN : ils 
 * Ajouter les guards ERROR dans `prepare()` (null checks + cohérence horizon + referentiels)
 * Ajouter les WARN globaux manquants (référentiel vide, zéro créneaux après partition)
 * Ajouter les WARN de cohérence `codeActiviteId` vs `activite` (discordance)
-* Mettre à jour `92_contrat_entree_sc03.md` : marquer les champs devenus obligatoires
+* Mettre à jour `92_CONTRAT_ENTREE_SC03.md` : marquer les champs devenus obligatoires
 * Ajouter `ScenarioSc03PreparationServicePhase7Test` (8 tests ciblés)
 
 ### Ce que la phase ne fait pas
@@ -649,11 +649,11 @@ Traiter les champs “partiels” du contrat d'entrée SC-03 — champs déséri
 1. **Clarification des INCERTAIN** — lire `DureeMaximaleLegaleParSalarie`, `NuitsConsecutivesMax`, `ReposObligatoireApresNuits` et mettre à jour la documentation du contrat
 2. **Activation de `estSegmentDePause`** — modification isolée des filtres dans les contraintes concernées + tests
 3. **Activation séquentielle des contraintes simples** (`heuresMinimumParJour`, `heuresMinimumParSemaine`, `heuresMaximumParSemaine`) — une par une, conditionnées à l'étape 1
-4. **Documentation** — mettre à jour `92_contrat_entree_sc03.md` : TOLÉRÉ → SUPPORTÉ pour les champs activés, note de trajectoire pour les champs maintenus
+4. **Documentation** — mettre à jour `92_CONTRAT_ENTREE_SC03.md` : TOLÉRÉ → SUPPORTÉ pour les champs activés, note de trajectoire pour les champs maintenus
 
 ### Plan d'action
 
-* Lecture des contraintes INCERTAIN (3 fichiers) → mise à jour immédiate du statut dans `92_contrat_entree_sc03.md`
+* Lecture des contraintes INCERTAIN (3 fichiers) → mise à jour immédiate du statut dans `92_CONTRAT_ENTREE_SC03.md`
 * Activation isolée de `estSegmentDePause` dans les filtres de contraintes existantes + `ScenarioSc03PreparationServicePhase8Test` ou classe dédiée
 * Activation séquentielle des trois contraintes heures min/max avec garde-fou null (contrainte inactive si champ non renseigné)
 * Renforcement du signal documentaire sur `heureDebutNuit`/`heureFinNuit` : “transport préparé, activation conditionnée à l'arbitrage segmentNuit/plages individuelles”
@@ -776,7 +776,7 @@ Conséquences documentées :
 | `scoring/PenaliteKey.java` | `LEGAL_SOFT_HEURES_MIN_PAR_JOUR` ajouté |
 | `constraints/EstSegmentDePauseConstraintsTest.java` | 6 tests |
 | `constraints/HeuresMinimumParJourConstraintsTest.java` | 7 tests |
-| `docs/92_contrat_entree_sc03.md` | Statuts mis à jour |
+| `docs/92_CONTRAT_ENTREE_SC03.md` | Statuts mis à jour |
 
 #### Non-régression
 
@@ -811,7 +811,7 @@ La documentation décrit le comportement réel.
 
 #### Mini-audit factuel
 
-Revue complète champ par champ de `92_contrat_entree_sc03.md` par rapport au code réel.
+Revue complète champ par champ de `92_CONTRAT_ENTREE_SC03.md` par rapport au code réel.
 Périmètre : créneaux, salariés, référentiel activités, postes virtuels, tolérances structurelles.
 
 **3 écarts identifiés :**
@@ -824,7 +824,7 @@ Périmètre : créneaux, salariés, référentiel activités, postes virtuels, t
 
 **Champs vérifiés et confirmés exacts :** `type`, `priorite`, `axesOrganisationnels` créneaux, `segmentNuit`, `isJourFerie`, `travailDeNuit`, `travailleJourFerie`, `heureDebutNuit`/`heureFinNuit`, toutes les `contraintesReglementaires`, `compteDansCharge`, `genereDetteRepos`, `libelle`, `postesVirtuels.*`, fallback `codeActiviteId → activite`, valeurs par défaut silencieuses, `@JsonIgnoreProperties`.
 
-#### Corrections documentaires (`92_contrat_entree_sc03.md`)
+#### Corrections documentaires (`92_CONTRAT_ENTREE_SC03.md`)
 
 * `estServiceCritique` : SUPPORTÉ → **TOLÉRÉ** — description précisant l'absence de contrainte active
 * `estSegmentDePause` : ajout de `HeuresMinimumParJour` dans le comportement
@@ -858,7 +858,7 @@ Aucun comportement solveur modifié.
 |---|---|
 | `scenarios/mapper/ScenarioResourceMapper.java` | Logger ajouté + 2 log.warn Phase 9 |
 | `scenarios/mapper/ScenarioResourceMapperTest.java` | 2 tests Phase 9 |
-| `docs/92_contrat_entree_sc03.md` | 5 corrections de statut / description |
+| `docs/92_CONTRAT_ENTREE_SC03.md` | 5 corrections de statut / description |
 
 #### Points laissés pour Phase 10
 
@@ -1109,7 +1109,7 @@ Remplacé par : `toCreneau_typeDomaine_estToujoursIMPOSE` — prouve que TypeCre
 | `scenarios/dto/StrictDeserializationPhase10CTest.java` | **Nouveau** — 5 tests |
 | `scenarios/sc03/sc03_migration_reference.json` | Nettoyage complet métadonnées et champs retirés |
 | `scenarios/sc03/Sc03DatasetIntegrityTest.java` | Section 8 supprimée — 2 tests `axesOrganisationnels` obsolètes (champ retiré du DTO) |
-| `docs/92_contrat_entree_sc03.md` | Champs retirés supprimés, statuts mis à jour, note Phase 10C |
+| `docs/92_CONTRAT_ENTREE_SC03.md` | Champs retirés supprimés, statuts mis à jour, note Phase 10C |
 
 #### Points délibérément hors périmètre
 

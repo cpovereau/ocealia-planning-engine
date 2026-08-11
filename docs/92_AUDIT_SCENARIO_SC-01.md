@@ -2,7 +2,7 @@
 
 > ⚠️ **Rapport d'audit daté (2026-03-27) — largement traité depuis. Ne pas lire comme l'état du code.**
 > Ce document a servi de base au chantier de stabilisation SC-01, dont les phases A→D sont
-> **terminées le 2026-03-30**. L'état à jour est dans `92_suivi_stabilisation_sc-01.md`.
+> **terminées le 2026-03-30**. L'état à jour est dans `92_SUIVI_STABILISATION_SC-01.md`.
 >
 > | Problème de l'audit | État réel | Tâche |
 > |---|---|---|
@@ -17,7 +17,7 @@
 > | I4 — DTO de requête sans base commune | **Toujours ouvert** — tâche C3 du chantier, reportée | C3 |
 >
 > ⚠️ Attention au double jeu de numéros : `C1…C4` ci-dessus sont les **problèmes de cet audit**,
-> `A1…D5` sont les **tâches du chantier** (`92_suivi_stabilisation_sc-01.md`). Les passages devenus
+> `A1…D5` sont les **tâches du chantier** (`92_SUIVI_STABILISATION_SC-01.md`). Les passages devenus
 > faux sont barrés et annotés en place.
 
 ## Synthèse exécutive

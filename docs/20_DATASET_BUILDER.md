@@ -1,4 +1,4 @@
-# 🧱 DATASET_BUILDER.md
+# 🧱 20_DATASET_BUILDER.md
 
 Ce document décrit le rôle, le périmètre et les invariants des composants de type `ScenarioDatasetBuilder` dans le moteur de planification.
 
@@ -517,7 +517,7 @@ Ce document complète directement :
 - `50_SCENARIO_CONTRACT.md`
 - `50_SCENARIO_CONTRACT_SCHEMA.json`
 - `50_SCENARIO_RESPONSE_CONTRACT.md`
-- `30_UML_SOLVEUR_SIMPLIFIE.md`
+- `30_UML_SOLVER_SIMPLIFIE.md`
 - `90_SUIVI_DEVELOPPEMENT_MOTEUR.md`
 
 Il sert de référence pour documenter proprement la phase :

@@ -19,7 +19,7 @@ Quatre familles motivent ce cadrage :
 
 ## 2. Positionnement documentaire
 
-Ce document ne remplace pas `92_suivi_stabilisation_contrat_entree.md` (10 phases, closes).
+Ce document ne remplace pas `92_SUIVI_STABILISATION_CONTRAT_ENTREE.md` (10 phases, closes).
 Celui-ci regardait **en arrière** : nettoyer et durcir ce que le contrat portait déjà.
 Le présent document regarde **en avant** : ce que le contrat devra porter pour SC-02, SC-04 et SC-05.
 
@@ -103,7 +103,7 @@ aucun symptôme observé. Mais le rapatriement vers le salarié devra traiter la
 **que fait le moteur quand la valeur est absente ?** Le principe de la §3 impose une réponse
 explicite — valeur réglementaire par défaut, ou contrainte désactivée.
 
-> **Traité — chantier S7** (`92_cadrage_socle_reglementaire.md`). Les trois seuils, et deux autres
+> **Traité — chantier S7** (`92_CADRAGE_SOCLE_REGLEMENTAIRE.md`). Les trois seuils, et deux autres
 > repérés au passage, vivent désormais dans `ContraintesReglementairesSalarie`, alimentés par le
 > contrat, un jeu de seuils par salarié. Ils ont été retirés de `SeuilsDeTolerance` au lot S7.8.
 >
@@ -180,7 +180,7 @@ Le lieu doit être **restitué** partout où il a été reçu.
 Ce bloc décrit **ce que le salarié fait normalement**. Il ne décrit pas ce qui lui est interdit —
 c'est l'objet des contraintes individuelles.
 
-> **Réalisé au lot S2 de SC-06, 2026-08-10** — voir `92_cadrage_scenario_sc-06.md` §4.6.
+> **Réalisé au lot S2 de SC-06, 2026-08-10** — voir `92_CADRAGE_SCENARIO_SC-06.md` §4.6.
 > Trois écarts par rapport à la cible ci-dessus, tous arbitrés :
 >
 > - **`travailDeNuit` et `travailleJourFerie` restent à la racine.** Les migrer dans le bloc
@@ -312,7 +312,7 @@ quelle, sans préfixe susceptible de rejoindre un jour l'espace des besoins. Ave
 primaires brutes d'un côté et `BES-` de l'autre, aucune collision n'est possible.
 
 Écrit dans : `20_DECISIONS_CONCEPTION_OPTAPLANNER.md` (invariant),
-`50_ScenarioContract.md` §3.5 (entrée), `50_ScenarioResponseContract.md` §2.1 (sortie).
+`50_SCENARIO_CONTRACT.md` §3.5 (entrée), `50_SCENARIO_RESPONSE_CONTRACT.md` §2.1 (sortie).
 
 ---
 

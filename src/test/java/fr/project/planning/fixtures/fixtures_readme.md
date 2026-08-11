@@ -8,7 +8,7 @@ fr.project.planning.fixtures
 ```
 
 Il complète et applique strictement :
-- `TESTING_STRATEGY_ENGINE.md`
+- `60_TESTING_STRATEGY_ENGINE.md`
 
 Toute utilisation des fixtures **en dehors de ce cadre est interdite**.
 

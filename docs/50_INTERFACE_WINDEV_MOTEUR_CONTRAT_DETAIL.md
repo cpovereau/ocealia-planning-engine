@@ -3,10 +3,10 @@
 Ce document est la **référence normative champ par champ de la requête** envoyée par WinDev
 au moteur de planification pour le scénario SC-01.
 
-Il complète `50_interface_windev_moteur_contrat.md` (structure globale et règles générales).
+Il complète `50_INTERFACE_WINDEV_MOTEUR_CONTRAT.md` (structure globale et règles générales).
 
-Pour la description de la réponse, voir `50_ScenarioResponseContract.md`.
-Pour les exemples JSON complets, voir `50_interface_windev_moteur_exemples.md`.
+Pour la description de la réponse, voir `50_SCENARIO_RESPONSE_CONTRACT.md`.
+Pour les exemples JSON complets, voir `50_INTERFACE_WINDEV_MOTEUR_EXEMPLES.md`.
 
 ---
 
@@ -53,7 +53,7 @@ Sémantique des stratégies :
 | `lunchBreak`          | objet           | Non                         | voir ci-dessous                  | Pause déjeuner optionnelle                              |
 | `lunchBreak.start`    | string          | Oui si `lunchBreak` présent | `HH:mm` — ex : `"12:00"`        |                                                         |
 | `lunchBreak.end`      | string          | Oui si `lunchBreak` présent | `HH:mm` — ex : `"13:00"`        |                                                         |
-| `workedDays`          | tableau string  | Oui                         | valeurs Java `DayOfWeek` long    | Voir règle de normalisation — `50_interface_windev_moteur_contrat.md` §4.1 |
+| `workedDays`          | tableau string  | Oui                         | valeurs Java `DayOfWeek` long    | Voir règle de normalisation — `50_INTERFACE_WINDEV_MOTEUR_CONTRAT.md` §4.1 |
 | `holidayDates`        | tableau string  | Non                         | dates ISO-8601 `YYYY-MM-DD`      | Jours fériés exclus du planning                         |
 | `codeActiviteId`      | string          | Non *(transitoire)*         | code du référentiel client       | Code porté par les créneaux générés. Doit figurer dans `dataSet.referentiels.activites`. Absent → repli `travail` + alerte `ACTIVITY_CODE_DEFAULTED`. **Deviendra obligatoire** |
 
@@ -80,7 +80,7 @@ Les formats abrégés (`MON`, `TUE`, etc.) sont **rejetés**.
 > principale de SC-03. C'est SC-01 qui l'ignore, parce qu'il produit lui-même les créneaux à
 > partir de `scenarioParameters`. Les créneaux ainsi générés portent un identifiant sous préfixe
 > `SC01-<date>-<séquence>` : il ne désigne aucune ligne de la base WinDev.
-> Voir `50_ScenarioContract.md` §3.5 — *Identité des créneaux*.
+> Voir `50_SCENARIO_CONTRACT.md` §3.5 — *Identité des créneaux*.
 
 ### 4.1 Structure d'un salarié (`ressources.salaries[]`)
 
@@ -106,7 +106,7 @@ Les formats abrégés (`MON`, `TUE`, etc.) sont **rejetés**.
 
 > **Note architecturale** : actuellement, `ressources.salaries` et `ressources.postesVirtuels`
 > sont désérialisés directement vers les classes domaine `SalarieReel` et `PosteVirtuel`.
-> C'est le couplage identifié dans `50_interface_windev_moteur.md` §5.
+> C'est le couplage identifié dans `50_INTERFACE_WINDEV_MOTEUR.md` §5.
 > Des DTO de transport dédiés seront introduits lors d'une prochaine phase.
 
 ---
@@ -154,7 +154,7 @@ n'existe plus : jamais alimenté, il a été retiré au lot S7.8.
 
 ### 5.3 Prochaines étapes
 
-Selon `90_plan_migration_temporaire_windev_vers_moteur.md` :
+Selon `90_PLAN_MIGRATION_TEMPORAIRE_WINDEV_VERS_MOTEUR.md` :
 
 1. **Phase 1** — Transporter le JSON sans l'exploiter (aucun impact sur le solveur)
 2. **Phase 3** — Mapper vers un objet `ContraintesReglementairesSalarie` sur `SalarieReel`

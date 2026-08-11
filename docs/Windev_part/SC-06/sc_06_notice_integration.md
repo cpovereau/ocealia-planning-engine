@@ -1,7 +1,7 @@
 # SC-06 — Notice d'intégration WinDev
 
 > Désignation de la ressource la plus à même de couvrir un besoin.
-> Contrat fonctionnel : `50_ScenarioContract.md` §4 · Réponse : `50_ScenarioResponseContract.md` §6
+> Contrat fonctionnel : `50_SCENARIO_CONTRACT.md` §4 · Réponse : `50_SCENARIO_RESPONSE_CONTRACT.md` §6
 > Contrat machine : `50_openapi_windev_moteur_v_1.yaml` (schéma `Sc06ScenarioRequest`)
 
 ---

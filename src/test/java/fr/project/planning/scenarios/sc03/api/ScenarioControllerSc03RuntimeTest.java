@@ -51,7 +51,7 @@ class ScenarioControllerSc03RuntimeTest {
                 // socle réglementaire rebranche une contrainte par lot ; sans valeur de
                 // référence, un écart passerait inaperçu ou resterait inattribuable.
                 // Une modification volontaire de cette valeur doit être consignée dans
-                // 92_cadrage_socle_reglementaire.md, avec le lot qui la produit.
+                // 92_CADRAGE_SOCLE_REGLEMENTAIRE.md, avec le lot qui la produit.
                 //
                 // -1440  pénibilités légales, poids 1 en ANALYSE_RH :
                 //          480 min de nuit    (CRE-VN-01, vendredi 22:00-06:00)

@@ -3,8 +3,8 @@
 Ce document fournit des **exemples pratiques** destinés aux équipes intégrant le moteur
 depuis WinDev ou toute application externe.
 
-Pour la description des champs, voir `50_interface_windev_moteur_contrat_detail.md`.
-Pour les règles générales du contrat, voir `50_interface_windev_moteur_contrat.md`.
+Pour la description des champs, voir `50_INTERFACE_WINDEV_MOTEUR_CONTRAT_DETAIL.md`.
+Pour les règles générales du contrat, voir `50_INTERFACE_WINDEV_MOTEUR_CONTRAT.md`.
 
 ---
 

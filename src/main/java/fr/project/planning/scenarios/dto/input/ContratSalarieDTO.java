@@ -6,7 +6,7 @@ package fr.project.planning.scenarios.dto.input;
  * <p>Décrit ce que le salarié <strong>fait normalement</strong>. À ne pas confondre avec
  * {@link ContraintesReglementairesDTO}, qui décrit ce à quoi il <strong>est soumis</strong> :
  * le premier est descriptif, le second prescriptif. Distinction arbitrée au §6.6 de
- * {@code 92_cadrage_donnees_amont_scenarios.md}.</p>
+ * {@code 92_CADRAGE_DONNEES_AMONT_SCENARIOS.md}.</p>
  *
  * <h3>Champs volontairement absents</h3>
  * <ul>
@@ -21,7 +21,7 @@ package fr.project.planning.scenarios.dto.input;
  * Phase 10B. Un champ inconnu dans ce bloc est une erreur, pas un oubli toléré.</p>
  *
  * <p>Lot S2 : transport et mapping uniquement. Aucune contrainte ne lit ce bloc.
- * Voir {@code 92_cadrage_scenario_sc-06.md} §4.6.</p>
+ * Voir {@code 92_CADRAGE_SCENARIO_SC-06.md} §4.6.</p>
  */
 public class ContratSalarieDTO {
 
@@ -40,7 +40,7 @@ public class ContratSalarieDTO {
      * <p>Transporté, <strong>non exploité</strong>. Cible : un dépassement hebdomadaire est moins
      * grave pour un salarié annualisé, le critère se déplaçant vers le cumul d'heures excédentaires
      * sur la période d'annualisation. Deux données manquent encore au contrat pour cela — les bornes
-     * de la période et le cumul à date. Voir {@code 92_cadrage_scenario_sc-06.md} §10.1.</p>
+     * de la période et le cumul à date. Voir {@code 92_CADRAGE_SCENARIO_SC-06.md} §10.1.</p>
      */
     private Boolean estAnnualise;
 

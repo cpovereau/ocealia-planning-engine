@@ -6,7 +6,7 @@
 
 > ⚠️ **Snapshot daté — partiellement obsolète.**
 > Le chantier de stabilisation SC-01 (phases A→D, terminées le 2026-03-30 — voir
-> `92_suivi_stabilisation_sc-01.md`) a corrigé plusieurs constats de ce rapport.
+> `92_SUIVI_STABILISATION_SC-01.md`) a corrigé plusieurs constats de ce rapport.
 > Les passages concernés sont annotés **« ✅ Corrigé »** en place.
 >
 > | Constat d'origine | État réel du code | Réf. tâche |

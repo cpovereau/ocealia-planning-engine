@@ -51,7 +51,7 @@ import java.util.TreeMap;
  * depuis le lot S8.3, où cette contrainte réécrivait encore son propre test {@code != null}.
  * Une valeur {@code 0} est lue à la lettre : elle n'exige aucun repos. Le contrat d'entrée impose
  * d'<strong>omettre le champ</strong> pour désactiver la règle, jamais d'envoyer 0.
- * Voir {@code 92_cadrage_scenario_sc-06.md} §4.7.</p>
+ * Voir {@code 92_CADRAGE_SCENARIO_SC-06.md} §4.7.</p>
  *
  * <h3>Pénalité</h3>
  * <p>{@code PENALITE_REPOS_QUOTIDIEN} × minutes de déficit, cumulées sur toutes les transitions

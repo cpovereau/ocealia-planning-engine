@@ -1,6 +1,6 @@
 # Suivi stabilisation SC-01
 
-> Document opérationnel dérivé de l'audit `92_audit_scenario_sc-01.md`
+> Document opérationnel dérivé de l'audit `92_AUDIT_SCENARIO_SC-01.md`
 > Date de création : 2026-03-27
 
 ---
@@ -216,8 +216,8 @@ Méthode privée ajoutée dans `ScenarioSc01PreparationService` :
 | D1 | Décision : génération conservée (Option 1) | ✓ | — |
 | D2 | Extraction de la génération dans `CreneauGenerationService` | ✓ | `CreneauGenerationService` (nouveau), `ScenarioSc01PreparationService` |
 | D3 | Option 2 (migration dataset) — non retenue | N/A | — |
-| D4 | Section Phase D ajoutée à `90_plan_migration_temporaire_windev_vers_moteur.md` | ✓ | `90_plan_migration_temporaire_windev_vers_moteur.md` |
-| D5 | Contrat SC-01 clarifié : `dataSet.creneaux` ignoré, créneaux générés par le moteur | ✓ | `90_plan_migration_temporaire_windev_vers_moteur.md` §D.2 |
+| D4 | Section Phase D ajoutée à `90_PLAN_MIGRATION_TEMPORAIRE_WINDEV_VERS_MOTEUR.md` | ✓ | `90_PLAN_MIGRATION_TEMPORAIRE_WINDEV_VERS_MOTEUR.md` |
+| D5 | Contrat SC-01 clarifié : `dataSet.creneaux` ignoré, créneaux générés par le moteur | ✓ | `90_PLAN_MIGRATION_TEMPORAIRE_WINDEV_VERS_MOTEUR.md` §D.2 |
 
 ### Architecture après Phase D
 
@@ -243,7 +243,7 @@ SC-03 : dataSet.creneaux → solveur
 | Service isolé | `CreneauGenerationService` existe et encapsule le builder | ✓ |
 | SC-01 adapté | `ScenarioSc01PreparationService` injecte et utilise le service | ✓ |
 | Comportement identique | Aucun changement fonctionnel — même résultat de génération | ✓ |
-| Contrat documenté | `dataSet.creneaux` ignoré documenté dans `90_plan_migration_temporaire_windev_vers_moteur.md` | ✓ |
+| Contrat documenté | `dataSet.creneaux` ignoré documenté dans `90_PLAN_MIGRATION_TEMPORAIRE_WINDEV_VERS_MOTEUR.md` | ✓ |
 | Build | `BUILD SUCCESSFUL` | ✓ |
 
 ---

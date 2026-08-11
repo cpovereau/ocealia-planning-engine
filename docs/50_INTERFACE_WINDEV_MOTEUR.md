@@ -12,10 +12,10 @@ Pour les détails techniques, voir les documents complémentaires listés en §6
 
 ## 🔍 Par où commencer ?
 
-- Intégration API → 50_interface_windev_moteur_contrat.md
-- Détail technique → 50_interface_windev_moteur_contrat_detail.md
-- Exemples → 50_interface_windev_moteur_exemples.md
-- Validation → 50_interface_windev_moteur_tests.md
+- Intégration API → 50_INTERFACE_WINDEV_MOTEUR_CONTRAT.md
+- Détail technique → 50_INTERFACE_WINDEV_MOTEUR_CONTRAT_DETAIL.md
+- Exemples → 50_INTERFACE_WINDEV_MOTEUR_EXEMPLES.md
+- Validation → 50_INTERFACE_WINDEV_MOTEUR_TESTS.md
 
 ---
 
@@ -195,7 +195,7 @@ Deux limitations ont été identifiées et sont en cours de résolution :
 
 **Couplage DTO / domaine** — certaines structures JSON sont désérialisées directement vers des classes du domaine (`SalarieReel`, `PosteVirtuel`, `Creneau`), créant un couplage fort. Des DTO de transport dédiés seront introduits.
 
-**Contrat d'entrée non stabilisé** — le JSON accepté par l'endpoint, le JSON documenté et le JSON utilisé dans les tests ne sont pas encore parfaitement alignés. La stabilisation est en cours (voir `90_suivi_developpement_moteur.md`).
+**Contrat d'entrée non stabilisé** — le JSON accepté par l'endpoint, le JSON documenté et le JSON utilisé dans les tests ne sont pas encore parfaitement alignés. La stabilisation est en cours (voir `90_SUIVI_DEVELOPPEMENT_MOTEUR.md`).
 
 ### Stabilité du contrat de sortie
 
@@ -214,8 +214,8 @@ Les évolutions suivantes sont identifiées et planifiées :
 - [ ] Documenter les codes `reasonCode` possibles dans `AssignmentDiagnosticDTO`
 - [ ] Documenter les valeurs possibles de `penaliteKey` dans `ScoreBreakdownItemDTO`
 
-L'état d'avancement détaillé est dans `90_suivi_developpement_moteur.md`.
-Le plan de migration progressif est dans `90_plan_migration_temporaire_windev_vers_moteur.md`.
+L'état d'avancement détaillé est dans `90_SUIVI_DEVELOPPEMENT_MOTEUR.md`.
+Le plan de migration progressif est dans `90_PLAN_MIGRATION_TEMPORAIRE_WINDEV_VERS_MOTEUR.md`.
 
 ---
 
@@ -225,12 +225,12 @@ Ce document est le point d'entrée de la série. Les détails sont dans :
 
 | Document                                        | Contenu                                           |
 | ----------------------------------------------- | ------------------------------------------------- |
-| `50_interface_windev_moteur_contrat.md`          | Endpoint, structure requête/réponse, règles, jalons |
-| `50_interface_windev_moteur_contrat_detail.md`   | Détail champ par champ, contraintes de validation  |
-| `50_interface_windev_moteur_tests.md`            | Batterie de tests automatisés de l'interface       |
-| `50_interface_windev_moteur_exemples.md`         | Exemples curl, JSON requête, JSON réponse          |
-| `50_ScenarioResponseContract.md`                 | Contrat de sortie fonctionnel (référence normative) |
-| `90_suivi_developpement_moteur.md`               | État d'avancement et jalons                        |
+| `50_INTERFACE_WINDEV_MOTEUR_CONTRAT.md`          | Endpoint, structure requête/réponse, règles, jalons |
+| `50_INTERFACE_WINDEV_MOTEUR_CONTRAT_DETAIL.md`   | Détail champ par champ, contraintes de validation  |
+| `50_INTERFACE_WINDEV_MOTEUR_TESTS.md`            | Batterie de tests automatisés de l'interface       |
+| `50_INTERFACE_WINDEV_MOTEUR_EXEMPLES.md`         | Exemples curl, JSON requête, JSON réponse          |
+| `50_SCENARIO_RESPONSE_CONTRACT.md`                 | Contrat de sortie fonctionnel (référence normative) |
+| `90_SUIVI_DEVELOPPEMENT_MOTEUR.md`               | État d'avancement et jalons                        |
 
 ---
 

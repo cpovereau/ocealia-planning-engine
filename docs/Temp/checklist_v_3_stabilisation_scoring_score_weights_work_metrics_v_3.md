@@ -52,7 +52,7 @@ Objectif : définir des métriques **descriptives**, stables et non interprétat
   - horizon temporel,
   - présence ou absence d’historique,
   - ressources sans affectation.
-- [ ] Mettre à jour la documentation de référence (`WORKMETRICS.md`).
+- [ ] Mettre à jour la documentation de référence (`40_WORKMETRICS.md`).
 
 ---
 

@@ -3,9 +3,9 @@
 > Cette checklist est **opérationnelle** : elle décrit l’ordre de réalisation recommandé pour stabiliser un scoring V2 **lisible, explicable et maîtrisable**, en s’appuyant sur WorkMetrics V2, **sans ajouter de nouvelles règles métier**.
 
 ## Placement recommandé
-- ✅ Cette checklist a vocation à être **référencée depuis** `@suivi_developpement_moteur.md` (tableau de bord).
+- ✅ Cette checklist a vocation à être **référencée depuis** `@90_SUIVI_DEVELOPPEMENT_MOTEUR.md` (tableau de bord).
 - ✅ Elle peut vivre **en document dédié** pour rester actionnable et éviter d’alourdir le suivi.
-- ✅ Le lien à ce document a été ajouté dans `@suivi_developpement_moteur.md` un lien/renvoi vers ce document (section “Prochaines étapes V2 — Scoring”).
+- ✅ Le lien à ce document a été ajouté dans `@90_SUIVI_DEVELOPPEMENT_MOTEUR.md` un lien/renvoi vers ce document (section “Prochaines étapes V2 — Scoring”).
 
 ---
 

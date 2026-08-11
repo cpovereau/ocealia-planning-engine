@@ -1,4 +1,4 @@
-# 🧪 TESTING_STRATEGY_ENGINE.md
+# 🧪 60_TESTING_STRATEGY_ENGINE.md
 
 Ce document définit la **stratégie de tests officielle du moteur de planification**.
 
@@ -78,6 +78,28 @@ Ils ne sont ni substituables, ni cumulables.
 | V3     | Test de scoring             | Les arbitrages sont-ils cohérents ?   | Solver + score         | API                      |
 | V4     | Test de résolution          | Une solution faisable existe-t-elle ? | Solver complet         | WebDev                   |
 | V5     | Test d’intégration          | Le flux bout-en-bout tient-il ?       | API                    | Mock métier              |
+
+---
+
+### 2.1 bis — V0, les tests qui gardent le dépôt
+
+Un sixième niveau existe, hors de l'échelle V1→V5 parce qu'il ne teste pas le moteur : il teste
+ce qui l'entoure. Ces tests ne construisent ni solution ni solveur — ils lisent les sources et le
+corpus documentaire, et échouent quand une règle du projet est enfreinte.
+
+| Test | Ce qu'il verrouille |
+|---|---|
+| `CorpusDocumentaireTest` | Convention de nommage des documents, absence de lien mort, complétude de `00_INDEX_DOCUMENTATION.md` |
+| `DiagnosticsConformesAuSchemaTest` | Le schéma JSON publié aux intégrateurs décrit bien la réponse produite |
+| `CodeActiviteTest` (garde source) | Aucune classe de production ne réécrit la règle de repli du code activité |
+
+**Pourquoi ce niveau existe.** Chacun de ces tests est né d'une dérive déjà survenue et restée
+invisible : un nom de fichier désynchronisé entre le disque et l'index git, un schéma publié qui
+rejetait la réponse réelle, une règle recopiée à onze endroits. Corriger sans verrouiller garantit
+la récidive au lot suivant.
+
+**Ce qu'ils n'ont pas le droit de faire** : juger du contenu. Un test V0 vérifie qu'un document
+existe et qu'il est cité, jamais qu'il dit vrai — cela reste une affaire de relecture.
 
 ---
 

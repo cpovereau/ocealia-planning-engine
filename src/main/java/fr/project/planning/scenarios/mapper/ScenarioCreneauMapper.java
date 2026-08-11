@@ -103,7 +103,7 @@ public class ScenarioCreneauMapper {
      *
      * <p>Destiné aux scénarios qui reçoivent un planning existant comme fait acquis : le
      * solveur voit ces créneaux, les contraintes les évaluent, mais aucune décision ne peut
-     * les modifier. Voir {@code 92_cadrage_scenario_sc-06.md} §4.2.</p>
+     * les modifier. Voir {@code 92_CADRAGE_SCENARIO_SC-06.md} §4.2.</p>
      *
      * <p>Un créneau sans {@code ressourceAffecteeId} n'est <strong>pas</strong> figé : il reste
      * une variable de décision. Le signalement de ce cas relève du scénario appelant, seul à

@@ -14,7 +14,7 @@ import java.util.List;
  * seule fois : l'invariant est structurel, non déclaratif.</p>
  *
  * <p>Le besoin vit dans {@code scenarioParameters}, jamais dans {@code dataSet} — séparation
- * arbitrée au §4.2 de {@code 92_cadrage_scenario_sc-06.md} :</p>
+ * arbitrée au §4.2 de {@code 92_CADRAGE_SCENARIO_SC-06.md} :</p>
  *
  * <blockquote>
  * {@code dataSet.creneaux} = le passé, intégralement figé.<br>

@@ -126,8 +126,12 @@ Sont considérés comme temporaires ou secondaires :
 Photographier l’existant avant toute évolution du contrat d’entrée.
 
 ### Travaux
-- [x] identifier les DTO réellement utilisés par l’API — documenté dans `60_interface_windev_moteur_plan_documentaire.md` §8.7 ;
-- [x] lister les tests de non-régression déjà en place — documenté dans `60_interface_windev_moteur_plan_documentaire.md` §7 ;
+- [x] identifier les DTO réellement utilisés par l’API — ⚠️ *référence perdue : ces deux points
+  renvoyaient aux §8.7 et §7 d’un « plan documentaire de l’interface WinDev » qui n’a jamais existé
+  au corpus. Les sections sont irrécupérables ; le sujet est aujourd’hui couvert par
+  `50_SCENARIO_TECHNICAL_CONTRACT.md`* ;
+- [x] lister les tests de non-régression déjà en place — ⚠️ *même référence perdue ; voir
+  `60_TESTING_STRATEGY_ENGINE.md`* ;
 - [x] figer un JSON de référence SC-01 — `src/test/resources/scenarios/sc01/sc01_dataset_reference.json` ;
 - [x] figer un JSON cible SC-03 / technique de migration — `docs/Windev_part/DataStructure/sc_03_migration_reference.json` ;
 - [x] noter les champs déjà documentés mais non supportés dans le code — `contraintesReglementaires` (§8.7.4), `creneaux` ignoré dans DataSetDTO, couplage DTO/domaine (§3.1).
@@ -742,7 +746,7 @@ Cette matrice devient :
 Suivi du niveau réel d'exploitation de chaque champ enrichi depuis la Phase 2.
 Mise à jour à chaque itération de migration.
 
-**Légende des niveaux** (définis dans `90_suivi_developpement_moteur.md`) :
+**Légende des niveaux** (définis dans `90_SUIVI_DEVELOPPEMENT_MOTEUR.md`) :
 
 | Niveau | Signification |
 |--------|---------------|
@@ -779,7 +783,7 @@ Un champ est **fonctionnellement actif** uniquement à partir de : Transporté �
 > `contraintesReglementaires` : mappé vers `ContraintesReglementairesSalarie` sur `SalarieReel`. Partiellement exploité depuis Phase 10/12 : `joursConsecutifsMaximum` (contrainte `JoursConsecutifsMax`) et `amplitudeJournaliereMaximum` (contrainte `AmplitudeJournaliere`). Les autres champs (`heuresMinimumParJour`, `heuresMaximumParJour`, `reposQuotidienMinimum`, `heuresMinimumParSemaine`, `heuresMaximumParSemaine`, `nuitsMaximumParSemaine`) restent mappés mais non exploités par le solveur — les `RegulatoryParameters` globaux restent la source de vérité pour ces axes.
 > `axesOrganisationnels` : transporté dans `SalarieInputDTO`, mais `SalarieReel` ne porte pas ce bloc — aucun mapping domaine réalisé.
 > `travailDeNuit` / `heureDebutNuit` / `heureFinNuit` : "Exploité diagnostics ✅" — Phase 6 ajoute `estTravailleurDeNuit()`, `heureDebutNuitEffective(fallback)`, `heureFinNuitEffective(fallback)` sur `SalarieReel`. Ces méthodes préparent les diagnostics et pénalités Phase 8 sans modifier le solveur ni `RegulatoryParameters`.
-> `activitesCompatibles` : "Exploité diagnostics ✅" depuis la Phase 12 — lu par `ScenarioSc03PreparationService.auMoinsUneRessourceCompatible()` pour le calcul de `ignoredCreneaux.aucuneRessourceDansDataset`. Une liste vide/nulle est considérée comme non contrainte (peut couvrir toute activité). Voir `20_dataset_builder.md §5.4.2B`.
+> `activitesCompatibles` : "Exploité diagnostics ✅" depuis la Phase 12 — lu par `ScenarioSc03PreparationService.auMoinsUneRessourceCompatible()` pour le calcul de `ignoredCreneaux.aucuneRessourceDansDataset`. Une liste vide/nulle est considérée comme non contrainte (peut couvrir toute activité). Voir `20_DATASET_BUILDER.md §5.4.2B`.
 
 ---
 
@@ -899,7 +903,7 @@ Ordre conseillé :
 
 ## Journal de pilotage
 
-L’historique détaillé des itérations (Phases 1 à 8) est conservé dans `91_Journal_Developpement_Moteur.md`.
+L’historique détaillé des itérations (Phases 1 à 8) est conservé dans `91_JOURNAL_DEVELOPPEMENT_MOTEUR.md`.
 
 ---
 

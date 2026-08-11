@@ -35,7 +35,7 @@ l’introduction des blocs principaux (planning, métriques,
 résumé de solution, score et diagnostics).
 
 Le détail du contrat est documenté dans
-`50_interface_windev_moteur.md`.
+`50_INTERFACE_WINDEV_MOTEUR.md`.
 
 Fonctionnalités associées :
 
@@ -256,7 +256,7 @@ Dimanches travaillés :
 ## Mars 2026 — Migration du contrat d’entrée WinDev → moteur (Phases 0 à 8)
 
 Les itérations ci-dessous retracent les travaux de migration du dataset d’entrée.
-La stratégie complète est documentée dans `90_plan_migration_temporaire_windev_vers_moteur.md`.
+La stratégie complète est documentée dans `90_PLAN_MIGRATION_TEMPORAIRE_WINDEV_VERS_MOTEUR.md`.
 
 ### Itération 1 — Phase 1 (2026-03-13) — Stabiliser la couche transport
 
@@ -506,8 +506,8 @@ La stratégie complète est documentée dans `90_plan_migration_temporaire_winde
   - `scenarios/mapper/AssignmentDiagnosticsFactory.java` — 2 sites de construction du diagnostic
 - **Tests ajoutés** : `ScenarioResponseActiviteRestitutionTest` — 5 cas (code seul, libellé seul, les deux, aucun, diagnostics)
 - **Résultat** : BUILD SUCCESSFUL — 308 tests, 0 échec. Vérifié bout en bout sur `docs/Windev_part/exemples/sc_03_exemple_valide.json` : `"activite": "ACT-SOIN"` en planning comme en diagnostics.
-- **Impact contrat** : aucun changement de structure — le champ garde son nom `activite`, seule sa valeur devient conforme à `50_ScenarioResponseContract.md` §4.5 (nouvelle section).
-- **Reste à faire** (non traité ici) : écho du bloc `referentiels` en sortie et WorkMetrics par activité — l'« entrepôt des activités » de `90_suivi_developpement_moteur.md` n'est implémenté que côté entrée.
+- **Impact contrat** : aucun changement de structure — le champ garde son nom `activite`, seule sa valeur devient conforme à `50_SCENARIO_RESPONSE_CONTRACT.md` §4.5 (nouvelle section).
+- **Reste à faire** (non traité ici) : écho du bloc `referentiels` en sortie et WorkMetrics par activité — l'« entrepôt des activités » de `90_SUIVI_DEVELOPPEMENT_MOTEUR.md` n'est implémenté que côté entrée.
 
 #### Obsolescences documentaires corrigées le même jour
 
@@ -515,10 +515,10 @@ Le chantier de stabilisation SC-01 (phases A→D, 2026-03-30) n'avait pas été 
 
 | Document | Correction |
 |---|---|
-| `92_audit_contrat_entree.md` | Bandeau d'obsolescence + §1.8, T-15, §3.2 et §4 annotés « ✅ Corrigé » |
-| `92_audit_scenario_sc-01.md` | Bandeau récapitulant C1→C4, I1→I4 ; passages faux barrés ; R1 marquée appliquée |
-| `90_plan_migration_temporaire_windev_vers_moteur.md` | Bloc `referentiels` : SC-01 n'est plus « hardcodé jusqu'en Phase 9 » |
-| `50_ScenarioResponseContract.md` | §4.4 : les compteurs `ignoredCreneaux` ne sont plus « toujours 0 » en SC-01 |
+| `92_AUDIT_CONTRAT_ENTREE.md` | Bandeau d'obsolescence + §1.8, T-15, §3.2 et §4 annotés « ✅ Corrigé » |
+| `92_AUDIT_SCENARIO_SC-01.md` | Bandeau récapitulant C1→C4, I1→I4 ; passages faux barrés ; R1 marquée appliquée |
+| `90_PLAN_MIGRATION_TEMPORAIRE_WINDEV_VERS_MOTEUR.md` | Bloc `referentiels` : SC-01 n'est plus « hardcodé jusqu'en Phase 9 » |
+| `50_SCENARIO_RESPONSE_CONTRACT.md` | §4.4 : les compteurs `ignoredCreneaux` ne sont plus « toujours 0 » en SC-01 |
 
 Les entrées de journal antérieures ne sont pas modifiées : elles restent l'historique daté des décisions.
 
@@ -538,7 +538,7 @@ Les entrées de journal antérieures ne sont pas modifiées : elles restent l'hi
 - **Tests ajoutés** : `ScenarioDatasetBuilderSc01WeeklyRestTest` — 7 cas (horaire réduit en `INFO`, repos week-end préservé, aucun créneau sur jour non coché, semaine standard sans alerte, absence de repos en `ERROR`, report du `RH` si week-end travaillé, non-duplication sur 3 semaines).
 - **Résultat** : BUILD SUCCESSFUL — 315 tests, 0 échec. Planning généré strictement inchangé : les jours requalifiés `NON_TRAVAILLE` étaient déjà écartés par le filtre `workedDays`.
 - **Impact contrat** : additif et rétrocompatible — `severity` est optionnel, absent il doit être lu comme `WARNING`. **`50_ScenarioResponse.schema.json` déclarait `additionalProperties: false` sur `Alert`** : sans mise à jour, toute réponse portant `severity` aurait échoué à la validation. Schéma corrigé.
-- **Écarté volontairement** : rendre le seuil dépendant de la quotité de travail. Aucune donnée de quotité n'existe dans le contrat d'entrée (`quotite`, `tempsPartiel`, `dureeHebdo` : 0 occurrence dans le dépôt), et l'introduire violerait `20_dataset_builder.md` §6.4. À traiter comme un sujet de contrat d'entrée si WinDev transmet un jour la donnée.
+- **Écarté volontairement** : rendre le seuil dépendant de la quotité de travail. Aucune donnée de quotité n'existe dans le contrat d'entrée (`quotite`, `tempsPartiel`, `dureeHebdo` : 0 occurrence dans le dépôt), et l'introduire violerait `20_DATASET_BUILDER.md` §6.4. À traiter comme un sujet de contrat d'entrée si WinDev transmet un jour la donnée.
 - **Reste à faire** : le code `TOO_MANY_NON_WORKED_DAYS` conserve un nom alarmant malgré sa sévérité `INFO` — renommage non fait pour ne pas casser un filtrage sur chaîne côté WinDev. Côté client, le filtrage des `INFO` reste à implémenter, sans quoi le symptôme demeure visible.
 
 #### Obsolescences documentaires corrigées le même jour
@@ -546,18 +546,18 @@ Les entrées de journal antérieures ne sont pas modifiées : elles restent l'hi
 | Document | Correction |
 |---|---|
 | `50_ScenarioResponse.schema.json` | `Alert` : ajout de `severity` (bloquant — `additionalProperties: false`) |
-| `50_ScenarioResponseContract.md` | §4.2 : champ `severity`, table des 4 codes et de leur gravité, règle « `INFO` ≠ anomalie », unicité des alertes de configuration |
+| `50_SCENARIO_RESPONSE_CONTRACT.md` | §4.2 : champ `severity`, table des 4 codes et de leur gravité, règle « `INFO` ≠ anomalie », unicité des alertes de configuration |
 | `50_openapi_windev_moteur_v_1.yaml` | Schéma `ScenarioAlert` : `severity`, 4 codes documentés au lieu de 2, sémantique de `date` précisée |
-| `50_ScenarioTechnicalContract.md` | §7 : exemple de restitution complété avec `severity` |
-| `20_dataset_builder.md` | §7.1 : table codes/sévérités et règle de qualification RH/RHD adossée au week-end |
-| `92_audit_scenario_sc-01.md` | §2.4 : règle RH/RHD de l'audit barrée et annotée ; alertes annotées `severity` |
+| `50_SCENARIO_TECHNICAL_CONTRACT.md` | §7 : exemple de restitution complété avec `severity` |
+| `20_DATASET_BUILDER.md` | §7.1 : table codes/sévérités et règle de qualification RH/RHD adossée au week-end |
+| `92_AUDIT_SCENARIO_SC-01.md` | §2.4 : règle RH/RHD de l'audit barrée et annotée ; alertes annotées `severity` |
 
 ---
 
 ### 2026-07-30 (2) — Alerte « activité inconnue » remontée au client
 
-- **Constat** : la responsabilité « produire une alerte si une activité n'existe pas dans le référentiel amont » (`20_dataset_builder.md` §7) n'était pas tenue. La situation était bien **détectée** — `ScenarioSc01PreparationService.computeIgnoredCreneaux()` incrémente `ignoredCreneaux.activiteInconnue` et émet un `log.warn` par créneau — mais jamais **restituée** : le client recevait un compteur nu, sans message ni gravité, et le log restait côté serveur.
-- **Enjeu** : le builder stampe `codeActiviteId = "travail"` sur tous les créneaux qu'il génère. Si WinDev fournit un `dataSet.referentiels.activites` ne déclarant pas ce code, le lookup échoue en aval — les créneaux ne comptent pas dans la charge, les WorkMetrics tombent à zéro et les contraintes métier restent inertes. C'est le risque RT2 de `92_suivi_stabilisation_sc-01.md`, jusqu'ici sans signal côté client.
+- **Constat** : la responsabilité « produire une alerte si une activité n'existe pas dans le référentiel amont » (`20_DATASET_BUILDER.md` §7) n'était pas tenue. La situation était bien **détectée** — `ScenarioSc01PreparationService.computeIgnoredCreneaux()` incrémente `ignoredCreneaux.activiteInconnue` et émet un `log.warn` par créneau — mais jamais **restituée** : le client recevait un compteur nu, sans message ni gravité, et le log restait côté serveur.
+- **Enjeu** : le builder stampe `codeActiviteId = "travail"` sur tous les créneaux qu'il génère. Si WinDev fournit un `dataSet.referentiels.activites` ne déclarant pas ce code, le lookup échoue en aval — les créneaux ne comptent pas dans la charge, les WorkMetrics tombent à zéro et les contraintes métier restent inertes. C'est le risque RT2 de `92_SUIVI_STABILISATION_SC-01.md`, jusqu'ici sans signal côté client.
 - **Correction** : nouveau code `UNKNOWN_ACTIVITY` en `ERROR`, émis par le builder. `BuildRequest.referentiel` transporte le référentiel injecté ; `null` désactive la vérification, le builder ne suppose pas qu'on lui en fournisse un. Le code activité est extrait en constante `CODE_ACTIVITE_SC01` — il était dupliqué dans `createCreneau()`.
 - **Alerte sans date** : `UNKNOWN_ACTIVITY` porte sur le dataset, pas sur un jour. C'est le premier usage réel de l'optionalité de `date` introduite le même jour — la clé est omise de la réponse. Une seule alerte est émise, le code activité étant commun à tous les créneaux.
 - **Ordonnancement** : dans `ScenarioSc01PreparationService.prepare()`, la construction du référentiel remonte de l'étape 6 à l'étape 1 bis, avant la génération des créneaux. `buildReferentielSc01()` ne dépend que de `dataSet.referentiels` — le déplacement est sans effet de bord.
@@ -573,7 +573,7 @@ Les entrées de journal antérieures ne sont pas modifiées : elles restent l'hi
 
 ### 2026-07-30 (3) — Lot L1 : code activité déclaré par l'appelant en SC-01
 
-- **Origine** : lot L1 de `92_cadrage_donnees_amont_scenarios.md`, arbitrage §6.1. WinDev transmet des codes d'activité réels ; le moteur ne doit pas en imposer un.
+- **Origine** : lot L1 de `92_CADRAGE_DONNEES_AMONT_SCENARIOS.md`, arbitrage §6.1. WinDev transmet des codes d'activité réels ; le moteur ne doit pas en imposer un.
 - **Constat** : SC-01 stampait `codeActiviteId = "travail"` en dur. Le client devait donc déclarer ce mot dans son propre référentiel pour que le moteur reconnaisse ses créneaux — ou construire une table de correspondance pour réintégrer un résultat exprimé dans un vocabulaire qui n'est pas le sien.
 - **Correction** : `scenarioParameters.codeActiviteId` ajouté au contrat SC-01. Le builder porte ce code sur tous les créneaux générés, `codeActiviteId` comme `activite` (champ legacy).
 - **Repli transitoire** : champ optionnel. Absent ou blanc, le moteur applique `CODE_ACTIVITE_DEFAUT = "travail"` et émet `ACTIVITY_CODE_DEFAULTED` (WARNING, sans date). Les intégrations existantes ne cassent pas, mais le repli n'est plus silencieux — il était jusqu'ici invisible pour le client.

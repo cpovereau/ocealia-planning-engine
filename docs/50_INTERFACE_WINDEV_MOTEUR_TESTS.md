@@ -4,7 +4,7 @@ Ce document décrit la **batterie de tests automatisés** qui garantit la stabil
 entre WinDev et le moteur de planification.
 
 Ces tests sont la sécurité principale avant toute évolution du moteur.
-La stratégie de test générale du moteur est documentée dans `60_testing_strategy_engine.md`.
+La stratégie de test générale du moteur est documentée dans `60_TESTING_STRATEGY_ENGINE.md`.
 
 ---
 
