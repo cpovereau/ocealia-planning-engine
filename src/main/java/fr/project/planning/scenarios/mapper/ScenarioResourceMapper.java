@@ -255,8 +255,17 @@ public class ScenarioResourceMapper {
      * toutes les contraintes qui font getByCode(...) retournent null et sont ignorées.
      */
     public ReferentielComptabiliteActivite toReferentiel(ReferentielsDTO dto) {
-        if (dto == null || dto.getActivites() == null || dto.getActivites().isEmpty()) {
+        if (dto == null) {
             return ReferentielComptabiliteActivite.neutre();
+        }
+        // [S7.9b] Les codes de repos sont transmis même quand la liste d'activités est vide :
+        // ils ne dépendent pas d'elle, et les perdre ferait retomber tout le calendrier sur le
+        // repli samedi/dimanche sans que rien ne le signale.
+        if (dto.getActivites() == null || dto.getActivites().isEmpty()) {
+            return new ReferentielComptabiliteActivite(
+                    Map.of(),
+                    dto.getCodeActiviteReposHebdomadaire(),
+                    dto.getCodeActiviteReposHebdomadaireDimanche());
         }
         Map<String, ComptabiliteActivite> map = new HashMap<>();
         for (var a : dto.getActivites()) {
@@ -271,7 +280,10 @@ public class ScenarioResourceMapper {
                     ComptabiliteActivite.TypeImpactActivite.CHARGE_STANDARD  // défaut
             ));
         }
-        return new ReferentielComptabiliteActivite(map);
+        return new ReferentielComptabiliteActivite(
+                map,
+                dto.getCodeActiviteReposHebdomadaire(),
+                dto.getCodeActiviteReposHebdomadaireDimanche());
     }
 
     // =========================

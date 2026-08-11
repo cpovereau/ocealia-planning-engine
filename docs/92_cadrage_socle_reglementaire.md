@@ -4,10 +4,10 @@
 > jamais pour un client conforme au contrat. Ce document établit le constat, l'ordre de
 > réparation et le point de contrôle de chaque étape.
 >
-> **Statut** — S7.0 à S7.8 livrés : les six contraintes dormantes sont remises en service, les
-> deux contraintes manquantes sont écrites, le code mort et la règle dupliquée sont supprimés.
-> S7.9a livré : la valorisation du jour férié fonctionne. Reste S7.9b, le repos hebdomadaire
-> (§6.1).
+> **Statut** — **chantier clos.** S7.0 à S7.9 livrés : les six contraintes dormantes sont
+> remises en service, les deux contraintes manquantes sont écrites, le code mort et la règle
+> dupliquée sont supprimés, la valorisation du jour férié fonctionne (S7.9a) et le repos
+> hebdomadaire est en service (S7.9b).
 > **Contrat concerné** — `50_ScenarioContract.md` §3.7 · **Suivi** — `90_SUIVI_DEVELOPPEMENT_MOTEUR.md`
 
 ---
@@ -198,6 +198,9 @@ alimenté par le champ `isJourFerie` du contrat. Le schéma qualifie pourtant ce
 d'« INDICATIF (non réglementaire) » en désignant `RegulatoryParameters` comme source de vérité.
 C'est la source vide qui fait autorité, et le champ dit indicatif qui porte seul la règle qui
 marche.
+
+> **7.9b — traité.** Le repos vient désormais d'un calendrier construit à la préparation ;
+> voir §7.9b.
 
 **`DetteReposSurReposHebdomadaire` est dormante.** Elle filtre sur
 `getQualificationJour() == RH || == RHD`, or `ScenarioCreneauMapper` et
@@ -739,3 +742,96 @@ nouvelles. Aucune affectation ne bouge : `SAL-2001` refusait déjà le créneau 
 Le garde-fou de SC-03 assied désormais aussi `heuresJourFerieTotales` à 8.0 et la répartition
 entre les deux salariés. L'absence de toute assertion sur cette métrique est précisément ce qui
 a permis au défaut de survivre.
+
+### 7.9b — Le repos hebdomadaire, enfin nominatif
+
+**Aucun écart de score — mesuré.** 554 tests, 0 échec (529 avant). Les jeux d'essai ne déclarent
+aucun code de repos et aucune activité générant une dette : la contrainte est en service et
+reste muette faute de situation à juger, ce qui est la bonne signature.
+
+| Livrable | Fichier |
+|---|---|
+| Le fait « ce salarié se repose ce jour-là » | `domain/repos/ReposHebdomadaire.java` (créé) |
+| Construction du calendrier | `domain/repos/CalendrierReposHebdomadaire.java` (créé) |
+| Déclaration des codes au référentiel | `domain/metier/ReferentielComptabiliteActivite.java`, `scenarios/dto/input/ReferentielsDTO.java` |
+| Contrainte réécrite | `constraints/metier/DetteReposSurReposHebdomadaire.java` |
+| Extraction et restitution | `ScenarioSc01/Sc03/Sc06PreparationService.java`, `ScenarioResponseMapper.java` |
+| Couverture — 14 + 11 cas | `domain/repos/CalendrierReposHebdomadaireTest.java`, `constraints/DetteReposSurReposHebdomadaireConstraintsTest.java` |
+
+#### La contrainte demandait une chose impossible
+
+Elle exigeait qu'un créneau soit **lui-même** qualifié `RH`/`RHD` *et* que son activité compte
+dans la charge. Un repos n'étant pas du travail, les deux conditions ne pouvaient pas être vraies
+ensemble. Elle lisait de surcroît `Creneau.qualificationJour`, champ qu'aucun mapper n'alimente —
+tous écrivent `OUVRE` en dur, « non computable depuis le DTO seul ».
+
+Elle croise désormais **deux objets distincts** : le créneau de travail, et le fait qui dit quel
+jour ce salarié-là se repose. C'est la même erreur de structure que le premier jet de S7.7b, où
+un seul objet devait porter deux rôles incompatibles.
+
+#### Le client déclare ses propres identifiants
+
+L'identifiant d'activité valant repos **change d'un client à l'autre** : le moteur ne connaît
+aucun code en dur, et `RH` n'est pas un mot réservé. Deux champs le déclarent, dans
+`dataSet.referentiels` — là où le contrat disait déjà que le repos hebdomadaire est qualifié par
+le référentiel d'activités :
+
+```json
+"referentiels": {
+  "activites": [ … ],
+  "codeActiviteReposHebdomadaire": "10450",
+  "codeActiviteReposHebdomadaireDimanche": "10451"
+}
+```
+
+Non déclarés, aucun créneau n'est un marqueur et le calendrier retombe entièrement sur le repli.
+
+#### Un repos est un fait, pas un créneau
+
+C'est la décision structurante du lot, et elle est imposée par les chiffres. Un repos couvre la
+journée entière, 00:00–23:59, soit **1 439 minutes**. Introduit comme créneau, il violerait
+immédiatement trois contraintes HARD de `LimitePhysique`, qui ne consultent pas le référentiel et
+ne savent donc pas distinguer un repos d'un travail :
+
+| Contrainte | Effet |
+|---|---|
+| `dureeMaxCreneau` | pénalise `durée − 720` → **719 points HARD**, à lui seul |
+| `pasDeChevauchement` | tout autre créneau du salarié ce jour-là devient HARD |
+| `cumulJournalierMax` | 1 439 + quoi que ce soit dépasse 1 440 → HARD |
+
+Tout planning contenant un repos serait devenu infaisable. Réduit à une date et une nature, le
+repos n'a plus d'horaires et le problème disparaît.
+
+Ce choix en règle trois autres du même coup. Les contraintes physiques n'ont **aucun filtre à
+ajouter** — c'est la duplication que S7.8 venait de supprimer. La question du figeage en SC-03
+s'évanouit : un fait n'est pas une variable de décision, donc le solveur ne peut pas confier le
+repos d'une personne à une autre. Et `ressourceAffecteeId`, que SC-03 ignore par construction sur
+les créneaux, est lu à l'extraction, où il est disponible.
+
+#### Le repli s'applique par salarié et par semaine
+
+Une semaine sans marqueur retombe sur samedi et dimanche, **même si le salarié en déclare
+ailleurs**. La maille alternative — faire confiance aux déclarations partout dès qu'il en existe
+une — rendrait une semaine oubliée silencieusement travaillable. Un vide ne suppose jamais que la
+chose est possible.
+
+#### Les marqueurs sont restitués
+
+L'appelant recharge la réponse pour réafficher son planning : un repos absent y ferait un trou.
+Les marqueurs reviennent donc dans `planning`, **et là seulement** — ils sont exclus des
+diagnostics, des `workMetrics` et du résumé, un repos n'étant ni une affectation décidée par le
+moteur ni de la charge.
+
+SC-06 fait exception : sa réponse ne contient que les créneaux du besoin, pas le planning
+complet. Rien à y restituer.
+
+#### Trois scénarios, trois situations
+
+* **SC-03** — les marqueurs sont extraits **avant** la partition « activité connue ». Leur
+  déclaration au bloc `referentiels` vaut déclaration : les faire passer par ce contrôle les
+  aurait comptés en `activiteInconnue` et jetés. L'extraction précoce évite aussi les gardes
+  horaires — un repos couvre la journée, pas une plage.
+* **SC-06** — le planning figé exige déjà `ressourceAffecteeId` pour chaque créneau. Les
+  marqueurs y arrivent naturellement rattachés à leur salarié : rien à changer côté contrat.
+* **SC-01** — génère ses créneaux et ignore `dataSet.creneaux`. Aucun marqueur ne peut lui
+  parvenir ; son calendrier se réduit au repli.

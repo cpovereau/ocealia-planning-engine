@@ -57,6 +57,7 @@ public class PlanningService {
                 creneaux,
                 request.indisponibilites()
         );
+        problem.setReposHebdomadaires(request.reposHebdomadaires());
 
         PlanningProblem solved = solverLauncher.solve(problem);
 

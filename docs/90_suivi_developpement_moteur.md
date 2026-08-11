@@ -923,3 +923,36 @@ répartition entre salariés). L'absence de toute assertion sur cette métrique 
 au défaut de survivre.
 
 Reste S7.9b : le repos hebdomadaire (`DetteReposSurReposHebdomadaire`, toujours muette).
+
+### Socle réglementaire — lot S7.9b : repos hebdomadaire nominatif (2026-08-11)
+
+**Aucun écart de score — mesuré.** 554 tests, 0 échec (529 avant). Les jeux d'essai ne déclarent
+ni code de repos ni activité générant une dette : la contrainte est en service et reste muette
+faute de situation à juger.
+
+`DetteReposSurReposHebdomadaire` exigeait qu'un créneau soit **lui-même** qualifié `RH`/`RHD`
+*et* que son activité compte dans la charge — deux conditions incompatibles, un repos n'étant pas
+du travail — en lisant `Creneau.qualificationJour`, champ qu'aucun mapper n'alimente. Septième
+contrainte muette du chantier.
+
+* **Le client déclare ses identifiants** — `dataSet.referentiels.codeActiviteReposHebdomadaire`
+  et `codeActiviteReposHebdomadaireDimanche`. L'identifiant change d'un client à l'autre ; le
+  moteur ne connaît aucun code en dur et `RH` n'est pas un mot réservé.
+* **Un repos est un fait, pas un créneau** (`domain/repos/ReposHebdomadaire`). Décision imposée
+  par les chiffres : un repos couvre 00:00–23:59, soit 1 439 minutes, et violerait à lui seul
+  trois contraintes HARD de `LimitePhysique` — 719 points sur la seule durée maximale de créneau.
+  Réduit à une date et une nature, il n'a plus d'horaires. Corollaire : aucun filtre à ajouter
+  aux contraintes physiques, et plus de question de figeage en SC-03, un fait n'étant pas une
+  variable de décision.
+* **Repli par salarié et par semaine** — une semaine sans marqueur retombe sur samedi/dimanche
+  même si le salarié en déclare ailleurs. Une semaine oubliée ne devient jamais silencieusement
+  travaillable.
+* **Marqueurs restitués** dans `planning`, et là seulement : l'appelant recharge la réponse pour
+  réafficher son planning. Ils sont exclus des diagnostics, des `workMetrics` et du résumé.
+  SC-06 fait exception — sa réponse ne contient que le besoin.
+
+**Bilan du chantier S7** — sept contraintes dormantes remises en service, deux contraintes
+manquantes écrites, seuils portés au salarié, valorisation du férié rendue opérante, code mort et
+règle dupliquée supprimés. Deux variations de score sur l'ensemble, toutes deux voulues et
+gardées par assertion : SC-03 de `-960` à `-66960` (sous-emploi, S7.7b) puis à `-67440` (férié,
+S7.9a). 413 tests au départ, 554 à l'arrivée.

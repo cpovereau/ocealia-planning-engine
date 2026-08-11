@@ -9,6 +9,9 @@ import fr.project.planning.domain.creneau.Creneau;
 import fr.project.planning.domain.metier.ComptabiliteActivite;
 import fr.project.planning.domain.metier.ReferentielComptabiliteActivite;
 import fr.project.planning.scenarios.dto.IgnoredCreneauxDTO;
+import fr.project.planning.domain.repos.CalendrierReposHebdomadaire;
+import fr.project.planning.domain.repos.ReposHebdomadaire;
+import fr.project.planning.domain.ressource.SalarieReel;
 import fr.project.planning.domain.reglementaire.RegulatoryParameters;
 import fr.project.planning.domain.ressource.Indisponibilite;
 import fr.project.planning.domain.ressource.Ressource;
@@ -185,6 +188,19 @@ public class ScenarioSc01PreparationService {
                 request.getDataSet().getIndisponibilites()
         );
 
+        // 8 bis. [S7.9b] Calendrier de repos hebdomadaire. SC-01 génère ses créneaux et ignore
+        //        `dataSet.creneaux` : aucun marqueur ne peut lui parvenir, le calendrier se
+        //        réduit donc au repli — samedi et dimanche, pour chaque salarié et chaque
+        //        semaine de l'horizon.
+        List<ReposHebdomadaire> reposHebdomadaires = CalendrierReposHebdomadaire.construire(
+                ressources.stream()
+                        .filter(SalarieReel.class::isInstance)
+                        .map(Ressource::getId)
+                        .filter(java.util.Objects::nonNull)
+                        .toList(),
+                List.of(),
+                planningContext.getHorizonTemporel());
+
         // 9. Planning Request
         PlanningRequest planningRequest = new PlanningRequest(
                 planningContext,
@@ -192,7 +208,8 @@ public class ScenarioSc01PreparationService {
                 referentiel,
                 ressources,
                 buildResult.creneaux(),
-                indisponibilites
+                indisponibilites,
+                reposHebdomadaires
         );
 
         // 10. IDs postes virtuels (pour les diagnostics)

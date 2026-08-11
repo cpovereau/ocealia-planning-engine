@@ -9,6 +9,7 @@ import fr.project.planning.domain.creneau.QualificationJour;
 import fr.project.planning.domain.creneau.TypeCreneau;
 import fr.project.planning.domain.creneau.TypePlageHoraire;
 import fr.project.planning.domain.metier.ReferentielComptabiliteActivite;
+import fr.project.planning.domain.repos.CalendrierReposHebdomadaire;
 import fr.project.planning.domain.reglementaire.CalendrierJoursFeries;
 import fr.project.planning.domain.reglementaire.RegulatoryParameters;
 import fr.project.planning.domain.ressource.Indisponibilite;
@@ -112,7 +113,18 @@ public class ScenarioSc06PreparationService {
         verifierAffectationsRenseignees(creneauxExistants);
         verifierDansHorizon(creneauxExistants, lundi);
 
-        List<Creneau> planningFige = creneauMapper.toCreneauxFiges(creneauxExistants, ressourcesParId);
+        List<Creneau> planningFigeComplet =
+                creneauMapper.toCreneauxFiges(creneauxExistants, ressourcesParId);
+
+        // 3 bis. [S7.9b] Les marqueurs de repos sortent du problème : un repos n'est ni un besoin
+        //        à pourvoir ni une charge. Ils ne sont pas restitués non plus — la réponse SC-06
+        //        ne contient que les créneaux du besoin, pas le planning complet.
+        List<Creneau> marqueursRepos = planningFigeComplet.stream()
+                .filter(c -> CalendrierReposHebdomadaire.estMarqueurDeRepos(c, referentiel))
+                .toList();
+        List<Creneau> planningFige = planningFigeComplet.stream()
+                .filter(c -> !CalendrierReposHebdomadaire.estMarqueurDeRepos(c, referentiel))
+                .toList();
 
         // 4. Créneaux du besoin — seules variables de décision
         List<Creneau> creneauxBesoin = construireCreneauxBesoin(besoin, referentiel);
@@ -150,8 +162,16 @@ public class ScenarioSc06PreparationService {
                 indisponibilites
         );
 
-        log.info("[SC-06] Besoin du {} : {} créneau(x) à couvrir, {} créneau(x) figés, {} salarié(s) au dataset",
-                dateBesoin, creneauxBesoin.size(), planningFige.size(), salaries.size());
+        // [S7.9b] Calendrier de repos — déclarations du planning figé, puis repli par semaine.
+        problem.setReposHebdomadaires(CalendrierReposHebdomadaire.construire(
+                salaries.stream().map(SalarieReel::getId).filter(Objects::nonNull).toList(),
+                CalendrierReposHebdomadaire.depuisLesMarqueurs(marqueursRepos, referentiel),
+                planningContext.getHorizonTemporel()));
+
+        log.info("[SC-06] Besoin du {} : {} créneau(x) à couvrir, {} créneau(x) figés, "
+                        + "{} marqueur(s) de repos, {} salarié(s) au dataset",
+                dateBesoin, creneauxBesoin.size(), planningFige.size(),
+                marqueursRepos.size(), salaries.size());
 
         return new PreparedSc06Scenario(
                 problem, creneauxBesoin, salaries, indisponibilites,

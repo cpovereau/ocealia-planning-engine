@@ -42,7 +42,38 @@ public class ScenarioResponseMapper {
         Set<String> posteVirtuelIds,
         IgnoredCreneauxDTO ignoredCreneaux
         ) {
-        ScenarioPlanningDTO planning = buildPlanning(idSalarie, creneauxResolus);
+        return toResponse(scenarioType, solverStatus, hardScore, softScore, scoreBreakdown,
+                idSalarie, creneauxResolus, List.of(), workMetricsById, alerts,
+                posteVirtuelIds, ignoredCreneaux);
+    }
+
+    /**
+     * [Lot S7.9b] {@code creneauxRepos} — les marqueurs de repos hebdomadaire reçus en entrée.
+     *
+     * <p>Ils sont restitués dans {@code planning}, et <strong>là seulement</strong> : l'appelant
+     * recharge la réponse pour réafficher le planning complet, et un repos absent y ferait un
+     * trou. Ils sont en revanche exclus des diagnostics, des {@code workMetrics} et du résumé —
+     * un repos n'est ni une affectation décidée par le moteur, ni de la charge.</p>
+     */
+    public ScenarioResponseDTO toResponse(
+        String scenarioType,
+        String solverStatus,
+        int hardScore,
+        int softScore,
+        List<ScoreBreakdownItemDTO> scoreBreakdown,
+        String idSalarie,
+        List<Creneau> creneauxResolus,
+        List<Creneau> creneauxRepos,
+        Map<String, WorkMetrics> workMetricsById,
+        List<ScenarioAlertDTO> alerts,
+        Set<String> posteVirtuelIds,
+        IgnoredCreneauxDTO ignoredCreneaux
+        ) {
+        List<Creneau> creneauxAffiches = creneauxRepos == null || creneauxRepos.isEmpty()
+                ? creneauxResolus
+                : java.util.stream.Stream.concat(creneauxResolus.stream(), creneauxRepos.stream()).toList();
+
+        ScenarioPlanningDTO planning = buildPlanning(idSalarie, creneauxAffiches);
         SolverResultDTO solverResult = buildSolverResult(solverStatus, hardScore, softScore, scoreBreakdown);
         DiagnosticsDTO diagnostics = buildDiagnostics(alerts, creneauxResolus, posteVirtuelIds, ignoredCreneaux);
 

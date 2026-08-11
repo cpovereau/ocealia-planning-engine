@@ -1,7 +1,13 @@
 package fr.project.planning.scenarios.service;
 
 import fr.project.planning.api.PlanningRequest;
+import fr.project.planning.domain.contexte.HorizonTemporel;
 import fr.project.planning.domain.contexte.HypotheseHistorique;
+import fr.project.planning.domain.repos.CalendrierReposHebdomadaire;
+import fr.project.planning.domain.repos.ReposHebdomadaire;
+import fr.project.planning.domain.ressource.SalarieReel;
+import java.util.HashMap;
+import java.util.Map;
 import fr.project.planning.domain.contexte.ObjectifResolution;
 import fr.project.planning.domain.contexte.PlanningContext;
 import fr.project.planning.domain.contexte.ResolutionType;
@@ -122,11 +128,26 @@ public class ScenarioSc03PreparationService {
             log.warn("[SC-03] dataSet.referentiels.activites est vide — tous les créneaux seront exclus comme activité inconnue");
         }
 
+        // 1 bis. [S7.9b] Marqueurs de repos hebdomadaire — extraits avant toute autre partition.
+        //    Un repos n'est ni un besoin à pourvoir ni une charge : il ne doit pas devenir une
+        //    variable de décision, et il n'a pas à traverser le contrôle « activité connue » —
+        //    sa déclaration au bloc referentiels vaut déclaration. L'extraire ici évite aussi
+        //    les guards horaires : un repos couvre la journée, pas une plage.
+        List<CreneauInputDTO> marqueursRepos = new ArrayList<>();
+        List<CreneauInputDTO> creneauxATraiter = new ArrayList<>();
+        for (CreneauInputDTO dto : request.getDataSet().getCreneaux()) {
+            if (referentiel.estReposHebdomadaire(dto.getCodeActiviteEffectif())) {
+                marqueursRepos.add(dto);
+            } else {
+                creneauxATraiter.add(dto);
+            }
+        }
+
         // 2. [Phase 2] Partition des créneaux : valides (activité connue) vs exclus (activité inconnue)
         //    On collecte directement les DTOs valides pour éviter tout dépendance sur l'id du créneau.
         List<CreneauInputDTO> creneauxValides = new ArrayList<>();
         int activiteInconnue = 0;
-        for (CreneauInputDTO dto : request.getDataSet().getCreneaux()) {
+        for (CreneauInputDTO dto : creneauxATraiter) {
             // [Phase 7] Guards — champs horaires requis (NPE garantie sinon dans calculerDureeMinutes)
             if (dto.getHeureDebut() == null) {
                 throw new IllegalArgumentException(
@@ -193,6 +214,7 @@ public class ScenarioSc03PreparationService {
         // 5. Ressources (salariés + postes virtuels + RessourceNonAffectee)
         List<Ressource> ressources = resourceMapper.toRessources(request.getDataSet());
 
+
         // 6. Indisponibilités
         List<Indisponibilite> indisponibilites = resourceMapper.toIndisponibilites(
                 request.getDataSet().getIndisponibilites()
@@ -216,6 +238,11 @@ public class ScenarioSc03PreparationService {
         RegulatoryParameters regulatoryParameters = RegulatoryParameters.avecJoursFeries(
                 CalendrierJoursFeries.declaresParLesCreneaux(creneaux));
 
+        // 7 bis. [S7.9b] Calendrier de repos hebdomadaire — repos déclarés par l'appelant,
+        //        complétés semaine par semaine par le repli samedi/dimanche.
+        ReposPrepares repos = preparerRepos(marqueursRepos, referentiel, ressources,
+                planningContext.getHorizonTemporel());
+
         // 8. Planning Request
         PlanningRequest planningRequest = new PlanningRequest(
                 planningContext,
@@ -223,7 +250,8 @@ public class ScenarioSc03PreparationService {
                 referentiel,
                 ressources,
                 creneaux,
-                indisponibilites
+                indisponibilites,
+                repos.calendrier()
         );
 
         // 9. IDs postes virtuels (pour les diagnostics)
@@ -264,8 +292,71 @@ public class ScenarioSc03PreparationService {
                 planningRequest,
                 request.getScenarioType(),
                 posteVirtuelIds,
-                ignoredCreneaux
+                ignoredCreneaux,
+                repos.marqueurs()
         );
+    }
+
+    /**
+     * [S7.9b] Ce que produit l'extraction des marqueurs de repos.
+     *
+     * @param marqueurs  les créneaux de repos reçus, conservés pour être <strong>restitués</strong>
+     *                   tels quels : l'appelant recharge la réponse pour réafficher son planning,
+     *                   et un repos manquant y ferait un trou. Ils n'entrent jamais dans le
+     *                   problème du solveur.
+     * @param calendrier les faits lus par la contrainte, repli samedi/dimanche compris
+     */
+    private record ReposPrepares(List<Creneau> marqueurs, List<ReposHebdomadaire> calendrier) {}
+
+    private ReposPrepares preparerRepos(
+            List<CreneauInputDTO> marqueursDto,
+            ReferentielComptabiliteActivite referentiel,
+            List<Ressource> ressources,
+            HorizonTemporel horizon) {
+
+        Map<String, Ressource> ressourcesParId = new HashMap<>();
+        for (Ressource r : ressources) {
+            if (r.getId() != null) {
+                ressourcesParId.putIfAbsent(r.getId(), r);
+            }
+        }
+
+        List<Creneau> marqueurs = new ArrayList<>();
+        for (CreneauInputDTO dto : marqueursDto) {
+            String salarieId = dto.getRessourceAffecteeId();
+
+            if (salarieId == null || salarieId.isBlank()) {
+                log.warn("[SC-03] créneau id='{}' : repos hebdomadaire sans ressourceAffecteeId — "
+                        + "impossible de savoir de qui c'est le repos, marqueur ignoré", dto.getId());
+                continue;
+            }
+            Ressource ressource = ressourcesParId.get(salarieId);
+            if (!(ressource instanceof SalarieReel)) {
+                log.warn("[SC-03] créneau id='{}' : repos hebdomadaire rattaché à '{}', absent du "
+                        + "dataset ou non salarié — marqueur ignoré", dto.getId(), salarieId);
+                continue;
+            }
+
+            Creneau marqueur = creneauMapper.toCreneau(dto);
+            marqueur.setRessourceAffectee(ressource);
+            marqueurs.add(marqueur);
+        }
+
+        List<String> salarieIds = ressources.stream()
+                .filter(SalarieReel.class::isInstance)
+                .map(Ressource::getId)
+                .filter(Objects::nonNull)
+                .toList();
+
+        List<ReposHebdomadaire> calendrier = CalendrierReposHebdomadaire.construire(
+                salarieIds,
+                CalendrierReposHebdomadaire.depuisLesMarqueurs(marqueurs, referentiel),
+                horizon);
+
+        log.info("[SC-03] repos hebdomadaire : {} marqueur(s) déclaré(s), {} jour(s) de repos au "
+                + "calendrier pour {} salarié(s)", marqueurs.size(), calendrier.size(), salarieIds.size());
+
+        return new ReposPrepares(marqueurs, calendrier);
     }
 
     /**

@@ -69,6 +69,7 @@ public class ScenarioSc03ExecutionService {
                 ScoreBreakdownFactory.build(solved.explanation()),
                 null,                                   // resourceId — multi-ressources
                 solved.solution().getCreneaux(),
+                prepared.marqueursRepos(),              // [S7.9b] restitués, jamais résolus
                 byId,
                 alerts,
                 prepared.posteVirtuelIds(),

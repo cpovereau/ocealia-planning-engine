@@ -92,6 +92,18 @@ maxNuitsConsecutivesObservees = 6
 
 Ces codes représentent un repos attendu, pas du travail.
 
+**[S7.9b] Mise en œuvre.** L'identifiant d'activité correspondant change d'un client à l'autre :
+il est déclaré au contrat, dans `dataSet.referentiels.codeActiviteReposHebdomadaire` et
+`codeActiviteReposHebdomadaireDimanche`. Le moteur ne connaît aucun code en dur.
+
+Un créneau porteur de ce code, avec son `ressourceAffecteeId`, dit **quel jour ce salarié-là se
+repose** — n'importe quel jour de la semaine. Il est retiré du problème et restitué tel quel :
+un repos n'est ni un besoin à pourvoir, ni de la charge.
+
+À défaut de marqueur, le repli s'applique **par salarié et par semaine** : samedi vaut RH et
+dimanche vaut RHD. Une semaine sans marqueur retombe sur le repli même si le salarié en déclare
+ailleurs — une semaine oubliée ne doit jamais devenir silencieusement travaillable.
+
 ### 1.5. Définitions dérivées
 - Dimanche travaillé
 Dimanche travaillé Un dimanche travaillé est un dimanche calendaire (DayOfWeek.SUNDAY) comportant au moins un créneau dont l’activité compte dans la charge.

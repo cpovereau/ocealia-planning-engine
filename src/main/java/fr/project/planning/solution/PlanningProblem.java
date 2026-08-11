@@ -2,6 +2,7 @@ package fr.project.planning.solution;
 
 import fr.project.planning.domain.contexte.PlanningContext;
 import fr.project.planning.domain.creneau.Creneau;
+import fr.project.planning.domain.repos.ReposHebdomadaire;
 import fr.project.planning.domain.ressource.Indisponibilite;
 import fr.project.planning.domain.ressource.Ressource;
 import fr.project.planning.domain.workmetrics.WorkMetrics;
@@ -95,6 +96,16 @@ public class PlanningProblem {
      */
     @ProblemFactCollectionProperty
     private List<Indisponibilite> indisponibilites = List.of();
+
+    /**
+     * Jours de repos hebdomadaire, un par salarié et par jour concerné (lot S7.9b).
+     *
+     * <p>Faits et non entités : le repos d'une personne n'est pas un besoin à pourvoir. Le
+     * calendrier est construit à la préparation — repos déclarés par l'appelant, complétés
+     * semaine par semaine par le repli samedi/dimanche — et le solveur ne peut pas le modifier.</p>
+     */
+    @ProblemFactCollectionProperty
+    private List<ReposHebdomadaire> reposHebdomadaires = List.of();
 
     /**
      * Créneaux à affecter.
@@ -194,6 +205,14 @@ public class PlanningProblem {
 
     public void setIndisponibilites(List<Indisponibilite> indisponibilites) {
         this.indisponibilites = indisponibilites != null ? indisponibilites : List.of();
+    }
+
+    public List<ReposHebdomadaire> getReposHebdomadaires() {
+        return reposHebdomadaires;
+    }
+
+    public void setReposHebdomadaires(List<ReposHebdomadaire> reposHebdomadaires) {
+        this.reposHebdomadaires = reposHebdomadaires != null ? reposHebdomadaires : List.of();
     }
 
     public HardSoftScore getScore() {

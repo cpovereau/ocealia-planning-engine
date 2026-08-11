@@ -836,7 +836,10 @@ components:
       description: |
         Une activité dans le référentiel transmis par WinDev.
         Correspond à `ReferentielActiviteDTO`.
-        Transporté en V1, non exploité avant Phase 3.
+
+        `genereDetteRepos` est lu par `DetteReposSurReposHebdomadaire` (SOFT) : travailler son
+        jour de repos hebdomadaire n'est pénalisé que si l'activité ouvre une dette de repos
+        compensateur.
       properties:
         codeActiviteId:
           type: string
@@ -857,12 +860,38 @@ components:
       description: |
         Bloc référentiels du dataSet.
         Correspond à `ReferentielsDTO`.
-        Transporté en V1, non exploité avant Phase 3.
+
+        [S7.9b] Porte en outre les identifiants d'activité qui désignent un **repos
+        hebdomadaire**. Ils vivent ici et non sur le créneau parce que le repos hebdomadaire est
+        qualifié par le référentiel d'activités.
       properties:
         activites:
           type: array
           items:
             $ref: '#/components/schemas/ReferentielActivite'
+        codeActiviteReposHebdomadaire:
+          type: string
+          description: |
+            [S7.9b] Identifiant d'activité désignant un **repos hebdomadaire (RH)**.
+
+            Cet identifiant **change d'un client à l'autre** : le moteur n'en connaît aucun en
+            dur, et « RH » n'est pas un mot réservé. C'est cette déclaration, et elle seule, qui
+            fait qu'un créneau est reconnu comme repos.
+
+            Un créneau porteur de ce code, avec son `ressourceAffecteeId`, dit **quel jour ce
+            salarié-là se repose** — n'importe quel jour de la semaine, pas seulement le
+            week-end. Il est retiré du problème : le solveur ne l'affecte pas, ne le compte pas
+            dans la charge, et les contraintes physiques ne le voient pas. Il est **restitué tel
+            quel** dans `planning`, l'appelant rechargeant la réponse pour réafficher son
+            planning complet.
+
+            Non déclaré, aucun créneau n'est un marqueur et le calendrier retombe entièrement
+            sur le repli **samedi = RH, dimanche = RHD**, appliqué par salarié et par semaine.
+        codeActiviteReposHebdomadaireDimanche:
+          type: string
+          description: |
+            [S7.9b] Identifiant d'activité désignant un **repos hebdomadaire dominical (RHD)**.
+            Même portée que `codeActiviteReposHebdomadaire`.
 
     IndisponibiliteItem:
       type: object

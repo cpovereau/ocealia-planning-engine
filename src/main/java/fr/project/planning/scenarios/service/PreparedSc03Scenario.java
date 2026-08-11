@@ -1,8 +1,10 @@
 package fr.project.planning.scenarios.service;
 
 import fr.project.planning.api.PlanningRequest;
+import fr.project.planning.domain.creneau.Creneau;
 import fr.project.planning.scenarios.dto.IgnoredCreneauxDTO;
 
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -21,5 +23,17 @@ public record PreparedSc03Scenario(
         PlanningRequest planningRequest,
         String scenarioType,
         Set<String> posteVirtuelIds,
-        IgnoredCreneauxDTO ignoredCreneaux
-) {}
+        IgnoredCreneauxDTO ignoredCreneaux,
+        List<Creneau> marqueursRepos
+) {
+    /**
+     * [Lot S7.9b] {@code marqueursRepos} — les créneaux de repos hebdomadaire reçus en entrée.
+     *
+     * <p>Ils ne font pas partie du problème : le solveur ne les voit pas, ne les affecte pas et
+     * ne les compte pas. Ils sont conservés pour être <strong>restitués</strong>, l'appelant
+     * rechargeant la réponse pour réafficher son planning complet.</p>
+     */
+    public PreparedSc03Scenario {
+        marqueursRepos = marqueursRepos == null ? List.of() : List.copyOf(marqueursRepos);
+    }
+}
