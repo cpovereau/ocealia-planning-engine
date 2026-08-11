@@ -566,6 +566,9 @@ de surcharge n'existe nulle part.
 mécanisme de figement est déjà écrit et testé. SC-04 dépend d'un historique de compteurs qui
 n'existe pas ; SC-05, de WorkMetrics d'équité non implémentées.
 
+📄 **SC-02 est cadré** — arbitrages métier rendus le 11/08/2026, découpage en six lots S0 à S5,
+lots S0 et S1 immédiatement actionnables : `92_CADRAGE_SCENARIO_SC-02.md`.
+
 ---
 
 ## Rang 10 — le lot des contraintes personnelles

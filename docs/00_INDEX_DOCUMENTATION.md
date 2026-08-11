@@ -365,6 +365,7 @@ un état passé et ne font pas autorité sur le code actuel ; ils le disent en t
 | Document                                          | Description |
 | ------------------------------------------------- | ----------- |
 | `92_CADRAGE_DONNEES_AMONT_SCENARIOS.md`           | Données amont attendues de WinDev par scénario (SC-01 → SC-05) : état vérifié, arbitrages ouverts, découpage |
+| `92_CADRAGE_SCENARIO_SC-02.md`                    | Cadrage SC-02 — remplacement d’un salarié absent : arbitrages tranchés (existant figé, reprise partielle à 30 min, jamais zéro solution), conséquences du découpage sur le modèle, découpage en lots S0→S5 |
 | `92_CADRAGE_SCENARIO_SC-06.md`                    | Cadrage SC-06 — désignation de la ressource la plus à même de couvrir un besoin : intention, arbitrages tranchés, contrats d’entrée/sortie, découpage en lots S1→S7 |
 | `92_CADRAGE_SOCLE_REGLEMENTAIRE.md`               | Socle réglementaire — lots S7 (contraintes dormantes) puis S8 (cadre réglementaire au contrat, calculs faux, restitution des constats). Journal des écarts de score, lot par lot |
 | `92_CADRAGE_STABILISATION_SC-01.md`               | Cadrage du chantier de stabilisation SC-01 |
