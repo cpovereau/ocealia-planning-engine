@@ -977,3 +977,55 @@ Un test **mesure** cet écart plutôt que de le valider, pour qu'il soit chiffr�
 l'arbitrage et ne puisse pas dériver en silence. Tant qu'un client ne déclare pas de plage
 individuelle différente de la globale, la distorsion reste latente — mais c'est précisément ce
 que fait un veilleur.
+
+> **Corrigé au lot 8.2** (§8.2). Le test ne mesure plus une distorsion : il garde l'ordre des
+> coûts.
+
+### 8.2 — Le poids qui manquait à `NuitSalarieNonNuit`
+
+**Aucun écart de score — mesuré.** 575 tests, 0 échec (574 avant). Le créneau de nuit de SC-03 va
+à `SAL-2002`, travailleur de nuit occasionnel : la contrainte ne se déclenche pas, et ne se
+déclenchait pas davantage avant.
+
+#### Un poids absent, pas une calibration à 1
+
+`NuitSalarieNonNuit` écrivait `penalize(HardSoftScore.ONE_SOFT)` — seule du paquet métier à ne pas
+passer par `context.getPenalites()`. Ses voisines valent 500 (`affectationPosteVirtuel`), 2 000
+(`nonAffectation`), 5 000 (`detteReposSurReposHebdomadaire`). La clé
+`METIER_SOFT_NUIT_SALARIE_NON_NUIT` déclarait pourtant son unité — `OCCURRENCE` — donc l'intention
+forfaitaire était bien là ; c'est la valeur qui n'avait jamais été posée.
+
+Le lot S8.1 l'a rendue déterminante. Un veilleur déclarant une plage de nuit plus large produit
+mécaniquement plus de minutes pénibles qu'un salarié non-nuit sur le même créneau : sans
+contrepoids sérieux, le solveur préférait le salarié inadapté.
+
+#### La valeur retenue, et pourquoi
+
+**2 000**, aligné sur `nonAffectation` : confier une nuit à quelqu'un qui n'en fait pas est du même
+ordre de gravité que laisser un créneau découvert.
+
+L'écart de plage réaliste — deux heures de plus, 120 minutes, au poids nuit 3 de la stratégie
+`EXPLOITATION` — vaut 360 points. Le contrepoids le domine d'un facteur supérieur à cinq.
+
+| Affectation d'un créneau 21:00–07:00 | Pénibilité | Inadéquation | **Total** |
+|---|---|---|---|
+| Veilleur, plage 21:00–07:00 | 1 800 | 0 | **1 800** |
+| Salarié non-nuit, plage globale | 1 440 | 2 000 | **3 440** |
+
+L'ordre est rétabli : la nuit revient au veilleur, de 1 640 points.
+
+#### Ce que le garde-fou couvre, et ce qu'il ne couvre pas
+
+Un test verrouille l'ordre des coûts : il échouera si quelqu'un baisse ce poids sous l'écart de
+plage, ou élargit la plage sans y toucher.
+
+Un second test énonce la **borne**. Une plage individuelle couvrant les 24 heures face à une plage
+globale de 8 heures produirait 16 heures de nuit supplémentaires, soit 2 880 points en
+`EXPLOITATION` — au-delà du contrepoids. Le poids retenu couvre l'écart réaliste, pas l'absurde,
+et le test le dit pour que la limite soit connue plutôt que supposée.
+
+#### Compatibilité
+
+Le constructeur historique de `Penalites` à treize arguments est conservé et applique le poids par
+défaut : les appelants qui construisent un jeu de pénalités complet pour d'autres raisons n'ont
+pas à connaître ce champ.

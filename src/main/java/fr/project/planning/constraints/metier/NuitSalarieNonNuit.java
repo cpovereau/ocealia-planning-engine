@@ -1,5 +1,6 @@
 package fr.project.planning.constraints.metier;
 
+import fr.project.planning.domain.contexte.PlanningContext;
 import fr.project.planning.domain.creneau.Creneau;
 import fr.project.planning.domain.creneau.TypePlageHoraire;
 import fr.project.planning.domain.ressource.SalarieReel;
@@ -34,7 +35,11 @@ public class NuitSalarieNonNuit {
                 .filter(c -> c.getRessourceAffectee() instanceof SalarieReel)
                 .filter(c -> c.getTypePlageHoraire() == TypePlageHoraire.NUIT)
                 .filter(c -> !((SalarieReel) c.getRessourceAffectee()).estTravailleurDeNuit())
-                .penalize(HardSoftScore.ONE_SOFT)
+                .join(factory.forEach(PlanningContext.class))
+                .penalize(
+                        HardSoftScore.ONE_SOFT,
+                        (creneau, context) -> context.getPenalites().getNuitSalarieNonNuit()
+                )
                 .asConstraint(PenaliteKey.METIER_SOFT_NUIT_SALARIE_NON_NUIT.name());
     }
 }

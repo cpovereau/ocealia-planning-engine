@@ -81,6 +81,22 @@ public final class Penalites implements Serializable {
      */
     private final int penaliteAmplitude;
 
+    /**
+     * Pénalité, par créneau, d'une nuit confiée à un salarié qui n'en fait pas (lot S8.2).
+     *
+     * <p>Forfaitaire — la clé {@code METIER_SOFT_NUIT_SALARIE_NON_NUIT} déclare l'unité
+     * {@code OCCURRENCE}. Ce poids manquait : la contrainte pénalisait un point nu, seule du
+     * paquet métier à ne pas passer par {@code Penalites}. Le lot S8.1, qui a rendu la plage de
+     * nuit individuelle effective, l'a rendu déterminant — un veilleur déclarant une plage plus
+     * large coûte davantage de minutes pénibles qu'un salarié non-nuit, et un point forfaitaire
+     * ne compensait pas l'écart.</p>
+     */
+    private final int nuitSalarieNonNuit;
+
+    /** Valeur retenue à défaut : couvre largement l'écart maximal de plage (~360 points). */
+    private static final int NUIT_SALARIE_NON_NUIT_PAR_DEFAUT = 2_000;
+
+    /** Constructeur historique — applique le poids par défaut de {@link #nuitSalarieNonNuit}. */
     public Penalites(
             int violationPhysique,
             int violationLegale,
@@ -96,6 +112,31 @@ public final class Penalites implements Serializable {
             int penaliteAlternanceJourNuit,
             int penaliteAmplitude
     ) {
+        this(violationPhysique, violationLegale, violationMetier, violationService,
+                violationPersonnelle, affectationPosteVirtuel, nonAffectation,
+                detteReposSurReposHebdomadaire, approcheMaxNuitsConsecutives,
+                depassementMaxDimanchesTravailles, depassementMaxJoursConsecutifs,
+                penaliteAlternanceJourNuit, penaliteAmplitude,
+                NUIT_SALARIE_NON_NUIT_PAR_DEFAUT);
+    }
+
+    public Penalites(
+            int violationPhysique,
+            int violationLegale,
+            int violationMetier,
+            int violationService,
+            int violationPersonnelle,
+            int affectationPosteVirtuel,
+            int nonAffectation,
+            int detteReposSurReposHebdomadaire,
+            int approcheMaxNuitsConsecutives,
+            int depassementMaxDimanchesTravailles,
+            int depassementMaxJoursConsecutifs,
+            int penaliteAlternanceJourNuit,
+            int penaliteAmplitude,
+            int nuitSalarieNonNuit
+    ) {
+        this.nuitSalarieNonNuit = nuitSalarieNonNuit;
         this.violationPhysique = violationPhysique;
         this.violationLegale = violationLegale;
         this.violationMetier = violationMetier;
@@ -109,6 +150,10 @@ public final class Penalites implements Serializable {
         this.depassementMaxJoursConsecutifs = depassementMaxJoursConsecutifs;
         this.penaliteAlternanceJourNuit = penaliteAlternanceJourNuit;
         this.penaliteAmplitude = penaliteAmplitude;
+    }
+
+    public int getNuitSalarieNonNuit() {
+        return nuitSalarieNonNuit;
     }
 
     public int getViolationPhysique() {

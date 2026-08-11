@@ -1028,3 +1028,28 @@ contrainte métier à écrire `penalize(HardSoftScore.ONE_SOFT)` sans passer par
 `context.getPenalites()`, là où `AffectationPosteVirtuel` vaut 500, `nonAffectation` 2 000 et
 `detteRepos` 5 000. Un test mesure l'écart plutôt que de le valider. **Arbitrage attendu sur la
 valeur du poids.**
+
+### Cadre réglementaire — lot S8.2 : le poids de `NuitSalarieNonNuit` (2026-08-11)
+
+**Aucun écart de score — mesuré.** 575 tests, 0 échec (574 avant). Le créneau de nuit de SC-03 va
+à `SAL-2002`, travailleur de nuit occasionnel : la contrainte ne se déclenche pas.
+
+`NuitSalarieNonNuit` écrivait `penalize(HardSoftScore.ONE_SOFT)`, seule du paquet métier à ne pas
+passer par `context.getPenalites()`. Ce n'était pas une calibration à 1 mais un **poids absent** —
+la clé déclarait pourtant son unité, `OCCURRENCE`.
+
+Le lot S8.1 l'a rendue déterminante : un veilleur déclarant une plage de nuit plus large produit
+mécaniquement plus de minutes pénibles qu'un salarié non-nuit sur le même créneau, et le solveur
+préférait donc le salarié inadapté de 359 points.
+
+**Poids retenu : 2 000**, aligné sur `nonAffectation` — confier une nuit à quelqu'un qui n'en fait
+pas est du même ordre de gravité que laisser un créneau découvert. Sur un créneau 21:00–07:00 en
+`EXPLOITATION`, le veilleur coûte 1 800 contre 3 440 au salarié non-nuit : l'ordre est rétabli de
+1 640 points, et l'écart de plage réaliste (360 points) est dominé d'un facteur supérieur à cinq.
+
+Deux tests : l'un verrouille l'ordre des coûts, l'autre énonce la **borne** — une plage
+individuelle couvrant les 24 heures dépasserait le contrepoids. Le poids couvre l'écart réaliste,
+pas l'absurde, et c'est écrit.
+
+Le constructeur historique de `Penalites` à treize arguments est conservé et applique le poids par
+défaut.

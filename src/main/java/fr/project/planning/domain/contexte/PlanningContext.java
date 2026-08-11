@@ -134,7 +134,8 @@ private static Penalites defaultPenalites() {
             5_000,      // dimanchesTravailles
             5_000,      // joursConsecutifs
             3_000,      // alternanceJourNuit
-            50          // amplitude (par minute de dépassement, priorité moyenne R10)
+            50,         // amplitude (par minute de dépassement, priorité moyenne R10)
+            2_000       // nuitSalarieNonNuit (forfait par créneau — lot S8.2)
     );
 }
 

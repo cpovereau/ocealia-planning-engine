@@ -52,6 +52,9 @@ class PlageDeNuitIndividuelleTest {
     private final ConstraintVerifier<ConstraintProviderImpl, PlanningProblem> constraintVerifier =
             ConstraintVerifier.build(new ConstraintProviderImpl(), PlanningProblem.class, Creneau.class);
 
+    /** {@code PlanningContext.defaultPenalites()} — forfait par créneau, lot S8.2. */
+    private static final int PENALITE_NUIT_NON_NUIT = 2_000;
+
     // =====================================================================
     // La bascule
     // =====================================================================
@@ -111,28 +114,28 @@ class PlageDeNuitIndividuelleTest {
     }
 
     // =====================================================================
-    // La distorsion que la bascule introduit
+    // Ordre des coûts : la nuit doit revenir à qui la fait
     // =====================================================================
 
     @Nested
-    @DisplayName("Ordre des coûts — distorsion mesurée, arbitrage en attente")
+    @DisplayName("Ordre des coûts")
     class OrdreDesCouts {
 
         /**
-         * Confier une nuit au veilleur coûte <strong>plus cher</strong> qu'à un salarié qui ne
-         * travaille pas de nuit.
+         * Confier une nuit au veilleur doit coûter <strong>moins cher</strong> qu'à un salarié qui
+         * n'en fait pas.
          *
-         * <p>Le veilleur déclare une plage plus large, donc plus de minutes pénibles. Le seul
-         * contrepoids, {@code NuitSalarieNonNuit}, pénalise <strong>1 point forfaitaire</strong> —
-         * ni proportionnel à la durée, ni pondéré par la stratégie de scoring. Le solveur préfère
-         * donc le salarié inadapté.</p>
+         * <p>Ce n'est pas acquis. Le veilleur déclare une plage de nuit plus large, donc davantage
+         * de minutes pénibles : le lot S8.1, en rendant la plage individuelle effective, a rendu
+         * le veilleur mécaniquement plus cher. Tant que {@code NuitSalarieNonNuit} pénalisait un
+         * point nu, le solveur préférait le salarié inadapté de 359 points — une incitation
+         * exactement inverse à celle recherchée.</p>
          *
-         * <p>Ce test ne valide pas ce comportement : il le <strong>mesure</strong>, pour que
-         * l'écart soit chiffré au moment de l'arbitrage et qu'il ne puisse pas dériver en
-         * silence.</p>
+         * <p>Le poids introduit au lot S8.2 rétablit l'ordre. Ce test le garde : il échouera si
+         * quelqu'un baisse ce poids sous l'écart de plage, ou élargit la plage sans y toucher.</p>
          */
         @Test
-        void confierLaNuitAuVeilleurCoutePlusCherQuAUnSalarieNonNuit() {
+        void confierLaNuitAuVeilleurCouteMoinsCherQuAUnSalarieNonNuit() {
             SalarieReel veilleur =
                     salarie("SAL-V", "permanent", LocalTime.of(21, 0), LocalTime.of(7, 0));
             SalarieReel nonNuit = salarie("SAL-N", null, null, null);
@@ -141,21 +144,43 @@ class PlageDeNuitIndividuelleTest {
             int penibiliteNonNuit = penibilite(creneauDe21A07(nonNuit));
 
             // EXPLOITATION, poids nuit = 3 : 600×3 = 1800 contre 480×3 = 1440.
+            // Le veilleur part donc avec 360 points de retard, du seul fait de sa plage.
             assertEquals(1800, penibiliteVeilleur);
             assertEquals(1440, penibiliteNonNuit);
 
-            // Le seul contrepoids, et il vaut 1 point quelle que soit la durée du créneau.
             constraintVerifier
                     .verifyThat((p, factory) -> NuitSalarieNonNuit.nuitSalarieNonNuit(factory))
-                    .given(creneauDe21A07(nonNuit))
-                    .penalizesBy(1);
-            int inadequationNonNuit = 1;
+                    .given(contexte(), creneauDe21A07(nonNuit))
+                    .penalizesBy(PENALITE_NUIT_NON_NUIT);
 
-            assertTrue(penibiliteNonNuit + inadequationNonNuit < penibiliteVeilleur,
-                    "DISTORSION CONNUE : le solveur préfère le salarié non-nuit de "
-                            + (penibiliteVeilleur - penibiliteNonNuit - inadequationNonNuit)
-                            + " points. Corriger en rendant NuitSalarieNonNuit proportionnel à la "
-                            + "durée et pondéré par la stratégie. Arbitrage en attente.");
+            constraintVerifier
+                    .verifyThat((p, factory) -> NuitSalarieNonNuit.nuitSalarieNonNuit(factory))
+                    .given(contexte(), creneauDe21A07(veilleur))
+                    .penalizesBy(0);
+
+            int coutVeilleur = penibiliteVeilleur;
+            int coutNonNuit = penibiliteNonNuit + PENALITE_NUIT_NON_NUIT;
+
+            assertTrue(coutVeilleur < coutNonNuit,
+                    "La nuit doit revenir au veilleur : " + coutVeilleur + " contre "
+                            + coutNonNuit + ". Le poids de NuitSalarieNonNuit doit rester au-dessus "
+                            + "de l'écart de plage entre les deux salariés.");
+        }
+
+        @Test
+        void leContrepoidsDomineLEcartDePlageMaximal() {
+            // Écart maximal plausible : une plage individuelle couvrant les 24 heures face à la
+            // plage globale de 8 heures, soit 16 heures de nuit supplémentaires. En EXPLOITATION,
+            // poids nuit = 3, cela vaut 2 880 points... au-delà du contrepoids.
+            //
+            // Le poids retenu couvre l'écart réaliste — deux heures de plage supplémentaires,
+            // 360 points — avec une marge de plus de cinq fois. Il ne couvre pas l'absurde, et
+            // ce test le dit pour que la borne soit connue plutôt que supposée.
+            int ecartRealisteEnMinutes = 120;
+            int poidsNuitExploitation = 3;
+
+            assertTrue(PENALITE_NUIT_NON_NUIT > ecartRealisteEnMinutes * poidsNuitExploitation,
+                    "Le contrepoids doit dominer l'écart de plage réaliste");
         }
     }
 

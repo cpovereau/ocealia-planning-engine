@@ -37,6 +37,14 @@ class Phase8ConstraintsTest {
     private final ConstraintVerifier<ConstraintProviderImpl, PlanningProblem> constraintVerifier =
             ConstraintVerifier.build(new ConstraintProviderImpl(), PlanningProblem.class, Creneau.class);
 
+    /** {@code PlanningContext.defaultPenalites()} — forfait par créneau, lot S8.2. */
+    private static final int PENALITE_NUIT_NON_NUIT = 2_000;
+
+    private static fr.project.planning.domain.contexte.PlanningContext contexte() {
+        return fr.project.planning.fixtures.TestPlanningContextFactory.contexteNeutre(
+                LocalDate.of(2026, 5, 11), LocalDate.of(2026, 5, 17));
+    }
+
     // ---------------------------------------------------------
     // 1. salarié non-nuit (null) sur créneau de nuit → pénalité
     // ---------------------------------------------------------
@@ -49,8 +57,8 @@ class Phase8ConstraintsTest {
 
         constraintVerifier
                 .verifyThat((provider, factory) -> NuitSalarieNonNuit.nuitSalarieNonNuit(factory))
-                .given(creneau)
-                .penalizesBy(1);
+                .given(contexte(), creneau)
+                .penalizesBy(PENALITE_NUIT_NON_NUIT);
     }
 
     // ---------------------------------------------------------
@@ -65,8 +73,8 @@ class Phase8ConstraintsTest {
 
         constraintVerifier
                 .verifyThat((provider, factory) -> NuitSalarieNonNuit.nuitSalarieNonNuit(factory))
-                .given(creneau)
-                .penalizesBy(1);
+                .given(contexte(), creneau)
+                .penalizesBy(PENALITE_NUIT_NON_NUIT);
     }
 
     // ---------------------------------------------------------
