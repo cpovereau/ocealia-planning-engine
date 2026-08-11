@@ -277,17 +277,15 @@ public class Creneau implements Serializable {
     /**
      * Code activité effectif : {@link #codeActiviteId} en priorité, {@link #activite} en repli.
      *
-     * Applique en sortie la règle déjà utilisée avant résolution par
-     * {@code ScenarioSc03PreparationService} pour la jointure référentiel, afin que la
-     * restitution API expose la même clé que celle qui a servi au calcul.
+     * <p>Seul point d'entrée pour lire l'activité d'un créneau — contraintes, calcul des
+     * métriques et restitution API passent tous par ici, de sorte que le score et la réponse
+     * exposent la même clé. La règle elle-même vit dans {@link CodeActivite}, partagée avec
+     * le DTO d'entrée.</p>
      *
      * @return le code activité effectif, ou null si aucun des deux champs n'est renseigné
      */
     public String getCodeActiviteEffectif() {
-        if (codeActiviteId != null && !codeActiviteId.isBlank()) {
-            return codeActiviteId;
-        }
-        return (activite != null && !activite.isBlank()) ? activite : null;
+        return CodeActivite.effectif(codeActiviteId, activite);
     }
 
     public String getPosteComptable() {

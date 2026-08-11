@@ -853,3 +853,40 @@ est mis à jour, complété d'une assertion sur les affectations : le poste virt
 0 h.
 
 510 tests, 0 échec.
+
+### Socle réglementaire — lot S7.8 : nettoyage, et clôture du chantier S7 (2026-08-11)
+
+**Aucun écart de score — mesuré.** 519 tests, 0 échec (510 avant). Le lot ne modifie le
+comportement d'aucune contrainte.
+
+* **Deux contraintes mortes supprimées** — `CreneauJourFerie` et `CreneauDeNuit`, enregistrées
+  dans aucun `ConstraintProvider` depuis leur remplacement par `PenibilitesLegalesMinutes`. Les
+  réenregistrer **doublerait** le comptage des pénibilités, et `CreneauDeNuit` pénalisait la durée
+  entière du créneau là où le breakdown mesure les seules minutes de nuit réelles.
+* **Cinq seuils orphelins retirés** de `SeuilsDeTolerance` — jamais alimentés, donc à 0, donc
+  neutralisants pour les contraintes qui les lisaient. Rapatriés dans
+  `ContraintesReglementairesSalarie` par les lots S7.0 à S7.7. Zéro appelant vérifié avant retrait.
+* **Règle de repli d'activité unifiée** — `domain/creneau/CodeActivite.java` porte la règle unique
+  (`codeActiviteId` prioritaire, repli sur `activite`, `null` si aucun). `Creneau` et
+  `CreneauInputDTO` y délèguent via `getCodeActiviteEffectif()`. **Onze** sites ramenés à
+  l'accesseur, dont deux hors contraintes : `WorkMetricsCalculator` — donc la réponse API — et les
+  services de préparation SC-01 et SC-03.
+* **Garde anti-duplication** — `CodeActiviteTest.Unicite` parcourt `src/main/java` et échoue si
+  l'expression réapparaît en ligne. Sans liste d'exemptions.
+
+**Deux dormances d'une autre famille, repérées en clôture.** Elles relèvent d'un lot distinct
+(voir `92_cadrage_socle_reglementaire.md` §6.1) :
+
+1. **La valorisation du jour férié ne fonctionne pas.** `RegulatoryParameters.neutre()` porte une
+   liste `joursFeries` vide et les trois services de préparation l'utilisent : `minutesFerie` vaut
+   0 pour tout client, la pénalité férié ne se déclenche jamais et `heuresJourFerie` vaut 0.0 dans
+   toutes les réponses. L'**interdiction** (`JourFerieRefuse`) fonctionne, elle, en lisant le champ
+   `isJourFerie` du contrat — que le schéma qualifie pourtant d'« indicatif, non réglementaire ».
+2. **`DetteReposSurReposHebdomadaire` est dormante** — elle filtre sur `qualificationJour` à
+   `RH`/`RHD`, valeur qu'aucun mapper ne produit (`OUVRE` en dur). Septième contrainte muette, de
+   même nature que les six du chantier.
+
+**Bilan du chantier S7** — six contraintes dormantes remises en service, deux contraintes
+manquantes écrites, seuils portés au salarié, code mort et règle dupliquée supprimés. Une seule
+variation de score sur l'ensemble : SC-03 de `0hard/-960soft` à `0hard/-66960soft` au lot S7.7b
+(sous-emploi hebdomadaire), voulue et gardée par assertion. 413 tests au départ, 519 à l'arrivée.

@@ -361,7 +361,7 @@ Séquences détectées :
   - au diagnostic de pénibilité,
   - à la vérification des contraintes réglementaires.
 
-La contrainte correspondante dans le moteur (`maxNuitsConsecutives`) compare cette valeur au seuil configuré dans le `PlanningContext`.
+La contrainte correspondante dans le moteur (`NuitsConsecutivesMax`) compare cette valeur au seuil **du salarié**, `contraintesReglementaires.nuitsConsecutivesMaximum`, transporté par le contrat d'entrée. Elle lisait auparavant un seuil global dans le `PlanningContext` ; ce seuil n'était jamais alimenté et a été retiré au lot S7.8.
 
 ---
 

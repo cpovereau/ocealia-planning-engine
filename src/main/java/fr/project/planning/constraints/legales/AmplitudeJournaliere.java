@@ -61,9 +61,7 @@ public class AmplitudeJournaliere {
             .ifExists(
                 ReferentielComptabiliteActivite.class,
                 Joiners.filtering((salarie, creneau, ref) -> {
-                    String codeActivite = (creneau.getCodeActiviteId() != null && !creneau.getCodeActiviteId().isBlank())
-                            ? creneau.getCodeActiviteId() : creneau.getActivite();
-                    ComptabiliteActivite ca = ref.getByCode(codeActivite);
+                    ComptabiliteActivite ca = ref.getByCode(creneau.getCodeActiviteEffectif());
                     return ca != null && ca.isCompteDansCharge();
                 })
             )

@@ -92,11 +92,11 @@
 | `contraintesReglementaires.joursConsecutifsMaximum` | non | SUPPORTÉ | Exploité par `JoursConsecutifsMax` (SOFT) |
 | `contraintesReglementaires.amplitudeJournaliereMaximum` | non | SUPPORTÉ | Exploité par `AmplitudeJournaliere` (SOFT) |
 | `contraintesReglementaires.heuresMinimumParJour` | non | SUPPORTÉ | Activé Phase 8 — exploité par `HeuresMinimumParJour` (SOFT) — inactif si null |
-| `contraintesReglementaires.heuresMaximumParJour` | non | TOLÉRÉ | Mappé — `DureeMaximaleLegaleParSalarie` utilise une constante globale (780 min/période), pas ce champ individuel — activation conditionnée à une refonte de cette contrainte |
-| `contraintesReglementaires.nuitsMaximumParSemaine` | non | TOLÉRÉ | Mappé — `NuitsConsecutivesMax` lit `SeuilsDeTolerance.maxNuitsConsecutives` (global), pas ce champ individuel — activation conditionnée à un arbitrage entre seuil global et seuil individuel |
-| `contraintesReglementaires.reposQuotidienMinimum` | non | TOLÉRÉ | Mappé — `ReposObligatoireApresNuits` lit un repos après nuits (global), sémantique différente du repos quotidien individuel — arbitrage requis |
-| `contraintesReglementaires.heuresMinimumParSemaine` | non | TOLÉRÉ | Mappé — aucune contrainte active — activation conditionnée à la définition d'un pattern de groupement par semaine (ISO week, gestion des horizons partiels) |
-| `contraintesReglementaires.heuresMaximumParSemaine` | non | TOLÉRÉ | Mappé — aucune contrainte active — même condition que `heuresMinimumParSemaine` |
+| `contraintesReglementaires.heuresMaximumParJour` | non | SUPPORTÉ | Exploité par `DureeMaximaleLegaleParSalarie` (HARD) depuis le lot S7.6 — plafond de **durée travaillée** par journée, distinct de `amplitudeJournaliereMaximum` — inactif si absent |
+| `contraintesReglementaires.nuitsMaximumParSemaine` | non | SUPPORTÉ | Exploité par `NuitsMaximumParSemaine` (SOFT) depuis le lot S7.7 — **volume** hebdomadaire, à distinguer de `nuitsConsecutivesMaximum` qui borne un **enchaînement** — inactif si absent |
+| `contraintesReglementaires.reposQuotidienMinimum` | non | SUPPORTÉ | Exploité par `ReposQuotidienMinimum` (SOFT) — inactif si absent |
+| `contraintesReglementaires.heuresMinimumParSemaine` | non | SUPPORTÉ | Exploité par `HeuresMinimumParSemaine` (SOFT) depuis le lot S7.7 — sous-emploi hebdomadaire, jugé sur les seules semaines complètes de l'horizon — inactif si absent |
+| `contraintesReglementaires.heuresMaximumParSemaine` | non | SUPPORTÉ | Exploité par `HeuresMaximumParSemaine` (SOFT) — inactif si absent |
 | `heureDebutNuit` / `heureFinNuit` | non | TOLÉRÉ | Mappés — méthodes utilitaires préparées sur `SalarieReel` — activation conditionnée à l'arbitrage sur la relation avec `segmentNuit` (créneau) : deux sources de vérité possibles pour la qualification de nuit |
 | `travailleJourFerie` | non | SUPPORTÉ | Exploité par `JourFerieRefuse` (HARD) |
 | `postesComptablesCompatibles` | non | TOLÉRÉ | Mappé — aucune contrainte active |

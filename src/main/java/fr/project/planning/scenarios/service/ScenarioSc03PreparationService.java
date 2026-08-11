@@ -136,27 +136,25 @@ public class ScenarioSc03PreparationService {
                         "[SC-03] créneau id='" + dto.getId() + "' : heureFin est requise.");
             }
 
-            String codeUtilise;
-            boolean estFallback = false;
-            if (dto.getCodeActiviteId() != null && !dto.getCodeActiviteId().isBlank()) {
-                codeUtilise = dto.getCodeActiviteId();
-                // [Phase 7] WARN — discordance codeActiviteId vs activite
-                if (dto.getActivite() != null && !dto.getActivite().isBlank()
-                        && !codeUtilise.equals(dto.getActivite())) {
-                    log.warn("[SC-03] créneau id='{}' : codeActiviteId='{}' et activite='{}' discordants — activite ignorée",
-                            dto.getId(), codeUtilise, dto.getActivite());
-                }
-            } else {
-                codeUtilise = dto.getActivite();
-                estFallback = true;
+            // [S7.8] La règle de repli vit dans CodeActivite ; ici on ne fait que la diagnostiquer.
+            // Le repli s'est produit si le code retenu existe et n'est pas la clé du contrat.
+            String codeUtilise = dto.getCodeActiviteEffectif();
+            boolean estFallback = codeUtilise != null && !codeUtilise.equals(dto.getCodeActiviteId());
+
+            // [Phase 7] WARN — discordance codeActiviteId vs activite
+            if (!estFallback && codeUtilise != null
+                    && dto.getActivite() != null && !dto.getActivite().isBlank()
+                    && !codeUtilise.equals(dto.getActivite())) {
+                log.warn("[SC-03] créneau id='{}' : codeActiviteId='{}' et activite='{}' discordants — activite ignorée",
+                        dto.getId(), codeUtilise, dto.getActivite());
             }
 
-            if (estFallback && codeUtilise != null && !codeUtilise.isBlank()) {
+            if (estFallback) {
                 log.warn("[SC-03] créneau id='{}' : codeActiviteId absent — fallback sur activite='{}' utilisé comme clé référentiel",
                         dto.getId(), codeUtilise);
             }
 
-            if (codeUtilise == null || codeUtilise.isBlank() || referentiel.getByCode(codeUtilise) == null) {
+            if (codeUtilise == null || referentiel.getByCode(codeUtilise) == null) {
                 activiteInconnue++;
                 log.warn("[SC-03] créneau id='{}' : activité '{}' absente du référentiel — créneau exclu avant solveur",
                         dto.getId(), codeUtilise);
@@ -283,8 +281,7 @@ public class ScenarioSc03PreparationService {
             List<SalarieInputDTO> salaries,
             List<PosteVirtuelInputDTO> postesVirtuels) {
 
-        String activiteCode = (creneau.getCodeActiviteId() != null && !creneau.getCodeActiviteId().isBlank())
-                ? creneau.getCodeActiviteId() : creneau.getActivite();
+        String activiteCode = creneau.getCodeActiviteEffectif();
 
         for (SalarieInputDTO sal : salaries) {
             Set<String> acts = sal.getActivitesCompatibles();

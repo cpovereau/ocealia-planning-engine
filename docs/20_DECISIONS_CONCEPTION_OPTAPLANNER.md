@@ -535,6 +535,14 @@ ne sont plus utilisées pour le scoring des pénibilités.
 
 Elles sont remplacées par une contrainte unique : `PenibilitesLegalesMinutes`
 
+> **Supprimées au lot S7.8.** Elles sont restées enregistrées dans aucun `ConstraintProvider`
+> après cette décision, mais présentes dans le code — invitant à les réenregistrer, ce qui
+> **doublerait** le comptage. `CreneauDeNuit` pénalisait de surcroît la durée entière du créneau
+> dès que le drapeau `segmentNuit` était levé, là où `TimeBreakdownCalculator` mesure les seules
+> minutes tombant réellement dans la plage de nuit, applique le poids configurable et fait jouer
+> la dominance. Sur un créneau 20:00–23:00 déclaré nuit, l'ancienne comptait 180 minutes, la
+> nouvelle en compte 60.
+
 ---
 
 ### Décision — Distinction entre nuit réglementaire globale et nuit portée par salarié

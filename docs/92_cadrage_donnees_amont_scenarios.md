@@ -103,6 +103,16 @@ aucun symptôme observé. Mais le rapatriement vers le salarié devra traiter la
 **que fait le moteur quand la valeur est absente ?** Le principe de la §3 impose une réponse
 explicite — valeur réglementaire par défaut, ou contrainte désactivée.
 
+> **Traité — chantier S7** (`92_cadrage_socle_reglementaire.md`). Les trois seuils, et deux autres
+> repérés au passage, vivent désormais dans `ContraintesReglementairesSalarie`, alimentés par le
+> contrat, un jeu de seuils par salarié. Ils ont été retirés de `SeuilsDeTolerance` au lot S7.8.
+>
+> Réponse retenue à la question posée ici : **seule l'absence désactive une règle.** Un maximum à
+> 0 interdit tout, un minimum à 0 n'exige rien, et le zéro se lit à la lettre. Une fenêtre
+> glissante fait exception — c'est une taille, pas une borne : elle exige au moins 1 jour. Cette
+> lecture a d'ailleurs révélé un décalage d'une unité dans `NuitsConsecutivesMax`, qui ne testait
+> le dépassement qu'en prolongeant une séquence et jamais en l'ouvrant.
+
 ### 5.4 Lieux — transport et restitution, pas de règle
 
 Le rôle des lieux est de produire des données cohérentes avec l'environnement client WinDev.

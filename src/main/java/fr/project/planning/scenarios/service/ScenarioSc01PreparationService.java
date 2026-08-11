@@ -236,10 +236,8 @@ public class ScenarioSc01PreparationService {
                 horsHorizon++;
             }
 
-            String code = (c.getCodeActiviteId() != null && !c.getCodeActiviteId().isBlank())
-                    ? c.getCodeActiviteId()
-                    : c.getActivite();
-            if (code == null || code.isBlank() || referentiel.getByCode(code) == null) {
+            String code = c.getCodeActiviteEffectif();
+            if (code == null || referentiel.getByCode(code) == null) {
                 activiteInconnue++;
                 log.warn("[SC-01] créneau id='{}' : activité '{}' absente du référentiel — diagnostic uniquement (non exclu en Phase C)",
                         c.getId(), code);

@@ -144,9 +144,13 @@ Il n'est **pas encore transporté ni utilisé par le moteur** à ce stade.
 | `nuitsMaximumParSemaine`      | ✓           | ✗             | ✗ (*)             |
 | `joursConsecutifsMaximum`     | ✓           | ✗             | ✗                 |
 
-(*) Un seuil global `maxNuitsConsecutives` existe dans `SeuilsDeTolerance` (PlanningContext),
-mais il concerne les **nuits consécutives**, pas le nombre de nuits par semaine calendaire —
-ce sont deux règles distinctes.
+(*) Deux règles distinctes portent sur les nuits et ne doivent pas être confondues :
+`nuitsMaximumParSemaine` borne un **volume** sur la semaine calendaire, tandis que
+`nuitsConsecutivesMaximum` borne un **enchaînement**. Trois nuits lundi, mercredi et vendredi ne
+violent aucun enchaînement mais peuvent dépasser un volume de deux. Les deux sont désormais des
+seuils **par salarié**, portés par `contraintesReglementaires` et exploités depuis les lots S7.2
+et S7.7. Le seuil global `maxNuitsConsecutives` de `SeuilsDeTolerance` mentionné ici auparavant
+n'existe plus : jamais alimenté, il a été retiré au lot S7.8.
 
 ### 5.3 Prochaines étapes
 

@@ -66,15 +66,12 @@ public class WorkMetricsCalculator {
             /*
              * Résolution activité
              */
-            String codeActivite =
-                (c.getCodeActiviteId() != null && !c.getCodeActiviteId().isBlank())
-                    ? c.getCodeActiviteId()
-                    : c.getActivite();
-            
+            String codeActivite = c.getCodeActiviteEffectif();
+
             /*
              * Sécurisation dataset : si aucune clé activité exploitable
              */
-            if (codeActivite == null || codeActivite.isBlank()) {
+            if (codeActivite == null) {
                 // activité non exploitable → créneau neutre
                 continue;
             }

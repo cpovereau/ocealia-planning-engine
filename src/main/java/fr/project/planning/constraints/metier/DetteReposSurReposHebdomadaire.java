@@ -52,13 +52,8 @@ public class DetteReposSurReposHebdomadaire {
                 return false;
             }
 
-            // priorité à l'id activité planning, fallback sur l'ancien champ
-            String codeActivite = (creneau.getCodeActiviteId() != null && !creneau.getCodeActiviteId().isBlank())
-                    ? creneau.getCodeActiviteId()
-                    : creneau.getActivite();
-
             ComptabiliteActivite comptabilite =
-                referentiel.getByCode(codeActivite);
+                referentiel.getByCode(creneau.getCodeActiviteEffectif());
 
             return comptabilite != null
                 && comptabilite.isCompteDansCharge()

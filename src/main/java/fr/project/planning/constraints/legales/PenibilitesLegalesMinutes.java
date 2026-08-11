@@ -36,13 +36,8 @@ public final class PenibilitesLegalesMinutes {
                     return false;
                 }
 
-                String codeActivite =
-                    (creneau.getCodeActiviteId() != null && !creneau.getCodeActiviteId().isBlank())
-                        ? creneau.getCodeActiviteId()
-                        : creneau.getActivite();
-
                 ComptabiliteActivite comptabilite =
-                    referentiel.getByCode(codeActivite);
+                    referentiel.getByCode(creneau.getCodeActiviteEffectif());
 
                 return comptabilite != null
                         && comptabilite.isCompteDansCharge();

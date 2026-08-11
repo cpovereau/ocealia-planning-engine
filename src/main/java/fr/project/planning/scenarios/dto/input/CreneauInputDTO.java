@@ -1,6 +1,9 @@
 package fr.project.planning.scenarios.dto.input;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
+import fr.project.planning.domain.creneau.CodeActivite;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -82,6 +85,18 @@ public class CreneauInputDTO {
 
     public String getActivite() { return activite; }
     public void setActivite(String activite) { this.activite = activite; }
+
+    /**
+     * Code activité effectif — même règle que {@code Creneau.getCodeActiviteEffectif()},
+     * applicable dès la préparation, avant que l'entité ne soit construite.
+     *
+     * <p>{@code @JsonIgnore} : propriété dérivée, elle ne fait pas partie du contrat d'entrée
+     * et ne doit pas élargir la surface acceptée par le désérialiseur strict.</p>
+     */
+    @JsonIgnore
+    public String getCodeActiviteEffectif() {
+        return CodeActivite.effectif(codeActiviteId, activite);
+    }
 
     public String getPosteComptable() { return posteComptable; }
     public void setPosteComptable(String posteComptable) { this.posteComptable = posteComptable; }

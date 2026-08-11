@@ -4,8 +4,10 @@
 > jamais pour un client conforme au contrat. Ce document établit le constat, l'ordre de
 > réparation et le point de contrôle de chaque étape.
 >
-> **Statut** — S7.0 à S7.7 livrés. Les six contraintes dormantes sont remises en service et les
-> deux contraintes manquantes sont écrites. Reste S7.8 (nettoyage).
+> **Statut** — **chantier clos.** S7.0 à S7.8 livrés : les six contraintes dormantes sont
+> remises en service, les deux contraintes manquantes sont écrites, le code mort et la règle
+> dupliquée sont supprimés. Deux dormances d'une autre famille, repérées en clôture, sont
+> décrites au §6 et relèvent d'un lot distinct.
 > **Contrat concerné** — `50_ScenarioContract.md` §3.7 · **Suivi** — `90_SUIVI_DEVELOPPEMENT_MOTEUR.md`
 
 ---
@@ -110,7 +112,7 @@ L'ordre va du moins au plus perturbant, pour qu'une surprise reste imputable.
 | **S7.6** ✅ | `DureeMaximaleLegaleParSalarie` — **correction de maille** + `heuresMaximumParJour` | **Aucun** — mesuré (§7.6) |
 | **S7.7a** ✅ | Lecture littérale du zéro — révision de D2 sur arbitrage | **Aucun** — mesuré (§7.7a) |
 | **S7.7b** ✅ | Contraintes absentes : `heuresMinimumParSemaine`, `nuitsMaximumParSemaine` | **SC-03 : −960 → −66 960** (§7.7b) |
-| S7.8 | Nettoyage : code mort, retrait des cinq champs de `SeuilsDeTolerance`, doc | Aucun |
+| **S7.8** ✅ | Nettoyage : code mort, cinq champs de `SeuilsDeTolerance`, règle de repli unifiée | **Aucun** — mesuré (§7.8) |
 
 ### Contenu type d'un lot S7.1 → S7.6
 
@@ -158,17 +160,56 @@ String codeActivite = (creneau.getCodeActiviteId() != null && !creneau.getCodeAc
 ```
 
 C'est exactement le corps de `Creneau.getCodeActiviteEffectif()`. Les contraintes remises en
-service au titre de S7 appellent la méthode. **À unifier au lot S7.8** : tant que la règle existe
-en dix exemplaires, une évolution du repli en oubliera un.
+service au titre de S7 appellent la méthode. Tant que la règle existe en dix exemplaires, une
+évolution du repli en oubliera un.
+
+> **Soldé au lot S7.8** (§7.8). La règle vit dans `domain/creneau/CodeActivite.java`, les onze
+> sites y délèguent, et un test de garde échoue si l'expression réapparaît en ligne. Le compte
+> de onze — et non dix — s'explique par deux sites hors contraintes : `WorkMetricsCalculator`
+> et les services de préparation SC-01 et SC-03. `CreneauDeNuit`, citée plus haut parmi les
+> porteuses du repli, a été supprimée au même lot.
 
 ---
 
 ## 6. Suites
 
-Avant S7.6, arbitrer la sémantique de `heuresMaximumParJour` : plafond de **durée travaillée**
-par journée, à distinguer de `amplitudeJournaliereMaximum` (première à dernière heure, pauses
-comprises), déjà appliqué par `AmplitudeJournaliere`. Les deux coexistent et ne mesurent pas la
-même chose.
+> Arbitrage rendu avant S7.6 : `heuresMaximumParJour` est un plafond de **durée travaillée**
+> par journée, distinct de `amplitudeJournaliereMaximum` (première à dernière heure, pauses
+> comprises) appliqué par `AmplitudeJournaliere`. Les deux coexistent et ne mesurent pas la
+> même chose. Traité au §7.6.
+
+### 6.1 Deux dormances d'une autre famille, repérées en clôture de S7.8
+
+Elles ne relèvent pas du repli d'activité mais du **même mécanisme** : un champ que le mapper
+ne sait pas calculer, donc écrit en dur, donc un filtre de tête qui ne matche jamais. Un lot
+distinct est nécessaire ; il touche au contrat d'entrée et demande un arbitrage.
+
+**La valorisation du jour férié ne fonctionne pas.** `TimeBreakdownCalculator` interroge
+`RegulatoryParameters.estJourFerie(date)`, or les trois services de préparation construisent
+`RegulatoryParameters.neutre()`, dont la liste `joursFeries` est **vide**. `minutesFerie` vaut
+donc 0 pour tout client : `LEGAL_SOFT_TRAVAIL_JOUR_FERIE_MINUTES` ne se déclenche jamais et
+`heuresJourFerie` vaut 0.0 dans toutes les réponses. Aucun test n'assied cette métrique — c'est
+ce qui a permis à l'écart de tenir.
+
+Ce qui fonctionne est l'**interdiction** : `JourFerieRefuse` (HARD) lit `Creneau.jourFerie`,
+alimenté par le champ `isJourFerie` du contrat. Le schéma qualifie pourtant ce champ
+d'« INDICATIF (non réglementaire) » en désignant `RegulatoryParameters` comme source de vérité.
+C'est la source vide qui fait autorité, et le champ dit indicatif qui porte seul la règle qui
+marche.
+
+**`DetteReposSurReposHebdomadaire` est dormante.** Elle filtre sur
+`getQualificationJour() == RH || == RHD`, or `ScenarioCreneauMapper` et
+`ScenarioSc06PreparationService` écrivent `QualificationJour.OUVRE` en dur — « non computable
+depuis le DTO seul », dit le commentaire — et `ScenarioDatasetBuilderSc01` saute purement les
+jours RH/RHD au lieu d'y produire des créneaux. **Aucun créneau n'est jamais qualifié RH ou
+RHD en production.** C'est une septième contrainte muette, de la même nature que les six du
+§1.1, découverte parce que la suppression de `CreneauJourFerie` obligeait à recenser les
+lecteurs de `qualificationJour`.
+
+Les deux partagent une même cause : le contrat transporte des faits bruts (une date, un
+drapeau) là où le moteur attend une **qualification** que seul l'appelant peut établir. Le
+calendrier des fériés et la qualification des jours de repos doivent venir du contrat, ou être
+dérivés d'une règle explicite — pas être laissés à une valeur par défaut.
 
 ## 7. Journal des lots
 
@@ -544,3 +585,81 @@ Le classement SC-06 lève un motif quand un candidat **aggrave** la situation de
 confier le besoin à un salarié *réduit* son déficit : le delta est toujours favorable, le motif
 ne serait jamais levé. Pire, il serait sémantiquement inversé — un salarié sous-employé est un
 **bon** candidat, pas un motif de rejet.
+
+### 7.8 — Nettoyage : le code mort, les seuils orphelins, la règle en onze exemplaires
+
+**Aucun écart de score — mesuré.** 519 tests, 0 échec (510 avant). Aucune contrainte n'a changé
+de comportement : le lot ne fait que supprimer et unifier.
+
+| Livrable | Fichier |
+|---|---|
+| Règle de repli unique | `domain/creneau/CodeActivite.java` (créé) |
+| Délégation des deux porteurs | `domain/creneau/Creneau.java`, `scenarios/dto/input/CreneauInputDTO.java` |
+| Onze sites ramenés à `getCodeActiviteEffectif()` | 7 contraintes, `WorkMetricsCalculator`, `ScenarioSc01PreparationService`, `ScenarioSc03PreparationService` (×2) |
+| Deux contraintes mortes supprimées | `constraints/metier/CreneauJourFerie.java`, `constraints/metier/CreneauDeNuit.java` |
+| Cinq seuils orphelins retirés | `domain/contexte/SeuilsDeTolerance.java` |
+| Couverture et garde anti-duplication — 9 cas | `domain/creneau/CodeActiviteTest.java` |
+
+#### Pourquoi supprimer plutôt que réenregistrer les deux contraintes
+
+`CreneauDeNuit` et `CreneauJourFerie` n'étaient déclarées dans aucun `ConstraintProvider` depuis
+la décision consignée en `20_DECISIONS_CONCEPTION_OPTAPLANNER.md` : les pénibilités sont calculées
+par `PenibilitesLegalesMinutes` à partir de `TimeBreakdownCalculator`.
+
+La différence n'est pas cosmétique. `CreneauDeNuit` pénalise `creneau.getDuree()` — la **durée
+entière** du créneau — dès que le drapeau `segmentNuit` est levé, avec un poids fixe de 1. Le
+breakdown mesure les minutes qui tombent réellement dans la plage de nuit, en répartissant de part
+et d'autre de minuit, applique le poids configurable par stratégie, et fait jouer les règles de
+dominance pour qu'une minute nuit + dimanche soit comptée une fois et non deux. Sur un créneau
+20:00–23:00 déclaré nuit, l'ancienne compte 180 minutes, la nouvelle 60. **Les réenregistrer
+doublerait le comptage.**
+
+`CreneauJourFerie` est morte deux fois : son filtre teste `getQualificationJour() == FERIE`, et le
+mapper écrit `OUVRE` en dur. Elle ne matcherait rien même enregistrée. Ce constat a conduit à la
+découverte décrite au §6.1 — la valorisation du férié ne fonctionne pas davantage sur le chemin
+censé la remplacer, mais la réponse n'est pas de ressusciter cette classe.
+
+#### Les cinq seuils : supprimés parce qu'ils étaient devenus faux, pas seulement inutiles
+
+Aucun constructeur de `SeuilsDeTolerance` ne les prenait en argument : ils valaient 0 en
+production, et neutralisaient les contraintes qui les lisaient. Les lots S7.0 à S7.7 les ont
+rapatriés dans `ContraintesReglementairesSalarie`, alimentés par le contrat, un seuil par salarié.
+Les laisser en place aurait offert à un futur lecteur une valeur plausible et fausse — un zéro qui
+ressemble à une borne. Vérification faite avant retrait : zéro appelant, en production comme en
+test.
+
+#### Onze sites, pas dix
+
+Le §5 recensait dix exemplaires de la règle en comptant les seules contraintes. Le recensement
+complet en donne onze, les deux sites supplémentaires étant hors contraintes :
+`WorkMetricsCalculator` — donc la **réponse API** — et les services de préparation SC-01 et SC-03.
+La règle arbitrait donc à la fois ce qui est compté au score et ce qui est restitué au client,
+depuis des copies indépendantes.
+
+Les deux porteurs — l'entité `Creneau` et le DTO d'entrée — exposent chacun un
+`getCodeActiviteEffectif()` qui délègue à `CodeActivite.effectif(...)`. Le DTO en a besoin parce
+que SC-01 et SC-03 arbitrent l'activité **avant** que l'entité n'existe. Son accesseur porte
+`@JsonIgnore` : une propriété dérivée ne doit pas élargir la surface acceptée par le désérialiseur
+strict.
+
+#### Une équivalence à vérifier plutôt qu'à supposer
+
+L'expression en ligne rendait `activite` telle quelle, y compris une chaîne blanche ;
+`CodeActivite.effectif` rend `null`. Les appelants ont été repris un par un :
+`ref.getByCode("")` et `ref.getByCode(null)` rendent tous deux `null` — comportement identique
+pour les neuf jointures référentiel. Pour `WorkMetricsCalculator` et SC-01, le garde
+`code == null || code.isBlank()` se réduit à `code == null`. Pour SC-03, `auMoinsUneRessourceCompatible`
+n'est appelé que sur des créneaux déjà validés contre le référentiel : le code y est nécessairement
+non nul.
+
+Le bloc de diagnostic de SC-03 était le seul cas structurellement différent — un `if/else` porteur
+de deux avertissements distincts. Il est réécrit sans réénoncer la règle : le repli s'est produit
+si le code retenu existe et n'est pas la clé du contrat.
+
+#### Le test de garde
+
+`CodeActiviteTest.Unicite` parcourt `src/main/java` et échoue si une classe de production réécrit
+`getCodeActiviteId().isBlank()`. Aucune liste d'exemptions n'est nécessaire : `CodeActivite` teste
+ses paramètres, pas un getter. Cette garde est la leçon du chantier — la dormance de six mois n'a
+pas été causée par une règle fausse, mais par une règle **juste ailleurs**. Un test qui interdit la
+copie protège mieux qu'un test qui vérifie la copie.
