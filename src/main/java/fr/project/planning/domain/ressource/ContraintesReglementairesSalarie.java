@@ -132,6 +132,13 @@ public class ContraintesReglementairesSalarie {
      *
      * <p>Source unique de la règle : toutes les contraintes réglementaires individuelles la
      * consultent, aucune ne réimplémente son propre test.</p>
+     *
+     * <p>Cette phrase n'était vraie que de sept contraintes sur douze jusqu'au lot S8.3.
+     * {@code AmplitudeJournaliere}, {@code HeuresMaximumParSemaine}, {@code HeuresMinimumParJour},
+     * {@code JoursConsecutifsMax} et {@code ReposQuotidienMinimum} testaient {@code != null} en
+     * direct : une borne négative les <strong>activait</strong> avec un seuil négatif, là où les
+     * sept autres l'auraient tenue pour absente. Un même {@code -1} produisait donc deux
+     * comportements opposés selon la règle qui le lisait.</p>
      */
     public static boolean borneRenseignee(Number borne) {
         return borne != null && borne.doubleValue() >= 0d;

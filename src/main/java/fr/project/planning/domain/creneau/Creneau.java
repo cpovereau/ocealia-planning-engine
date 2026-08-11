@@ -131,17 +131,57 @@ public class Creneau implements Serializable {
     private boolean fige;
 
     /* =========================
+       Bornes absolues du créneau
+       ========================= */
+
+    /**
+     * Instant de début du créneau : sa {@link #date}, à son {@link #heureDebut}.
+     */
+    public LocalDateTime getDebutEffectif() {
+        return LocalDateTime.of(this.date, this.heureDebut);
+    }
+
+    /**
+     * Instant de fin du créneau, <strong>minuit franchi compris</strong>.
+     *
+     * <p>Convention du contrat d'entrée : {@code date} désigne le jour de <em>début</em>. Une
+     * heure de fin qui n'est pas postérieure à l'heure de début tombe donc le lendemain — un
+     * créneau 22:00–06:00 du 3 mars se termine le 4 mars à 06:00.</p>
+     *
+     * <p>[Lot S8.3] Cette convention était réécrite partout où l'on en avait besoin :
+     * {@link #getMinutesDansIntervalle}, {@code ReposQuotidienMinimum.totalDeficitMinutes},
+     * {@code AmplitudeJournaliere.calculerAmplitudeMinutes}. {@code LimitePhysique} l'avait
+     * omise et comparait des {@link LocalTime} nus : deux créneaux se chevauchant de part et
+     * d'autre de minuit ne produisaient aucun point HARD. Deux méthodes portent désormais la
+     * règle, et les contraintes les appellent au lieu de la redécrire.</p>
+     */
+    public LocalDateTime getFinEffectif() {
+        LocalDateTime debut = getDebutEffectif();
+        LocalDateTime fin = LocalDateTime.of(this.date, this.heureFin);
+        return fin.isAfter(debut) ? fin : fin.plusDays(1);
+    }
+
+    /**
+     * Indique si le créneau couvre effectivement le jour civil fourni — au moins une minute.
+     *
+     * <p>Un créneau ne peut toucher que deux jours civils au plus, sa date et le lendemain. Un
+     * créneau 14:00–00:00 se termine à minuit pile : il ne couvre pas le lendemain, et la
+     * comparaison stricte le dit sans cas particulier.</p>
+     */
+    public boolean couvre(LocalDate jour) {
+        LocalDateTime debutJour = jour.atStartOfDay();
+        return getDebutEffectif().isBefore(debutJour.plusDays(1))
+                && getFinEffectif().isAfter(debutJour);
+    }
+
+    /* =========================
        Calcul des intersections
        ========================= */
 
     public long getMinutesDansIntervalle(LocalTime debutPlage, LocalTime finPlage) {
 
-    LocalDateTime creneauDebut = LocalDateTime.of(this.date, this.heureDebut);
-    LocalDateTime creneauFin   = LocalDateTime.of(this.date, this.heureFin);
-
-    if (!creneauFin.isAfter(creneauDebut)) {
-        creneauFin = creneauFin.plusDays(1);
-    }
+    LocalDateTime creneauDebut = getDebutEffectif();
+    LocalDateTime creneauFin   = getFinEffectif();
 
     LocalDateTime plageDebut = LocalDateTime.of(this.date, debutPlage);
     LocalDateTime plageFin   = LocalDateTime.of(this.date, finPlage);

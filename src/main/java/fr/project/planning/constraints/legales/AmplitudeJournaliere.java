@@ -4,6 +4,7 @@ import fr.project.planning.domain.contexte.PlanningContext;
 import fr.project.planning.domain.creneau.Creneau;
 import fr.project.planning.domain.metier.ComptabiliteActivite;
 import fr.project.planning.domain.metier.ReferentielComptabiliteActivite;
+import fr.project.planning.domain.ressource.ContraintesReglementairesSalarie;
 import fr.project.planning.domain.ressource.SalarieReel;
 import fr.project.planning.scoring.PenaliteKey;
 
@@ -25,7 +26,8 @@ import java.util.List;
  * (heureFin ajustée de +24h si heureFin < heureDebut).
  *
  * Seuil : ContraintesReglementairesSalarie.amplitudeJournaliereMaximum (en heures).
- * Si null → contrainte non active pour ce salarié.
+ * Activation : {@link ContraintesReglementairesSalarie#borneRenseignee(Number)}, source unique
+ * de la règle depuis le lot S8.3.
  *
  * Pénalité : Penalites.penaliteAmplitude × minutes de dépassement, par jour en dépassement.
  */
@@ -39,9 +41,10 @@ public class AmplitudeJournaliere {
 
         return factory
             // 1) Salariés réels avec un seuil d'amplitude configuré
+            //    [S8.3] Règle d'activation commune — cf. ContraintesReglementairesSalarie.
             .forEach(SalarieReel.class)
-            .filter(s -> s.getContraintesReglementaires() != null
-                    && s.getContraintesReglementaires().getAmplitudeJournaliereMaximum() != null)
+            .filter(s -> ContraintesReglementairesSalarie.borneRenseignee(
+                    s.contraintesOuAucune().getAmplitudeJournaliereMaximum()))
 
             // 2) Jointure avec les créneaux affectés à ce salarié, pauses exclues
             // [Phase 8] estSegmentDePause = true → exclu du calcul d'amplitude (segment non productif)
@@ -82,7 +85,7 @@ public class AmplitudeJournaliere {
                 HardSoftScore.ONE_SOFT,
                 (salarie, date, creneaux, context) -> {
                     int seuilMinutes = (int)(
-                        salarie.getContraintesReglementaires().getAmplitudeJournaliereMaximum() * 60
+                        salarie.contraintesOuAucune().getAmplitudeJournaliereMaximum() * 60
                     );
                     int excedent = calculerAmplitudeMinutes(creneaux) - seuilMinutes;
                     return excedent > 0

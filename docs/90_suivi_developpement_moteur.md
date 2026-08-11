@@ -1053,3 +1053,43 @@ pas l'absurde, et c'est écrit.
 
 Le constructeur historique de `Penalites` à treize arguments est conservé et applique le poids par
 défaut.
+
+### Correctifs — lot S8.3 : quatre calculs faux, réparés ensemble (2026-08-11)
+
+**Aucun écart de score — mesuré.** 596 tests, 0 échec (575 avant, soit 21 tests ajoutés). Le jeu
+de référence SC-03 reste à `-67440` soft. Les quatre défauts partagent cette propriété : ils sont
+invisibles sur le jeu de référence, et c'est pourquoi ils avaient survécu.
+
+**1. Chevauchement à minuit (HARD).** `pasDeChevauchement` appariait les créneaux de même date
+puis comparait des `LocalTime` nus. Aveugle des deux côtés : dates différentes (une nuit du 3 mars
+22:00–06:00 et un créneau du 4 mars 02:00–10:00 n'étaient jamais appariés) et même date
+(22:00–06:00 contre 23:00–23:30 : `23:00.isBefore(06:00)` est faux). Un salarié pouvait être à
+deux endroits à la fois sans point HARD. L'appariement porte désormais sur le recouvrement des
+intervalles absolus via `Joiners.overlapping`, la comparaison restant stricte. La convention
+« `date` = jour de début » vit maintenant dans `Creneau.getDebutEffectif()/getFinEffectif()`, au
+lieu d'être réécrite en trois endroits.
+
+**2. Règle d'activation non uniforme.** `borneRenseignee` s'annonce source unique ; cinq
+contraintes sur douze testaient `!= null` en direct. Sur une **valeur négative**, les sept
+conformes s'abstiennent, les cinq autres s'activaient avec un seuil négatif — dépassé par
+n'importe quelle affectation s'il s'agit d'un maximum. Le zéro reste littéral (arbitrage S7.7).
+
+**3. Jour férié à deux sources.** La valorisation lisait le calendrier de `RegulatoryParameters`,
+`JourFerieRefuse` (HARD) lisait le drapeau du créneau. Le lot S8.0 avait rendu l'écart atteignable :
+déclarer son calendrier sans marquer ses créneaux valorisait les minutes en férié mais n'empêchait
+personne d'y travailler. Les deux lisent désormais le même calendrier, toujours arbitré en un point
+unique par `ScenarioRegulatoryParametersMapper`. Deux conséquences assumées : le férié devient une
+propriété de la **date**, et un créneau traversant minuit est refusé si l'un des deux jours civils
+est férié — sauf s'il s'arrête à minuit pile.
+
+**4. Poste virtuel filtré sur l'activité en SC-06.** Arbitrage rendu : un poste virtuel n'est pas
+soumis à la règle d'activité, il existe pour combler le besoin. La passe de repli le filtrait
+pourtant et rendait `null` faute de correspondance : SC-06 répondait « rien à pourvoir » alors
+qu'un poste à pourvoir figurait au dataset. Elle propose désormais toujours un poste virtuel dès
+qu'il en existe un ; la déclaration ne sert plus qu'à choisir le plus parlant.
+
+**Contrat.** `activitesCompatibles` était marqué SUPPORTÉ — ce qu'un intégrateur lit « le moteur
+respecte ma déclaration ». En SC-03 il n'alimente qu'un compteur de diagnostic, qui pose de surcroît
+une question globale (« quelqu'un le peut-il ? ») et n'attrape donc pas une affectation individuelle
+incompatible. Passé **TOLÉRÉ**, avec l'arbitrage rendu : **HARD**, au lot des contraintes
+personnelles. Idem `activitesAutorisees` du poste virtuel.

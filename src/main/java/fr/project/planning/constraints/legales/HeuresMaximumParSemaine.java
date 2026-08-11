@@ -3,6 +3,7 @@ package fr.project.planning.constraints.legales;
 import fr.project.planning.domain.creneau.Creneau;
 import fr.project.planning.domain.metier.ComptabiliteActivite;
 import fr.project.planning.domain.metier.ReferentielComptabiliteActivite;
+import fr.project.planning.domain.ressource.ContraintesReglementairesSalarie;
 import fr.project.planning.domain.ressource.SalarieReel;
 import fr.project.planning.scoring.PenaliteKey;
 
@@ -41,9 +42,10 @@ import java.time.temporal.TemporalAdjusters;
  * {@code compteDansCharge = false} exclues.</p>
  *
  * <h3>Activation</h3>
- * <p>Inactive si {@code ContraintesReglementairesSalarie.heuresMaximumParSemaine == null}.
- * Une valeur {@code 0} activerait la contrainte avec un seuil nul — le contrat d'entrée impose
- * d'<strong>omettre le champ</strong> pour désactiver la règle, jamais d'envoyer 0.</p>
+ * <p>Inactive tant que le plafond n'est pas transmis, cf.
+ * {@link ContraintesReglementairesSalarie#borneRenseignee(Number)} — source unique de la règle
+ * depuis le lot S8.3. Une valeur {@code 0} est lue à la lettre et interdit tout travail ; le
+ * contrat d'entrée impose d'<strong>omettre le champ</strong> pour désactiver la règle.</p>
  *
  * <h3>Pénalité</h3>
  * <p>{@code PENALITE_HEURES_MAX_PAR_SEMAINE} × minutes de dépassement, par semaine en dépassement.</p>
@@ -69,9 +71,10 @@ public class HeuresMaximumParSemaine {
 
         return factory
             // 1) Salariés réels avec un maximum hebdomadaire configuré
+            //    [S8.3] Règle d'activation commune — cf. ContraintesReglementairesSalarie.
             .forEach(SalarieReel.class)
-            .filter(s -> s.getContraintesReglementaires() != null
-                    && s.getContraintesReglementaires().getHeuresMaximumParSemaine() != null)
+            .filter(s -> ContraintesReglementairesSalarie.borneRenseignee(
+                    s.contraintesOuAucune().getHeuresMaximumParSemaine()))
 
             // 2) Jointure avec les créneaux affectés à ce salarié, pauses exclues
             .join(
@@ -105,7 +108,7 @@ public class HeuresMaximumParSemaine {
                 HardSoftScore.ONE_SOFT,
                 (salarie, lundi, totalMinutes) -> {
                     int maxMinutes = (int)(
-                        salarie.getContraintesReglementaires().getHeuresMaximumParSemaine() * 60
+                        salarie.contraintesOuAucune().getHeuresMaximumParSemaine() * 60
                     );
                     int excedent = totalMinutes - maxMinutes;
                     return excedent > 0 ? PENALITE_HEURES_MAX_PAR_SEMAINE * excedent : 0;

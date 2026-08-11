@@ -75,6 +75,23 @@ class ScenarioSc06PassesTest {
     }
 
     @Test
+    void posteVirtuelDeclarantUneAutreActivite_sertQuandMemeDeRepli() throws Exception {
+        // [Lot S8.3] Arbitrage rendu : un poste virtuel n'est pas soumis à la règle d'activité,
+        // puisqu'il existe justement pour combler le besoin. Le filtrer revenait à retirer le
+        // remplaçant au motif qu'il ne fait pas déjà le travail — et SC-06 restituait alors
+        // « rien à pourvoir » alors qu'un poste à pourvoir figurait au dataset.
+        String reponse = postSc06(
+                "src/test/resources/scenarios/sc06/sc06_repli_poste_virtuel_autre_activite.json");
+        JsonNode candidats = objectMapper.readTree(reponse).get("candidats");
+
+        assertEquals(1, candidats.size());
+        assertEquals("RESSOURCE_A_POURVOIR", candidats.get(0).get("nature").asText());
+        assertEquals("PV-001", candidats.get(0).get("affectations").get(0).get("ressourceId").asText(),
+                "Le poste virtuel ne déclare que ACT-ADMIN et le besoin est ACT-SOIN : "
+                        + "il reste néanmoins le poste à pourvoir.");
+    }
+
+    @Test
     void repliSurPosteVirtuel_neCompteAucuneRessourceMobilisee() throws Exception {
         // §10.4 : workMetrics ne porte que les ressources réelles mobilisées par le rang 1.
         // Un poste virtuel n'en est pas une.

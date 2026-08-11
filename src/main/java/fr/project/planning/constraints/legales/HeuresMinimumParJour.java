@@ -3,6 +3,7 @@ package fr.project.planning.constraints.legales;
 import fr.project.planning.domain.creneau.Creneau;
 import fr.project.planning.domain.metier.ComptabiliteActivite;
 import fr.project.planning.domain.metier.ReferentielComptabiliteActivite;
+import fr.project.planning.domain.ressource.ContraintesReglementairesSalarie;
 import fr.project.planning.domain.ressource.SalarieReel;
 import fr.project.planning.scoring.PenaliteKey;
 
@@ -36,7 +37,9 @@ import org.optaplanner.core.api.score.stream.Joiners;
  * </ul>
  *
  * <h3>Activation</h3>
- * <p>Inactive si {@code ContraintesReglementairesSalarie.heuresMinimumParJour == null}.</p>
+ * <p>Inactive tant que le minimum n'est pas transmis, cf.
+ * {@link ContraintesReglementairesSalarie#borneRenseignee(Number)} — source unique de la règle
+ * depuis le lot S8.3. Un minimum à {@code 0} est lu à la lettre : il n'exige rien.</p>
  *
  * <h3>Pénalité</h3>
  * <p>{@code PENALITE_HEURES_MIN_PAR_JOUR} × minutes de déficit, par journée en déficit.
@@ -61,9 +64,10 @@ public class HeuresMinimumParJour {
 
         return factory
             // 1) Salariés réels avec un seuil de minimum horaire journalier configuré
+            //    [S8.3] Règle d'activation commune — cf. ContraintesReglementairesSalarie.
             .forEach(SalarieReel.class)
-            .filter(s -> s.getContraintesReglementaires() != null
-                    && s.getContraintesReglementaires().getHeuresMinimumParJour() != null)
+            .filter(s -> ContraintesReglementairesSalarie.borneRenseignee(
+                    s.contraintesOuAucune().getHeuresMinimumParJour()))
 
             // 2) Jointure avec les créneaux affectés, pauses exclues
             // [Phase 8] estSegmentDePause = true → exclu du calcul des heures de travail
@@ -99,7 +103,7 @@ public class HeuresMinimumParJour {
                 HardSoftScore.ONE_SOFT,
                 (salarie, date, totalMinutes) -> {
                     int minMinutes = (int)(
-                        salarie.getContraintesReglementaires().getHeuresMinimumParJour() * 60
+                        salarie.contraintesOuAucune().getHeuresMinimumParJour() * 60
                     );
                     int deficit = minMinutes - totalMinutes;
                     return deficit > 0 ? PENALITE_HEURES_MIN_PAR_JOUR * deficit : 0;

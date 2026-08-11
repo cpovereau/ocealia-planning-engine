@@ -265,7 +265,7 @@ public class Sc06CandidatEnumerationService {
 
     /**
      * Complète le podium lorsque les ressources réelles ne suffisent pas : poste virtuel si le
-     * dataset en propose un compatible, sinon ressource à pourvoir.
+     * dataset en propose un, sinon ressource à pourvoir.
      *
      * <p>Cette solution est toujours produite quand le besoin n'est pas intégralement couvert
      * par ailleurs : mieux vaut restituer « personne ne peut, voici ce qu'il reste à pourvoir »
@@ -283,15 +283,39 @@ public class Sc06CandidatEnumerationService {
 
         Map<String, Ressource> affectations = new LinkedHashMap<>();
         for (Creneau creneau : prepared.creneauxBesoin()) {
-            Ressource repli = posteVirtuelCompatible(prepared, creneau);
+            Ressource repli = posteVirtuelDeRepli(prepared, creneau);
             affectations.put(creneau.getId(), repli != null ? repli : RessourceNonAffectee.INSTANCE);
         }
         return List.of(construire(prepared, reference, affectations, NatureCandidat.RESSOURCE_A_POURVOIR));
     }
 
-    private Ressource posteVirtuelCompatible(PreparedSc06Scenario prepared, Creneau creneau) {
+    /**
+     * Poste virtuel proposé en repli pour ce créneau, ou {@code null} si le dataset n'en contient
+     * aucun.
+     *
+     * <h3>[Lot S8.3] Un poste virtuel n'est pas soumis à la règle d'activité</h3>
+     * <p>Arbitrage rendu : {@code activitesCompatibles} exprime ce qu'une <strong>personne</strong>
+     * sait faire, et deviendra une contrainte HARD avec le lot des contraintes personnelles. Un
+     * poste virtuel n'est pas une personne — il représente le poste qu'il resterait à pourvoir.
+     * Le filtrer sur l'activité revenait à retirer le remplaçant au motif qu'il ne fait pas déjà
+     * le travail.</p>
+     *
+     * <p>La méthode rendait {@code null} quand aucun poste virtuel ne déclarait l'activité
+     * demandée : le créneau retombait alors en {@code RessourceNonAffectee} et SC-06 restituait
+     * « personne, rien à pourvoir » alors qu'un poste à pourvoir existait bel et bien. Elle rend
+     * désormais toujours un poste virtuel dès qu'il en existe un.</p>
+     *
+     * <p>La déclaration d'activité reste lue, mais comme une <em>préférence</em> : à plusieurs
+     * postes virtuels, celui qui annonce l'activité demandée est le plus parlant à restituer.
+     * Elle n'écarte plus personne.</p>
+     */
+    private Ressource posteVirtuelDeRepli(PreparedSc06Scenario prepared, Creneau creneau) {
+        PosteVirtuel premier = null;
         for (Ressource ressource : prepared.problem().getRessources()) {
             if (ressource instanceof PosteVirtuel pv) {
+                if (premier == null) {
+                    premier = pv;
+                }
                 Set<String> activites = pv.getActivitesAutorisees();
                 if (activites == null || activites.isEmpty()
                         || activites.contains(creneau.getCodeActiviteEffectif())) {
@@ -299,7 +323,7 @@ public class Sc06CandidatEnumerationService {
                 }
             }
         }
-        return null;
+        return premier;
     }
 
     // =========================================================

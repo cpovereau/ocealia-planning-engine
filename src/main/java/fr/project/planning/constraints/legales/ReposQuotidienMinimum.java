@@ -3,6 +3,7 @@ package fr.project.planning.constraints.legales;
 import fr.project.planning.domain.creneau.Creneau;
 import fr.project.planning.domain.metier.ComptabiliteActivite;
 import fr.project.planning.domain.metier.ReferentielComptabiliteActivite;
+import fr.project.planning.domain.ressource.ContraintesReglementairesSalarie;
 import fr.project.planning.domain.ressource.SalarieReel;
 import fr.project.planning.scoring.PenaliteKey;
 
@@ -45,8 +46,10 @@ import java.util.TreeMap;
  * dont {@code compteDansCharge = false}.</p>
  *
  * <h3>Activation</h3>
- * <p>Inactive si {@code ContraintesReglementairesSalarie.reposQuotidienMinimum == null}.
- * Une valeur {@code 0} activerait la contrainte avec un seuil nul — le contrat d'entrée impose
+ * <p>Inactive tant que le seuil n'est pas transmis, cf.
+ * {@link ContraintesReglementairesSalarie#borneRenseignee(Number)} — source unique de la règle
+ * depuis le lot S8.3, où cette contrainte réécrivait encore son propre test {@code != null}.
+ * Une valeur {@code 0} est lue à la lettre : elle n'exige aucun repos. Le contrat d'entrée impose
  * d'<strong>omettre le champ</strong> pour désactiver la règle, jamais d'envoyer 0.
  * Voir {@code 92_cadrage_scenario_sc-06.md} §4.7.</p>
  *
@@ -79,8 +82,8 @@ public class ReposQuotidienMinimum {
         return factory
             // 1) Salariés réels avec un repos quotidien minimum configuré
             .forEach(SalarieReel.class)
-            .filter(s -> s.getContraintesReglementaires() != null
-                    && s.getContraintesReglementaires().getReposQuotidienMinimum() != null)
+            .filter(s -> ContraintesReglementairesSalarie.borneRenseignee(
+                    s.contraintesOuAucune().getReposQuotidienMinimum()))
 
             // 2) Jointure avec les créneaux affectés à ce salarié, pauses exclues
             .join(
@@ -114,7 +117,7 @@ public class ReposQuotidienMinimum {
                 HardSoftScore.ONE_SOFT,
                 (salarie, creneaux) -> {
                     int seuilMinutes = (int)(
-                        salarie.getContraintesReglementaires().getReposQuotidienMinimum() * 60
+                        salarie.contraintesOuAucune().getReposQuotidienMinimum() * 60
                     );
                     int deficit = totalDeficitMinutes(creneaux, seuilMinutes);
                     return deficit > 0 ? PENALITE_REPOS_QUOTIDIEN * deficit : 0;
@@ -144,14 +147,10 @@ public class ReposQuotidienMinimum {
         for (Creneau c : creneaux) {
             LocalDate date = c.getDate();
 
-            LocalDateTime debut = LocalDateTime.of(date, c.getHeureDebut());
-            LocalDateTime fin = LocalDateTime.of(date, c.getHeureFin());
-            if (!fin.isAfter(debut)) {
-                fin = fin.plusDays(1); // créneau à cheval sur minuit
-            }
-
-            debutParJour.merge(date, debut, (a, b) -> a.isBefore(b) ? a : b);
-            finParJour.merge(date, fin, (a, b) -> a.isAfter(b) ? a : b);
+            // [S8.3] Le report de 24 h d'un créneau à cheval sur minuit vit désormais dans
+            // Creneau.getFinEffectif(), avec les autres lecteurs de la même convention.
+            debutParJour.merge(date, c.getDebutEffectif(), (a, b) -> a.isBefore(b) ? a : b);
+            finParJour.merge(date, c.getFinEffectif(), (a, b) -> a.isAfter(b) ? a : b);
         }
 
         List<LocalDate> journeesTravaillees = new ArrayList<>(debutParJour.keySet());

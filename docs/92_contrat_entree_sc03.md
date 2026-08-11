@@ -85,10 +85,10 @@
 | Champ | Obligatoire | Statut | Comportement |
 |---|---|---|---|
 | `id` | oui (implicite) | SUPPORTÉ | Identifiant dans toutes les contraintes solveur |
-| `activitesCompatibles` | non | SUPPORTÉ | Utilisé pour le diagnostic pré-résolution `aucuneRessourceDansDataset` — `null` → accepte toutes les activités |
+| `activitesCompatibles` | non | TOLÉRÉ | ⚠️ **Corrigé au lot S8.3** — annoncé SUPPORTÉ jusque-là, ce qui laissait croire que le moteur respectait la déclaration. En SC-03, il n'alimente que le compteur de diagnostic `aucuneRessourceDansDataset`, et **n'écarte personne** : un salarié déclarant `["ACT-ADMIN"]` peut se voir affecter un créneau `ACT-SOIN`, sans point HARD ni pénalité SOFT. Le compteur lui-même ne le rattrape pas — il demande « *quelqu'un* le peut-il ? », pas « *celui-là* le peut-il ? ». Arbitrage rendu : la règle sera **HARD**, livrée avec le lot des contraintes personnelles. `null` → accepte toutes les activités |
 | `travailDeNuit` | non | SUPPORTÉ | Utilisé par la contrainte `NuitSalarieNonNuit` |
 | `statut` | non | TOLÉRÉ | Mappé — aucune contrainte solveur ne l'exploite |
-| `sitesAutorises` | non | TOLÉRÉ | Mappé — aucune contrainte active sur les sites |
+| `sitesAutorises` | non | TOLÉRÉ | Mappé — aucune contrainte active sur les sites. La notion n'existe pas encore côté logiciel de Planning : elle rejoindra le lot des contraintes personnelles, après cadrage avec la direction de Production |
 | `contraintesReglementaires.joursConsecutifsMaximum` | non | SUPPORTÉ | Exploité par `JoursConsecutifsMax` (SOFT) |
 | `contraintesReglementaires.amplitudeJournaliereMaximum` | non | SUPPORTÉ | Exploité par `AmplitudeJournaliere` (SOFT) |
 | `contraintesReglementaires.heuresMinimumParJour` | non | SUPPORTÉ | Activé Phase 8 — exploité par `HeuresMinimumParJour` (SOFT) — inactif si null |
@@ -98,7 +98,7 @@
 | `contraintesReglementaires.heuresMinimumParSemaine` | non | SUPPORTÉ | Exploité par `HeuresMinimumParSemaine` (SOFT) depuis le lot S7.7 — sous-emploi hebdomadaire, jugé sur les seules semaines complètes de l'horizon — inactif si absent |
 | `contraintesReglementaires.heuresMaximumParSemaine` | non | SUPPORTÉ | Exploité par `HeuresMaximumParSemaine` (SOFT) — inactif si absent |
 | `heureDebutNuit` / `heureFinNuit` | non | TOLÉRÉ | Mappés — méthodes utilitaires préparées sur `SalarieReel` — activation conditionnée à l'arbitrage sur la relation avec `segmentNuit` (créneau) : deux sources de vérité possibles pour la qualification de nuit |
-| `travailleJourFerie` | non | SUPPORTÉ | Exploité par `JourFerieRefuse` (HARD) |
+| `travailleJourFerie` | non | SUPPORTÉ | Exploité par `JourFerieRefuse` (HARD). **[S8.3]** La date fériée est désormais lue dans le calendrier réglementaire — `planningContext.regulatoryParameters.joursFeries` s'il est déclaré, drapeaux `isJourFerie` des créneaux sinon — et non plus directement sur le créneau. Un appelant déclarant son calendrier sans marquer ses créneaux est donc enfin couvert |
 | `postesComptablesCompatibles` | non | TOLÉRÉ | Mappé — aucune contrainte active |
 
 ### 4.2 Postes virtuels — `ressources.postesVirtuels[]`
@@ -106,7 +106,7 @@
 | Champ | Obligatoire | Statut | Comportement |
 |---|---|---|---|
 | `id` | oui (implicite) | SUPPORTÉ | Présent dans les diagnostics (`posteVirtuelIds`) |
-| `activitesAutorisees` | non | SUPPORTÉ | Utilisé pour le diagnostic `aucuneRessourceDansDataset` — `null` → accepte toutes les activités |
+| `activitesAutorisees` | non | TOLÉRÉ | Alimente le compteur de diagnostic `aucuneRessourceDansDataset` — `null` → accepte toutes les activités. **[S8.3]** Un poste virtuel n'est pas soumis à la règle d'activité : il existe pour combler le besoin, pas pour déclarer une compétence. En SC-06, la passe de repli le proposait auparavant uniquement s'il déclarait l'activité demandée, et rendait sinon « rien à pourvoir » ; elle propose désormais toujours un poste virtuel dès qu'il en existe un, la déclaration ne servant plus qu'à choisir le plus parlant |
 | `type` | non | TOLÉRÉ | Mappé sur `TypePosteVirtuel` — valeur inconnue → fallback sur `POTENTIEL` avec log.warn (Phase 10A) |
 | `capaciteCible` | non | TOLÉRÉ | Mappé — aucune contrainte active |
 | `lieuxAutorises` | non | TOLÉRÉ | Mappé — aucune contrainte active |
@@ -134,6 +134,23 @@
 1. Si `codeActiviteId` est présent et non blank → utilisé comme clé référentiel.
 2. Si `codeActiviteId` est absent ou blank → fallback sur `activite` (log.warn émis) — ⚠️ `activite` est déprécié.
 3. Si la clé résolue est absente du référentiel → créneau **exclu avant solveur** (log.warn "créneau exclu avant solveur").
+
+### Activation d'une borne réglementaire individuelle
+
+Toutes les contraintes réglementaires individuelles lisent la même règle, `borneRenseignee` :
+
+| Valeur transmise | Lecture du moteur |
+|---|---|
+| champ **absent** ou `null` | règle **inactive** — le moteur ne devine pas un seuil qu'on ne lui a pas donné |
+| `0` | **littéral** — un maximum à 0 interdit tout, un minimum à 0 n'exige rien |
+| valeur **négative** | tenue pour non renseignée : une borne négative ne décrit aucune règle |
+
+> **[S8.3]** Cette uniformité était annoncée mais fausse. Cinq contraintes sur douze —
+> `AmplitudeJournaliere`, `HeuresMaximumParSemaine`, `HeuresMinimumParJour`,
+> `JoursConsecutifsMax`, `ReposQuotidienMinimum` — testaient `!= null` en direct et
+> **s'activaient** sur une valeur négative, avec un seuil négatif. Un même `-1` produisait deux
+> comportements opposés selon la règle qui le lisait ; sur un maximum, il était dépassé par
+> n'importe quelle affectation. Les douze consultent désormais la même règle.
 
 ### Valeurs par défaut silencieuses
 

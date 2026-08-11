@@ -290,6 +290,13 @@ Les règles détaillées de calcul et de dominance sont documentées dans les do
 
 Toute pénalité exprimée “en minutes” (nuit, dimanche, férié, etc.) doit être dérivée de ces volumes partiels calculés par intersection temporelle, et non d’une qualification globale.
 
+> **Corollaire explicité au lot S8.3.** Ne pas découper un créneau impose de raisonner sur des
+> **instants**, pas sur des heures : un créneau porte une `date` de début et peut franchir minuit.
+> `LimitePhysique.pasDeChevauchement` l'avait oublié — il appariait les créneaux de même date puis
+> comparait des `LocalTime` nus, et ne voyait donc aucun chevauchement de part et d'autre de
+> minuit. La convention vit désormais dans `Creneau.getDebutEffectif()` / `getFinEffectif()`, que
+> les contraintes appellent au lieu de la redécrire chacune pour soi.
+
 ---
 
 ## 6. Règles fondamentales sur les contraintes
@@ -662,6 +669,19 @@ Ce composant contient :
 - la liste des jours fériés
 
 Il est injecté comme ProblemFact dans : `PlanningProblem`
+
+> **Mise à jour — lots S7.9a, S8.0 et S8.3.** Cette décision n'était pas tenue : jusqu'à S7.9a le
+> calendrier était systématiquement vide (`RegulatoryParameters.neutre()`), donc aucune minute
+> n'était jamais comptée comme fériée ; et jusqu'à S8.3 la contrainte HARD `JourFerieRefuse`
+> lisait toujours le drapeau `isJourFerie` du créneau, en concurrence avec le calendrier que
+> lisait la valorisation.
+>
+> Elle est tenue depuis. Le calendrier est arbitré en un point unique,
+> `ScenarioRegulatoryParametersMapper` : **déclaré** au contrat via
+> `planningContext.regulatoryParameters.joursFeries` s'il l'est (S8.0), **déduit** des drapeaux
+> `isJourFerie` sinon (S7.9a, SC-03/SC-06) ou de `scenarioParameters.holidayDates` (SC-01). Le
+> drapeau porté par le créneau reste donc une *source* possible du calendrier ; il n'est plus une
+> seconde vérité que les contraintes iraient lire directement.
 
 ---
 

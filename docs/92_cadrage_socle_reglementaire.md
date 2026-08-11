@@ -1029,3 +1029,124 @@ et le test le dit pour que la limite soit connue plutôt que supposée.
 Le constructeur historique de `Penalites` à treize arguments est conservé et applique le poids par
 défaut : les appelants qui construisent un jeu de pénalités complet pour d'autres raisons n'ont
 pas à connaître ce champ.
+
+### 8.3 — Quatre calculs faux, réparés ensemble
+
+**Aucun écart de score — mesuré.** 596 tests, 0 échec (575 avant, soit 21 tests ajoutés). Le jeu
+de référence SC-03 reste à `-67440` soft. Les quatre défauts partagent cette propriété : ils sont
+invisibles sur le jeu de référence, et c'est précisément pourquoi ils avaient survécu.
+
+| Livrable | Fichier |
+|---|---|
+| Bornes absolues du créneau | `domain/creneau/Creneau.java` |
+| Chevauchement sur instants | `constraints/physiques/LimitePhysique.java` |
+| Règle d'activation unifiée | 5 contraintes de `constraints/legales/` |
+| Jour férié lu au calendrier | `constraints/metier/JourFerieRefuse.java` |
+| Poste virtuel de repli | `scenarios/service/Sc06CandidatEnumerationService.java` |
+| Couverture — 7 cas | `constraints/ChevauchementMinuitTest.java` (créé) |
+| Couverture — 8 cas | `constraints/ActivationBornesUniformeTest.java` (créé) |
+| Couverture — 4 cas | `constraints/Phase4ConstraintsTest.java` (étendu) |
+| Couverture — 1 cas | `scenarios/sc06/api/ScenarioSc06PassesTest.java` (étendu) |
+
+#### 1. Le chevauchement était aveugle des deux côtés de minuit
+
+`pasDeChevauchement` appariait les créneaux **de même date**, puis comparait des `LocalTime` nus.
+Deux cécités, pas une :
+
+* **dates différentes** — un créneau du 3 mars 22:00–06:00 se termine le 4 mars à 06:00 ; un
+  créneau du 4 mars 02:00–10:00 le recouvre de quatre heures. Les deux n'étaient jamais appariés ;
+* **même date** — sur 22:00–06:00 et 23:00–23:30, le test `23:00.isBefore(06:00)` est faux. Deux
+  créneaux dont le second est intégralement inclus dans le premier étaient déclarés disjoints.
+
+Un salarié pouvait donc être à deux endroits à la fois sans qu'aucun point HARD ne le signale —
+sur les nuits, là où le risque est le plus élevé. C'était la seule règle du moteur à ignorer la
+convention « `date` = jour de début » que le contrat d'entrée pose pourtant partout.
+
+L'appariement porte désormais sur la ressource et sur le recouvrement des intervalles absolus,
+via `Joiners.overlapping`. La comparaison reste **stricte** : deux créneaux jointifs — 08:00–12:00
+puis 12:00–16:00 — ne se chevauchent toujours pas.
+
+`Creneau.getDebutEffectif()` et `getFinEffectif()` portent la convention, que trois endroits
+réécrivaient chacun pour soi. `ReposQuotidienMinimum` les appelle désormais au lieu de la
+redécrire ; `AmplitudeJournaliere` raisonne en minutes dans la journée et garde son arithmétique.
+
+#### 2. La règle d'activation valait pour sept contraintes sur douze
+
+`ContraintesReglementairesSalarie.borneRenseignee` annonce dans son javadoc être la source unique
+de la règle d'activation. Elle ne l'était pas. `AmplitudeJournaliere`, `HeuresMaximumParSemaine`,
+`HeuresMinimumParJour`, `JoursConsecutifsMax` et `ReposQuotidienMinimum` testaient `!= null` en
+direct.
+
+La divergence porte sur la **valeur négative**. Les sept conformes la tiennent pour non
+renseignée et s'abstiennent ; les cinq autres l'appliquaient à la lettre, et s'activaient avec un
+seuil négatif — donc dépassé par n'importe quelle affectation dès lors qu'il s'agit d'un maximum.
+Un même `-1` transmis par WinDev produisait deux comportements opposés selon la règle qui le
+lisait.
+
+Le zéro n'est pas touché : l'arbitrage du lot S7.7 tient, il reste **littéral**.
+
+#### 3. Le jour férié avait deux sources de vérité
+
+La valorisation (`TimeBreakdownCalculator`) lisait le calendrier de `RegulatoryParameters` ;
+l'interdiction (`JourFerieRefuse`, HARD) lisait le drapeau `isJourFerie` porté par le créneau.
+Deux réponses à une même question.
+
+Le lot S8.0, en ouvrant `planningContext.regulatoryParameters` au contrat, a rendu l'écart
+atteignable : un appelant déclarant son calendrier de fériés voyait ses minutes valorisées comme
+fériées, pendant qu'un salarié refusant le travail férié pouvait y être affecté **sans le moindre
+point HARD**. J'avais déclaré `joursFeries` « source de vérité » en S8.0 sans le vérifier.
+
+Les deux consommateurs interrogent désormais le même calendrier. Celui-ci reste arbitré en un
+point unique — `ScenarioRegulatoryParametersMapper` : déclaré au contrat s'il l'est, déduit des
+drapeaux sinon. Le drapeau du créneau n'est donc pas perdu, il devient une **source** du
+calendrier au lieu d'une seconde vérité concurrente.
+
+Deux conséquences assumées :
+
+* **le férié devient une propriété de la date.** Sur une date où un seul créneau portait le
+  drapeau, tous les créneaux de la journée sont concernés — une déclaration partielle en amont ne
+  produit plus une interdiction partielle. C'est la règle que `CalendrierJoursFeries` applique
+  déjà à la valorisation depuis S7.9a ;
+* **un créneau traversant minuit est refusé si l'un des deux jours civils est férié**, dès lors
+  qu'il y travaille réellement. Un créneau 14:00–00:00 la veille d'un férié ne l'est pas : il
+  s'arrête à minuit pile, et le test le dit.
+
+SC-01 n'est pas concerné : il ne génère aucun créneau sur une date fériée.
+
+#### 4. Un poste virtuel n'est pas soumis à la règle d'activité
+
+Arbitrage rendu : `activitesCompatibles` exprime ce qu'une **personne** sait faire. Un poste
+virtuel n'est pas une personne — il représente le poste qu'il resterait à pourvoir.
+
+`Sc06CandidatEnumerationService.posteVirtuelCompatible` le filtrait pourtant sur l'activité, dans
+la **passe de repli**, et rendait `null` quand aucun poste virtuel ne déclarait l'activité
+demandée. Le créneau retombait alors en `RessourceNonAffectee` : SC-06 répondait « personne, rien
+à pourvoir » alors qu'un poste à pourvoir figurait bel et bien au dataset. Filtrer le remplaçant
+au motif qu'il ne fait pas déjà le travail est l'inverse exact de sa raison d'être.
+
+La méthode rend désormais toujours un poste virtuel dès qu'il en existe un. La déclaration reste
+lue, mais comme une **préférence** : à plusieurs postes virtuels, celui qui annonce l'activité
+demandée est le plus parlant à restituer. Elle n'écarte plus personne.
+
+#### Ce que le contrat annonçait à tort
+
+`activitesCompatibles` était marqué **SUPPORTÉ** dans `92_contrat_entree_sc03.md`, ce qu'un
+intégrateur lit « le moteur respecte ma déclaration ». En SC-03, il n'alimente qu'un compteur de
+diagnostic et n'écarte personne : un salarié déclarant `["ACT-ADMIN"]` peut recevoir un créneau
+`ACT-SOIN` sans point HARD ni pénalité SOFT.
+
+Le diagnostic ne le rattrape pas davantage, parce qu'il pose une question **globale** — « au moins
+une ressource du dataset le peut-elle ? » — là où l'affectation en pose une **individuelle**. Si
+un seul autre salarié est compatible, le compteur reste à zéro pendant que le créneau part chez la
+mauvaise personne.
+
+Le champ passe **TOLÉRÉ**, avec l'arbitrage rendu : la règle sera **HARD**, livrée avec le lot des
+contraintes personnelles. La même correction s'applique à `activitesAutorisees` du poste virtuel.
+
+#### Le piège à désamorcer avant ce lot
+
+`92_suivi_stabilisation_contrat_entree.md` (cas B) note que le matching doit porter
+**exclusivement sur `codeActiviteId`**, jamais sur des libellés. Tant que la règle est un compteur
+de diagnostic, un libellé envoyé à la place d'un code produit un faux positif silencieux. **En
+HARD, le même écart rend tout créneau inaffectable** : chaque salarié déclare des libellés, aucun
+ne matche un code, tout tombe en non-couvert. À verrouiller au contrat au moment du cadrage.

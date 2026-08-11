@@ -5,6 +5,7 @@ import fr.project.planning.domain.contexte.PlanningContext;
 import fr.project.planning.domain.creneau.Creneau;
 import fr.project.planning.domain.metier.ComptabiliteActivite;
 import fr.project.planning.domain.metier.ReferentielComptabiliteActivite;
+import fr.project.planning.domain.ressource.ContraintesReglementairesSalarie;
 import fr.project.planning.domain.ressource.SalarieReel;
 import fr.project.planning.scoring.PenaliteKey;
 
@@ -29,6 +30,8 @@ import java.util.TreeSet;
  * avec compteDansCharge = true (cohérent avec WorkMetrics.maxJoursConsecutifsObservees).
  *
  * Seuil : ContraintesReglementairesSalarie.joursConsecutifsMaximum (par salarié).
+ * Activation : {@link ContraintesReglementairesSalarie#borneRenseignee(Number)}, source unique
+ * de la règle depuis le lot S8.3.
  * Pénalité : Penalites.depassementMaxJoursConsecutifs × jours de dépassement.
  */
 public class JoursConsecutifsMax {
@@ -41,9 +44,10 @@ public class JoursConsecutifsMax {
 
         return factory
             // 1) Salariés réels avec un seuil de jours consécutifs configuré
+            //    [S8.3] Règle d'activation commune — cf. ContraintesReglementairesSalarie.
             .forEach(SalarieReel.class)
-            .filter(s -> s.getContraintesReglementaires() != null
-                    && s.getContraintesReglementaires().getJoursConsecutifsMaximum() != null)
+            .filter(s -> ContraintesReglementairesSalarie.borneRenseignee(
+                    s.contraintesOuAucune().getJoursConsecutifsMaximum()))
 
             // 2) Jointure avec les créneaux affectés à ce salarié, pauses exclues
             // [Phase 8] estSegmentDePause = true → exclu du comptage des jours travaillés (segment non productif)
@@ -79,7 +83,7 @@ public class JoursConsecutifsMax {
             .penalize(
                 HardSoftScore.ONE_SOFT,
                 (salarie, creneaux, context) -> {
-                    int maxAutorise = salarie.getContraintesReglementaires().getJoursConsecutifsMaximum();
+                    int maxAutorise = salarie.contraintesOuAucune().getJoursConsecutifsMaximum();
                     int plusLongue = plusLongueSequenceConsecutive(creneaux, context.getHorizonTemporel());
                     int excedent = Math.max(0, plusLongue - maxAutorise);
                     if (excedent == 0) return 0;
