@@ -8,6 +8,8 @@ import fr.project.planning.domain.creneau.TypeCreneau;
 import fr.project.planning.domain.creneau.TypePlageHoraire;
 import fr.project.planning.domain.metier.ReferentielComptabiliteActivite;
 import fr.project.planning.domain.reglementaire.RegulatoryParameters;
+import fr.project.planning.domain.repos.CalendrierReposHebdomadaire;
+import fr.project.planning.domain.repos.ReposHebdomadaire;
 import fr.project.planning.domain.ressource.SalarieReel;
 import fr.project.planning.fixtures.TestPlanningContextFactory;
 import fr.project.planning.fixtures.TestReferentielFactory;
@@ -72,6 +74,7 @@ class WorkMetricsCalculatorTest {
                 List.of(salarie),
                 List.of(rhd)
         );
+        problem.setReposHebdomadaires(reposParDefaut(problem));
 
         WorkMetricsCalculator calculator = new WorkMetricsCalculator();
 
@@ -148,6 +151,7 @@ class WorkMetricsCalculatorTest {
             List.of(salarie),
             List.of(creneau)
     );
+    problem.setReposHebdomadaires(reposParDefaut(problem));
 
     WorkMetricsCalculator calculator = new WorkMetricsCalculator();
 
@@ -237,6 +241,7 @@ void deuxRhdSurDeuxDimanchesGenerentDeuxDettesReposHebdo() {
             List.of(salarie),
             List.of(rhdDimanche1, rhdDimanche2)
     );
+    problem.setReposHebdomadaires(reposParDefaut(problem));
 
     WorkMetricsCalculator calculator = new WorkMetricsCalculator();
 
@@ -332,6 +337,7 @@ void deuxRhdLeMemeDimancheNeComptentQuUneSeuleDetteReposHebdo() {
             List.of(salarie),
             List.of(rhdMatin, rhdApresMidi)
     );
+    problem.setReposHebdomadaires(reposParDefaut(problem));
 
     WorkMetricsCalculator calculator = new WorkMetricsCalculator();
 
@@ -414,6 +420,7 @@ void lesWorkMetricsSontIsolesParSalarie() {
             List.of(salarieA, salarieB),
             List.of(rhdPourA)
     );
+    problem.setReposHebdomadaires(reposParDefaut(problem));
 
     WorkMetricsCalculator calculator = new WorkMetricsCalculator();
 
@@ -506,6 +513,7 @@ void uneActiviteAbsenteDuReferentielEstIgnoreeParWorkMetrics() {
             List.of(salarie),
             List.of(creneauInconnu)
     );
+    problem.setReposHebdomadaires(reposParDefaut(problem));
 
     WorkMetricsCalculator calculator = new WorkMetricsCalculator();
 
@@ -584,6 +592,7 @@ void unCreneauHorsHorizonEstIgnoreParWorkMetrics() {
             List.of(salarie),
             List.of(creneauHorsHorizon)
     );
+    problem.setReposHebdomadaires(reposParDefaut(problem));
 
     WorkMetricsCalculator calculator = new WorkMetricsCalculator();
 
@@ -615,4 +624,119 @@ void unCreneauHorsHorizonEstIgnoreParWorkMetrics() {
     );
 }
 
+    // =====================================================================
+    // [S7.9c] Deux notions distinctes : le dimanche calendaire, et le repos du salarié
+    // =====================================================================
+
+    @Test
+    void leReposHebdoTravailleNeCompteQueLesDimanchesDuCalendrier() {
+
+        SalarieReel salarie = TestRessourceFactory.salarieStandard("S1");
+
+        PlanningContext context = TestPlanningContextFactory.contexteNeutre(
+                LocalDate.of(2026, 1, 5), LocalDate.of(2026, 1, 11));
+
+        PlanningProblem problem = new PlanningProblem(
+                context,
+                TestRegulatoryParametersFactory.neutre(),
+                TestReferentielFactory.referentielActiviteDetteRepos(),
+                List.of(salarie),
+                List.of(creneauDe("C-SAM", LocalDate.of(2026, 1, 10), salarie),    // samedi
+                        creneauDe("C-DIM", LocalDate.of(2026, 1, 11), salarie)));  // dimanche
+
+        // Ce salarié-là se repose le mardi : sans effet sur cet indicateur.
+        problem.setReposHebdomadaires(List.of(new ReposHebdomadaire(
+                "S1", LocalDate.of(2026, 1, 6), QualificationJour.RH, true)));
+
+        WorkMetrics wm = new WorkMetricsCalculator().compute(problem).get(salarie);
+
+        assertEquals(60, wm.getMinutesReposHebdoTravaille(),
+                "Seul le dimanche compte : l'indicateur est un fait de calendrier, pas une "
+                        + "déclaration, et doit rester comparable entre salariés");
+        assertEquals(1, wm.getNbDimanchesTravailles(),
+                "Même maille que les heures : l'un compte les jours, l'autre les heures");
+    }
+
+    @Test
+    void laDetteDeReposSuitLeCalendrierDuSalarie() {
+
+        SalarieReel salarie = TestRessourceFactory.salarieStandard("S1");
+
+        PlanningContext context = TestPlanningContextFactory.contexteNeutre(
+                LocalDate.of(2026, 1, 5), LocalDate.of(2026, 1, 11));
+
+        PlanningProblem problem = new PlanningProblem(
+                context,
+                TestRegulatoryParametersFactory.neutre(),
+                TestReferentielFactory.referentielActiviteDetteRepos(),
+                List.of(salarie),
+                List.of(creneauDe("C-MARDI", LocalDate.of(2026, 1, 6), salarie)));  // mardi
+
+        problem.setReposHebdomadaires(List.of(new ReposHebdomadaire(
+                "S1", LocalDate.of(2026, 1, 6), QualificationJour.RH, true)));
+
+        WorkMetrics wm = new WorkMetricsCalculator().compute(problem).get(salarie);
+
+        assertEquals(1, wm.getNbCreneauxReposHebdoDetteRepos(),
+                "Travailler son repos ouvre une dette, même un mardi — c'est ce que "
+                        + "DetteReposSurReposHebdomadaire pénalise, la métrique doit le refléter");
+        assertEquals(0, wm.getMinutesReposHebdoTravaille(),
+                "Un mardi n'est pas un dimanche : les deux indicateurs ne se recouvrent pas");
+    }
+
+    @Test
+    void unSamediTravailleNouvreAucuneDetteSansReposCeJourLa() {
+
+        SalarieReel salarie = TestRessourceFactory.salarieStandard("S1");
+
+        PlanningContext context = TestPlanningContextFactory.contexteNeutre(
+                LocalDate.of(2026, 1, 5), LocalDate.of(2026, 1, 11));
+
+        PlanningProblem problem = new PlanningProblem(
+                context,
+                TestRegulatoryParametersFactory.neutre(),
+                TestReferentielFactory.referentielActiviteDetteRepos(),
+                List.of(salarie),
+                List.of(creneauDe("C-SAM", LocalDate.of(2026, 1, 10), salarie)));   // samedi
+
+        problem.setReposHebdomadaires(List.of(new ReposHebdomadaire(
+                "S1", LocalDate.of(2026, 1, 6), QualificationJour.RH, true)));
+
+        WorkMetrics wm = new WorkMetricsCalculator().compute(problem).get(salarie);
+
+        assertEquals(0, wm.getNbCreneauxReposHebdoDetteRepos());
+        assertEquals(0, wm.getMinutesReposHebdoTravaille(),
+                "Le samedi ne compte plus dans cet indicateur");
+    }
+
+    private static Creneau creneauDe(String id, LocalDate date, SalarieReel salarie) {
+        Creneau c = new Creneau(
+                id, date, LocalTime.of(9, 0), LocalTime.of(10, 0), 60,
+                "SITE",
+                TestReferentielFactory.ID_ACTIVITE_PLANNING_TRAVAIL_DETTE_REPOS,
+                "ACTIVITE", "PC",
+                PrioriteCreneau.NORMALE, TypeCreneau.IMPOSE, TypePlageHoraire.JOUR,
+                false, QualificationJour.OUVRE);
+        c.setRessourceAffectee(salarie);
+        return c;
+    }
+
+    /**
+     * [S7.9c] Calendrier de repos par défaut — le repli samedi/dimanche, pour chaque salarié et
+     * chaque semaine de l'horizon.
+     *
+     * <p>Ces tests posent un créneau le dimanche et attendent qu'il compte comme repos travaillé.
+     * C'était auparavant implicite : le calculateur lisait le jour de la semaine. La règle vit
+     * désormais dans {@code CalendrierReposHebdomadaire} et le problème doit la porter — c'est
+     * ce que rend visible cet appel.</p>
+     */
+    private static List<ReposHebdomadaire> reposParDefaut(PlanningProblem probleme) {
+        return CalendrierReposHebdomadaire.construire(
+                probleme.getRessources().stream()
+                        .filter(SalarieReel.class::isInstance)
+                        .map(fr.project.planning.domain.ressource.Ressource::getId)
+                        .toList(),
+                List.of(),
+                probleme.getPlanningContext().getHorizonTemporel());
+    }
 }

@@ -6,6 +6,7 @@ import fr.project.planning.domain.creneau.TypePlageHoraire;
 import fr.project.planning.domain.metier.ComptabiliteActivite;
 import fr.project.planning.domain.metier.ReferentielComptabiliteActivite;
 import fr.project.planning.domain.reglementaire.RegulatoryParameters;
+import fr.project.planning.domain.repos.ReposHebdomadaire;
 import fr.project.planning.domain.ressource.Ressource;
 import fr.project.planning.domain.ressource.SalarieReel;
 import fr.project.planning.solution.PlanningProblem;
@@ -31,6 +32,22 @@ public class WorkMetricsCalculator {
 
         Map<String, Set<LocalDate>> rhdParRessourceId = new HashMap<>();
         Map<String, Set<LocalDate>> detteReposParRessourceId = new HashMap<>();
+
+        /*
+         * [S7.9c] Jours de repos hebdomadaire, par salarié.
+         *
+         * Le calendrier du problème fait foi — repos déclarés par l'appelant, complétés par le
+         * repli samedi/dimanche. Ce calcul lisait auparavant le jour de la semaine, ce qui le
+         * faisait diverger de DetteReposSurReposHebdomadaire dès qu'un salarié se reposait un
+         * autre jour : la métrique et la contrainte annonçaient la même règle et n'en
+         * appliquaient pas la même.
+         */
+        Map<String, Set<LocalDate>> reposParRessourceId = new HashMap<>();
+        for (ReposHebdomadaire repos : solution.getReposHebdomadaires()) {
+            reposParRessourceId
+                    .computeIfAbsent(repos.getSalarieId(), x -> new HashSet<>())
+                    .add(repos.getDate());
+        }
 
         Map<String, Set<LocalDate>> joursTravaillesParRessourceId = new HashMap<>();
         Map<String, Set<LocalDate>> nuitsTravailleesParRessourceId = new HashMap<>();
@@ -123,29 +140,43 @@ public class WorkMetricsCalculator {
                 wm.addJourFerie(minutesFerie);
             }
 
-            /*
-             * Travail weekend / dette repos
-             */
             DayOfWeek dow = c.getDate().getDayOfWeek();
-            boolean estWeekend = (dow == DayOfWeek.SATURDAY || dow == DayOfWeek.SUNDAY);
-
-            if (estWeekend && compteDansCharge) {
-
-                wm.addReposHebdoTravaille(minutesTravaillees);
-
-                if (ca.isGenereDetteRepos()) {
-                    detteReposParRessourceId
-                            .computeIfAbsent(ressourceId, x -> new HashSet<>())
-                            .add(c.getDate());
-                }
-            }
 
             /*
-             * Dimanche travaillé
+             * [S7.9c] Repos hebdomadaire travaillé — heures posées un dimanche *calendaire*.
+             *
+             * Indicateur RH d'observation, volontairement indépendant du calendrier de repos
+             * individuel : il doit rester comparable entre salariés et entre clients, y compris
+             * quand aucun repos n'est déclaré. Le dimanche est un fait de calendrier ; le repos
+             * d'une personne est une déclaration.
+             *
+             * Même maille que nbDimanchesTravailles ci-dessous — l'un compte les heures, l'autre
+             * les jours.
              */
             if (dow == DayOfWeek.SUNDAY && compteDansCharge) {
 
+                wm.addReposHebdoTravaille(minutesTravaillees);
+
                 rhdParRessourceId
+                        .computeIfAbsent(ressourceId, x -> new HashSet<>())
+                        .add(c.getDate());
+            }
+
+            /*
+             * [S7.9c] Dette de repos — jours où ce salarié-là a travaillé *son* repos avec une
+             * activité ouvrant une dette compensatoire.
+             *
+             * Contrepartie observée de DetteReposSurReposHebdomadaire : les deux lisent le même
+             * calendrier, sans quoi la métrique annoncerait une règle que le score n'applique
+             * pas. Un repos hebdomadaire peut tomber n'importe quel jour de la semaine.
+             */
+            boolean estJourDeRepos = reposParRessourceId
+                    .getOrDefault(ressourceId, Set.of())
+                    .contains(c.getDate());
+
+            if (estJourDeRepos && compteDansCharge && ca.isGenereDetteRepos()) {
+
+                detteReposParRessourceId
                         .computeIfAbsent(ressourceId, x -> new HashSet<>())
                         .add(c.getDate());
             }

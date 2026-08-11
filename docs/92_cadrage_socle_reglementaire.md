@@ -835,3 +835,29 @@ complet. Rien à y restituer.
   marqueurs y arrivent naturellement rattachés à leur salarié : rien à changer côté contrat.
 * **SC-01** — génère ses créneaux et ignore `dataSet.creneaux`. Aucun marqueur ne peut lui
   parvenir ; son calendrier se réduit au repli.
+
+### 7.9c — Deux indicateurs de repos, deux mailles assumées
+
+**Aucun écart de score.** 557 tests, 0 échec (554 avant). Ce lot ne touche qu'aux `workMetrics`.
+
+`heuresReposHebdoTravaille` comptait le week-end calendaire — samedi **et** dimanche — sans
+consulter le calendrier de repos. La métrique et la contrainte annonçaient donc la même règle et
+n'en appliquaient pas la même dès qu'un salarié se reposait un autre jour.
+
+Le premier correctif alignait la métrique sur le calendrier individuel. Il était faux, et
+l'arbitrage l'a redressé : **un indicateur d'observation ne doit pas dépendre d'une déclaration.**
+Le calendrier de repos peut être absent, partiel, ou différent d'un client à l'autre ; un
+indicateur RH qui en dépend cesse d'être comparable entre salariés. Un dimanche est un fait de
+calendrier ; le repos d'une personne est une déclaration. Les deux ne se mélangent pas.
+
+| Indicateur | Maille | Pourquoi |
+|---|---|---|
+| `heuresReposHebdoTravaille` | **dimanche calendaire** | fait objectif, comparable entre salariés et entre clients, même sans repos déclaré |
+| `nbCreneauxReposHebdoDetteRepos` | **calendrier de repos du salarié** | contrepartie observée de `DetteReposSurReposHebdomadaire` — même lecture que le score |
+
+Le samedi sort donc de `heuresReposHebdoTravaille`, où il entrait depuis l'origine. Aucun jeu
+d'essai n'a de créneau le samedi : la valeur restituée ne bouge sur aucun scénario existant.
+
+La divergence entre les deux indicateurs est voulue et documentée : le premier répond à « combien
+d'heures le dimanche », le second à « combien de fois ce salarié a-t-il travaillé son repos ».
+Ce sont deux questions différentes.

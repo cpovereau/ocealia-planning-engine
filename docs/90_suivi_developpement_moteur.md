@@ -956,3 +956,25 @@ manquantes écrites, seuils portés au salarié, valorisation du férié rendue 
 règle dupliquée supprimés. Deux variations de score sur l'ensemble, toutes deux voulues et
 gardées par assertion : SC-03 de `-960` à `-66960` (sous-emploi, S7.7b) puis à `-67440` (férié,
 S7.9a). 413 tests au départ, 554 à l'arrivée.
+
+### Socle réglementaire — lot S7.9c : les deux indicateurs de repos (2026-08-11)
+
+**Aucun écart de score.** 557 tests, 0 échec (554 avant). Seules les `workMetrics` changent.
+
+`heuresReposHebdoTravaille` comptait samedi **et** dimanche calendaires, sans consulter le
+calendrier de repos : la métrique et `DetteReposSurReposHebdomadaire` annonçaient la même règle
+sans appliquer la même.
+
+Arbitrage rendu : les deux indicateurs ne doivent pas avoir la même maille.
+
+* `heuresReposHebdoTravaille` → **dimanche calendaire uniquement**. Un indicateur d'observation ne
+  doit pas dépendre d'une déclaration qui peut être absente ou partielle, sous peine de cesser
+  d'être comparable entre salariés et entre clients. Même maille que `nbDimanchesTravailles` —
+  l'un compte les heures, l'autre les jours. **Le samedi en sort**, où il entrait depuis
+  l'origine ; aucun jeu d'essai n'ayant de créneau le samedi, aucune valeur restituée ne bouge.
+* `nbCreneauxReposHebdoDetteRepos` → **calendrier de repos du salarié**. Contrepartie observée de
+  la contrainte : les deux lisent le même calendrier, sans quoi la métrique annoncerait une règle
+  que le score n'applique pas. Ce repos peut tomber n'importe quel jour.
+
+La divergence entre les deux est voulue : « combien d'heures le dimanche » et « combien de fois ce
+salarié a-t-il travaillé son repos » sont deux questions différentes.

@@ -109,7 +109,19 @@ ailleurs — une semaine oubliée ne doit jamais devenir silencieusement travail
 Dimanche travaillé Un dimanche travaillé est un dimanche calendaire (DayOfWeek.SUNDAY) comportant au moins un créneau dont l’activité compte dans la charge.
 
 - Repos hebdomadaire travaillé
-Minutes de créneaux dont l’activité compte dans la charge positionnées un samedi (Saturday) ou un dimanche (Sunday).
+**[S7.9c]** Minutes de créneaux dont l'activité compte dans la charge positionnées un **dimanche
+calendaire** (`DayOfWeek.SUNDAY`). Le samedi n'y entre plus, et le calendrier de repos individuel
+non plus : c'est un indicateur d'observation, qui doit rester comparable entre salariés et entre
+clients y compris quand aucun repos n'est déclaré. Un dimanche est un fait de calendrier ; le
+repos d'une personne est une déclaration. Même maille que `nbDimanchesTravailles` — l'un compte
+les heures, l'autre les jours.
+
+- Dette de repos hebdomadaire (`nbCreneauxReposHebdoDetteRepos`)
+**[S7.9c]** Jours où le salarié a travaillé **son** jour de repos, au sens du calendrier
+individuel, avec une activité ouvrant une dette compensatoire (`genereDetteRepos`). Contrepartie
+observée de la contrainte `DetteReposSurReposHebdomadaire` : les deux lisent le même calendrier,
+sans quoi la métrique annoncerait une règle que le score n'applique pas. Ce repos peut tomber
+n'importe quel jour de la semaine, d'où la divergence assumée avec l'indicateur ci-dessus.
 
 ## 2. Calcul des pénibilités temporelles
 
