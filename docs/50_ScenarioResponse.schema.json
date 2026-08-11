@@ -34,83 +34,168 @@
     "candidats": {
       "type": "array",
       "description": "Propre à SC-06 : manières de couvrir le besoin, classées, trois au plus. La clé est ABSENTE — et non vide — pour SC-01 et SC-03 : une réponse sans classement ne doit pas laisser croire à une capacité inexistante.",
-      "items": { "$ref": "#/$defs/Candidat" }
+      "items": {
+        "$ref": "#/$defs/Candidat"
+      }
     }
   },
   "$defs": {
     "Candidat": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["rang", "conforme", "couvertureComplete", "nature", "affectations"],
+      "required": [
+        "rang",
+        "conforme",
+        "couvertureComplete",
+        "nature",
+        "affectations"
+      ],
       "description": "Une manière de couvrir le besoin, et son rang. Un candidat est une solution, pas une personne : l'affectation complète des créneaux du besoin. Classement par paliers : conformité → couverture complète → une seule personne et salarié réel d'abord → personne déjà en poste ce jour-là → score SOFT → charge rapportée au volume hebdomadaire habituel.",
       "properties": {
-        "rang": { "type": "integer", "description": "1 = la solution la plus favorable" },
+        "rang": {
+          "type": "integer",
+          "description": "1 = la solution la plus favorable"
+        },
         "conforme": {
           "type": "boolean",
           "description": "false si une règle éliminatoire est violée. Ces solutions sont restituées et classées en dernier, jamais masquées : le moteur ne refuse pas, il rend visible l'impossible."
         },
-        "couvertureComplete": { "type": "boolean" },
+        "couvertureComplete": {
+          "type": "boolean"
+        },
         "nature": {
           "type": "string",
-          "enum": ["MONO_RESSOURCE", "COMPOSEE", "RESSOURCE_A_POURVOIR"]
+          "enum": [
+            "MONO_RESSOURCE",
+            "COMPOSEE",
+            "RESSOURCE_A_POURVOIR"
+          ]
         },
         "affectations": {
           "type": "array",
-          "items": { "$ref": "#/$defs/AffectationCandidat" }
+          "items": {
+            "$ref": "#/$defs/AffectationCandidat"
+          }
         },
         "impacts": {
           "type": "array",
           "description": "Une entrée par ressource RÉELLE mobilisée. Vide pour une solution portée par un poste virtuel, qui ne porte ni contrat ni contraintes individuelles.",
-          "items": { "$ref": "#/$defs/ImpactCandidat" }
+          "items": {
+            "$ref": "#/$defs/ImpactCandidat"
+          }
         },
         "motifs": {
           "type": "array",
-          "items": { "$ref": "#/$defs/MotifCandidat" }
+          "items": {
+            "$ref": "#/$defs/MotifCandidat"
+          }
         }
       }
     },
     "AffectationCandidat": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["creneauId", "ressourceId"],
+      "required": [
+        "creneauId",
+        "ressourceId"
+      ],
       "properties": {
-        "creneauId": { "type": "string" },
-        "ressourceId": { "type": "string", "description": "A_AFFECTER si aucune ressource ne prend ce créneau en charge" },
-        "activite": { "type": ["string", "null"] },
-        "lieu": { "type": ["string", "null"] },
-        "heureDebut": { "type": "string" },
-        "heureFin": { "type": "string" }
+        "creneauId": {
+          "type": "string"
+        },
+        "ressourceId": {
+          "type": "string",
+          "description": "A_AFFECTER si aucune ressource ne prend ce créneau en charge"
+        },
+        "activite": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "lieu": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "heureDebut": {
+          "type": "string"
+        },
+        "heureFin": {
+          "type": "string"
+        }
       }
     },
     "ImpactMesure": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["avant", "apres", "delta", "depassement"],
+      "required": [
+        "avant",
+        "apres",
+        "delta",
+        "depassement"
+      ],
       "description": "Grandeur mesurée avant et après affectation du besoin, en heures décimales. ATTENTION : un dépassement signalé décrit une conséquence, il ne garantit pas qu'une contrainte la sanctionne. Depuis le lot S7.6, les trois mesures sont adossées à une contrainte ; vérifier 90_SUIVI_DEVELOPPEMENT_MOTEUR.md avant d'en faire une règle de gestion.",
       "properties": {
-        "avant": { "type": "number" },
-        "apres": { "type": "number" },
-        "delta": { "type": "number" },
-        "plafond": { "type": ["number", "null"], "description": "Limite individuelle du salarié, ou null si non renseignée. Une limite absente n'est pas une limite à zéro." },
-        "depassement": { "type": "boolean" }
+        "avant": {
+          "type": "number"
+        },
+        "apres": {
+          "type": "number"
+        },
+        "delta": {
+          "type": "number"
+        },
+        "plafond": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Limite individuelle du salarié, ou null si non renseignée. Une limite absente n'est pas une limite à zéro."
+        },
+        "depassement": {
+          "type": "boolean"
+        }
       }
     },
     "ImpactCandidat": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["ressourceId", "amplitudeJournaliere", "heuresJour", "heuresSemaine"],
+      "required": [
+        "ressourceId",
+        "amplitudeJournaliere",
+        "heuresJour",
+        "heuresSemaine"
+      ],
       "properties": {
-        "ressourceId": { "type": "string" },
-        "amplitudeJournaliere": { "$ref": "#/$defs/ImpactMesure" },
-        "heuresJour": { "$ref": "#/$defs/ImpactMesure" },
-        "heuresSemaine": { "$ref": "#/$defs/ImpactMesure" },
-        "heuresHabituellesSemaine": { "type": ["number", "null"] }
+        "ressourceId": {
+          "type": "string"
+        },
+        "amplitudeJournaliere": {
+          "$ref": "#/$defs/ImpactMesure"
+        },
+        "heuresJour": {
+          "$ref": "#/$defs/ImpactMesure"
+        },
+        "heuresSemaine": {
+          "$ref": "#/$defs/ImpactMesure"
+        },
+        "heuresHabituellesSemaine": {
+          "type": [
+            "number",
+            "null"
+          ]
+        }
       }
     },
     "MotifCandidat": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["code", "severite"],
+      "required": [
+        "code",
+        "severite"
+      ],
       "description": "Même forme que diagnostics.alerts[] : le client filtre sur la sévérité, pas sur le code.",
       "properties": {
         "code": {
@@ -136,8 +221,17 @@
             "AUCUNE_RESSOURCE_ELIGIBLE"
           ]
         },
-        "severite": { "type": "string", "enum": ["INFO", "WARNING", "ERROR"] },
-        "message": { "type": "string" }
+        "severite": {
+          "type": "string",
+          "enum": [
+            "INFO",
+            "WARNING",
+            "ERROR"
+          ]
+        },
+        "message": {
+          "type": "string"
+        }
       }
     },
     "SolverResult": {
@@ -151,7 +245,11 @@
       "properties": {
         "status": {
           "type": "string",
-          "enum": ["SOLVED", "UNSOLVED", "ERROR"]
+          "enum": [
+            "SOLVED",
+            "UNSOLVED",
+            "ERROR"
+          ]
         },
         "score": {
           "$ref": "#/$defs/Score"
@@ -164,11 +262,13 @@
         }
       }
     },
-
     "Score": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["hard", "soft"],
+      "required": [
+        "hard",
+        "soft"
+      ],
       "properties": {
         "hard": {
           "type": "integer"
@@ -178,7 +278,6 @@
         }
       }
     },
-
     "ScoreBreakdownItem": {
       "type": "object",
       "additionalProperties": false,
@@ -208,7 +307,6 @@
         }
       }
     },
-
     "ScenarioPlanning": {
       "type": "object",
       "additionalProperties": false,
@@ -228,7 +326,6 @@
         }
       }
     },
-
     "JourPlanning": {
       "type": "object",
       "additionalProperties": false,
@@ -249,7 +346,6 @@
         }
       }
     },
-
     "CreneauPlanning": {
       "type": "object",
       "additionalProperties": false,
@@ -267,7 +363,10 @@
           "description": "Identifiant du créneau, restitué à l'identique de l'entrée. Chaîne opaque : le moteur ne l'interprète pas. Clé de réintégration côté appelant. Les créneaux générés par le moteur portent le préfixe SC01- et ne désignent aucune ligne en base."
         },
         "lieu": {
-          "type": ["string", "null"],
+          "type": [
+            "string",
+            "null"
+          ],
           "description": "Lieu reçu en entrée, restitué sans normalisation. null si le créneau n'en portait pas — cas des créneaux générés par le moteur."
         },
         "activite": {
@@ -283,14 +382,16 @@
           "type": "string"
         },
         "nature": {
-          "type": ["string", "null"]
+          "type": [
+            "string",
+            "null"
+          ]
         },
         "ressourceAffecteeId": {
           "type": "string"
         }
       }
     },
-
     "WorkMetrics": {
       "type": "object",
       "additionalProperties": false,
@@ -310,7 +411,6 @@
         }
       }
     },
-
     "WorkMetricsByRessource": {
       "type": "object",
       "additionalProperties": false,
@@ -361,7 +461,6 @@
         }
       }
     },
-
     "GlobalWorkMetrics": {
       "type": "object",
       "additionalProperties": false,
@@ -390,7 +489,6 @@
         }
       }
     },
-
     "SolutionSummary": {
       "type": "object",
       "additionalProperties": false,
@@ -419,7 +517,6 @@
         }
       }
     },
-
     "Diagnostics": {
       "type": "object",
       "additionalProperties": false,
@@ -446,7 +543,6 @@
         }
       }
     },
-
     "Alert": {
       "type": "object",
       "additionalProperties": false,
@@ -460,7 +556,11 @@
         },
         "severity": {
           "type": "string",
-          "enum": ["INFO", "WARNING", "ERROR"],
+          "enum": [
+            "INFO",
+            "WARNING",
+            "ERROR"
+          ],
           "description": "Gravite de l'alerte. INFO = configuration atypique mais valide, ne pas restituer comme une anomalie. Absent = interpreter comme WARNING."
         },
         "date": {
@@ -472,7 +572,6 @@
         }
       }
     },
-
     "AssignmentDiagnostic": {
       "type": "object",
       "additionalProperties": false,
@@ -524,24 +623,67 @@
         }
       }
     },
-
     "IgnoredCreneaux": {
       "type": "object",
       "additionalProperties": false,
+      "description": "Compteurs de creneaux signales avant resolution, et depuis le lot S8.4 leur detail. Le nom du bloc, herite, laisse croire que tout ce qu'il compte est perdu : c'est faux de aucuneRessourceDansDataset, dont les creneaux partent au solveur. details[].exclu tranche.",
       "required": [
         "horsHorizon",
-        "saucuneRessourceDansDataset",
-        "activiteInconnue"
+        "aucuneRessourceDansDataset",
+        "activiteInconnue",
+        "details"
       ],
       "properties": {
         "horsHorizon": {
           "type": "integer"
         },
-        "sansRessource": {
+        "aucuneRessourceDansDataset": {
           "type": "integer"
         },
         "activiteInconnue": {
           "type": "integer"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CreneauIgnore"
+          }
+        }
+      }
+    },
+    "CreneauIgnore": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "[S8.4] Un creneau signale par la preparation, et ce que le moteur en a fait.",
+      "required": [
+        "creneauId",
+        "motif",
+        "exclu",
+        "message"
+      ],
+      "properties": {
+        "creneauId": {
+          "type": "string"
+        },
+        "date": {
+          "type": "string",
+          "format": "date"
+        },
+        "motif": {
+          "type": "string",
+          "enum": [
+            "HORS_HORIZON",
+            "ACTIVITE_INCONNUE",
+            "AUCUNE_RESSOURCE_DANS_DATASET",
+            "MARQUEUR_REPOS_NON_RATTACHE"
+          ]
+        },
+        "exclu": {
+          "type": "boolean",
+          "description": "true si le creneau n'a pas atteint le solveur et ne figure pas dans la reponse."
+        },
+        "message": {
+          "type": "string"
         }
       }
     }

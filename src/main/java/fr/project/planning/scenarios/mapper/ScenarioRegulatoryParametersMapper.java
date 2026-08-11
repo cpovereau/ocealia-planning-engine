@@ -1,10 +1,11 @@
 package fr.project.planning.scenarios.mapper;
 
 import fr.project.planning.domain.reglementaire.RegulatoryParameters;
+import fr.project.planning.scenarios.alerte.AlertCode;
+import fr.project.planning.scenarios.alerte.AlertSeverity;
+import fr.project.planning.scenarios.alerte.CollecteurAlertes;
 import fr.project.planning.scenarios.dto.RegulatoryParametersDTO;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.Collection;
@@ -39,23 +40,38 @@ import java.util.TreeSet;
  */
 public class ScenarioRegulatoryParametersMapper {
 
-    private static final Logger log =
-            LoggerFactory.getLogger(ScenarioRegulatoryParametersMapper.class);
-
     /** Plage de nuit appliquée à défaut de déclaration. */
     static final LocalTime DEBUT_NUIT_PAR_DEFAUT = LocalTime.of(22, 0);
     static final LocalTime FIN_NUIT_PAR_DEFAUT = LocalTime.of(6, 0);
+
+    /**
+     * Sans collecteur : les constats ne partent qu'aux journaux.
+     *
+     * <p>Conservé pour les appelants qui n'ont pas de canal d'alertes — les tests unitaires du
+     * mapper, essentiellement. Les trois scénarios passent par la surcharge à quatre arguments.</p>
+     */
+    public RegulatoryParameters toRegulatoryParameters(
+            RegulatoryParametersDTO declares,
+            Collection<LocalDate> joursFeriesDeduits,
+            String scenario) {
+        return toRegulatoryParameters(declares, joursFeriesDeduits, scenario,
+                new CollecteurAlertes(scenario));
+    }
 
     /**
      * @param declares          bloc {@code planningContext.regulatoryParameters}, éventuellement null
      * @param joursFeriesDeduits calendrier reconstitué par le scénario, utilisé seulement si
      *                           l'appelant n'en déclare aucun
      * @param scenario           préfixe des journaux, p. ex. {@code "SC-03"}
+     * @param alertes            [S8.4] canal par lequel l'appelant apprend ce qui a été décidé à
+     *                           sa place. Substituer la plage par défaut à celle qu'il a déclarée
+     *                           déplace le score : le lui taire n'était pas tenable
      */
     public RegulatoryParameters toRegulatoryParameters(
             RegulatoryParametersDTO declares,
             Collection<LocalDate> joursFeriesDeduits,
-            String scenario) {
+            String scenario,
+            CollecteurAlertes alertes) {
 
         LocalTime debutNuit = DEBUT_NUIT_PAR_DEFAUT;
         LocalTime finNuit = FIN_NUIT_PAR_DEFAUT;
@@ -66,23 +82,24 @@ public class ScenarioRegulatoryParametersMapper {
 
             if (debutDeclare != null && finDeclaree != null) {
                 if (debutDeclare.equals(finDeclaree)) {
-                    log.warn("[{}] regulatoryParameters : heureDebutNuit et heureFinNuit sont "
-                            + "identiques ({}) — la plage est vide, plage par défaut {}–{} appliquée",
-                            scenario, debutDeclare, DEBUT_NUIT_PAR_DEFAUT, FIN_NUIT_PAR_DEFAUT);
+                    alertes.signaler(AlertCode.PLAGE_NUIT_PAR_DEFAUT, AlertSeverity.WARNING,
+                            "heureDebutNuit et heureFinNuit sont identiques (" + debutDeclare
+                                    + ") — la plage déclarée est vide. Plage par défaut "
+                                    + DEBUT_NUIT_PAR_DEFAUT + "–" + FIN_NUIT_PAR_DEFAUT + " appliquée.");
                 } else {
                     debutNuit = debutDeclare;
                     finNuit = finDeclaree;
                 }
             } else if (debutDeclare != null || finDeclaree != null) {
-                log.warn("[{}] regulatoryParameters : plage de nuit incomplète "
-                        + "(heureDebutNuit={}, heureFinNuit={}) — une borne seule ne décrit aucune "
-                        + "plage, plage par défaut {}–{} appliquée",
-                        scenario, debutDeclare, finDeclaree,
-                        DEBUT_NUIT_PAR_DEFAUT, FIN_NUIT_PAR_DEFAUT);
+                alertes.signaler(AlertCode.PLAGE_NUIT_PAR_DEFAUT, AlertSeverity.WARNING,
+                        "Plage de nuit incomplète (heureDebutNuit=" + debutDeclare
+                                + ", heureFinNuit=" + finDeclaree + ") — une borne seule ne décrit "
+                                + "aucune plage. Plage par défaut " + DEBUT_NUIT_PAR_DEFAUT + "–"
+                                + FIN_NUIT_PAR_DEFAUT + " appliquée.");
             }
         }
 
-        Set<LocalDate> joursFeries = resoudreJoursFeries(declares, joursFeriesDeduits, scenario);
+        Set<LocalDate> joursFeries = resoudreJoursFeries(declares, joursFeriesDeduits, alertes);
 
         return new RegulatoryParameters(debutNuit, finNuit, List.copyOf(joursFeries));
     }
@@ -90,7 +107,7 @@ public class ScenarioRegulatoryParametersMapper {
     private Set<LocalDate> resoudreJoursFeries(
             RegulatoryParametersDTO declares,
             Collection<LocalDate> joursFeriesDeduits,
-            String scenario) {
+            CollecteurAlertes alertes) {
 
         Set<LocalDate> deduits = new TreeSet<>();
         if (joursFeriesDeduits != null) {
@@ -110,9 +127,11 @@ public class ScenarioRegulatoryParametersMapper {
             Set<LocalDate> seulementDeduites = new TreeSet<>(deduits);
             seulementDeduites.removeAll(declaresDates);
 
-            log.warn("[{}] regulatoryParameters.joursFeries fait autorité et diverge de ce que le "
-                    + "dataset déclare — {} date(s) marquée(s) fériée(s) dans le dataset mais absente(s) "
-                    + "du calendrier : {}", scenario, seulementDeduites.size(), seulementDeduites);
+            alertes.signaler(AlertCode.CALENDRIER_FERIES_DIVERGENT, AlertSeverity.WARNING,
+                    "regulatoryParameters.joursFeries fait autorité et diverge du dataset — "
+                            + seulementDeduites.size() + " date(s) marquée(s) fériée(s) par les "
+                            + "créneaux mais absente(s) du calendrier déclaré : " + seulementDeduites
+                            + ". Elles ne seront ni valorisées ni refusées comme fériées.");
         }
         return declaresDates;
     }

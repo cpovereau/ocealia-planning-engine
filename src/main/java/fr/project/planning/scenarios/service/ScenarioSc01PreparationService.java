@@ -8,7 +8,12 @@ import fr.project.planning.domain.contexte.ResolutionType;
 import fr.project.planning.domain.creneau.Creneau;
 import fr.project.planning.domain.metier.ComptabiliteActivite;
 import fr.project.planning.domain.metier.ReferentielComptabiliteActivite;
+import fr.project.planning.scenarios.alerte.CollecteurAlertes;
+import fr.project.planning.scenarios.dto.CreneauIgnoreDTO;
 import fr.project.planning.scenarios.dto.IgnoredCreneauxDTO;
+import fr.project.planning.scenarios.dto.MotifCreneauIgnore;
+
+import java.util.ArrayList;
 import fr.project.planning.domain.repos.CalendrierReposHebdomadaire;
 import fr.project.planning.domain.repos.ReposHebdomadaire;
 import fr.project.planning.domain.ressource.SalarieReel;
@@ -179,10 +184,14 @@ public class ScenarioSc01PreparationService {
         // 5. Paramètres réglementaires — [S8.0] ce que l'appelant déclare fait autorité ;
         //    à défaut, le calendrier des fériés reste celui de scenarioParameters.holidayDates
         //    (S7.9a), qui servait jusque-là uniquement à ne pas générer de créneau ces jours-là.
+        // [S8.4] Les constats du cadre réglementaire rejoignent les alertes du builder : SC-01
+        //        avait déjà un canal d'alertes, mais le mapper réglementaire n'y déversait rien.
+        CollecteurAlertes alertes = new CollecteurAlertes("SC-01");
         RegulatoryParameters regulatoryParameters = regulatoryMapper.toRegulatoryParameters(
                 request.getPlanningContext().getRegulatoryParameters(),
                 br.holidayDates,
-                "SC-01");
+                "SC-01",
+                alertes);
 
         // 6. Référentiel d'activités : construit en 1 bis, avant la génération des créneaux.
 
@@ -227,13 +236,18 @@ public class ScenarioSc01PreparationService {
                 buildResult.creneaux(), referentiel, br.dateDebut, br.dateFin
         );
 
+        // [S8.4] Les alertes du builder et celles du cadre réglementaire partent ensemble :
+        //        l'appelant n'a qu'un canal à lire.
+        alertes.reprendre(buildResult.alerts());
+
         return new PreparedSc01Scenario(
                 planningRequest,
                 buildResult,
                 request.getScenarioType(),
                 params.getResourceRef().getId(),
                 posteVirtuelIds,
-                ignoredCreneaux
+                ignoredCreneaux,
+                alertes.versDto()
         );
     }
 
@@ -246,6 +260,10 @@ public class ScenarioSc01PreparationService {
      * horsHorizon         : créneaux dont la date sort de l'horizon (cas théorique — le builder respecte l'horizon)
      * activiteInconnue    : créneaux dont le codeActiviteId est absent du référentiel injecté
      * aucuneRessourceDansDataset : toujours 0 pour SC-01 (ressource cible explicite via resourceRef)
+     *
+     * [S8.4] Le détail accompagne désormais les compteurs, avec {@code exclu = false} : en SC-01 le
+     * constat est une mesure, pas une exclusion. C'est précisément la nuance que le nom du bloc
+     * masquait.
      */
     private IgnoredCreneauxDTO computeIgnoredCreneaux(
             List<Creneau> creneaux,
@@ -255,11 +273,16 @@ public class ScenarioSc01PreparationService {
     ) {
         int horsHorizon = 0;
         int activiteInconnue = 0;
+        List<CreneauIgnoreDTO> details = new ArrayList<>();
 
         for (Creneau c : creneaux) {
             if (c.getDate() != null
                     && (c.getDate().isBefore(dateDebut) || c.getDate().isAfter(dateFin))) {
                 horsHorizon++;
+                details.add(CreneauIgnoreDTO.conserve(
+                        c.getId(), c.getDate(), MotifCreneauIgnore.HORS_HORIZON,
+                        "Date hors de l'horizon [" + dateDebut + " — " + dateFin + "]. "
+                                + "Diagnostic seul : le créneau est conservé."));
             }
 
             String code = c.getCodeActiviteEffectif();
@@ -267,6 +290,10 @@ public class ScenarioSc01PreparationService {
                 activiteInconnue++;
                 log.warn("[SC-01] créneau id='{}' : activité '{}' absente du référentiel — diagnostic uniquement (non exclu en Phase C)",
                         c.getId(), code);
+                details.add(CreneauIgnoreDTO.conserve(
+                        c.getId(), c.getDate(), MotifCreneauIgnore.ACTIVITE_INCONNUE,
+                        "Activité '" + code + "' absente du référentiel. "
+                                + "Diagnostic seul : le créneau est conservé."));
             }
         }
 
@@ -275,7 +302,7 @@ public class ScenarioSc01PreparationService {
                     horsHorizon);
         }
 
-        return new IgnoredCreneauxDTO(horsHorizon, 0, activiteInconnue);
+        return new IgnoredCreneauxDTO(horsHorizon, 0, activiteInconnue, details);
     }
 
     /**

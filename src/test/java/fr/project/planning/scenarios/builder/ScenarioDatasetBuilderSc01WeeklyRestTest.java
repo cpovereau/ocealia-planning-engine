@@ -1,12 +1,12 @@
 package fr.project.planning.scenarios.builder;
 
+import fr.project.planning.scenarios.alerte.AlertCode;
+import fr.project.planning.scenarios.alerte.AlertSeverity;
+import fr.project.planning.scenarios.alerte.ScenarioAlert;
 import fr.project.planning.domain.creneau.Creneau;
 import fr.project.planning.domain.ressource.SalarieReel;
-import fr.project.planning.scenarios.builder.ScenarioDatasetBuilderSc01.AlertCode;
-import fr.project.planning.scenarios.builder.ScenarioDatasetBuilderSc01.AlertSeverity;
 import fr.project.planning.scenarios.builder.ScenarioDatasetBuilderSc01.BuildRequest;
 import fr.project.planning.scenarios.builder.ScenarioDatasetBuilderSc01.BuildResult;
-import fr.project.planning.scenarios.builder.ScenarioDatasetBuilderSc01.ScenarioAlert;
 import org.junit.jupiter.api.Test;
 
 import java.time.DayOfWeek;

@@ -1,14 +1,13 @@
 package fr.project.planning.constraints.metier;
 
 import fr.project.planning.domain.creneau.Creneau;
+import fr.project.planning.domain.reglementaire.CalendrierJoursFeries;
 import fr.project.planning.domain.reglementaire.RegulatoryParameters;
 import fr.project.planning.domain.ressource.SalarieReel;
 import fr.project.planning.scoring.PenaliteKey;
 import org.optaplanner.core.api.score.buildin.hardsoft.HardSoftScore;
 import org.optaplanner.core.api.score.stream.Constraint;
 import org.optaplanner.core.api.score.stream.ConstraintFactory;
-
-import java.time.LocalDate;
 
 /**
  * JourFerieRefuse — contrainte HARD (Phase 4)
@@ -52,19 +51,8 @@ public class JourFerieRefuse {
                 .filter(c -> Boolean.FALSE.equals(
                         ((SalarieReel) c.getRessourceAffectee()).getTravailleJourFerie()))
                 .join(factory.forEach(RegulatoryParameters.class))
-                .filter(JourFerieRefuse::toucheUnJourFerie)
+                .filter(CalendrierJoursFeries::toucheUnJourFerie)
                 .penalize(HardSoftScore.ONE_HARD)
                 .asConstraint(PenaliteKey.METIER_HARD_JOUR_FERIE_REFUSE.name());
-    }
-
-    /**
-     * Le créneau travaille-t-il, ne serait-ce qu'une minute, sur une date fériée ?
-     */
-    static boolean toucheUnJourFerie(Creneau creneau, RegulatoryParameters parametres) {
-        if (parametres.estJourFerie(creneau.getDate())) {
-            return true;
-        }
-        LocalDate lendemain = creneau.getDate().plusDays(1);
-        return parametres.estJourFerie(lendemain) && creneau.couvre(lendemain);
     }
 }

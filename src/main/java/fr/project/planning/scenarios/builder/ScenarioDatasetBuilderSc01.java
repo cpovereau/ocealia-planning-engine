@@ -8,6 +8,9 @@ import fr.project.planning.domain.metier.ReferentielComptabiliteActivite;
 import fr.project.planning.domain.ressource.Ressource;
 import fr.project.planning.domain.ressource.RessourceNonAffectee;
 import fr.project.planning.domain.ressource.SalarieReel;
+import fr.project.planning.scenarios.alerte.AlertCode;
+import fr.project.planning.scenarios.alerte.AlertSeverity;
+import fr.project.planning.scenarios.alerte.ScenarioAlert;
 import fr.project.planning.scenarios.dto.DataSetDTO;
 import fr.project.planning.scenarios.dto.ScenarioRequestDTO;
 import fr.project.planning.scenarios.dto.input.SalarieInputDTO;
@@ -548,28 +551,4 @@ public class ScenarioDatasetBuilderSc01 {
     }
 
     public record BuildResult(List<Creneau> creneaux, List<ScenarioAlert> alerts) {}
-
-    public record ScenarioAlert(AlertCode code, AlertSeverity severity, LocalDate date, String message) {}
-
-    public enum AlertCode {
-        SHIFT_END_EXCEEDED,
-        LUNCH_BREAK_OUTSIDE_AMPLITUDE,
-        INSUFFICIENT_WEEKLY_REST,
-        TOO_MANY_NON_WORKED_DAYS,
-        UNKNOWN_ACTIVITY,
-        ACTIVITY_CODE_DEFAULTED
-    }
-
-    /**
-     * Niveau de gravité d'une alerte de pré-résolution.
-     *
-     * - INFO    : configuration atypique mais valide, aucune action requise
-     * - WARNING : configuration acceptée mais dégradée ou hors borne d'alerte
-     * - ERROR   : configuration incohérente, résultat à considérer avec réserve
-     */
-    public enum AlertSeverity {
-        INFO,
-        WARNING,
-        ERROR
-    }
 }

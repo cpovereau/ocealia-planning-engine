@@ -24,8 +24,10 @@ import java.util.Map;
  * préparation → résolution → métriques → réponse.
  *
  * Différences vs SC-01 :
- * - alerts = List.of() (SC-03 n'a pas de BuildResult)
  * - resourceId = null (multi-ressources — pas de salarié cible unique)
+ * - les alertes ne viennent pas d'un BuildResult mais de la préparation elle-même (lot S8.4) :
+ *   SC-03 ne génère pas de créneaux, il en reçoit, et c'est sur ce qu'il en fait qu'il doit
+ *   s'expliquer.
  */
 @Service
 public class ScenarioSc03ExecutionService {
@@ -59,8 +61,6 @@ public class ScenarioSc03ExecutionService {
                         ? c.getRessourceAffectee().getId() : "null"))
                 .toList());
 
-        List<ScenarioAlertDTO> alerts = List.of();  // SC-03 n'utilise pas de builder SC-01
-
         return responseMapper.toResponse(
                 prepared.scenarioType(),
                 "SOLVED",
@@ -71,9 +71,10 @@ public class ScenarioSc03ExecutionService {
                 solved.solution().getCreneaux(),
                 prepared.marqueursRepos(),              // [S7.9b] restitués, jamais résolus
                 byId,
-                alerts,
+                prepared.alerts(),                      // [S8.4] constats de la préparation
                 prepared.posteVirtuelIds(),
-                prepared.ignoredCreneaux()
+                prepared.ignoredCreneaux(),
+                prepared.planningRequest().regulatoryParameters()
         );
     }
 }

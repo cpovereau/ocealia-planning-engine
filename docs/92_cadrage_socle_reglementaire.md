@@ -1150,3 +1150,96 @@ contraintes personnelles. La même correction s'applique à `activitesAutorisees
 de diagnostic, un libellé envoyé à la place d'un code produit un faux positif silencieux. **En
 HARD, le même écart rend tout créneau inaffectable** : chaque salarié déclare des libellés, aucun
 ne matche un code, tout tombe en non-couvert. À verrouiller au contrat au moment du cadrage.
+
+### 8.4 — Ce que le moteur savait et ne disait pas
+
+**Aucun écart de score — mesuré.** 609 tests, 0 échec (596 avant, soit 13 tests ajoutés). Le jeu
+de référence SC-03 reste à `-67440` soft, et sa réponse reste sans alerte ni détail : ces deux
+canaux ne servent qu'à dire ce qui cloche.
+
+| Livrable | Fichier |
+|---|---|
+| Vocabulaire d'alertes, commun aux trois scénarios | `scenarios/alerte/` (créé) |
+| Collecteur — journal et réponse d'un même geste | `scenarios/alerte/CollecteurAlertes.java` |
+| Détail des créneaux signalés | `scenarios/dto/CreneauIgnoreDTO.java`, `MotifCreneauIgnore.java` |
+| Émission SC-03 | `scenarios/service/ScenarioSc03PreparationService.java` |
+| Émission SC-06 et SC-01 | leurs services de préparation |
+| Le férié lu au calendrier jusque dans les libellés | `scenarios/mapper/AssignmentDiagnosticsFactory.java` |
+| Couverture — 8 cas SC-03 | `scenarios/sc03/api/Sc03DiagnosticsExplicitesTest.java` (créé) |
+| Garde-fou schéma ↔ réponse | `scenarios/sc03/api/DiagnosticsConformesAuSchemaTest.java` (créé) |
+
+#### Deux promesses du contrat, non tenues
+
+`diagnostics.alerts` valait `List.of()` **en dur** en SC-03 et SC-06, au motif que ces scénarios
+n'ont pas de builder. Le motif est exact et la conclusion fausse : SC-01 génère ses créneaux et
+s'explique sur ce qu'il produit ; SC-03 et SC-06 en reçoivent et devraient s'expliquer sur ce
+qu'ils en font. Ils constataient beaucoup, et ne le disaient qu'aux journaux du serveur.
+
+`diagnostics.ignoredCreneaux` ne restituait que trois entiers. Un appelant qui transmet
+quatre-vingts créneaux et en retrouve soixante-dix-sept sait qu'il en manque trois, **sans jamais
+pouvoir dire lesquels**. La seule trace nominative — un `log.warn` par créneau — n'a jamais quitté
+le serveur.
+
+#### Le pire cas n'était pas l'exclusion, c'était la substitution
+
+Un créneau écarté se remarque : il manque à la réponse. Le lot S8.0 avait ouvert
+`planningContext.regulatoryParameters` au contrat, et avec lui une décision silencieuse : quand la
+plage de nuit déclarée est inexploitable — une seule borne, ou deux bornes identiques — le moteur
+lui substitue la plage légale 22:00–06:00. **Cette substitution déplace le score**, elle ne laisse
+aucune trace dans la réponse, et l'appelant croit que sa plage a été appliquée. Même chose pour un
+calendrier de fériés déclaré qui écrase les drapeaux du dataset : les dates perdues ne sont ni
+valorisées ni refusées, et personne ne le sait.
+
+Ce sont les deux premiers codes du vocabulaire commun : `PLAGE_NUIT_PAR_DEFAUT` et
+`CALENDRIER_FERIES_DIVERGENT`.
+
+#### Un seul geste, deux destinataires
+
+`CollecteurAlertes.signaler` écrit dans le journal **et** dans la réponse. C'est volontairement le
+seul moyen d'ajouter une alerte : on ne peut pas en émettre une sans qu'elle soit tracée, ni
+tracer un constat de préparation sans que le client l'apprenne. Les deux canaux avaient divergé
+parce que rien ne les tenait ensemble.
+
+`AlertCode`, `AlertSeverity` et `ScenarioAlert` ont quitté `ScenarioDatasetBuilderSc01`, où ils
+vivaient comme types imbriqués. Un vocabulaire commun aux trois scénarios n'avait plus à porter le
+nom du seul qui s'en servait.
+
+#### `exclu` : le motif dit le constat, pas ce qui en a été fait
+
+Le premier jet faisait porter l'exclusion par le motif — `ACTIVITE_INCONNUE` valant « écarté ».
+C'est faux : SC-03 partitionne réellement, SC-01 mesure sans rien retirer. Le même motif y a deux
+suites opposées.
+
+`CreneauIgnoreDTO.exclu` porte donc la réponse, cas par cas, et deux fabriques la rendent explicite
+à l'écriture — `exclu(...)` et `conserve(...)`. Le nom du bloc, hérité, laisse croire que tout ce
+qu'il compte est perdu ; c'est faux d'`aucuneRessourceDansDataset`, dont les créneaux partent au
+solveur. Le champ le dit plutôt que de laisser le client le deviner.
+
+Un quatrième motif rejoint la liste : `MARQUEUR_REPOS_NON_RATTACHE`. Un repos hebdomadaire sans
+`ressourceAffecteeId`, ou rattaché à une ressource hors dataset, est écarté — et **n'alimente aucun
+des trois compteurs**, il n'en existait pas pour lui. C'est pourtant le cas le plus gênant : le
+client recharge la réponse pour réafficher son planning, et ce repos y fera un trou.
+
+#### Le troisième lecteur du drapeau férié
+
+Le lot S8.3 avait réconcilié la valorisation et la contrainte HARD sur le calendrier réglementaire.
+`AssignmentDiagnosticsFactory` était le troisième lecteur, et lisait encore `isJourFerie` : un
+créneau non couvert sur une date fériée déclarée au contrat, mais non marquée créneau par créneau,
+était restitué `NO_RESOURCE_ASSIGNED`. L'appelant perdait l'explication au moment où elle comptait
+le plus.
+
+La règle vit désormais dans `CalendrierJoursFeries.toucheUnJourFerie`, côté domaine, et les trois
+lecteurs l'appellent.
+
+#### Le schéma publié était faux, et rien ne le disait
+
+`50_ScenarioResponse.schema.json` déclarait, sous `IgnoredCreneaux`, une propriété
+`sansRessource` — le seul alias d'**entrée**, jamais sérialisé — et exigeait un
+`saucuneRessourceDansDataset` qui n'existe nulle part. Avec `additionalProperties: false`, un
+client validant sa réponse contre le schéma publié la voyait **rejetée**.
+
+Un test confronte désormais les noms dans les deux sens, sur le sous-arbre `diagnostics`. Il ne
+remplace pas un validateur JSON Schema — le projet n'en embarque pas — mais il attrape la classe
+d'erreur qui s'est produite. Limite connue, écrite dans le test : le schéma vit sous `docs/` et
+n'est pas déclaré comme entrée de la tâche de test ; une modification portant sur le seul schéma
+demande un `cleanTest`.

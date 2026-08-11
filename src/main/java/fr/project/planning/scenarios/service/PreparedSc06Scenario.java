@@ -4,6 +4,7 @@ import fr.project.planning.domain.creneau.Creneau;
 import fr.project.planning.domain.metier.ReferentielComptabiliteActivite;
 import fr.project.planning.domain.ressource.Indisponibilite;
 import fr.project.planning.domain.ressource.SalarieReel;
+import fr.project.planning.scenarios.dto.ScenarioAlertDTO;
 import fr.project.planning.solution.PlanningProblem;
 
 import java.time.LocalDate;
@@ -21,6 +22,10 @@ import java.util.List;
  * @param dateBesoin         jour du besoin, commun à tous ses créneaux
  * @param lundiDeLaSemaine   lundi de la semaine du besoin, borne de calcul hebdomadaire
  * @param scenarioType       type de scénario, restitué tel quel
+ * @param alerts             [S8.4] ce que la préparation a décidé à la place de l'appelant. SC-06
+ *                           refuse plutôt qu'il n'ignore : ses garde-fous lèvent des exceptions.
+ *                           Le cadre réglementaire est le seul endroit où il substitue en silence
+ *                           — et ne le fait donc plus
  */
 public record PreparedSc06Scenario(
         PlanningProblem problem,
@@ -30,6 +35,10 @@ public record PreparedSc06Scenario(
         ReferentielComptabiliteActivite referentiel,
         LocalDate dateBesoin,
         LocalDate lundiDeLaSemaine,
-        String scenarioType
+        String scenarioType,
+        List<ScenarioAlertDTO> alerts
 ) {
+    public PreparedSc06Scenario {
+        alerts = alerts == null ? List.of() : List.copyOf(alerts);
+    }
 }

@@ -44,6 +44,30 @@ public final class CalendrierJoursFeries {
     }
 
     /**
+     * Le créneau travaille-t-il, ne serait-ce qu'une minute, sur une date fériée ?
+     *
+     * <p>[Lot S8.3] Seule lecture du férié dans le moteur : la contrainte HARD
+     * {@code JourFerieRefuse}, la valorisation et les libellés de diagnostic passent tous par ici.
+     * Le drapeau {@code isJourFerie} du créneau n'est plus interrogé directement — il alimente le
+     * calendrier en amont, dans {@code ScenarioRegulatoryParametersMapper}, et c'est le calendrier
+     * qui fait foi ensuite.</p>
+     *
+     * <p>Un créneau traversant minuit couvre deux jours civils : il suffit que l'un des deux soit
+     * férié, à condition qu'il y travaille réellement. Un créneau 14:00–00:00 la veille d'un férié
+     * s'arrête à minuit pile et n'est donc pas concerné.</p>
+     */
+    public static boolean toucheUnJourFerie(Creneau creneau, RegulatoryParameters parametres) {
+        if (creneau == null || parametres == null || creneau.getDate() == null) {
+            return false;
+        }
+        if (parametres.estJourFerie(creneau.getDate())) {
+            return true;
+        }
+        LocalDate lendemain = creneau.getDate().plusDays(1);
+        return parametres.estJourFerie(lendemain) && creneau.couvre(lendemain);
+    }
+
+    /**
      * Dates déclarées fériées par au moins un créneau.
      *
      * @param creneaux créneaux du problème, figés comme variables de décision

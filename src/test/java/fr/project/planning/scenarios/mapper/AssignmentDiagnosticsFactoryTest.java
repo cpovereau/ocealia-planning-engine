@@ -5,6 +5,7 @@ import fr.project.planning.domain.creneau.PrioriteCreneau;
 import fr.project.planning.domain.creneau.QualificationJour;
 import fr.project.planning.domain.creneau.TypeCreneau;
 import fr.project.planning.domain.creneau.TypePlageHoraire;
+import fr.project.planning.domain.reglementaire.RegulatoryParameters;
 import fr.project.planning.domain.ressource.RessourceNonAffectee;
 import fr.project.planning.domain.ressource.SalarieReel;
 import fr.project.planning.scenarios.dto.AssignmentDiagnosticDTO;
@@ -120,6 +121,57 @@ class AssignmentDiagnosticsFactoryTest {
 
         assertEquals(1, diagnostics.size());
         assertEquals("NO_COMPATIBLE_RESOURCE", diagnostics.get(0).getReasonCode());
+    }
+
+    // ----------------------------------------------------------
+    // 5. [Lot S8.4] Le férié se lit au calendrier réglementaire
+    //
+    //    Les libellés de diagnostic étaient le dernier endroit du moteur à interroger le drapeau
+    //    isJourFerie du créneau, quand la contrainte HARD et la valorisation lisaient déjà le
+    //    calendrier. Un appelant qui déclare `regulatoryParameters.joursFeries` sans marquer ses
+    //    créneaux perdait l'explication au moment où elle comptait le plus.
+    // ----------------------------------------------------------
+
+    @Test
+    void dateFerieeAuCalendrier_sansDrapeau_doitProduire_JOUR_FERIE_NON_COUVERT() {
+        LocalDate ferie = LocalDate.of(2026, 5, 13);
+        Creneau creneauCouvert = creneau("C-COUVERT", LocalDate.of(2026, 5, 12), false, salarie("SAL-A"));
+        Creneau nonCouvert = creneau("C-NC", ferie, false, RessourceNonAffectee.INSTANCE);
+
+        List<AssignmentDiagnosticDTO> diagnostics = AssignmentDiagnosticsFactory.build(
+                List.of(creneauCouvert, nonCouvert),
+                PAS_DE_POSTE_VIRTUEL,
+                new RegulatoryParameters(LocalTime.of(22, 0), LocalTime.of(6, 0), List.of(ferie))
+        );
+
+        AssignmentDiagnosticDTO diag = diagnostics.stream()
+                .filter(d -> "C-NC".equals(d.getCreneauId()))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("Diagnostic attendu absent"));
+
+        assertEquals("JOUR_FERIE_NON_COUVERT", diag.getReasonCode(),
+                "Le calendrier déclaré fait foi, même sans drapeau sur le créneau.");
+    }
+
+    @Test
+    void drapeauSurLeCreneau_maisDateAbsenteDuCalendrier_doitProduire_NO_RESOURCE_ASSIGNED() {
+        // Réciproque : dès qu'un calendrier est connu, c'est lui qui répond — même lecture que
+        // JourFerieRefuse, sans quoi le diagnostic contredirait la contrainte.
+        Creneau creneauCouvert = creneau("C-COUVERT", LocalDate.of(2026, 5, 12), false, salarie("SAL-A"));
+        Creneau nonCouvert = creneau("C-NC", LocalDate.of(2026, 5, 13), true, RessourceNonAffectee.INSTANCE);
+
+        List<AssignmentDiagnosticDTO> diagnostics = AssignmentDiagnosticsFactory.build(
+                List.of(creneauCouvert, nonCouvert),
+                PAS_DE_POSTE_VIRTUEL,
+                RegulatoryParameters.neutre()
+        );
+
+        AssignmentDiagnosticDTO diag = diagnostics.stream()
+                .filter(d -> "C-NC".equals(d.getCreneauId()))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("Diagnostic attendu absent"));
+
+        assertEquals("NO_RESOURCE_ASSIGNED", diag.getReasonCode());
     }
 
     // ----------------------------------------------------------

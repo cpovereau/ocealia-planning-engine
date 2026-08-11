@@ -268,6 +268,25 @@ Codes émis et gravité associée :
 | `UNKNOWN_ACTIVITY` | `ERROR` | Code activité des créneaux générés absent du référentiel injecté — **sans `date`** |
 | `ACTIVITY_CODE_DEFAULTED` | `WARNING` | Aucun `codeActiviteId` déclaré en SC-01 : code historique `travail` appliqué — **sans `date`** |
 
+#### Codes communs aux trois scénarios — lot S8.4
+
+Les six codes ci-dessus n'étaient émis que par SC-01. **SC-03 et SC-06 restituaient `alerts: []`
+en dur** : tout ce que leur préparation constatait — y compris ce qu'elle décidait *à la place*
+de l'appelant — ne partait que dans les journaux du serveur.
+
+| Code | Sévérité | Signification |
+|------|----------|---------------|
+| `PLAGE_NUIT_PAR_DEFAUT` | `WARNING` | La plage de nuit déclarée est inexploitable (une seule borne, ou deux bornes identiques) : la plage légale 22:00–06:00 lui a été substituée. **Le score s'en trouve déplacé** — sans `date` |
+| `CALENDRIER_FERIES_DIVERGENT` | `WARNING` | `regulatoryParameters.joursFeries` fait autorité et diverge du dataset : des dates marquées fériées par les créneaux ne seront ni valorisées ni refusées comme fériées. Le message les énumère — sans `date` |
+| `CRENEAUX_ECARTES_AVANT_SOLVEUR` | `WARNING` | Des créneaux n'ont pas atteint le solveur. Le détail est dans `ignoredCreneaux.details` — sans `date` |
+| `AUCUN_CRENEAU_A_RESOUDRE` | `ERROR` | Aucun créneau n'a survécu aux partitions : la résolution porte sur un problème vide — sans `date` |
+| `AUCUNE_RESSOURCE_DANS_DATASET` | `ERROR` | Ni salarié ni poste virtuel : tous les créneaux reviendront non affectés, quelle que soit la demande — sans `date` |
+| `RESSOURCE_SANS_ID` | `WARNING` | Une ressource du dataset n'a pas d'identifiant : son comportement solveur n'est pas garanti et elle n'est pas retrouvable dans la réponse — sans `date` |
+
+**Partage des rôles avec `ignoredCreneaux`.** Une alerte porte sur la configuration ou sur le
+dataset pris dans son ensemble ; le détail créneau par créneau vit dans
+`ignoredCreneaux.details`. La même information n'est pas restituée deux fois sous deux formes.
+
 **Une alerte `INFO` n'est pas une anomalie.** Elle décrit une configuration atypique mais
 valide — un temps partiel à 4 jours travaillés relève de ce cas — et ne doit pas être
 restituée à l'utilisateur comme un défaut. Le client filtre sur `severity`, pas sur `code`.
@@ -324,6 +343,35 @@ Ces compteurs sont calculés **en pré-résolution**, dans la couche de prépara
 | `horsHorizon`                | integer | ✅ Phase 9  | Créneaux dont la date est hors de l'horizon [dateDebut, dateFin] |
 | `activiteInconnue`           | integer | ✅ Phase 9  | Créneaux avec un `codeActiviteId` absent du référentiel d'activités |
 | `aucuneRessourceDansDataset` | integer | ✅ Phase 12 | Créneaux dont aucune ressource du dataset ne déclare l'activité (contrôle structurel pré-résolution) |
+| `details`                    | tableau | ✅ S8.4     | **Quels** créneaux, et pourquoi — voir ci-dessous. Toujours présent, éventuellement vide |
+
+#### `details[]` — lot S8.4
+
+Le bloc ne restituait que trois entiers. Un appelant qui transmettait quatre-vingts créneaux et
+en retrouvait soixante-dix-sept savait qu'il en manquait trois, **sans jamais pouvoir dire
+lesquels** : la seule trace nominative partait dans les journaux du serveur, qu'il ne lit pas.
+
+| Champ       | Type    | Description |
+| ----------- | ------- | ----------- |
+| `creneauId` | string  | Identifiant reçu, restitué tel quel — clé de rapprochement avec la demande |
+| `date`      | string  | Jour du créneau (ISO-8601) — **clé omise** si le créneau n'en portait pas |
+| `motif`     | string  | `HORS_HORIZON` \| `ACTIVITE_INCONNUE` \| `AUCUNE_RESSOURCE_DANS_DATASET` \| `MARQUEUR_REPOS_NON_RATTACHE` |
+| `exclu`     | boolean | `true` si le créneau n'a pas atteint le solveur et ne figure pas dans la réponse |
+| `message`   | string  | Phrase lisible, reprenant la valeur en cause |
+
+**Le motif dit ce qui a été constaté, `exclu` dit ce qui en a été fait.** Le même constat n'a pas
+les mêmes suites selon le scénario : une activité inconnue exclut le créneau en SC-03, qui
+partitionne réellement, et ne l'exclut pas en SC-01, qui mesure sans écarter. Le nom du bloc,
+hérité, laisse croire que tout ce qu'il compte est perdu — c'est faux, et le champ le dit
+explicitement plutôt que de laisser le client le deviner.
+
+`AUCUNE_RESSOURCE_DANS_DATASET` porte toujours `exclu: false` : ces créneaux partent au solveur.
+Le moteur ne refuse pas, il rend visible l'impossible.
+
+`MARQUEUR_REPOS_NON_RATTACHE` n'alimente **aucun des trois compteurs** — il n'en existait pas
+pour lui. Un repos hebdomadaire sans `ressourceAffecteeId`, ou rattaché à une ressource hors
+dataset, est écarté et donc absent du planning restitué : l'appelant qui recharge la réponse pour
+réafficher son planning y verra un trou, et doit savoir lequel.
 
 > ~~Pour SC-01, ces trois compteurs valent toujours 0 : les créneaux sont générés programmatiquement par le builder, sans filtrage pré-résolution.~~
 >

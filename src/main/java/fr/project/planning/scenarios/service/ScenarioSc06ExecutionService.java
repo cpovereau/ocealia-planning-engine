@@ -92,9 +92,10 @@ public class ScenarioSc06ExecutionService {
                 null,                               // idSalarie — multi-ressources
                 prepared.creneauxBesoin(),          // planning = les seuls créneaux du besoin
                 workMetrics,
-                List.of(),                          // alerts — SC-06 n'a pas de builder
+                prepared.alerts(),                  // [S8.4] constats de la préparation
                 Set.of(),                           // posteVirtuelIds — diagnostics d'affectation neutres
-                new IgnoredCreneauxDTO(0, 0, 0)     // aucun créneau écarté : la préparation refuse au lieu d'ignorer
+                new IgnoredCreneauxDTO(0, 0, 0),    // aucun créneau écarté : la préparation refuse au lieu d'ignorer
+                prepared.problem().getRegulatoryParameters()
         );
 
         response.setCandidats(toDto(candidats, prepared));

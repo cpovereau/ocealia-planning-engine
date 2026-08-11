@@ -21,6 +21,7 @@ import fr.project.planning.scenarios.dto.input.CreneauInputDTO;
 import fr.project.planning.scenarios.dto.request.BesoinCreneauDTO;
 import fr.project.planning.scenarios.dto.request.BesoinDTO;
 import fr.project.planning.scenarios.mapper.ScenarioCreneauMapper;
+import fr.project.planning.scenarios.alerte.CollecteurAlertes;
 import fr.project.planning.scenarios.mapper.ScenarioRegulatoryParametersMapper;
 import fr.project.planning.scenarios.mapper.ScenarioResourceMapper;
 import fr.project.planning.scoring.StrategieScoring;
@@ -154,6 +155,12 @@ public class ScenarioSc06PreparationService {
         tousCreneaux.addAll(planningFige);
         tousCreneaux.addAll(creneauxBesoin);
 
+        // [S8.4] SC-06 refuse plutôt qu'il n'ignore : ses garde-fous lèvent des exceptions, et
+        //        aucun créneau n'est écarté en silence. Restait le cadre réglementaire, seul
+        //        endroit où le moteur décide à la place de l'appelant — c'est ce que ce collecteur
+        //        rend visible.
+        CollecteurAlertes alertes = new CollecteurAlertes("SC-06");
+
         // [S8.0] Le calendrier déclaré au contrat fait autorité ; à défaut, les fériés restent
         // ceux que les créneaux déclarent, planning figé et besoin confondus (S7.9a).
         PlanningProblem problem = new PlanningProblem(
@@ -161,7 +168,8 @@ public class ScenarioSc06PreparationService {
                 regulatoryMapper.toRegulatoryParameters(
                         request.getPlanningContext().getRegulatoryParameters(),
                         CalendrierJoursFeries.declaresParLesCreneaux(tousCreneaux),
-                        "SC-06"),
+                        "SC-06",
+                        alertes),
                 referentiel,
                 ressources,
                 tousCreneaux,
@@ -181,7 +189,8 @@ public class ScenarioSc06PreparationService {
 
         return new PreparedSc06Scenario(
                 problem, creneauxBesoin, salaries, indisponibilites,
-                referentiel, dateBesoin, lundi, request.getScenarioType());
+                referentiel, dateBesoin, lundi, request.getScenarioType(),
+                alertes.versDto());
     }
 
     // =========================================================

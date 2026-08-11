@@ -1093,3 +1093,43 @@ respecte ma déclaration ». En SC-03 il n'alimente qu'un compteur de diagnostic
 une question globale (« quelqu'un le peut-il ? ») et n'attrape donc pas une affectation individuelle
 incompatible. Passé **TOLÉRÉ**, avec l'arbitrage rendu : **HARD**, au lot des contraintes
 personnelles. Idem `activitesAutorisees` du poste virtuel.
+
+### Restitution — lot S8.4 : ce que le moteur savait et ne disait pas (2026-08-11)
+
+**Aucun écart de score — mesuré.** 609 tests, 0 échec (596 avant). Le jeu de référence SC-03 reste
+à `-67440` soft, et sa réponse reste sans alerte ni détail.
+
+**Deux promesses du contrat, non tenues.** `diagnostics.alerts` valait `List.of()` en dur en SC-03
+et SC-06 : tout ce que leur préparation constatait ne partait qu'aux journaux du serveur.
+`diagnostics.ignoredCreneaux` ne restituait que trois entiers — un appelant qui transmet
+quatre-vingts créneaux et en retrouve soixante-dix-sept savait qu'il en manquait trois, sans
+pouvoir dire lesquels.
+
+**Le pire cas n'était pas l'exclusion, c'était la substitution.** Un créneau écarté se remarque, il
+manque à la réponse. Quand la plage de nuit déclarée est inexploitable, le moteur lui substitue la
+plage légale 22:00–06:00 : cela **déplace le score**, ne laisse aucune trace, et l'appelant croit
+que sa plage a été appliquée. Idem pour un calendrier de fériés déclaré qui écrase les drapeaux du
+dataset. D'où `PLAGE_NUIT_PAR_DEFAUT` et `CALENDRIER_FERIES_DIVERGENT`, avec quatre autres codes
+communs aux trois scénarios.
+
+**Un seul geste, deux destinataires.** `CollecteurAlertes.signaler` écrit dans le journal et dans
+la réponse ; c'est le seul moyen d'ajouter une alerte. Les deux canaux avaient divergé parce que
+rien ne les tenait ensemble. `AlertCode`, `AlertSeverity` et `ScenarioAlert` quittent
+`ScenarioDatasetBuilderSc01` : un vocabulaire commun aux trois scénarios n'a plus à porter le nom
+du seul qui s'en servait.
+
+**`exclu` sépare le constat de ses suites.** Le motif dit ce qui a été constaté, `exclu` ce qui en
+a été fait : une activité inconnue exclut en SC-03, qui partitionne, et n'exclut pas en SC-01, qui
+mesure. `AUCUNE_RESSOURCE_DANS_DATASET` n'exclut jamais. Un quatrième motif,
+`MARQUEUR_REPOS_NON_RATTACHE`, n'alimente aucun compteur — il n'en existait pas — et c'est
+pourtant le plus gênant : le repos écarté fera un trou dans le planning rechargé.
+
+**Le troisième lecteur du drapeau férié.** S8.3 avait réconcilié la valorisation et la contrainte
+HARD sur le calendrier. `AssignmentDiagnosticsFactory` lisait encore `isJourFerie` et restituait
+`NO_RESOURCE_ASSIGNED` là où le calendrier déclarait un férié. La règle vit désormais dans
+`CalendrierJoursFeries.toucheUnJourFerie` et les trois lecteurs l'appellent.
+
+**Le schéma publié était faux.** `50_ScenarioResponse.schema.json` déclarait `sansRessource` — le
+seul alias d'entrée, jamais sérialisé — et exigeait un `saucuneRessourceDansDataset` inexistant.
+Avec `additionalProperties: false`, un client validant sa réponse contre le schéma publié la
+voyait rejetée. Un test confronte désormais les noms dans les deux sens.

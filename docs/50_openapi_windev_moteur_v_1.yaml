@@ -1572,6 +1572,27 @@ components:
         - `ACTIVITY_CODE_DEFAULTED` (WARNING) — aucun `codeActiviteId` déclaré en SC-01 :
           le moteur a appliqué son code historique `travail` ; émise sans `date`
 
+        [S8.4] Les six codes ci-dessus n'étaient émis que par SC-01. SC-03 et SC-06 restituaient
+        `alerts: []` en dur : tout ce que leur préparation constatait — y compris les décisions
+        prises **à la place** de l'appelant — ne partait que dans les journaux du serveur.
+        Les codes suivants sont communs aux trois scénarios :
+
+        - `PLAGE_NUIT_PAR_DEFAUT` (WARNING) — la plage de nuit déclarée est inexploitable
+          (une seule borne, ou deux bornes identiques) et la plage légale 22:00–06:00 lui a
+          été substituée. Le score s'en trouve déplacé ; émise sans `date`
+        - `CALENDRIER_FERIES_DIVERGENT` (WARNING) — `regulatoryParameters.joursFeries` fait
+          autorité et diverge du dataset : des dates marquées fériées par les créneaux ne
+          seront ni valorisées ni refusées comme fériées. Le message les énumère ; sans `date`
+        - `CRENEAUX_ECARTES_AVANT_SOLVEUR` (WARNING) — des créneaux n'ont pas atteint le
+          solveur ; le détail est dans `ignoredCreneaux.details` ; émise sans `date`
+        - `AUCUN_CRENEAU_A_RESOUDRE` (ERROR) — aucun créneau n'a survécu aux partitions :
+          la résolution porte sur un problème vide ; émise sans `date`
+        - `AUCUNE_RESSOURCE_DANS_DATASET` (ERROR) — ni salarié ni poste virtuel : tous les
+          créneaux reviendront non affectés, quelle que soit la demande ; émise sans `date`
+        - `RESSOURCE_SANS_ID` (WARNING) — une ressource du dataset n'a pas d'identifiant :
+          son comportement solveur n'est pas garanti et elle n'est pas retrouvable dans la
+          réponse ; émise sans `date`
+
         Le champ `severity` porte la gravité : une alerte `INFO` signale une configuration
         atypique mais valide et ne doit pas être restituée comme une anomalie.
         Champ optionnel pour compatibilité ascendante — absent, il doit être interprété
@@ -1638,11 +1659,46 @@ components:
           type: string
       required: [creneauId, status, reasonCode, message]
 
+    CreneauIgnore:
+      type: object
+      description: |
+        [S8.4] Un créneau signalé par la préparation, et ce que le moteur en a fait.
+
+        Les compteurs seuls ne permettaient pas de dire *quels* créneaux manquaient :
+        la seule trace nominative partait dans les journaux du serveur.
+      properties:
+        creneauId:
+          type: string
+          description: Identifiant reçu, restitué tel quel — clé de rapprochement avec la demande
+        date:
+          type: string
+          format: date
+          description: Jour du créneau. Clé omise si le créneau n'en portait pas
+        motif:
+          type: string
+          enum: [HORS_HORIZON, ACTIVITE_INCONNUE, AUCUNE_RESSOURCE_DANS_DATASET, MARQUEUR_REPOS_NON_RATTACHE]
+          description: |
+            Ce qui a été constaté — jamais ce qui en a été fait, qui dépend du scénario.
+        exclu:
+          type: boolean
+          description: |
+            true si le créneau n'a pas atteint le solveur et ne figure pas dans la réponse.
+            Un même motif n'a pas les mêmes suites partout : une activité inconnue exclut en
+            SC-03, qui partitionne, et n'exclut pas en SC-01, qui mesure sans écarter.
+            AUCUNE_RESSOURCE_DANS_DATASET n'exclut jamais.
+        message:
+          type: string
+          description: Phrase lisible, reprenant la valeur en cause
+      required: [creneauId, motif, exclu, message]
+
     IgnoredCreneaux:
       type: object
       description: |
-        Compteurs de créneaux ignorés avant la phase de résolution.
-        Correspond à `IgnoredCreneauxDTO`.
+        Compteurs de créneaux signalés avant la phase de résolution, et depuis le lot S8.4
+        leur détail. Correspond à `IgnoredCreneauxDTO`.
+
+        Le nom du bloc, hérité, laisse croire que tout ce qu'il compte est perdu : c'est faux
+        d'un des trois compteurs. `details[].exclu` tranche, cas par cas.
 
         Note : `aucuneRessourceDansDataset` accepte l'alias JSON `sansRessource`
         en lecture (rétrocompatibilité).
@@ -1655,8 +1711,18 @@ components:
           description: Créneaux dont l'activité est absente du référentiel
         aucuneRessourceDansDataset:
           type: integer
-          description: Créneaux sans aucune ressource compatible dans le dataset
-      required: [horsHorizon, activiteInconnue, aucuneRessourceDansDataset]
+          description: |
+            Créneaux dont aucune ressource du dataset ne déclare l'activité.
+            Ces créneaux ne sont PAS écartés : ils partent au solveur.
+        details:
+          type: array
+          items:
+            $ref: '#/components/schemas/CreneauIgnore'
+          description: |
+            [S8.4] Quels créneaux, et pourquoi. Toujours présent, éventuellement vide.
+            Peut contenir des entrées qu'aucun des trois compteurs ne totalise —
+            MARQUEUR_REPOS_NON_RATTACHE notamment.
+      required: [horsHorizon, activiteInconnue, aucuneRessourceDansDataset, details]
 
     Diagnostics:
       type: object

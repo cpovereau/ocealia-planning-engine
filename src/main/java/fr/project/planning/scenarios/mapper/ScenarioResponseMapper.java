@@ -1,5 +1,6 @@
 package fr.project.planning.scenarios.mapper;
 
+import fr.project.planning.domain.reglementaire.RegulatoryParameters;
 import fr.project.planning.domain.ressource.RessourceNonAffectee;
 import fr.project.planning.domain.workmetrics.WorkMetrics;
 import fr.project.planning.scenarios.dto.GlobalWorkMetricsDTO;
@@ -44,7 +45,48 @@ public class ScenarioResponseMapper {
         ) {
         return toResponse(scenarioType, solverStatus, hardScore, softScore, scoreBreakdown,
                 idSalarie, creneauxResolus, List.of(), workMetricsById, alerts,
-                posteVirtuelIds, ignoredCreneaux);
+                posteVirtuelIds, ignoredCreneaux, null);
+    }
+
+    /** Surcharge sans cadre réglementaire — les diagnostics d'affectation retombent sur le
+     *  drapeau porté par le créneau. */
+    public ScenarioResponseDTO toResponse(
+        String scenarioType,
+        String solverStatus,
+        int hardScore,
+        int softScore,
+        List<ScoreBreakdownItemDTO> scoreBreakdown,
+        String idSalarie,
+        List<Creneau> creneauxResolus,
+        List<Creneau> creneauxRepos,
+        Map<String, WorkMetrics> workMetricsById,
+        List<ScenarioAlertDTO> alerts,
+        Set<String> posteVirtuelIds,
+        IgnoredCreneauxDTO ignoredCreneaux
+        ) {
+        return toResponse(scenarioType, solverStatus, hardScore, softScore, scoreBreakdown,
+                idSalarie, creneauxResolus, creneauxRepos, workMetricsById, alerts,
+                posteVirtuelIds, ignoredCreneaux, null);
+    }
+
+    /** Surcharge sans créneaux de repos, avec cadre réglementaire. */
+    public ScenarioResponseDTO toResponse(
+        String scenarioType,
+        String solverStatus,
+        int hardScore,
+        int softScore,
+        List<ScoreBreakdownItemDTO> scoreBreakdown,
+        String idSalarie,
+        List<Creneau> creneauxResolus,
+        Map<String, WorkMetrics> workMetricsById,
+        List<ScenarioAlertDTO> alerts,
+        Set<String> posteVirtuelIds,
+        IgnoredCreneauxDTO ignoredCreneaux,
+        RegulatoryParameters regulatoryParameters
+        ) {
+        return toResponse(scenarioType, solverStatus, hardScore, softScore, scoreBreakdown,
+                idSalarie, creneauxResolus, List.of(), workMetricsById, alerts,
+                posteVirtuelIds, ignoredCreneaux, regulatoryParameters);
     }
 
     /**
@@ -67,7 +109,8 @@ public class ScenarioResponseMapper {
         Map<String, WorkMetrics> workMetricsById,
         List<ScenarioAlertDTO> alerts,
         Set<String> posteVirtuelIds,
-        IgnoredCreneauxDTO ignoredCreneaux
+        IgnoredCreneauxDTO ignoredCreneaux,
+        RegulatoryParameters regulatoryParameters
         ) {
         List<Creneau> creneauxAffiches = creneauxRepos == null || creneauxRepos.isEmpty()
                 ? creneauxResolus
@@ -75,7 +118,8 @@ public class ScenarioResponseMapper {
 
         ScenarioPlanningDTO planning = buildPlanning(idSalarie, creneauxAffiches);
         SolverResultDTO solverResult = buildSolverResult(solverStatus, hardScore, softScore, scoreBreakdown);
-        DiagnosticsDTO diagnostics = buildDiagnostics(alerts, creneauxResolus, posteVirtuelIds, ignoredCreneaux);
+        DiagnosticsDTO diagnostics = buildDiagnostics(alerts, creneauxResolus, posteVirtuelIds,
+                ignoredCreneaux, regulatoryParameters);
 
         return new ScenarioResponseDTO(
                 scenarioType,
@@ -104,14 +148,15 @@ public class ScenarioResponseMapper {
         List<ScenarioAlertDTO> alerts,
         List<Creneau> creneauxResolus,
         Set<String> posteVirtuelIds,
-        IgnoredCreneauxDTO ignoredCreneaux
+        IgnoredCreneauxDTO ignoredCreneaux,
+        RegulatoryParameters regulatoryParameters
     ) {
         return new DiagnosticsDTO(
             alerts,
             ignoredCreneaux != null ? ignoredCreneaux : new IgnoredCreneauxDTO(0, 0, 0),
-            AssignmentDiagnosticsFactory.build(creneauxResolus, posteVirtuelIds)
+            AssignmentDiagnosticsFactory.build(creneauxResolus, posteVirtuelIds, regulatoryParameters)
         );
-   }    
+   }
 
     private ScenarioPlanningDTO buildPlanning(String idSalarie, List<Creneau> creneauxResolus) {
         Map<java.time.LocalDate, List<CreneauPlanningDTO>> grouped = creneauxResolus.stream()

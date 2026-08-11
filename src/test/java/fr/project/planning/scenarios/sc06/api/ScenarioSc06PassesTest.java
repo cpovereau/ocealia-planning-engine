@@ -103,6 +103,33 @@ class ScenarioSc06PassesTest {
                 .andExpect(jsonPath("$.workMetrics.byRessource.length()").value(0));
     }
 
+    @Test
+    void plageDeNuitInexploitable_estSignaleeAlorsQueSc06NAlertaitJamais() throws Exception {
+        // [Lot S8.4] SC-06 émettait `alerts: []` en dur, au motif qu'il n'a pas de builder. Il
+        // refuse plutôt qu'il n'ignore — ses garde-fous lèvent des exceptions — mais le cadre
+        // réglementaire restait un endroit où il décidait seul : substituer la plage par défaut à
+        // celle qu'on lui déclare déplace le score.
+        String reponse = postSc06("src/test/resources/scenarios/sc06/sc06_reglementaire_degrade.json");
+        JsonNode alerts = objectMapper.readTree(reponse).get("diagnostics").get("alerts");
+
+        assertEquals(1, alerts.size());
+        assertEquals("PLAGE_NUIT_PAR_DEFAUT", alerts.get(0).get("code").asText());
+        assertEquals("WARNING", alerts.get(0).get("severity").asText());
+        assertTrue(alerts.get(0).get("message").asText().contains("22:00"),
+                "Le message doit nommer la plage effectivement appliquée.");
+    }
+
+    @Test
+    void jeuDeReferenceDuRepli_resteSansAlerte() throws Exception {
+        String reponse = postSc06("src/test/resources/scenarios/sc06/sc06_repli.json");
+        JsonNode diagnostics = objectMapper.readTree(reponse).get("diagnostics");
+
+        assertEquals(0, diagnostics.get("alerts").size(),
+                "Une réponse propre doit le rester : ce canal ne sert qu'à dire ce qui cloche.");
+        assertEquals(0, diagnostics.get("ignoredCreneaux").get("details").size(),
+                "SC-06 refuse au lieu d'ignorer : il n'écarte jamais de créneau en silence.");
+    }
+
     // =========================================================
     // Helpers
     // =========================================================

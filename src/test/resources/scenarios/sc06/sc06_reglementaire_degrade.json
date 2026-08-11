@@ -1,0 +1,97 @@
+{
+  "requestId": "REQ-SC06-REGL-DEGRADE-001",
+  "metadata": {
+    "clientId": "WINDEV",
+    "timestamp": "2026-05-10T09:00:00",
+    "source": "TEST"
+  },
+  "scenarioType": "SC-06",
+  "planningContext": {
+    "horizon": {
+      "dateDebut": "2026-05-11",
+      "dateFin": "2026-05-17"
+    },
+    "strategieScoring": "ANALYSE_RH",
+    "regulatoryParameters": {
+      "heureDebutNuit": "21:00"
+    }
+  },
+  "scenarioParameters": {
+    "besoin": {
+      "date": "2026-05-13",
+      "creneaux": [
+        {
+          "id": "BES-001",
+          "heureDebut": "14:00",
+          "heureFin": "20:00",
+          "codeActiviteId": "ACT-SOIN",
+          "lieu": "HOPITAL-NORD"
+        }
+      ]
+    }
+  },
+  "dataSet": {
+    "referentiels": {
+      "activites": [
+        {
+          "codeActiviteId": "ACT-SOIN",
+          "libelle": "Soins infirmiers",
+          "compteDansCharge": true,
+          "genereDetteRepos": false,
+          "estServiceCritique": true
+        },
+        {
+          "codeActiviteId": "ACT-ADMIN",
+          "libelle": "Administratif",
+          "compteDansCharge": true,
+          "genereDetteRepos": false,
+          "estServiceCritique": false
+        }
+      ]
+    },
+    "ressources": {
+      "salaries": [
+        {
+          "id": "SAL-ADMIN",
+          "statut": "CDI",
+          "activitesCompatibles": [
+            "ACT-ADMIN"
+          ],
+          "contrat": {
+            "heuresHebdomadairesHabituelles": 35.0
+          },
+          "contraintesReglementaires": {
+            "reposQuotidienMinimum": 11.0,
+            "heuresMaximumParSemaine": 44.0
+          },
+          "travailleJourFerie": true
+        }
+      ],
+      "postesVirtuels": [
+        {
+          "id": "PV-001",
+          "type": "POTENTIEL",
+          "capaciteCible": 2400,
+          "activitesAutorisees": [
+            "ACT-SOIN"
+          ]
+        }
+      ]
+    },
+    "creneaux": [
+      {
+        "id": "PLN-ADMIN-L",
+        "date": "2026-05-11",
+        "heureDebut": "08:00",
+        "heureFin": "16:00",
+        "lieu": "HOPITAL-NORD",
+        "codeActiviteId": "ACT-ADMIN",
+        "ressourceAffecteeId": "SAL-ADMIN"
+      }
+    ],
+    "indisponibilites": {
+      "items": []
+    }
+  },
+  "_description": "Lot S8.4 — variante du repli, avec une plage de nuit declaree inexploitable (heureDebutNuit seule). SC-06 emettait `alerts: []` en dur : la substitution de la plage par defaut n'atteignait jamais l'appelant."
+}

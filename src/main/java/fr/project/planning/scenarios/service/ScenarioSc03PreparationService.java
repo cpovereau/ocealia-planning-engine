@@ -17,7 +17,12 @@ import fr.project.planning.domain.reglementaire.CalendrierJoursFeries;
 import fr.project.planning.domain.reglementaire.RegulatoryParameters;
 import fr.project.planning.domain.ressource.Indisponibilite;
 import fr.project.planning.domain.ressource.Ressource;
+import fr.project.planning.scenarios.alerte.AlertCode;
+import fr.project.planning.scenarios.alerte.AlertSeverity;
+import fr.project.planning.scenarios.alerte.CollecteurAlertes;
+import fr.project.planning.scenarios.dto.CreneauIgnoreDTO;
 import fr.project.planning.scenarios.dto.IgnoredCreneauxDTO;
+import fr.project.planning.scenarios.dto.MotifCreneauIgnore;
 import fr.project.planning.scenarios.dto.Sc03ScenarioRequestDTO;
 import fr.project.planning.scenarios.dto.input.CreneauInputDTO;
 import fr.project.planning.scenarios.dto.input.PosteVirtuelInputDTO;
@@ -121,6 +126,12 @@ public class ScenarioSc03PreparationService {
             throw new IllegalArgumentException("[SC-03] dataSet.referentiels est requis.");
         }
 
+        // [S8.4] Ce que la préparation constate part désormais dans les deux canaux à la fois :
+        //        le journal du serveur, et les `alerts` de la réponse. SC-03 émettait `List.of()`
+        //        en dur — tout ce qui suit n'atteignait donc jamais l'appelant.
+        CollecteurAlertes alertes = new CollecteurAlertes("SC-03");
+        List<CreneauIgnoreDTO> creneauxSignales = new ArrayList<>();
+
         // 1. Référentiel d'activités — construit en premier pour filtrer les créneaux avant solveur
         ReferentielComptabiliteActivite referentiel = resourceMapper.toReferentiel(
                 request.getDataSet().getReferentiels()
@@ -184,6 +195,9 @@ public class ScenarioSc03PreparationService {
                 activiteInconnue++;
                 log.warn("[SC-03] créneau id='{}' : activité '{}' absente du référentiel — créneau exclu avant solveur",
                         dto.getId(), codeUtilise);
+                creneauxSignales.add(CreneauIgnoreDTO.exclu(
+                        dto.getId(), dto.getDate(), MotifCreneauIgnore.ACTIVITE_INCONNUE,
+                        "Activité '" + codeUtilise + "' absente du référentiel — créneau exclu avant solveur."));
             } else {
                 creneauxValides.add(dto);
             }
@@ -201,15 +215,30 @@ public class ScenarioSc03PreparationService {
                 horsHorizon++;
                 log.warn("[SC-03] créneau id='{}' : date '{}' hors horizon [{} — {}] — créneau exclu avant solveur",
                         dto.getId(), dto.getDate(), dateDebut, dateFin);
+                creneauxSignales.add(CreneauIgnoreDTO.exclu(
+                        dto.getId(), dto.getDate(), MotifCreneauIgnore.HORS_HORIZON,
+                        "Date hors de l'horizon [" + dateDebut + " — " + dateFin + "]"
+                                + " — créneau exclu avant solveur."));
             } else {
                 creneauxDansHorizon.add(dto);
             }
         }
 
+        // [S8.4] Des créneaux ont disparu entre la demande et la réponse : l'appelant l'apprend
+        //        maintenant, et sait lesquels.
+        if (activiteInconnue + horsHorizon > 0) {
+            alertes.signaler(AlertCode.CRENEAUX_ECARTES_AVANT_SOLVEUR, AlertSeverity.WARNING,
+                    (activiteInconnue + horsHorizon) + " créneau(x) écarté(s) avant résolution "
+                            + "(activité inconnue : " + activiteInconnue + ", hors horizon : " + horsHorizon
+                            + ") — le détail est dans diagnostics.ignoredCreneaux.details.");
+        }
+
         // [Phase 7] WARN — zéro créneaux transmis au solveur après les deux partitions
         if (creneauxDansHorizon.isEmpty()) {
-            log.warn("[SC-03] aucun créneau transmis au solveur après les partitions (activiteInconnue={}, horsHorizon={})",
-                    activiteInconnue, horsHorizon);
+            alertes.signaler(AlertCode.AUCUN_CRENEAU_A_RESOUDRE, AlertSeverity.ERROR,
+                    "Aucun créneau n'a survécu aux partitions (activité inconnue : " + activiteInconnue
+                            + ", hors horizon : " + horsHorizon + ") — la résolution porte sur un "
+                            + "problème vide.");
         }
 
         // 4. Créneaux — activité connue ET dans l'horizon
@@ -243,12 +272,13 @@ public class ScenarioSc03PreparationService {
         RegulatoryParameters regulatoryParameters = regulatoryMapper.toRegulatoryParameters(
                 request.getPlanningContext().getRegulatoryParameters(),
                 CalendrierJoursFeries.declaresParLesCreneaux(creneaux),
-                "SC-03");
+                "SC-03",
+                alertes);
 
         // 7 bis. [S7.9b] Calendrier de repos hebdomadaire — repos déclarés par l'appelant,
         //        complétés semaine par semaine par le repli samedi/dimanche.
         ReposPrepares repos = preparerRepos(marqueursRepos, referentiel, ressources,
-                planningContext.getHorizonTemporel());
+                planningContext.getHorizonTemporel(), creneauxSignales);
 
         // 8. Planning Request
         PlanningRequest planningRequest = new PlanningRequest(
@@ -277,30 +307,47 @@ public class ScenarioSc03PreparationService {
                 && request.getDataSet().getRessources().getPostesVirtuels() != null
                 ? request.getDataSet().getRessources().getPostesVirtuels() : List.of();
 
-        // [Phase 7] WARN — salariés sans id
+        // [Phase 7] Salariés sans id
         for (SalarieInputDTO sal : salaries) {
             if (sal.getId() == null || sal.getId().isBlank()) {
-                log.warn("[SC-03] salarié sans id — comportement solveur non garanti");
+                alertes.signaler(AlertCode.RESSOURCE_SANS_ID, AlertSeverity.WARNING,
+                        "Un salarié du dataset n'a pas d'identifiant — son comportement solveur "
+                                + "n'est pas garanti et il ne sera pas retrouvable dans la réponse.");
             }
         }
 
-        // [Phase 7] WARN — aucune ressource réelle dans le dataset
+        // [Phase 7] Aucune ressource réelle dans le dataset
         if (salaries.isEmpty() && postesVirtuelsList.isEmpty()) {
-            log.warn("[SC-03] aucune ressource réelle dans le dataset (ni salarié, ni poste virtuel) — tous les créneaux seront affectés à RessourceNonAffectee");
+            alertes.signaler(AlertCode.AUCUNE_RESSOURCE_DANS_DATASET, AlertSeverity.ERROR,
+                    "Ni salarié ni poste virtuel au dataset — tous les créneaux reviendront non "
+                            + "affectés, quelle que soit la demande.");
         }
 
-        int aucuneRessourceDansDataset = (int) creneauxDansHorizon.stream()
-                .filter(dto -> !auMoinsUneRessourceCompatible(dto, salaries, postesVirtuelsList))
-                .count();
+        // [S8.4] Le compteur reste un nombre ; le détail dit enfin de quels créneaux il s'agit.
+        //        Ces créneaux ne sont PAS écartés : ils partent au solveur, qui rendra visible
+        //        l'impossible plutôt que de refuser.
+        int aucuneRessourceDansDataset = 0;
+        for (CreneauInputDTO dto : creneauxDansHorizon) {
+            if (!auMoinsUneRessourceCompatible(dto, salaries, postesVirtuelsList)) {
+                aucuneRessourceDansDataset++;
+                creneauxSignales.add(CreneauIgnoreDTO.conserve(
+                        dto.getId(), dto.getDate(), MotifCreneauIgnore.AUCUNE_RESSOURCE_DANS_DATASET,
+                        "Aucune ressource du dataset ne déclare l'activité '"
+                                + dto.getCodeActiviteEffectif() + "'. Le créneau est conservé et "
+                                + "soumis au solveur."));
+            }
+        }
 
-        IgnoredCreneauxDTO ignoredCreneaux = new IgnoredCreneauxDTO(horsHorizon, aucuneRessourceDansDataset, activiteInconnue);
+        IgnoredCreneauxDTO ignoredCreneaux = new IgnoredCreneauxDTO(
+                horsHorizon, aucuneRessourceDansDataset, activiteInconnue, creneauxSignales);
 
         return new PreparedSc03Scenario(
                 planningRequest,
                 request.getScenarioType(),
                 posteVirtuelIds,
                 ignoredCreneaux,
-                repos.marqueurs()
+                repos.marqueurs(),
+                alertes.versDto()
         );
     }
 
@@ -319,7 +366,8 @@ public class ScenarioSc03PreparationService {
             List<CreneauInputDTO> marqueursDto,
             ReferentielComptabiliteActivite referentiel,
             List<Ressource> ressources,
-            HorizonTemporel horizon) {
+            HorizonTemporel horizon,
+            List<CreneauIgnoreDTO> creneauxSignales) {
 
         Map<String, Ressource> ressourcesParId = new HashMap<>();
         for (Ressource r : ressources) {
@@ -335,12 +383,20 @@ public class ScenarioSc03PreparationService {
             if (salarieId == null || salarieId.isBlank()) {
                 log.warn("[SC-03] créneau id='{}' : repos hebdomadaire sans ressourceAffecteeId — "
                         + "impossible de savoir de qui c'est le repos, marqueur ignoré", dto.getId());
+                creneauxSignales.add(CreneauIgnoreDTO.exclu(
+                        dto.getId(), dto.getDate(), MotifCreneauIgnore.MARQUEUR_REPOS_NON_RATTACHE,
+                        "Repos hebdomadaire sans ressourceAffecteeId — impossible de savoir de qui "
+                                + "c'est le repos. Marqueur écarté, et donc absent du planning restitué."));
                 continue;
             }
             Ressource ressource = ressourcesParId.get(salarieId);
             if (!(ressource instanceof SalarieReel)) {
                 log.warn("[SC-03] créneau id='{}' : repos hebdomadaire rattaché à '{}', absent du "
                         + "dataset ou non salarié — marqueur ignoré", dto.getId(), salarieId);
+                creneauxSignales.add(CreneauIgnoreDTO.exclu(
+                        dto.getId(), dto.getDate(), MotifCreneauIgnore.MARQUEUR_REPOS_NON_RATTACHE,
+                        "Repos hebdomadaire rattaché à '" + salarieId + "', absent du dataset ou non "
+                                + "salarié. Marqueur écarté, et donc absent du planning restitué."));
                 continue;
             }
 

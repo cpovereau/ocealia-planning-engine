@@ -3,6 +3,7 @@ package fr.project.planning.scenarios.service;
 import fr.project.planning.api.PlanningRequest;
 import fr.project.planning.domain.creneau.Creneau;
 import fr.project.planning.scenarios.dto.IgnoredCreneauxDTO;
+import fr.project.planning.scenarios.dto.ScenarioAlertDTO;
 
 import java.util.List;
 import java.util.Set;
@@ -18,13 +19,15 @@ import java.util.Set;
  * - pas de resourceId unique (scénario multi-ressources)
  *
  * Phase 9 — ignoredCreneaux : compteurs pré-résolution produits par la couche de préparation.
+ * Lot S8.4 — alerts : ce que la préparation a constaté ou décidé, jusqu'ici confiné aux journaux.
  */
 public record PreparedSc03Scenario(
         PlanningRequest planningRequest,
         String scenarioType,
         Set<String> posteVirtuelIds,
         IgnoredCreneauxDTO ignoredCreneaux,
-        List<Creneau> marqueursRepos
+        List<Creneau> marqueursRepos,
+        List<ScenarioAlertDTO> alerts
 ) {
     /**
      * [Lot S7.9b] {@code marqueursRepos} — les créneaux de repos hebdomadaire reçus en entrée.
@@ -35,5 +38,6 @@ public record PreparedSc03Scenario(
      */
     public PreparedSc03Scenario {
         marqueursRepos = marqueursRepos == null ? List.of() : List.copyOf(marqueursRepos);
+        alerts = alerts == null ? List.of() : List.copyOf(alerts);
     }
 }

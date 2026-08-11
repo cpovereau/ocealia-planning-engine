@@ -57,10 +57,6 @@ public class ScenarioSc01ExecutionService {
                         ? c.getRessourceAffectee().getId() : "null"))
                 .toList());
 
-        List<ScenarioAlertDTO> alerts = prepared.buildResult().alerts().stream()
-                .map(a -> new ScenarioAlertDTO(a.code().name(), a.severity().name(), a.date(), a.message()))
-                .toList();
-
         return responseMapper.toResponse(
                 prepared.scenarioType(),
                 "SOLVED",
@@ -70,9 +66,10 @@ public class ScenarioSc01ExecutionService {
                 prepared.resourceId(),
                 solved.solution().getCreneaux(),
                 byId,
-                alerts,
+                prepared.alerts(),           // [S8.4] builder + cadre réglementaire, réunies
                 prepared.posteVirtuelIds(),
-                prepared.ignoredCreneaux()   // C1 — compteurs diagnostiques calculés à la préparation
+                prepared.ignoredCreneaux(),  // C1 — compteurs diagnostiques calculés à la préparation
+                prepared.planningRequest().regulatoryParameters()
         );
     }
 }

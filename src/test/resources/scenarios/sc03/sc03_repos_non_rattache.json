@@ -1,0 +1,83 @@
+{
+  "_description": "Lot S8.4 — deux marqueurs de repos hebdomadaire impossibles à rattacher : l'un sans ressourceAffecteeId, l'autre désignant un salarié absent du dataset. Ils sont écartés, donc absents du planning restitué : l'appelant qui recharge la réponse y verra deux trous, et doit savoir lesquels.",
+  "requestId": "REQ-TEST-RNR-001",
+  "metadata": {
+    "clientId": "CLIENT-TEST",
+    "timestamp": "2026-05-11T08:00:00Z"
+  },
+  "scenarioType": "SC-03",
+  "planningContext": {
+    "horizon": {
+      "dateDebut": "2026-05-11",
+      "dateFin": "2026-05-17"
+    },
+    "strategieScoring": "ANALYSE_RH"
+  },
+  "scenarioParameters": {
+    "prioriteCouverture": "NORMALE"
+  },
+  "dataSet": {
+    "referentiels": {
+      "activites": [
+        {
+          "codeActiviteId": "ACT-SOIN",
+          "libelle": "Soins infirmiers",
+          "compteDansCharge": true,
+          "genereDetteRepos": false,
+          "estServiceCritique": true
+        }
+      ],
+      "codeActiviteReposHebdomadaire": "RH",
+      "codeActiviteReposHebdomadaireDimanche": "RHD"
+    },
+    "creneaux": [
+      {
+        "id": "CRE-RNR-01",
+        "date": "2026-05-12",
+        "heureDebut": "07:00",
+        "heureFin": "15:00",
+        "lieu": "HOPITAL-NORD",
+        "codeActiviteId": "ACT-SOIN",
+        "posteComptable": "PC-SOINS",
+        "priorite": 1,
+        "type": "GENERE"
+      },
+      {
+        "_commentaire": "Repos sans ressourceAffecteeId — impossible de savoir de qui c'est le repos.",
+        "id": "REPOS-ORPHELIN",
+        "date": "2026-05-16",
+        "heureDebut": "00:00",
+        "heureFin": "23:59",
+        "codeActiviteId": "RH",
+        "type": "GENERE"
+      },
+      {
+        "_commentaire": "Repos rattaché à un salarié absent du dataset.",
+        "id": "REPOS-INCONNU",
+        "date": "2026-05-17",
+        "heureDebut": "00:00",
+        "heureFin": "23:59",
+        "codeActiviteId": "RHD",
+        "ressourceAffecteeId": "SAL-FANTOME",
+        "type": "GENERE"
+      }
+    ],
+    "ressources": {
+      "salaries": [
+        {
+          "id": "SAL-RNR-001",
+          "statut": "CDI",
+          "activitesCompatibles": ["ACT-SOIN"],
+          "contrat": {
+            "heuresHebdomadairesHabituelles": 35.0
+          },
+          "travailleJourFerie": true
+        }
+      ],
+      "postesVirtuels": []
+    },
+    "indisponibilites": {
+      "items": []
+    }
+  }
+}

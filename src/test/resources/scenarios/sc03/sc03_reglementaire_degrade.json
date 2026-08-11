@@ -1,0 +1,79 @@
+{
+  "_description": "Lot S8.4 — l'appelant déclare une plage de nuit inexploitable (heureFinNuit seule) et un calendrier de fériés qui contredit le drapeau isJourFerie du créneau CRE-RD-02. Le moteur substitue la plage par défaut et retient le calendrier déclaré : deux décisions prises à sa place, qu'il doit apprendre par `diagnostics.alerts`.",
+  "requestId": "REQ-TEST-RD-001",
+  "metadata": {
+    "clientId": "CLIENT-TEST",
+    "timestamp": "2026-05-11T08:00:00Z"
+  },
+  "scenarioType": "SC-03",
+  "planningContext": {
+    "horizon": {
+      "dateDebut": "2026-05-11",
+      "dateFin": "2026-05-17"
+    },
+    "strategieScoring": "ANALYSE_RH",
+    "regulatoryParameters": {
+      "heureFinNuit": "07:00",
+      "joursFeries": ["2026-05-14"]
+    }
+  },
+  "scenarioParameters": {
+    "prioriteCouverture": "NORMALE"
+  },
+  "dataSet": {
+    "referentiels": {
+      "activites": [
+        {
+          "codeActiviteId": "ACT-SOIN",
+          "libelle": "Soins infirmiers",
+          "compteDansCharge": true,
+          "genereDetteRepos": false,
+          "estServiceCritique": true
+        }
+      ]
+    },
+    "creneaux": [
+      {
+        "id": "CRE-RD-01",
+        "date": "2026-05-12",
+        "heureDebut": "07:00",
+        "heureFin": "15:00",
+        "lieu": "HOPITAL-NORD",
+        "codeActiviteId": "ACT-SOIN",
+        "posteComptable": "PC-SOINS",
+        "priorite": 1,
+        "type": "GENERE"
+      },
+      {
+        "_commentaire": "Marqué férié par le dataset, absent du calendrier déclaré — divergence.",
+        "id": "CRE-RD-02",
+        "date": "2026-05-13",
+        "heureDebut": "08:00",
+        "heureFin": "16:00",
+        "lieu": "HOPITAL-NORD",
+        "codeActiviteId": "ACT-SOIN",
+        "posteComptable": "PC-SOINS",
+        "priorite": 1,
+        "type": "GENERE",
+        "isJourFerie": true
+      }
+    ],
+    "ressources": {
+      "salaries": [
+        {
+          "id": "SAL-RD-001",
+          "statut": "CDI",
+          "activitesCompatibles": ["ACT-SOIN"],
+          "contrat": {
+            "heuresHebdomadairesHabituelles": 35.0
+          },
+          "travailleJourFerie": true
+        }
+      ],
+      "postesVirtuels": []
+    },
+    "indisponibilites": {
+      "items": []
+    }
+  }
+}
