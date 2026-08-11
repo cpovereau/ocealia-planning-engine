@@ -23,6 +23,28 @@
       "required": ["horizon", "strategieScoring"],
       "additionalProperties": false,
       "properties": {
+        "regulatoryParameters": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "[S8.0] Cadre réglementaire de la résolution. Facultatif : absent, le moteur applique la plage de nuit légale par défaut (22:00-06:00) et déduit les jours fériés de ce que le dataset déclare.",
+          "properties": {
+            "heureDebutNuit": {
+              "type": "string",
+              "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+              "description": "Début de la plage de nuit. À transmettre avec heureFinNuit : une borne seule est ignorée et tracée en WARN, car mélanger une borne déclarée avec une borne par défaut produirait un intervalle que personne n'a voulu."
+            },
+            "heureFinNuit": {
+              "type": "string",
+              "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+              "description": "Fin de la plage de nuit. Voir heureDebutNuit."
+            },
+            "joursFeries": {
+              "type": "array",
+              "items": { "type": "string", "format": "date" },
+              "description": "Calendrier des jours fériés de la période. SOURCE DE VÉRITÉ dès qu'il est présent : il l'emporte sur isJourFerie porté par les créneaux et sur holidayDates en SC-01, sans fusion — une divergence est tracée en WARN, jamais silencieusement absorbée. Une liste VIDE signifie « aucun jour férié » et fait autorité tout autant ; c'est l'absence du champ qui laisse le moteur déduire. Seule forme permettant de qualifier correctement un créneau traversant minuit, un drapeau porté par le créneau ne disant pas lequel des deux jours civils est férié."
+            }
+          }
+        },
         "horizon": {
           "type": "object",
           "required": ["dateDebut", "dateFin"],

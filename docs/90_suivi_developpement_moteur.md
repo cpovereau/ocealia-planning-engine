@@ -978,3 +978,31 @@ Arbitrage rendu : les deux indicateurs ne doivent pas avoir la même maille.
 
 La divergence entre les deux est voulue : « combien d'heures le dimanche » et « combien de fois ce
 salarié a-t-il travaillé son repos » sont deux questions différentes.
+
+### Cadre réglementaire — lot S8.0 : `planningContext.regulatoryParameters` (2026-08-11)
+
+**Aucun écart de score — mesuré.** 568 tests, 0 échec (557 avant). Le bloc est facultatif et
+absent de tous les jeux d'essai : le comportement du lot S7.9a est intégralement conservé.
+
+Bloc annoncé depuis l'origine par la spécification d'interface — « présent dans les documents de
+cadrage et dans le domaine, mais pas dans `PlanningContextDTO` en V1 […] valeurs par défaut […]
+à intégrer en Phase 3+ » — et jamais implémenté. Ces valeurs par défaut portaient un nom dans le
+code : `neutre()`, plage de nuit figée à 22:00–06:00 et calendrier de jours fériés **vide**.
+
+* **`heureDebutNuit` / `heureFinNuit`** — la plage de nuit cesse d'être figée. Déclarée si les
+  **deux** bornes le sont ; une borne seule est ignorée et tracée, mélanger une borne déclarée
+  avec une borne par défaut produirait un intervalle que personne n'a voulu.
+* **`joursFeries`** — source de vérité dès qu'elle est **présente**, fût-elle vide : une liste
+  vide dit « aucun jour férié ». C'est l'absence du champ qui laisse le moteur déduire depuis
+  `holidayDates` (SC-01) ou `isJourFerie` (SC-03, SC-06). Aucune fusion : une divergence est
+  tracée, jamais absorbée.
+* **Un créneau traversant minuit** peut enfin être qualifié correctement. La limite n'était pas
+  dans le calcul — `TimeBreakdownCalculator` interroge séparément les deux jours civils — mais
+  dans la déduction, le drapeau étant porté par le créneau et non par le jour.
+* **Point unique de résolution** (`ScenarioRegulatoryParametersMapper`), partagé par les trois
+  scénarios : la précédence ne peut pas diverger de l'un à l'autre.
+
+**Reste ouvert** : `heureDebutNuit` / `heureFinNuit` **portés par le salarié**, transportés et lus
+par personne, alors que `SalarieReel` expose déjà `heureDebutNuitEffective(fallback)`. Les
+brancher rendrait la pénibilité d'un créneau dépendante de qui l'exécute — défendable, mais cela
+change la nature du score et demande un arbitrage.

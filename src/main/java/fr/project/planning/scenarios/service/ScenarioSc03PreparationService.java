@@ -23,6 +23,7 @@ import fr.project.planning.scenarios.dto.input.CreneauInputDTO;
 import fr.project.planning.scenarios.dto.input.PosteVirtuelInputDTO;
 import fr.project.planning.scenarios.dto.input.SalarieInputDTO;
 import fr.project.planning.scenarios.mapper.ScenarioCreneauMapper;
+import fr.project.planning.scenarios.mapper.ScenarioRegulatoryParametersMapper;
 import fr.project.planning.scenarios.mapper.ScenarioResourceMapper;
 import fr.project.planning.scoring.StrategieScoring;
 import org.slf4j.Logger;
@@ -54,6 +55,9 @@ public class ScenarioSc03PreparationService {
 
     private final ScenarioResourceMapper resourceMapper;
     private final ScenarioCreneauMapper creneauMapper;
+
+    private final ScenarioRegulatoryParametersMapper regulatoryMapper =
+            new ScenarioRegulatoryParametersMapper();
 
     public ScenarioSc03PreparationService(ScenarioResourceMapper resourceMapper,
                                           ScenarioCreneauMapper creneauMapper) {
@@ -233,10 +237,13 @@ public class ScenarioSc03PreparationService {
                 HypotheseHistorique.NEUTRE
         );
 
-        // 7. Paramètres réglementaires — [S7.9] SC-03 ne transmet pas de calendrier de fériés :
-        //    les dates retenues sont celles que les créneaux déclarent via isJourFerie.
-        RegulatoryParameters regulatoryParameters = RegulatoryParameters.avecJoursFeries(
-                CalendrierJoursFeries.declaresParLesCreneaux(creneaux));
+        // 7. Paramètres réglementaires — [S8.0] le calendrier déclaré au contrat fait autorité ;
+        //    à défaut, les dates retenues restent celles que les créneaux déclarent via
+        //    isJourFerie (S7.9a).
+        RegulatoryParameters regulatoryParameters = regulatoryMapper.toRegulatoryParameters(
+                request.getPlanningContext().getRegulatoryParameters(),
+                CalendrierJoursFeries.declaresParLesCreneaux(creneaux),
+                "SC-03");
 
         // 7 bis. [S7.9b] Calendrier de repos hebdomadaire — repos déclarés par l'appelant,
         //        complétés semaine par semaine par le repli samedi/dimanche.

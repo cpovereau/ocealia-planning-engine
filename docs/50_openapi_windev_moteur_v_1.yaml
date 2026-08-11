@@ -474,9 +474,11 @@ components:
         Cadre de la résolution transmis à chaque requête.
         Correspond à `PlanningContextDTO`.
 
-        ⚠️ Écart document/code : `resolutionType`, `regulatoryParameters` et `seuils`
-        sont présents dans les documents de cadrage et dans le domaine (`PlanningContext`
-        interne), mais **pas dans `PlanningContextDTO`** en V1.
+        ⚠️ Écart document/code : `resolutionType` et `seuils` sont présents dans les documents
+        de cadrage et dans le domaine (`PlanningContext` interne), mais **pas dans
+        `PlanningContextDTO`**.
+
+        [S8.0] `regulatoryParameters` **est désormais implémenté** — voir la propriété ci-dessous.
 
         [S7.9] Conséquence longtemps passée inaperçue : les trois scénarios construisaient
         `RegulatoryParameters.neutre()`, dont le calendrier de jours fériés est **vide**. Aucune
@@ -497,7 +499,58 @@ components:
             Correspond à `StrategieScoring` (enum Java).
         horizon:
           $ref: '#/components/schemas/Horizon'
+        regulatoryParameters:
+          $ref: '#/components/schemas/RegulatoryParameters'
+          description: |
+            [S8.0] Cadre réglementaire de la résolution. **Facultatif.**
       required: [strategieScoring, horizon]
+
+    RegulatoryParameters:
+      type: object
+      description: |
+        [S8.0] Plage de nuit et calendrier des jours fériés applicables à la résolution.
+        Correspond à `RegulatoryParametersDTO`.
+
+        Bloc annoncé de longue date par cette spécification et jamais implémenté : les trois
+        scénarios construisaient des valeurs par défaut, dont un calendrier de jours fériés
+        **vide** — ce qui a rendu la valorisation du férié inopérante jusqu'au lot S7.9a.
+
+        Tous les champs sont facultatifs. Absents, le moteur applique la plage de nuit légale par
+        défaut et déduit les jours fériés de ce que le dataset déclare.
+      properties:
+        heureDebutNuit:
+          type: string
+          pattern: '^([01]\d|2[0-3]):[0-5]\d$'
+          description: |
+            Début de la plage de nuit. Défaut : `22:00`.
+
+            **À transmettre avec `heureFinNuit`.** Une borne seule est ignorée et tracée en WARN :
+            mélanger une borne déclarée avec une borne par défaut produirait un intervalle que
+            personne n'a voulu.
+        heureFinNuit:
+          type: string
+          pattern: '^([01]\d|2[0-3]):[0-5]\d$'
+          description: |
+            Fin de la plage de nuit. Défaut : `06:00`. Voir `heureDebutNuit`.
+        joursFeries:
+          type: array
+          items:
+            type: string
+            format: date
+          description: |
+            Calendrier des jours fériés de la période.
+
+            **Source de vérité dès qu'il est présent** : il l'emporte sur `isJourFerie` porté par
+            les créneaux et sur `scenarioParameters.holidayDates` en SC-01. Aucune fusion — une
+            divergence est tracée en WARN, jamais silencieusement absorbée, car fusionner rendrait
+            fériée une date que l'appelant n'a pas retenue.
+
+            Une liste **vide** signifie « aucun jour férié sur la période » et fait autorité tout
+            autant ; c'est l'**absence** du champ qui laisse le moteur déduire.
+
+            C'est la seule forme permettant de qualifier correctement un créneau **traversant
+            minuit** : un drapeau porté par le créneau ne dit pas lequel des deux jours civils est
+            férié.
 
     # ──────────────────────────────────────────────
     # RESSOURCES (ENTRÉE)

@@ -20,6 +20,7 @@ import fr.project.planning.scenarios.dto.ScenarioRequestDTO;
 import fr.project.planning.scenarios.dto.input.PosteVirtuelInputDTO;
 import fr.project.planning.scenarios.dto.input.ReferentielsDTO;
 import fr.project.planning.scenarios.dto.request.Sc01ScenarioParametersDTO;
+import fr.project.planning.scenarios.mapper.ScenarioRegulatoryParametersMapper;
 import fr.project.planning.scenarios.mapper.ScenarioResourceMapper;
 import fr.project.planning.scoring.StrategieScoring;
 import org.slf4j.Logger;
@@ -55,6 +56,9 @@ public class ScenarioSc01PreparationService {
 
     private final ScenarioResourceMapper resourceMapper;
     private final CreneauGenerationService generationService;
+
+    private final ScenarioRegulatoryParametersMapper regulatoryMapper =
+            new ScenarioRegulatoryParametersMapper();
 
     public ScenarioSc01PreparationService(ScenarioResourceMapper resourceMapper,
                                           CreneauGenerationService generationService) {
@@ -172,11 +176,13 @@ public class ScenarioSc01PreparationService {
                 HypotheseHistorique.NEUTRE
         );
 
-        // 5. Paramètres réglementaires — [S7.9] le calendrier des fériés est celui de la demande.
-        //    Il servait jusqu'ici uniquement à ne pas générer de créneau ces jours-là ; il qualifie
-        //    désormais aussi les minutes travaillées si un créneau s'y trouve malgré tout.
-        RegulatoryParameters regulatoryParameters =
-                RegulatoryParameters.avecJoursFeries(br.holidayDates);
+        // 5. Paramètres réglementaires — [S8.0] ce que l'appelant déclare fait autorité ;
+        //    à défaut, le calendrier des fériés reste celui de scenarioParameters.holidayDates
+        //    (S7.9a), qui servait jusque-là uniquement à ne pas générer de créneau ces jours-là.
+        RegulatoryParameters regulatoryParameters = regulatoryMapper.toRegulatoryParameters(
+                request.getPlanningContext().getRegulatoryParameters(),
+                br.holidayDates,
+                "SC-01");
 
         // 6. Référentiel d'activités : construit en 1 bis, avant la génération des créneaux.
 

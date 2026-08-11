@@ -21,6 +21,7 @@ import fr.project.planning.scenarios.dto.input.CreneauInputDTO;
 import fr.project.planning.scenarios.dto.request.BesoinCreneauDTO;
 import fr.project.planning.scenarios.dto.request.BesoinDTO;
 import fr.project.planning.scenarios.mapper.ScenarioCreneauMapper;
+import fr.project.planning.scenarios.mapper.ScenarioRegulatoryParametersMapper;
 import fr.project.planning.scenarios.mapper.ScenarioResourceMapper;
 import fr.project.planning.scoring.StrategieScoring;
 import fr.project.planning.solution.PlanningProblem;
@@ -59,6 +60,9 @@ public class ScenarioSc06PreparationService {
 
     private final ScenarioResourceMapper resourceMapper;
     private final ScenarioCreneauMapper creneauMapper;
+
+    private final ScenarioRegulatoryParametersMapper regulatoryMapper =
+            new ScenarioRegulatoryParametersMapper();
 
     public ScenarioSc06PreparationService(ScenarioResourceMapper resourceMapper,
                                           ScenarioCreneauMapper creneauMapper) {
@@ -150,12 +154,14 @@ public class ScenarioSc06PreparationService {
         tousCreneaux.addAll(planningFige);
         tousCreneaux.addAll(creneauxBesoin);
 
-        // [S7.9] SC-06 ne transmet pas de calendrier : les fériés sont ceux que les créneaux
-        // déclarent, planning figé et besoin confondus.
+        // [S8.0] Le calendrier déclaré au contrat fait autorité ; à défaut, les fériés restent
+        // ceux que les créneaux déclarent, planning figé et besoin confondus (S7.9a).
         PlanningProblem problem = new PlanningProblem(
                 planningContext,
-                RegulatoryParameters.avecJoursFeries(
-                        CalendrierJoursFeries.declaresParLesCreneaux(tousCreneaux)),
+                regulatoryMapper.toRegulatoryParameters(
+                        request.getPlanningContext().getRegulatoryParameters(),
+                        CalendrierJoursFeries.declaresParLesCreneaux(tousCreneaux),
+                        "SC-06"),
                 referentiel,
                 ressources,
                 tousCreneaux,

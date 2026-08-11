@@ -83,6 +83,27 @@ class CalendrierJoursFeriesTest {
         }
 
         @Test
+        void creneauTraversantMinuit_leDrapeauNeQualifieQueSaDateDeDebut() {
+            // Limite structurelle de la déduction, et non du calcul : le drapeau est porté par le
+            // créneau, pas par le jour, et ne dit donc pas lequel des deux jours civils est férié.
+            // TimeBreakdownCalculator sait, lui, valoriser un férié tombant sur le second jour —
+            // encore faut-il le lui dire. C'est ce que permet
+            // planningContext.regulatoryParameters.joursFeries, introduit au lot S8.0 : il
+            // l'emporte sur cette déduction précisément pour lever cette limite.
+            Creneau nuit = new Creneau(
+                    "C-NUIT", LUNDI, LocalTime.of(22, 0), LocalTime.of(6, 0), 480,
+                    "SITE-A", "ACT-SOIN", null, "PC-001",
+                    PrioriteCreneau.NORMALE, TypeCreneau.IMPOSE, TypePlageHoraire.NUIT,
+                    true, QualificationJour.OUVRE);
+
+            Set<LocalDate> dates = CalendrierJoursFeries.declaresParLesCreneaux(List.of(nuit));
+
+            assertEquals(Set.of(LUNDI), dates);
+            assertFalse(dates.contains(LUNDI.plusDays(1)),
+                    "Le lendemain n'est pas déduit : seul un calendrier transmis peut le dire");
+        }
+
+        @Test
         void listeNulle_calendrierVide() {
             assertTrue(CalendrierJoursFeries.declaresParLesCreneaux(null).isEmpty());
         }

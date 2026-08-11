@@ -861,3 +861,71 @@ d'essai n'a de créneau le samedi : la valeur restituée ne bouge sur aucun scé
 La divergence entre les deux indicateurs est voulue et documentée : le premier répond à « combien
 d'heures le dimanche », le second à « combien de fois ce salarié a-t-il travaillé son repos ».
 Ce sont deux questions différentes.
+
+---
+
+## 8. Suite du chantier — le cadre réglementaire au contrat
+
+### 8.0 — `planningContext.regulatoryParameters`
+
+**Aucun écart de score — mesuré.** 568 tests, 0 échec (557 avant). Le bloc étant facultatif et
+absent de tous les jeux d'essai, le comportement du lot S7.9a est intégralement conservé.
+
+| Livrable | Fichier |
+|---|---|
+| Bloc d'entrée | `scenarios/dto/RegulatoryParametersDTO.java` (créé), `scenarios/dto/PlanningContextDTO.java` |
+| Résolution de la précédence | `scenarios/mapper/ScenarioRegulatoryParametersMapper.java` (créé) |
+| Branchement des trois scénarios | `ScenarioSc01/Sc03/Sc06PreparationService.java` |
+| Contrat | `50_openapi_windev_moteur_v_1.yaml`, `50_ScenarioContract.schema.json` |
+| Couverture — 11 cas de précédence | `scenarios/mapper/ScenarioRegulatoryParametersMapperTest.java` |
+
+#### Un bloc annoncé depuis l'origine, jamais implémenté
+
+La spécification d'interface le disait déjà, dans la description du schéma `PlanningContext` :
+« `regulatoryParameters` […] pas dans `PlanningContextDTO` en V1. Le DatasetBuilder les construit
+avec des **valeurs par défaut** […] à intégrer en Phase 3+. » Ces valeurs par défaut portaient un
+nom dans le code — `neutre()` — une plage de nuit figée à 22:00–06:00 et un calendrier de jours
+fériés **vide**. C'est ce calendrier vide qui a rendu la valorisation du férié inopérante jusqu'au
+lot S7.9a.
+
+#### Précédence : déclaré d'abord, déduit ensuite
+
+Un point unique la décide, partagé par les trois scénarios — la règle ne peut pas diverger de
+l'un à l'autre.
+
+**Plage de nuit.** Déclarée si les **deux** bornes le sont, sinon la plage légale par défaut. Une
+borne seule est ignorée et tracée : mélanger une borne déclarée avec une borne par défaut
+produirait un intervalle que personne n'a voulu — un client qui écrit « 21:00 » n'a pas demandé
+21:00–06:00. Deux bornes identiques décrivent une plage vide et sont refusées de la même façon.
+
+**Jours fériés.** Le calendrier déclaré fait autorité dès qu'il est **présent**, fût-il vide : une
+liste vide dit « aucun jour férié sur la période ». C'est son *absence* qui laisse le moteur
+déduire, depuis `holidayDates` en SC-01 ou le drapeau `isJourFerie` en SC-03 et SC-06.
+
+Aucune fusion entre les deux sources. Une divergence est **tracée**, jamais absorbée : fusionner
+rendrait fériée une date que l'appelant n'a pas retenue, et le calendrier réglementaire cesserait
+d'être une réponse à la question « quels sont les jours fériés ».
+
+#### Ce que cela corrige
+
+La **plage de nuit** cesse d'être figée. Un établissement dont la nuit conventionnelle est
+21:00–06:00 — celle du Code du travail — ne pouvait le déclarer nulle part.
+
+Un **créneau traversant minuit** peut enfin être qualifié correctement. La limite n'était pas dans
+le calcul : `TimeBreakdownCalculator` interroge séparément le jour de début et le jour suivant, et
+un test le prouvait déjà. Elle était dans la **déduction** — le drapeau `isJourFerie` est porté par
+le créneau, pas par le jour, et ne dit donc pas lequel des deux jours civils est férié. Un
+calendrier de dates lève cette limite ; un test la documente désormais explicitement du côté de la
+déduction.
+
+#### Ce qui reste ouvert
+
+`heureDebutNuit` et `heureFinNuit` **portés par le salarié** restent transportés et lus par
+personne. `SalarieReel` expose pourtant `heureDebutNuitEffective(fallback)` et
+`heureFinNuitEffective(fallback)` — écrites, jamais appelées — et le contrat qualifie ces champs
+d'« override du paramètre réglementaire global ».
+
+Les brancher rendrait la pénibilité d'un créneau **dépendante de qui l'exécute** : les mêmes
+heures ne produiraient pas les mêmes minutes de nuit selon le salarié affecté. C'est défendable —
+la plage de nuit d'un travailleur de nuit est contractuelle — mais cela change la nature du score
+et demande un arbitrage explicite.

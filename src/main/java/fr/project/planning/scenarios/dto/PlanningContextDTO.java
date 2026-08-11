@@ -5,6 +5,14 @@ public class PlanningContextDTO {
     private HorizonDTO horizon;
     private String strategieScoring;
 
+    /**
+     * [Lot S8.0] Cadre réglementaire : plage de nuit et calendrier des jours fériés.
+     *
+     * <p>Facultatif. Absent, le moteur applique la plage de nuit légale par défaut et déduit les
+     * jours fériés de ce que le dataset déclare — comportement du lot S7.9a.</p>
+     */
+    private RegulatoryParametersDTO regulatoryParameters;
+
     public HorizonDTO getHorizon() {
         return horizon;
     }
@@ -19,5 +27,13 @@ public class PlanningContextDTO {
 
     public void setStrategieScoring(String strategieScoring) {
         this.strategieScoring = strategieScoring;
+    }
+
+    public RegulatoryParametersDTO getRegulatoryParameters() {
+        return regulatoryParameters;
+    }
+
+    public void setRegulatoryParameters(RegulatoryParametersDTO regulatoryParameters) {
+        this.regulatoryParameters = regulatoryParameters;
     }
 }
