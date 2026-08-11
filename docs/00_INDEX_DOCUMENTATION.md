@@ -340,7 +340,7 @@ et le moteur de planification.
 
 | Document                                             | Description                 |
 | ---------------------------------------------------- | --------------------------- |
-| `90_SUIVI_DEVELOPPEMENT_MOTEUR.md`                   | État d’avancement du moteur, lot par lot |
+| `90_SUIVI_DEVELOPPEMENT_MOTEUR.md`                   | État d’avancement du moteur, lot par lot — porte le **backlog consolidé** (§ C), seule liste ouverte du projet |
 | `90_PLAN_MIGRATION_TEMPORAIRE_WINDEV_VERS_MOTEUR.md` | Jalons de la migration WinDev → moteur |
 | `90_SUIVI_ECHANGE_WINDEV_MOTEUR_FICHIER_API.md`      | Suivi du chantier d’échange par fichier |
 

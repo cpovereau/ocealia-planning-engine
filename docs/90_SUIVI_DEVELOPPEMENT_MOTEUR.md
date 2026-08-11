@@ -477,39 +477,124 @@ Les métriques calculées sont désormais exposées dans l’API scénario.
 
 ---
 
-# C. Prochains jalons
+# C. Reste à faire — backlog consolidé
 
-## WorkMetrics Équité
+Trois lots restent ouverts à la clôture du chantier S8. Ils portent le **numéro de rang** du
+backlog dressé au terme de ce chantier — les rangs 1 à 7 sont livrés, lots S8.0 à S8.5 — pour que
+le journal des lots et ce tableau de bord se lisent ensemble.
 
-Ajout d’indicateurs d’équité :
-* écart par rapport à la moyenne
-* dispersion de charge
+**Cette section est la seule liste ouverte du projet.** Ce qui n'y figure pas est soit livré (§ A),
+soit explicitement hors moteur (§ Analyse métier aval).
+
+| Rang | Sujet | Nature du blocage | Qui tranche |
+|---|---|---|---|
+| **8** | Champs au contrat sans effet : `capaciteCible`, structuration des besoins | arbitrage — activer ou retirer — **non traitable avant le 25/08/2026** | Métier + moteur |
+| **9** | SC-02, SC-04, SC-05 — trois scénarios annoncés, jamais écrits | cadrage — aucun n'a de contrat d'entrée | Métier |
+| **10** | Contraintes personnelles : lieux, activités, préférences, annualisation | échanges avec la Production | Production |
+
+Deux chantiers plus anciens restent ouverts **sans dépendre d'un arbitrage** : les WorkMetrics
+d'équité (§ 2️⃣ — écart à la moyenne, dispersion de charge) et l'explicabilité pédagogique du score
+(§ 1️⃣). Réalisables à tout moment ; l'équité est de surcroît un prérequis de SC-05.
+
+La **stabilisation du contrat d'entrée**, qui figurait ici comme jalon, est close : phases 1 à 10C
+terminées, voir `92_SUIVI_STABILISATION_CONTRAT_ENTREE.md`.
+
+### Rangs 1 à 7 — livrés
+
+Rappel de traçabilité, pour que la numérotation ci-dessus se comprenne sans remonter au journal.
+
+| Rang | Sujet | Lot |
+|---|---|---|
+| 1 | Chevauchement de créneaux invisible de part et d'autre de minuit | S8.3 |
+| 2 | Règle d'activation d'une borne réglementaire non uniforme (5 contraintes sur 12) | S8.3 |
+| 3 | Filtre d'activité du poste virtuel en SC-06 | S8.3 |
+| 4 | `joursFeries` déclaré au contrat mais ignoré par la contrainte HARD | S8.3 |
+| 5 | `alerts` figé à la liste vide en SC-03 et SC-06 | S8.4 |
+| 6 | `ignoredCreneaux` comptait sans dire **quels** créneaux | S8.4 |
+| 7 | Rattrapage documentaire : nommage, liens morts, index | S8.5 |
 
 ---
 
-## Compléter le DataSet amont
+## Rang 8 — les champs annoncés qui ne produisent rien
 
-Ajout progressif des éléments nécessaires à la résolution :
+Un champ transporté, mappé, puis lu par personne est **pire qu'un champ absent** : l'appelant le
+renseigne et croit l'avoir dit. Le principe du projet — *un vide ne suppose jamais que la chose est
+possible* — impose de les activer ou de les retirer.
 
-* groupes de besoins (`groupeBesoinId`)
-* blocs journaliers (`blocJourId`)
-* ordre des créneaux dans un bloc
-* identification des segments de pause
+| Champ | Trajet effectif | Conséquence observable |
+|---|---|---|
+| `postesVirtuels[].capaciteCible` | DTO → `ScenarioResourceMapper` → `PosteVirtuel.capaciteCible` | Aucune contrainte ne le lit : **un poste virtuel absorbe un nombre illimité de créneaux**. Une capacité déclarée à 2 n'empêche pas 40 affectations. |
+| `creneaux[].groupeBesoinId` | DTO → `Creneau` | Aucun lecteur — deux créneaux d'un même besoin sont indépendants pour le solveur. |
+| `creneaux[].blocJourId` | DTO → `Creneau` | Aucun lecteur — un bloc journalier peut être éclaté entre plusieurs salariés. |
+| `creneaux[].ordreDansBloc` | DTO → `Creneau` | Aucun lecteur — il n'ordonne rien. |
 
-Ajouts prévus :
+À l'inverse, `estSegmentDePause` **est** lu : trois contraintes légales excluent les segments de
+pause de leurs décomptes. La famille n'est donc pas morte en bloc, ce qui rend l'écart d'autant
+moins lisible de l'extérieur.
 
-* entrepôt des activités
-* paramètres réglementaires des ressources
+**Décision attendue** : pour chaque champ, activer avec la contrainte qui va avec, ou retirer du
+contrat. Les trois champs de structuration ne s'activent utilement qu'**ensemble** — un bloc
+journalier sans ordre ni groupe n'exprime rien.
+
+⏳ **Disponibilité du décideur** : le Métier est absent jusqu'au **25/08/2026**. Ce rang est donc
+gelé jusqu'à cette date — ce n'est pas un blocage technique, et rien d'autre n'en dépend.
+
+**Coût si activation** : `capaciteCible` est une contrainte de comptage isolée, de portée faible.
+La structuration des besoins introduit une **contrainte de cohésion** — même bloc, même ressource —
+qui change la nature du problème posé au solveur et demande sa propre évaluation de scoring.
 
 ---
 
-## Stabilisation du contrat d’entrée
+## Rang 9 — les trois scénarios annoncés et jamais écrits
 
-Objectif :
+`50_SCENARIO_CONTRACT.md` décrit six scénarios. Trois existent (SC-01, SC-03, SC-06), trois n'ont
+qu'une intention métier : **aucun n'a de contrat d'entrée, d'endpoint, ni de jeu d'essai**.
 
-Éviter le faux sentiment de couverture fonctionnelle pendant l’enrichissement progressif du dataset.
+| Scénario | Intention | Ce qui existe déjà | Ce qui manque |
+|---|---|---|---|
+| **SC-02** — remplacement d'un absent | assurer la continuité en perturbant le moins possible l'existant | absences (`indisponibilites`, contrainte HARD), créneaux figés (`@PlanningPin`, `toCreneauxFiges`), classement de candidats (SC-06) | endpoint, contrat d'entrée, restitution avant / après, seuil de surcharge |
+| **SC-04** — optimisation globale d'un planning existant | améliorer sans reconstruire | figement, WorkMetrics | historique des compteurs, degrés de liberté, indicateurs comparatifs |
+| **SC-05** — arbitrage entre deux salariés | répartir équitablement un périmètre commun | WorkMetrics de charge | objectif d'arbitrage, historique de charge, seuils comparatifs, WorkMetrics d'équité |
 
-Chaque champ doit être qualifié selon son niveau réel d’exploitation.
+`92_CADRAGE_DONNEES_AMONT_SCENARIOS.md` §7 le résume : trois familles de données apparaissent dès
+SC-02 et ne disparaissent plus — le **planning existant**, le **contrat salarié** et le **seuil de
+surcharge**. Le contrat salarié est livré (lot S2 de SC-06) mais **aucune contrainte ne le lit**.
+Le planning existant a son socle technique (lot S1) mais **n'est câblé que dans SC-06**. Le seuil
+de surcharge n'existe nulle part.
+
+**SC-02 est le plus proche du réalisable** : ses données d'entrée sont déjà au contrat et son
+mécanisme de figement est déjà écrit et testé. SC-04 dépend d'un historique de compteurs qui
+n'existe pas ; SC-05, de WorkMetrics d'équité non implémentées.
+
+---
+
+## Rang 10 — le lot des contraintes personnelles
+
+En attente des échanges avec la Production. Quatre sujets de même nature : des **restrictions
+portées par la personne**, que WinDev n'alimente pas encore.
+
+| Sujet | État constaté |
+|---|---|
+| `sitesAutorises` / lieux | transporté (alias `lieuxAutorises`), aucune contrainte ne le lit |
+| `activitesCompatibles` | TOLÉRÉ au contrat — arbitré **HARD sur le salarié seul** ; un poste virtuel n'y est pas soumis, il existe pour combler un besoin |
+| Préférences | non transportées |
+| Annualisation | `contrat.salarieAnnualise` transporté, aucun lecteur |
+
+⚠️ **Risque à porter dans ce lot** (`92_SUIVI_STABILISATION_CONTRAT_ENTREE.md`, cas B) :
+l'appariement d'activité doit reposer **exclusivement sur `codeActiviteId`**, jamais sur un libellé.
+Comme compteur de diagnostic, un libellé produit un faux positif silencieux ; **en HARD, il rend
+tout créneau inaffectable** — le moteur ne rendrait plus aucune solution.
+
+---
+
+## Correctifs identifiés hors rang
+
+Écarts constatés dans le code, sans arbitrage à demander : ils se corrigent quand leur sujet est
+abordé.
+
+| Écart | Constat | Quand le traiter |
+|---|---|---|
+| `IndisponibiliteSalarie` ignore le passage de minuit | La contrainte compare `creneau.getDate()` aux bornes de l'absence. Un créneau du 3 mars 22:00 → 06:00 échappe à une absence déclarée le 4 mars, alors qu'il travaille six heures pendant celle-ci. Même famille que les quatre calculs réparés au lot S8.3, non couverte alors. | **Prérequis de SC-02**, qui repose entièrement sur les absences |
 
 ---
 
@@ -624,6 +709,11 @@ Le contrat détaillé champ par champ est dans `50_INTERFACE_WINDEV_MOTEUR_CONTR
 | 7     | Ouverture SC-03 côté API                             | ✅ Terminé  |
 | 8     | Scoring, WorkMetrics, diagnostics enrichis           | ✅ Terminé  |
 | 9     | Consolidation pipeline SC-03 et diagnostics complets | ✅ Terminé  |
+| 10A   | Incohérences internes et fallbacks silencieux        | ✅ Terminé  |
+| 10B   | Réduction de `@JsonIgnoreProperties`                  | ✅ Terminé  |
+| 10C   | Nettoyage DTO final                                  | ✅ Terminé  |
+
+Chantier clos. Le détail phase par phase est dans `92_SUIVI_STABILISATION_CONTRAT_ENTREE.md`.
 
 ---
 
@@ -671,10 +761,19 @@ Voir :
 
 # 3️⃣ Ordre logique recommandé pour la suite
 
-1. amélioration de l’explicabilité du score
-2. nettoyage technique OptaPlanner
-3. extension WorkMetrics
-4. extension du dataset
+Ordonné par **dépendance**, pas par valeur métier. Les rangs renvoient au backlog du § C.
+
+1. **SC-02** (rang 9) — le seul scénario manquant dont les données d'entrée sont déjà au contrat.
+   Précédé de son prérequis : le passage de minuit dans `IndisponibiliteSalarie`.
+2. **Rang 8** — trancher les champs sans effet. Indépendant du reste, et il retire du contrat des
+   promesses que personne ne tient.
+3. **WorkMetrics d'équité** — prérequis de SC-05, réalisable sans arbitrage.
+4. **Rang 10** — dès que la Production a rendu ses arbitrages.
+5. **SC-04 / SC-05** — les derniers, chacun conditionné à une donnée qui n'existe pas encore
+   (historique des compteurs, seuils comparatifs).
+
+L'explicabilité pédagogique du score (§ 1️⃣) et le nettoyage technique OptaPlanner restent
+souhaitables mais ne conditionnent rien : ils s'intercalent où ils veulent.
 
 ---
 
