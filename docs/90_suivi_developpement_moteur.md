@@ -1006,3 +1006,25 @@ code : `neutre()`, plage de nuit figée à 22:00–06:00 et calendrier de jours 
 par personne, alors que `SalarieReel` expose déjà `heureDebutNuitEffective(fallback)`. Les
 brancher rendrait la pénibilité d'un créneau dépendante de qui l'exécute — défendable, mais cela
 change la nature du score et demande un arbitrage.
+
+### Cadre réglementaire — lot S8.1 : la plage de nuit du salarié (2026-08-11)
+
+**Aucun écart de score — mesuré.** 574 tests, 0 échec (568 avant). `SAL-2002` déclare 22:00–06:00
+dans le jeu de référence SC-03, soit exactement la plage globale : la bascule est exercée sans
+rien déplacer.
+
+On distingue les salariés **veilleurs** et ceux qui font du travail de nuit **occasionnel**, et
+les horaires de nuit ne sont pas les mêmes. `SalarieReel` portait déjà
+`heureDebutNuitEffective(fallback)` — écrite, jamais appelée. `TimeBreakdownCalculator`
+l'interroge désormais : plage du salarié affecté s'il en déclare une, cadre global sinon. Un
+créneau non affecté, ou confié à un poste virtuel, relève du cadre global.
+
+**Distorsion mesurée, non corrigée.** Sur un créneau 21:00–07:00 en `EXPLOITATION` : le veilleur
+(plage 21:00–07:00) coûte 1 800 points de pénibilité, le salarié non-nuit (plage globale) 1 440
+plus 1 point d'inadéquation. **Le solveur préfère le salarié inadapté, de 359 points.**
+
+Ce n'est pas une calibration à 1 mais un poids **absent** : `NuitSalarieNonNuit` est la seule
+contrainte métier à écrire `penalize(HardSoftScore.ONE_SOFT)` sans passer par
+`context.getPenalites()`, là où `AffectationPosteVirtuel` vaut 500, `nonAffectation` 2 000 et
+`detteRepos` 5 000. Un test mesure l'écart plutôt que de le valider. **Arbitrage attendu sur la
+valeur du poids.**

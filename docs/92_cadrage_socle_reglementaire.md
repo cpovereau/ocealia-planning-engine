@@ -925,7 +925,55 @@ personne. `SalarieReel` expose pourtant `heureDebutNuitEffective(fallback)` et
 `heureFinNuitEffective(fallback)` — écrites, jamais appelées — et le contrat qualifie ces champs
 d'« override du paramètre réglementaire global ».
 
-Les brancher rendrait la pénibilité d'un créneau **dépendante de qui l'exécute** : les mêmes
-heures ne produiraient pas les mêmes minutes de nuit selon le salarié affecté. C'est défendable —
-la plage de nuit d'un travailleur de nuit est contractuelle — mais cela change la nature du score
-et demande un arbitrage explicite.
+Les brancher rend la pénibilité d'un créneau **dépendante de qui l'exécute** : les mêmes heures
+ne produisent pas les mêmes minutes de nuit selon le salarié affecté.
+
+> **Traité au lot 8.1** — arbitrage rendu : la plage est bien une donnée de la personne, un
+> veilleur et un salarié de nuit occasionnel ne relevant pas des mêmes horaires. Voir §8.1, et
+> la distorsion qu'il reste à corriger.
+
+### 8.1 — La plage de nuit du salarié
+
+**Aucun écart de score — mesuré.** 574 tests, 0 échec (568 avant). `SAL-2002` déclare
+22:00–06:00 dans le jeu de référence SC-03, soit exactement la plage globale : la bascule est
+exercée sans rien déplacer.
+
+| Livrable | Fichier |
+|---|---|
+| Résolution de la plage effective | `time/TimeBreakdownCalculator.java` |
+| Couverture — 5 cas de bascule, 1 de mesure | `constraints/PlageDeNuitIndividuelleTest.java` (créé) |
+
+#### La plage est une donnée de la personne
+
+On distingue les salariés **veilleurs** et ceux qui font du travail de nuit **occasionnel**, et
+les horaires de nuit ne sont pas les mêmes. `SalarieReel` portait déjà
+`heureDebutNuitEffective(fallback)` et `heureFinNuitEffective(fallback)` — écrites, jamais
+appelées. `TimeBreakdownCalculator` les interroge désormais : plage du salarié affecté s'il en
+déclare une, cadre global sinon.
+
+Conséquence assumée : **les mêmes heures ne produisent pas les mêmes minutes de nuit selon qui
+les exécute.** Un créneau non affecté, ou confié à un poste virtuel, relève du cadre global.
+
+#### Une distorsion mesurée, et non corrigée
+
+Sur un créneau 21:00–07:00, stratégie `EXPLOITATION` :
+
+| Affectation | Minutes de nuit | Pénibilité | Inadéquation | **Total** |
+|---|---|---|---|---|
+| Veilleur, plage 21:00–07:00 | 600 | 1 800 | – | **1 800** |
+| Salarié non-nuit, plage globale 22:00–06:00 | 480 | 1 440 | 1 | **1 441** |
+
+**Le solveur préfère le salarié inadapté, de 359 points.** Le veilleur déclare une plage plus
+large, donc plus de minutes pénibles ; et le seul contrepoids, `NuitSalarieNonNuit`, pénalise
+**1 point forfaitaire**.
+
+Ce n'est pas une calibration à 1 : c'est un poids **absent**. Cette contrainte est la seule du
+paquet métier à écrire `penalize(HardSoftScore.ONE_SOFT)` sans passer par
+`context.getPenalites()`, là où `AffectationPosteVirtuel` vaut 500, `nonAffectation` 2 000 et
+`detteRepos` 5 000. La clé `METIER_SOFT_NUIT_SALARIE_NON_NUIT` déclare pourtant son unité —
+`OCCURRENCE` — donc l'intention forfaitaire est bien là ; c'est la valeur qui manque.
+
+Un test **mesure** cet écart plutôt que de le valider, pour qu'il soit chiffré au moment de
+l'arbitrage et ne puisse pas dériver en silence. Tant qu'un client ne déclare pas de plage
+individuelle différente de la globale, la distorsion reste latente — mais c'est précisément ce
+que fait un veilleur.

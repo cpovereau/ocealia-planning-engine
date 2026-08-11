@@ -2,6 +2,7 @@ package fr.project.planning.time;
 
 import fr.project.planning.domain.reglementaire.RegulatoryParameters;
 import fr.project.planning.domain.creneau.Creneau;
+import fr.project.planning.domain.ressource.SalarieReel;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -20,8 +21,8 @@ public final class TimeBreakdownCalculator {
 
         long minutesTravaillees = creneau.getDuree();
 
-        LocalTime debutNuit = rp.getHeureDebutNuit();
-        LocalTime finNuit = rp.getHeureFinNuit();
+        LocalTime debutNuit = debutNuitEffectif(creneau, rp);
+        LocalTime finNuit = finNuitEffectif(creneau, rp);
 
         // Répartition jour0 / jour1 sans modifier Creneau
         Split split = splitJour0Jour1(creneau.getHeureDebut(), creneau.getHeureFin());
@@ -67,6 +68,31 @@ public final class TimeBreakdownCalculator {
                 minutesDimancheEtFerie,
                 minutesNuitEtDimancheEtFerie
         );
+    }
+
+    /**
+     * Début de la plage de nuit applicable à ce créneau (lot S8.1).
+     *
+     * <p>Celui du salarié affecté s'il en déclare un, sinon le paramètre réglementaire global.
+     * La plage de nuit est une donnée de la <strong>personne</strong> autant que du cadre : un
+     * salarié veilleur et un salarié faisant du travail de nuit occasionnel ne relèvent pas
+     * nécessairement des mêmes horaires.</p>
+     *
+     * <p>Conséquence assumée : les mêmes heures ne produisent pas les mêmes minutes de nuit selon
+     * qui les exécute. C'est la traduction fidèle du contrat, et cela fait dépendre la pénibilité
+     * d'un créneau de son affectation.</p>
+     */
+    static LocalTime debutNuitEffectif(Creneau creneau, RegulatoryParameters rp) {
+        return creneau.getRessourceAffectee() instanceof SalarieReel salarie
+                ? salarie.heureDebutNuitEffective(rp.getHeureDebutNuit())
+                : rp.getHeureDebutNuit();
+    }
+
+    /** Fin de la plage de nuit applicable à ce créneau. Voir {@link #debutNuitEffectif}. */
+    static LocalTime finNuitEffectif(Creneau creneau, RegulatoryParameters rp) {
+        return creneau.getRessourceAffectee() instanceof SalarieReel salarie
+                ? salarie.heureFinNuitEffective(rp.getHeureFinNuit())
+                : rp.getHeureFinNuit();
     }
 
     private TimeBreakdown zero() {
