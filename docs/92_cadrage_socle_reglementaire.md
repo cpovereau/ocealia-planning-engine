@@ -4,10 +4,10 @@
 > jamais pour un client conforme au contrat. Ce document établit le constat, l'ordre de
 > réparation et le point de contrôle de chaque étape.
 >
-> **Statut** — **chantier clos.** S7.0 à S7.8 livrés : les six contraintes dormantes sont
-> remises en service, les deux contraintes manquantes sont écrites, le code mort et la règle
-> dupliquée sont supprimés. Deux dormances d'une autre famille, repérées en clôture, sont
-> décrites au §6 et relèvent d'un lot distinct.
+> **Statut** — S7.0 à S7.8 livrés : les six contraintes dormantes sont remises en service, les
+> deux contraintes manquantes sont écrites, le code mort et la règle dupliquée sont supprimés.
+> S7.9a livré : la valorisation du jour férié fonctionne. Reste S7.9b, le repos hebdomadaire
+> (§6.1).
 > **Contrat concerné** — `50_ScenarioContract.md` §3.7 · **Suivi** — `90_SUIVI_DEVELOPPEMENT_MOTEUR.md`
 
 ---
@@ -183,6 +183,8 @@ service au titre de S7 appellent la méthode. Tant que la règle existe en dix e
 Elles ne relèvent pas du repli d'activité mais du **même mécanisme** : un champ que le mapper
 ne sait pas calculer, donc écrit en dur, donc un filtre de tête qui ne matche jamais. Un lot
 distinct est nécessaire ; il touche au contrat d'entrée et demande un arbitrage.
+
+> **7.9a — traité.** Le calendrier est désormais alimenté ; voir §7.9a pour la mesure.
 
 **La valorisation du jour férié ne fonctionne pas.** `TimeBreakdownCalculator` interroge
 `RegulatoryParameters.estJourFerie(date)`, or les trois services de préparation construisent
@@ -663,3 +665,77 @@ si le code retenu existe et n'est pas la clé du contrat.
 ses paramètres, pas un getter. Cette garde est la leçon du chantier — la dormance de six mois n'a
 pas été causée par une règle fausse, mais par une règle **juste ailleurs**. Un test qui interdit la
 copie protège mieux qu'un test qui vérifie la copie.
+
+### 7.9a — Le jour férié cesse d'être invisible
+
+**Écart de score : SC-03 passe de −66 960 à −67 440.** Voulu, mesuré, garde-fou mis à jour.
+529 tests, 0 échec (519 avant).
+
+| Livrable | Fichier |
+|---|---|
+| Reconstitution du calendrier | `domain/reglementaire/CalendrierJoursFeries.java` (créé) |
+| Paramètres assortis du calendrier | `domain/reglementaire/RegulatoryParameters.java` — `avecJoursFeries(...)` |
+| Branchement des trois scénarios | `ScenarioSc01/Sc03/Sc06PreparationService.java` |
+| Couverture dédiée — 10 cas | `domain/reglementaire/CalendrierJoursFeriesTest.java` |
+| Garde-fou de score **et de métrique** | `scenarios/sc03/api/ScenarioControllerSc03RuntimeTest.java` |
+
+#### Ce qui ne marchait pas
+
+`TimeBreakdownCalculator` interroge `RegulatoryParameters.estJourFerie(date)`. Les trois
+services de préparation construisaient `RegulatoryParameters.neutre()`, dont la liste
+`joursFeries` est vide. **Aucune minute n'a donc jamais été comptée comme fériée**, depuis
+l'origine, pour aucun client : ni pénalité `LEGAL_SOFT_TRAVAIL_JOUR_FERIE_MINUTES`, ni
+`workMetrics.heuresJourFerie`, resté à 0.0 dans toutes les réponses.
+
+Le défaut était visible dans le jeu de référence lui-même : `CRE-ME-01`, mercredi 13 mai,
+8 heures travaillées, `isJourFerie: true`. Il produisait 0.0 heure fériée.
+
+L'**interdiction**, elle, fonctionnait : `JourFerieRefuse` (HARD) lit `Creneau.jourFerie` et
+croise `travailleJourFerie` du salarié. C'est ce qui rendait le défaut plausible — le férié
+semblait pris en compte, puisqu'il changeait les affectations.
+
+#### Le contrat portait déjà la réponse, à deux endroits
+
+Rien n'a été ajouté au contrat. La spécification d'interface décrivait déjà l'écart, dans la
+description du schéma `PlanningContext` : « `regulatoryParameters` […] pas dans
+`PlanningContextDTO` en V1. Le DatasetBuilder les construit avec des **valeurs par défaut** […]
+à intégrer en Phase 3+ ». Ces valeurs par défaut portaient un nom dans le code — `neutre()` — et
+un calendrier vide.
+
+Deux sources existantes ont donc suffi :
+
+* **SC-01** transmet `scenarioParameters.holidayDates`. Le champ servait déjà, mais uniquement à
+  *ne pas générer* de créneau ces jours-là. Il alimente désormais aussi la valorisation.
+* **SC-03 et SC-06** ne transmettent aucun calendrier. La seule information disponible est le
+  drapeau `isJourFerie` porté par chaque créneau, que le contrat qualifiait d'« INDICATIF (non
+  réglementaire) » en désignant `RegulatoryParameters` comme source de vérité. La source
+  désignée étant vide, c'était le champ dit indicatif qui portait seul la règle qui marchait.
+  **La documentation a été corrigée dans ce sens** : pour SC-03 et SC-06, `isJourFerie` fait
+  autorité.
+
+#### Un créneau suffit à qualifier la journée
+
+Le férié est une propriété de la **date**, pas du créneau : s'il est férié pour l'un, il l'est
+pour tous. Marquer un seul créneau d'une date suffit donc à qualifier la journée entière, pour
+tous les salariés. Une déclaration partielle — courante quand le planning amont vient de
+plusieurs sources — est réparée plutôt que subie.
+
+#### Limite assumée, et ce qu'il faudrait pour la lever
+
+Un créneau qui traverse minuit n'est rattaché qu'à sa **date de début** : le drapeau ne dit pas
+lequel des deux jours civils est férié. Un 22:00–06:00 déclaré férié ne verra valorisées que ses
+minutes d'avant minuit. La plage de nuit reste par ailleurs figée à 22:00–06:00.
+
+Lever ces deux limites suppose d'ouvrir `planningContext.regulatoryParameters` au contrat —
+emplacement déjà spécifié, jamais implémenté. Ce n'était pas nécessaire pour rendre le férié
+opérant, et la cible reste inchangée.
+
+#### Le score et la métrique sont désormais tous deux gardés
+
+`−67 440 = −1 440` pénibilités `− 66 000` sous-emploi. Les pénibilités se décomposent, à poids 1
+en `ANALYSE_RH`, en 480 minutes de nuit, 480 de dimanche et **480 de férié** — ces dernières
+nouvelles. Aucune affectation ne bouge : `SAL-2001` refusait déjà le créneau du 13 mai.
+
+Le garde-fou de SC-03 assied désormais aussi `heuresJourFerieTotales` à 8.0 et la répartition
+entre les deux salariés. L'absence de toute assertion sur cette métrique est précisément ce qui
+a permis au défaut de survivre.

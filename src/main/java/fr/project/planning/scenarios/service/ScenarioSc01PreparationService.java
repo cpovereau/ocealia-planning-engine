@@ -169,8 +169,11 @@ public class ScenarioSc01PreparationService {
                 HypotheseHistorique.NEUTRE
         );
 
-        // 5. Paramètres réglementaires
-        RegulatoryParameters regulatoryParameters = RegulatoryParameters.neutre();
+        // 5. Paramètres réglementaires — [S7.9] le calendrier des fériés est celui de la demande.
+        //    Il servait jusqu'ici uniquement à ne pas générer de créneau ces jours-là ; il qualifie
+        //    désormais aussi les minutes travaillées si un créneau s'y trouve malgré tout.
+        RegulatoryParameters regulatoryParameters =
+                RegulatoryParameters.avecJoursFeries(br.holidayDates);
 
         // 6. Référentiel d'activités : construit en 1 bis, avant la génération des créneaux.
 

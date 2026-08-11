@@ -9,6 +9,7 @@ import fr.project.planning.domain.creneau.QualificationJour;
 import fr.project.planning.domain.creneau.TypeCreneau;
 import fr.project.planning.domain.creneau.TypePlageHoraire;
 import fr.project.planning.domain.metier.ReferentielComptabiliteActivite;
+import fr.project.planning.domain.reglementaire.CalendrierJoursFeries;
 import fr.project.planning.domain.reglementaire.RegulatoryParameters;
 import fr.project.planning.domain.ressource.Indisponibilite;
 import fr.project.planning.domain.ressource.Ressource;
@@ -137,9 +138,12 @@ public class ScenarioSc06PreparationService {
         tousCreneaux.addAll(planningFige);
         tousCreneaux.addAll(creneauxBesoin);
 
+        // [S7.9] SC-06 ne transmet pas de calendrier : les fériés sont ceux que les créneaux
+        // déclarent, planning figé et besoin confondus.
         PlanningProblem problem = new PlanningProblem(
                 planningContext,
-                RegulatoryParameters.neutre(),
+                RegulatoryParameters.avecJoursFeries(
+                        CalendrierJoursFeries.declaresParLesCreneaux(tousCreneaux)),
                 referentiel,
                 ressources,
                 tousCreneaux,

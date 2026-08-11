@@ -890,3 +890,36 @@ comportement d'aucune contrainte.
 manquantes écrites, seuils portés au salarié, code mort et règle dupliquée supprimés. Une seule
 variation de score sur l'ensemble : SC-03 de `0hard/-960soft` à `0hard/-66960soft` au lot S7.7b
 (sous-emploi hebdomadaire), voulue et gardée par assertion. 413 tests au départ, 519 à l'arrivée.
+
+### Socle réglementaire — lot S7.9a : valorisation du jour férié (2026-08-11)
+
+**Écart de score : SC-03 passe de `0hard/-67440soft` (contre `-66960` avant).** Voulu et mesuré.
+529 tests, 0 échec (519 avant).
+
+`TimeBreakdownCalculator` interroge `RegulatoryParameters.estJourFerie(date)`, et les trois
+services de préparation construisaient `RegulatoryParameters.neutre()` — calendrier **vide**.
+Aucune minute n'a donc jamais été comptée comme fériée depuis l'origine : ni pénalité, ni
+`workMetrics.heuresJourFerie`, resté à 0.0 dans toutes les réponses. L'interdiction
+(`JourFerieRefuse`, HARD) fonctionnait, elle, ce qui rendait le défaut plausible.
+
+* `CalendrierJoursFeries.declaresParLesCreneaux(...)` reconstitue le calendrier à partir du
+  drapeau `isJourFerie` — **SC-03** et **SC-06**, qui ne transmettent aucun calendrier. Un seul
+  créneau marqué qualifie la journée entière, pour tous les salariés : le férié est une propriété
+  de la date.
+* **SC-01** utilise `scenarioParameters.holidayDates`, jusqu'ici employé pour ne pas générer de
+  créneau ces jours-là seulement.
+* `RegulatoryParameters.avecJoursFeries(...)` remplace `neutre()` dans les trois services. La
+  plage de nuit reste 22:00–06:00.
+* **Contrat inchangé** — les deux sources existaient déjà. La documentation, elle, était fausse :
+  `isJourFerie` y était qualifié d'« indicatif, non réglementaire » alors qu'il portait seul la
+  règle opérante. Corrigé dans le schéma JSON, l'OpenAPI et `40_WORKMETRICS.md`.
+
+**Limite assumée** : un créneau traversant minuit n'est rattaché qu'à sa date de début. La lever,
+comme rendre la plage de nuit configurable, suppose d'ouvrir `planningContext.regulatoryParameters`
+au contrat — emplacement spécifié dans l'OpenAPI, jamais implémenté.
+
+Le garde-fou SC-03 assied désormais le score **et** la métrique (`heuresJourFerieTotales` à 8.0,
+répartition entre salariés). L'absence de toute assertion sur cette métrique est ce qui a permis
+au défaut de survivre.
+
+Reste S7.9b : le repos hebdomadaire (`DetteReposSurReposHebdomadaire`, toujours muette).

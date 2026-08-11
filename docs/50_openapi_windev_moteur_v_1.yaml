@@ -476,9 +476,18 @@ components:
 
         ⚠️ Écart document/code : `resolutionType`, `regulatoryParameters` et `seuils`
         sont présents dans les documents de cadrage et dans le domaine (`PlanningContext`
-        interne), mais **pas dans `PlanningContextDTO`** en V1. Le DatasetBuilder les
-        construit avec des valeurs par défaut ou les reçoit via des mécanismes internes.
-        Ces champs sont marqués comme hypothétiques — à intégrer en Phase 3+.
+        interne), mais **pas dans `PlanningContextDTO`** en V1.
+
+        [S7.9] Conséquence longtemps passée inaperçue : les trois scénarios construisaient
+        `RegulatoryParameters.neutre()`, dont le calendrier de jours fériés est **vide**. Aucune
+        minute n'était donc jamais comptée comme fériée — ni au score, ni dans
+        `workMetrics.heuresJourFerie`, resté à 0.0 depuis l'origine.
+
+        Le calendrier est désormais reconstitué à partir de ce que le contrat porte déjà :
+        `scenarioParameters.holidayDates` pour SC-01, le drapeau `isJourFerie` des créneaux pour
+        SC-03 et SC-06. Reste hors contrat la **plage de nuit**, figée à 22:00–06:00, et le
+        rattachement d'un créneau traversant minuit à sa seule date de début. Les lever suppose
+        d'ouvrir `planningContext.regulatoryParameters` — cible inchangée.
       properties:
         strategieScoring:
           type: string
@@ -771,6 +780,21 @@ components:
           description: Code du poste comptable associé
         isJourFerie:
           type: boolean
+          description: |
+            [S7.9] **Source de vérité du jour férié** pour SC-03 et SC-06, qui ne transmettent
+            aucun calendrier.
+
+            Une date déclarée fériée par **au moins un** créneau l'est pour la journée entière
+            et pour tous les salariés : une déclaration partielle est réparée, pas subie.
+
+            Deux règles en dépendent : l'**interdiction** (`JourFerieRefuse`, HARD, croisée
+            avec `travailleJourFerie` du salarié) et la **valorisation** (pénalité de pénibilité
+            et `workMetrics.heuresJourFerie`). Non transmis vaut non férié.
+
+            Limite : un créneau traversant minuit n'est rattaché qu'à sa **date de début**.
+
+            SC-01 n'utilise pas ce champ — son calendrier est porté par
+            `scenarioParameters.holidayDates`.
         segmentNuit:
           type: boolean
           description: |
@@ -973,7 +997,12 @@ components:
           items:
             type: string
             format: date
-          description: Jours fériés non travaillés dans la période
+          description: |
+            Jours fériés de la période. Aucun créneau n'y est généré.
+
+            [S7.9] Ce calendrier alimente désormais aussi `RegulatoryParameters` : si un créneau
+            se trouve malgré tout sur l'une de ces dates, ses minutes sont comptées comme
+            fériées, au score comme dans `workMetrics.heuresJourFerie`.
         codeActiviteId:
           type: string
           minLength: 1
@@ -1133,6 +1162,9 @@ components:
           type: boolean
         isJourFerie:
           type: boolean
+          description: |
+            [S7.9] Même portée que sur `CreneauInput` : source de vérité du jour férié pour
+            SC-06, planning figé et besoin confondus.
       required: [id, heureDebut, heureFin, codeActiviteId]
 
     Besoin:

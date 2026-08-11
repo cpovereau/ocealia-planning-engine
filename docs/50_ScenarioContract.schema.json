@@ -87,7 +87,7 @@
         "activite"
       ],
       "additionalProperties": false,
-      "description": "Créneau à affecter. Les vérités réglementaires (nuit/dimanche/férié) proviennent de RegulatoryParameters et du calcul d'intersection temporelle, pas des flags indicatifs du créneau.",
+      "description": "Créneau à affecter. La nuit et le dimanche sont calculés par le moteur — intersection avec la plage de nuit réglementaire, jour de la semaine — et les drapeaux du créneau n'y changent rien. Le jour férié fait exception depuis le lot S7.9 : SC-03 et SC-06 ne transmettant aucun calendrier, isJourFerie en est la seule source et fait donc autorité.",
       "properties": {
         "id": {
           "type": "string",
@@ -142,7 +142,7 @@
 
         "isJourFerie": {
           "type": "boolean",
-          "description": "INDICATIF (non réglementaire). La vérité 'jour férié' provient de RegulatoryParameters. À conserver uniquement pour compatibilité amont."
+          "description": "[S7.9] SOURCE DE VÉRITÉ pour SC-03 et SC-06, qui ne transmettent aucun calendrier de jours fériés. Une date déclarée fériée par au moins un créneau l'est pour la journée entière et pour tous les salariés : une déclaration partielle est donc réparée, pas subie. Deux règles en dépendent — l'interdiction (JourFerieRefuse, HARD, via travailleJourFerie) et la valorisation (pénalité de pénibilité et workMetrics.heuresJourFerie). Non transmis vaut non férié. Limite : un créneau traversant minuit n'est rattaché qu'à sa date de début. SC-01 n'utilise pas ce champ — son calendrier est porté par scenarioParameters.holidayDates."
         },
         "isReposHebdo": {
           "type": "boolean",

@@ -181,7 +181,7 @@ Chaque instance de WorkMetrics est **liée à :**
 | --------------------------- | ------- | -------------------------------------------------------------------------- | -----------|
 | `heuresTravaillees`         | Decimal | Total heures affectées — calculé à partir de `Creneau.duree` (durée stockée) |      V1    |
 | `heuresNuit`                | Decimal | Heures en plage de nuit (intersection `heureDebut`/`heureFin` × plage nuit) |      V1    |
-| `heuresJourFerie`           | Decimal | Heures sur jours fériés (intersection)                                     |      V1    |
+| `heuresJourFerie`           | Decimal | Heures sur jours fériés (intersection). **[S7.9]** Valait 0.0 pour tous jusqu'à ce lot : le calendrier de `RegulatoryParameters` n'était jamais alimenté. Il l'est désormais depuis `holidayDates` (SC-01) ou `isJourFerie` (SC-03, SC-06). |      V1    |
 | `heuresReposHebdoTravaille` | Decimal | Travail sur repos hebdomadaire                                             |      V1    |
 
 ---

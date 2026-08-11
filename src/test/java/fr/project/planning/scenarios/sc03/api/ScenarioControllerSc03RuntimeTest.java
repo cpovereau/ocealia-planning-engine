@@ -53,15 +53,28 @@ class ScenarioControllerSc03RuntimeTest {
                 // Une modification volontaire de cette valeur doit être consignée dans
                 // 92_cadrage_socle_reglementaire.md, avec le lot qui la produit.
                 //
-                // -960   pénibilités légales (la nuit du vendredi)
+                // -1440  pénibilités légales, poids 1 en ANALYSE_RH :
+                //          480 min de nuit    (CRE-VN-01, vendredi 22:00-06:00)
+                //        + 480 min de dimanche (CRE-DI-01, 17 mai)
+                //        + 480 min de férié    (CRE-ME-01, 13 mai déclaré isJourFerie) — lot S7.9
                 // -66000 sous-emploi : deux salariés à 35 h hebdo pour 48 h de travail
                 //        disponible — un déficit de 11 h chacun, inévitable et voulu visible.
-                //        Lot S7.7, seule variation de score de tout le chantier.
-                .andExpect(jsonPath("$.solverResult.score.soft").value(-66960))
+                //        Lot S7.7.
+                .andExpect(jsonPath("$.solverResult.score.soft").value(-67440))
                 // Le sous-emploi ne doit jamais pousser à ne pas employer : les six créneaux
                 // restent chez les salariés réels, le poste virtuel n'en reçoit aucun.
                 .andExpect(jsonPath("$.workMetrics.byRessource[?(@.resourceId=='PV-001')].heuresTravaillees")
                         .value(org.hamcrest.Matchers.contains(0.0)))
+                // [S7.9] Le férié travaillé est désormais compté. Cette métrique valait 0.0 pour
+                // tout le monde depuis l'origine : le calendrier de RegulatoryParameters n'était
+                // jamais alimenté. Sans cette assertion, la régression repasserait inaperçue.
+                .andExpect(jsonPath("$.workMetrics.global.heuresJourFerieTotales").value(8.0))
+                // SAL-2001 déclare travailleJourFerie=false : la contrainte HARD JourFerieRefuse
+                // lui interdit le créneau du 13 mai, qui revient donc à SAL-2002.
+                .andExpect(jsonPath("$.workMetrics.byRessource[?(@.resourceId=='SAL-2001')].heuresJourFerie")
+                        .value(org.hamcrest.Matchers.contains(0.0)))
+                .andExpect(jsonPath("$.workMetrics.byRessource[?(@.resourceId=='SAL-2002')].heuresJourFerie")
+                        .value(org.hamcrest.Matchers.contains(8.0)))
                 .andExpect(jsonPath("$.planning").exists())
                 .andExpect(jsonPath("$.workMetrics").exists())
                 .andExpect(jsonPath("$.solutionSummary").exists())

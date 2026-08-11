@@ -7,6 +7,7 @@ import fr.project.planning.domain.contexte.PlanningContext;
 import fr.project.planning.domain.contexte.ResolutionType;
 import fr.project.planning.domain.creneau.Creneau;
 import fr.project.planning.domain.metier.ReferentielComptabiliteActivite;
+import fr.project.planning.domain.reglementaire.CalendrierJoursFeries;
 import fr.project.planning.domain.reglementaire.RegulatoryParameters;
 import fr.project.planning.domain.ressource.Indisponibilite;
 import fr.project.planning.domain.ressource.Ressource;
@@ -210,8 +211,10 @@ public class ScenarioSc03PreparationService {
                 HypotheseHistorique.NEUTRE
         );
 
-        // 7. Paramètres réglementaires — neutres (Phase 8+ branchera les contraintes nuit)
-        RegulatoryParameters regulatoryParameters = RegulatoryParameters.neutre();
+        // 7. Paramètres réglementaires — [S7.9] SC-03 ne transmet pas de calendrier de fériés :
+        //    les dates retenues sont celles que les créneaux déclarent via isJourFerie.
+        RegulatoryParameters regulatoryParameters = RegulatoryParameters.avecJoursFeries(
+                CalendrierJoursFeries.declaresParLesCreneaux(creneaux));
 
         // 8. Planning Request
         PlanningRequest planningRequest = new PlanningRequest(
