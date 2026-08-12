@@ -475,12 +475,13 @@ public class Sc06CandidatEnumerationService {
             return false;
         }
 
+        // [Lot S0 de SC-02] Le besoin est comparé par son intervalle effectif, et non plus par la
+        // seule date du scénario : un besoin de nuit qui déborde sur le lendemain rendait le
+        // salarié éligible alors qu'il y est déclaré absent. Même règle que la contrainte HARD.
         for (Indisponibilite indisponibilite : prepared.indisponibilites()) {
             if (salarie.getId().equals(indisponibilite.getRessourceId())
-                    && indisponibilite.getDateDebut() != null
-                    && indisponibilite.getDateFin() != null
-                    && !prepared.dateBesoin().isBefore(indisponibilite.getDateDebut())
-                    && !prepared.dateBesoin().isAfter(indisponibilite.getDateFin())) {
+                    && besoin.chevauchePeriode(
+                            indisponibilite.getDateDebut(), indisponibilite.getDateFin())) {
                 return false;
             }
         }

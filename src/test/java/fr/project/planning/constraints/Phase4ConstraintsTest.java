@@ -14,6 +14,7 @@ import fr.project.planning.domain.ressource.SalarieReel;
 import fr.project.planning.fixtures.TestPlanningRequestFactory;
 import fr.project.planning.fixtures.TestRessourceFactory;
 import fr.project.planning.solution.PlanningProblem;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.optaplanner.test.api.score.stream.ConstraintVerifier;
 
@@ -180,6 +181,95 @@ class Phase4ConstraintsTest {
         LocalDate date = LocalDate.of(2026, 5, 11);
         Creneau creneau = creneauNormal("C-INDISPO-003", date, salarie);
         Indisponibilite indispo = new Indisponibilite("SAL-B", date, date, "CONGE");
+
+        constraintVerifier
+                .verifyThat((provider, factory) -> IndisponibiliteSalarie.indisponibiliteSalarie(factory))
+                .given(creneau, indispo)
+                .penalizesBy(0);
+    }
+
+    // -------------------------------------------------------
+    // IndisponibiliteSalarie et le passage de minuit — lot S0 de SC-02
+    // -------------------------------------------------------
+
+    /**
+     * Le défaut que ce lot répare : le filtre comparait la seule {@code date} du créneau aux
+     * bornes de l'absence. Un créneau de nuit du 3 mars couvre pourtant six heures du 4 mars.
+     */
+    @Test
+    @DisplayName("Un créneau de nuit qui déborde sur le premier jour d'absence est sanctionné")
+    void indisponibilite_creneauDeNuitDebordantSurLAbsence_doitLeverViolationHard() {
+        SalarieReel salarie = TestPlanningRequestFactory.buildSalarie("SAL-NUIT");
+        LocalDate troisMars = LocalDate.of(2026, 3, 3);
+        Creneau nuit = creneau("C-NUIT-001", troisMars, LocalTime.of(22, 0), LocalTime.of(6, 0), salarie);
+        Indisponibilite indispo = new Indisponibilite("SAL-NUIT",
+                troisMars.plusDays(1), troisMars.plusDays(1), "ARRET_MALADIE");
+
+        constraintVerifier
+                .verifyThat((provider, factory) -> IndisponibiliteSalarie.indisponibiliteSalarie(factory))
+                .given(nuit, indispo)
+                .penalizesBy(1);
+    }
+
+    /** La comparaison reste stricte : un créneau qui finit à minuit pile ne touche pas le lendemain. */
+    @Test
+    @DisplayName("Un créneau qui s'arrête à minuit pile ne touche pas l'absence du lendemain")
+    void indisponibilite_creneauFinissantAMinuit_doitNePasLeverViolation() {
+        SalarieReel salarie = TestPlanningRequestFactory.buildSalarie("SAL-NUIT");
+        LocalDate troisMars = LocalDate.of(2026, 3, 3);
+        Creneau soiree = creneau("C-NUIT-002", troisMars, LocalTime.of(14, 0), LocalTime.of(0, 0), salarie);
+        Indisponibilite indispo = new Indisponibilite("SAL-NUIT",
+                troisMars.plusDays(1), troisMars.plusDays(1), "ARRET_MALADIE");
+
+        constraintVerifier
+                .verifyThat((provider, factory) -> IndisponibiliteSalarie.indisponibiliteSalarie(factory))
+                .given(soiree, indispo)
+                .penalizesBy(0);
+    }
+
+    /** Non-régression : un créneau qui <em>commence</em> pendant l'absence était déjà sanctionné. */
+    @Test
+    @DisplayName("Un créneau de nuit qui démarre le dernier jour d'absence reste sanctionné")
+    void indisponibilite_creneauDeNuitDemarrantPendantLAbsence_doitLeverViolationHard() {
+        SalarieReel salarie = TestPlanningRequestFactory.buildSalarie("SAL-NUIT");
+        LocalDate troisMars = LocalDate.of(2026, 3, 3);
+        Creneau nuit = creneau("C-NUIT-003", troisMars, LocalTime.of(22, 0), LocalTime.of(6, 0), salarie);
+        Indisponibilite indispo = new Indisponibilite("SAL-NUIT",
+                troisMars.minusDays(1), troisMars, "CONGE_POSE");
+
+        constraintVerifier
+                .verifyThat((provider, factory) -> IndisponibiliteSalarie.indisponibiliteSalarie(factory))
+                .given(nuit, indispo)
+                .penalizesBy(1);
+    }
+
+    /** L'élargissement ne déborde pas de l'autre côté : le lendemain de l'absence reste libre. */
+    @Test
+    @DisplayName("Un créneau de jour postérieur à l'absence n'est pas sanctionné")
+    void indisponibilite_creneauApresLAbsence_doitNePasLeverViolation() {
+        SalarieReel salarie = TestPlanningRequestFactory.buildSalarie("SAL-NUIT");
+        LocalDate troisMars = LocalDate.of(2026, 3, 3);
+        Creneau lendemain = creneauNormal("C-NUIT-004", troisMars.plusDays(1), salarie);
+        Indisponibilite indispo = new Indisponibilite("SAL-NUIT",
+                troisMars.minusDays(1), troisMars, "CONGE_POSE");
+
+        constraintVerifier
+                .verifyThat((provider, factory) -> IndisponibiliteSalarie.indisponibiliteSalarie(factory))
+                .given(lendemain, indispo)
+                .penalizesBy(0);
+    }
+
+    /**
+     * Une absence sans dates faisait exploser la contrainte en {@code NullPointerException} :
+     * {@code !c.getDate().isBefore(null)}. Elle est désormais sans effet, comme une borne absente
+     * l'est partout ailleurs dans le moteur.
+     */
+    @Test
+    @DisplayName("Une absence aux bornes nulles est sans effet, et ne fait plus exploser la contrainte")
+    void indisponibilite_bornesNulles_doitEtreSansEffet() {
+        SalarieReel salarie = TestPlanningRequestFactory.buildSalarie("SAL-NUIT");
+        Creneau creneau = creneauNormal("C-NUIT-005", LocalDate.of(2026, 3, 3), salarie);
+        Indisponibilite indispo = new Indisponibilite("SAL-NUIT", null, null, "SAISIE_INCOMPLETE");
 
         constraintVerifier
                 .verifyThat((provider, factory) -> IndisponibiliteSalarie.indisponibiliteSalarie(factory))

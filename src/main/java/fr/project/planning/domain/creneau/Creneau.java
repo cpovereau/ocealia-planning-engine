@@ -174,6 +174,33 @@ public class Creneau implements Serializable {
                 && getFinEffectif().isAfter(debutJour);
     }
 
+    /**
+     * Indique si le créneau empiète sur la période fournie, bornes comprises et prises en
+     * <strong>jours entiers</strong> — au moins une minute suffit.
+     *
+     * <p>[Lot S0 de SC-02] Une période d'absence est déclarée en dates, pas en horaires : elle
+     * couvre donc du premier jour à 00:00 au lendemain du dernier jour à 00:00. Comparer la seule
+     * {@link #date} du créneau à ces bornes laissait passer le créneau qui traverse minuit — un
+     * 3 mars 22:00–06:00 échappait à une absence déclarée le 4 mars, alors qu'il fait travailler
+     * six heures pendant celle-ci.</p>
+     *
+     * <p>Même famille de défaut que les quatre calculs réparés au lot S8.3, sur deux lecteurs que
+     * ce lot n'avait pas couverts : {@code IndisponibiliteSalarie} et le filtre d'éligibilité de
+     * SC-06. Ils appellent désormais cette méthode au lieu de redécrire la règle.</p>
+     *
+     * @param debut premier jour de la période, incluse ; {@code false} si null
+     * @param fin   dernier jour de la période, inclus ; {@code false} si null
+     */
+    public boolean chevauchePeriode(LocalDate debut, LocalDate fin) {
+        if (debut == null || fin == null || this.date == null) {
+            return false;
+        }
+        LocalDateTime debutPeriode = debut.atStartOfDay();
+        LocalDateTime finPeriode = fin.plusDays(1).atStartOfDay();
+        return getDebutEffectif().isBefore(finPeriode)
+                && getFinEffectif().isAfter(debutPeriode);
+    }
+
     /* =========================
        Calcul des intersections
        ========================= */

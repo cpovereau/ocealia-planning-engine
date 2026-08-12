@@ -12,13 +12,17 @@ import org.optaplanner.core.api.score.stream.Joiners;
 /**
  * IndisponibiliteSalarie
  *
- * Contrainte HARD Phase 4.
+ * <p>Contrainte HARD Phase 4. Un salarié ne peut pas être affecté sur un créneau qui empiète sur
+ * l'une de ses périodes d'indisponibilité.</p>
  *
- * Un salarié ne peut pas être affecté sur un créneau dont la date
- * est comprise dans l'une de ses périodes d'indisponibilité.
+ * <p>La jointure porte sur l'identifiant de la ressource ; le filtre post-jointure délègue à
+ * {@link Creneau#chevauchePeriode} le soin de savoir ce qu'« empiéter » veut dire.</p>
  *
- * La jointure porte sur l'identifiant de la ressource (ressourceId),
- * le filtre post-jointure vérifie l'appartenance à l'intervalle [dateDebut, dateFin].
+ * <p><strong>[Lot S0 de SC-02]</strong> Ce filtre comparait la seule {@code date} du créneau aux
+ * bornes de l'absence. Un créneau du 3 mars 22:00–06:00 échappait donc à une absence déclarée le
+ * 4 mars, alors qu'il fait travailler six heures pendant celle-ci — aucun point HARD n'était
+ * produit. La règle est désormais celle de l'intervalle effectif, minuit franchi compris, comme
+ * pour les quatre calculs réparés au lot S8.3.</p>
  */
 public class IndisponibiliteSalarie {
 
@@ -35,9 +39,7 @@ public class IndisponibiliteSalarie {
                         )
                 )
                 .filter((c, indispo) ->
-                        !c.getDate().isBefore(indispo.getDateDebut()) &&
-                        !c.getDate().isAfter(indispo.getDateFin())
-                )
+                        c.chevauchePeriode(indispo.getDateDebut(), indispo.getDateFin()))
                 .penalize(HardSoftScore.ONE_HARD)
                 .asConstraint(PenaliteKey.METIER_HARD_INDISPONIBILITE.name());
     }

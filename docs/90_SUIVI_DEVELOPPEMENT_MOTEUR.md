@@ -1311,3 +1311,28 @@ Deux exclusions assumées, écrites dans l'index et dans le test :
 > **Convention d'écriture** : un document *disparu* se cite **sans son extension**. Lui donner
 > son extension alors qu'il n'existe pas ferait échouer `CorpusDocumentaireTest`, qui ne peut pas
 > distinguer une citation d'un exemple.
+
+### SC-02 — lot S0 : l'absence ne s'arrêtait pas à minuit (2026-08-11)
+
+617 tests, 0 échec (612 avant). **Aucun écart de score** : aucun jeu d'essai ne contenait le cas
+fautif — c'est précisément pourquoi il avait survécu.
+
+`IndisponibiliteSalarie` comparait la seule `date` du créneau aux bornes de l'absence. Un créneau
+du 3 mars 22:00 → 06:00 échappait donc à une absence déclarée le 4 mars, alors qu'il fait
+travailler six heures pendant celle-ci — **aucun point HARD n'était produit**. Même famille que les
+quatre calculs réparés au lot S8.3, sur un lecteur que ce lot n'avait pas couvert.
+
+**Le défaut avait un second lecteur.** `Sc06CandidatEnumerationService.estEligible` appliquait la
+même comparaison, sur la date du besoin : un besoin de nuit débordant sur le lendemain rendait
+éligible un salarié qui y est déclaré absent. SC-06 pouvait donc **proposer au podium quelqu'un en
+arrêt maladie**. Les deux lecteurs appellent désormais la même méthode.
+
+`Creneau.chevauchePeriode(debut, fin)` rejoint `couvre`, `getDebutEffectif` et `getFinEffectif` :
+la règle de minuit vit à un seul endroit, et les appelants cessent de la redécrire.
+
+Effet de bord réparé au passage : une absence aux bornes nulles faisait exploser la contrainte en
+`NullPointerException` — `!c.getDate().isBefore(null)`. Elle est désormais sans effet, comme une
+borne absente l'est partout ailleurs dans le moteur.
+
+Cinq cas ajoutés à `Phase4ConstraintsTest` : le débordement, la comparaison stricte à minuit pile,
+le démarrage pendant l'absence, le lendemain resté libre, et les bornes nulles.
