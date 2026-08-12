@@ -318,6 +318,38 @@ Assurer la continuité de service **en perturbant le moins possible l’existant
 * niveaux de surcharge par salarié ;
 * volume de besoin résiduel (poste virtuel).
 
+#### État d'implémentation — lot S1 livré le 2026-08-11
+
+`POST /scenarios/sc02/solve` est exposé. ⚠️ **Le contrat ci-dessous n'est pas complet** : il
+grandira aux lots S2 (découpage) et S3 (seuils de surcharge), et son inscription définitive à
+l'OpenAPI et aux schémas JSON est le lot S4. Voir `92_CADRAGE_SCENARIO_SC-02.md` §8.
+
+**Ce que le lot S1 accepte** — et rien d'autre, délibérément : un champ que personne ne lit est
+pire qu'un champ absent.
+
+| Champ | Obligatoire | Rôle |
+|---|:---:|---|
+| `scenarioParameters.salarieAbsentId` | ✅ | Désigne le salarié dont l'absence motive le scénario. Il ne sert **pas** à la contrainte : l'absence elle-même est portée par `dataSet.indisponibilites`, déjà tenu par une contrainte HARD. Il sert à savoir de quelle absence tirer les conséquences |
+| `scenarioParameters.posteVirtuelAutorise` | ○ | Défaut `false`. Le poste virtuel ne s'invite jamais de lui-même |
+
+Le bloc `scenarioParameters` est **strict** : un paramètre d'un lot à venir produit une erreur
+explicite, jamais un silence.
+
+**Ce que le lot S1 fait.** Seuls les créneaux du salarié absent que son absence recouvre sont
+rendus au solveur. Tout le reste du planning transmis est épinglé — aucune affectation existante
+n'est déplacée pour faire de la place, y compris les créneaux de l'absent situés hors de sa
+période d'absence.
+
+**Ce que le lot S1 restitue** : un bloc `remplacement`, propre à SC-02 et absent des autres
+scénarios — `salarieAbsentId`, `creneauxLiberes`, `creneauxRepris`, `heuresAPourvoir`, et le
+`details[]` du sort de chaque créneau libéré, y compris ceux que personne n'a repris.
+
+⚠️ **Limite connue de ce lot** : le moteur n'oppose pas encore `activitesCompatibles` à une
+affectation — aucune contrainte ne lit ce champ (rang 10 du backlog). Un salarié peut donc se voir
+confier un créneau dont il ne pratique pas l'activité. Les seules règles qui écartent réellement un
+remplaçant sont, à ce jour, les contraintes HARD en vigueur : chevauchement physique,
+indisponibilité, jour férié refusé.
+
 ---
 
 ### 🔵 SC-03 — Ajustement ponctuel / événementiel

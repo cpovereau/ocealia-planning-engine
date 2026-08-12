@@ -304,8 +304,8 @@ Ordonné par dépendance. Chaque lot est livrable seul et testable seul.
 
 | Lot | Objet | Pourquoi à ce rang |
 |---|---|---|
-| **S0** | Correctif : `IndisponibiliteSalarie` et le passage de minuit | Prérequis. La contrainte compare `creneau.getDate()` aux bornes de l'absence : un créneau du 3 mars 22:00 → 06:00 échappe à une absence du 4 mars. Bâtir SC-02 sur cette règle sans la réparer serait bâtir sur du sable |
-| **S1** | Squelette SC-02 **sans découpage** : endpoint, contrat d'entrée, épinglage, reprise entière ou « à pourvoir » | Livrable et déjà utile seul. Couvre le cas majoritaire — un remplaçant prend la journée |
+| **S0** ✅ | Correctif : `IndisponibiliteSalarie` et le passage de minuit | Prérequis. La contrainte compare `creneau.getDate()` aux bornes de l'absence : un créneau du 3 mars 22:00 → 06:00 échappe à une absence du 4 mars. Bâtir SC-02 sur cette règle sans la réparer serait bâtir sur du sable. **Livré le 2026-08-11** — le défaut avait un second lecteur, le filtre d'éligibilité de SC-06 |
+| **S1** ✅ | Squelette SC-02 **sans découpage** : endpoint, contrat d'entrée, épinglage, reprise entière ou « à pourvoir » | Livrable et déjà utile seul. Couvre le cas majoritaire — un remplaçant prend la journée. **Livré le 2026-08-11**, précédé de l'extraction de la préparation dataset commune à SC-02 et SC-03 |
 | **S2** | Découpage aux frontières de disponibilité, recombinaison à la restitution, seuil des 30 minutes sur le bloc confié, contrainte SOFT de cohésion | Le cœur technique (§5). Isolé pour être évalué seul, y compris son effet sur le score |
 | **S3** | Surcharge : seuils, alerte, niveaux restitués | Réemploi de `ImpactMesureDTO` ; aucune mesure nouvelle à écrire |
 | **S4** | Restitution complète avant / après + inscription au contrat série 50 (OpenAPI, schémas JSON) | Une seule migration de contrat pour WinDev, à la fin, plutôt que quatre |
@@ -346,3 +346,21 @@ Les affirmations de la §6.1 proviennent d'une lecture des appels réels dans `s
 * `capaciteCible` du poste virtuel n'est lu par aucune contrainte : si SC-02 autorise le poste
   virtuel, **la capacité déclarée ne le bornera pas** tant que le rang 8 n'est pas tranché. À dire
   explicitement dans la notice d'intégration du lot S1.
+
+---
+
+## Annexe 2 — ce que le lot S1 a appris
+
+⚠️ **`activitesCompatibles` n'est lu par aucune contrainte** (rang 10 du backlog). SC-02 peut donc
+confier un créneau à un salarié qui ne pratique pas l'activité. Les seules règles qui écartent
+réellement un remplaçant sont, à ce jour, les contraintes HARD en vigueur : chevauchement
+physique, indisponibilité, jour férié refusé.
+
+Ce manque était supportable tant que le moteur ne faisait qu'analyser ou classer. SC-06 s'en
+protégeait par un filtre d'éligibilité écrit dans son énumération, **hors solveur** — il pouvait
+se le permettre, il n'affecte rien. Un scénario qui affecte réellement n'a pas cette échappatoire :
+c'est SC-02 qui rend le rang 10 coûteux, et c'est un argument à verser au dossier de la Production.
+
+Le jeu d'essai du lot construit donc son cas « à pourvoir » sur un **chevauchement physique**, règle
+en vigueur, et non sur l'activité, règle attendue. Un test adossé à une règle qu'on espère écrire
+un jour ne prouve rien.

@@ -23,6 +23,14 @@ public class ScenarioResponseDTO {
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private List<CandidatDTO> candidats;
 
+    /**
+     * [Lot S1 de SC-02] Conséquences de l'absence — <strong>propre à SC-02</strong>.
+     *
+     * <p>Même règle que {@code candidats} : la clé est omise pour tous les autres scénarios.</p>
+     */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private RemplacementDTO remplacement;
+
     public ScenarioResponseDTO() {
     }
 
@@ -96,5 +104,13 @@ public class ScenarioResponseDTO {
 
     public void setCandidats(List<CandidatDTO> candidats) {
         this.candidats = candidats;
+    }
+
+    public RemplacementDTO getRemplacement() {
+        return remplacement;
+    }
+
+    public void setRemplacement(RemplacementDTO remplacement) {
+        this.remplacement = remplacement;
     }
 }

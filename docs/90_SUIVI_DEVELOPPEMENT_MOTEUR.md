@@ -552,7 +552,7 @@ qu'une intention métier : **aucun n'a de contrat d'entrée, d'endpoint, ni de j
 
 | Scénario | Intention | Ce qui existe déjà | Ce qui manque |
 |---|---|---|---|
-| **SC-02** — remplacement d'un absent | assurer la continuité en perturbant le moins possible l'existant | absences (`indisponibilites`, contrainte HARD), créneaux figés (`@PlanningPin`, `toCreneauxFiges`), classement de candidats (SC-06) | endpoint, contrat d'entrée, restitution avant / après, seuil de surcharge |
+| **SC-02** — remplacement d'un absent | assurer la continuité en perturbant le moins possible l'existant | **lots S0 et S1 livrés** : endpoint, épinglage, reprise entière ou « à pourvoir », bloc `remplacement` | découpage partiel (S2), seuils de surcharge (S3), restitution avant / après complète et contrat série 50 (S4), canal FileAdapter (S5) |
 | **SC-04** — optimisation globale d'un planning existant | améliorer sans reconstruire | figement, WorkMetrics | historique des compteurs, degrés de liberté, indicateurs comparatifs |
 | **SC-05** — arbitrage entre deux salariés | répartir équitablement un périmètre commun | WorkMetrics de charge | objectif d'arbitrage, historique de charge, seuils comparatifs, WorkMetrics d'équité |
 
@@ -597,7 +597,7 @@ abordé.
 
 | Écart | Constat | Quand le traiter |
 |---|---|---|
-| `IndisponibiliteSalarie` ignore le passage de minuit | La contrainte compare `creneau.getDate()` aux bornes de l'absence. Un créneau du 3 mars 22:00 → 06:00 échappe à une absence déclarée le 4 mars, alors qu'il travaille six heures pendant celle-ci. Même famille que les quatre calculs réparés au lot S8.3, non couverte alors. | **Prérequis de SC-02**, qui repose entièrement sur les absences |
+| ~~`IndisponibiliteSalarie` ignore le passage de minuit~~ | ~~La contrainte compare `creneau.getDate()` aux bornes de l'absence.~~ | ✅ **Corrigé au lot S0 de SC-02** — le défaut avait un second lecteur, le filtre d'éligibilité de SC-06 |
 
 ---
 
@@ -1336,3 +1336,68 @@ borne absente l'est partout ailleurs dans le moteur.
 
 Cinq cas ajoutés à `Phase4ConstraintsTest` : le débordement, la comparaison stricte à minuit pile,
 le démarrage pendant l'absence, le lendemain resté libre, et les bornes nulles.
+
+### SC-02 — lot S1 : le squelette du remplacement (2026-08-11)
+
+623 tests, 0 échec (617 avant). `POST /scenarios/sc02/solve` est exposé. **Ni SC-01, ni SC-03, ni
+SC-06 ne changent de comportement** — leurs scores sont inchangés.
+
+#### Le principe, tenu par les tests
+
+Seuls les créneaux du salarié absent que son absence **recouvre** sont rendus au solveur. Tout le
+reste du planning transmis est épinglé : le solveur le voit, les contraintes le mesurent, aucune
+affectation existante ne bouge pour faire de la place. Les créneaux de l'absent situés **hors** de
+sa période d'absence lui restent, eux aussi.
+
+Le prix est assumé : le moteur répond « à pourvoir » là où un échange entre deux collègues aurait
+suffi. C'est l'arbitrage métier du 11/08 — remanier le planning des présents est une décision
+d'encadrement, pas une décision de moteur.
+
+Vérification que ces tests mordent : en remplaçant la politique d'épinglage par la politique
+neutre, **cinq des six tests tombent**. Ils ne passent pas par accident.
+
+#### Aucun champ nouveau pour décrire l'absence
+
+Elle est portée par `dataSet.indisponibilites`, déjà au contrat et déjà tenue par une contrainte
+HARD. `salarieAbsentId` ne fait que désigner **de qui** il s'agit — donc quels créneaux libérer, et
+de quoi rendre compte. Rien à demander à WinDev de ce côté.
+
+#### Le contrat n'expose que ce que le lot honore
+
+Le cadrage prévoit une liste de remplaçants autorisés, des seuils de surcharge et une autorisation
+de découpage. **Aucun n'est au contrat**, parce qu'aucune règle ne les lit encore : un champ
+transporté que personne n'exploite est pire qu'un champ absent, l'appelant le renseigne et croit
+l'avoir dit. Ils arriveront avec les lots qui les mettent en œuvre. Le bloc `scenarioParameters`
+est strict — un paramètre d'un lot à venir produit une erreur explicite, jamais un silence.
+
+#### Ce que le lot restitue
+
+Un bloc `remplacement`, propre à SC-02 comme `candidats[]` l'est à SC-06 : la clé est omise partout
+ailleurs. Il porte le nombre de créneaux libérés, le nombre repris, les heures restant à pourvoir,
+et le sort de **chaque** créneau libéré — y compris ceux que personne n'a repris. Un remplacement
+qui n'a pas eu lieu est une information, pas un silence. Une alerte `HEURES_RESTANT_A_POURVOIR`
+double le total : l'appelant l'apprend au lieu de le déduire.
+
+#### Un préalable qui n'était pas prévu
+
+La préparation d'un scénario dataset-driven — référentiel, partitions, marqueurs de repos, cadre
+réglementaire, diagnostics — n'avait rien de propre à SC-03. Elle a été extraite avant d'écrire
+SC-02, dans son propre commit : `ScenarioDatasetPreparationService`, et une
+`PolitiqueAffectationCreneau` fournie par chaque scénario pour le seul point où ils divergent — ce
+qu'ils font de l'affectation déjà portée par un créneau d'entrée. SC-03 passe la politique neutre
+et ne change pas de comportement.
+
+#### ⚠️ Limite connue, et elle compte
+
+`activitesCompatibles` n'est lu par **aucune contrainte** (rang 10 du backlog). SC-02 peut donc
+confier un créneau à un salarié qui ne pratique pas l'activité. Les seules règles qui écartent
+réellement un remplaçant sont aujourd'hui les contraintes HARD en vigueur : chevauchement
+physique, indisponibilité, jour férié refusé.
+
+C'est SC-02 qui rend ce manque coûteux : SC-06 se protégeait par un filtre d'éligibilité écrit
+dans son énumération, hors solveur. Un scénario qui affecte réellement n'a pas cette échappatoire.
+
+#### Reste du chantier
+
+S2 (découpage aux frontières de disponibilité), S3 (surcharge), S4 (restitution complète et
+inscription au contrat série 50), S5 (canal FileAdapter). Voir `92_CADRAGE_SCENARIO_SC-02.md` §8.

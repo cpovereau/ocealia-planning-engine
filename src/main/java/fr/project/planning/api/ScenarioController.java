@@ -1,10 +1,12 @@
 package fr.project.planning.api;
 
+import fr.project.planning.scenarios.dto.Sc02ScenarioRequestDTO;
 import fr.project.planning.scenarios.dto.Sc03ScenarioRequestDTO;
 import fr.project.planning.scenarios.dto.Sc06ScenarioRequestDTO;
 import fr.project.planning.scenarios.dto.ScenarioRequestDTO;
 import fr.project.planning.scenarios.dto.ScenarioResponseDTO;
 import fr.project.planning.scenarios.service.ScenarioSc01ExecutionService;
+import fr.project.planning.scenarios.service.ScenarioSc02ExecutionService;
 import fr.project.planning.scenarios.service.ScenarioSc03ExecutionService;
 import fr.project.planning.scenarios.service.ScenarioSc06ExecutionService;
 
@@ -22,6 +24,7 @@ import org.springframework.web.bind.annotation.*;
  *   GET  /scenarios/ping
  *   POST /scenarios/sc01/solve
  *   POST /scenarios/sc01/solve/file
+ *   POST /scenarios/sc02/solve
  *   POST /scenarios/sc03/solve
  *   POST /scenarios/sc06/solve
  *
@@ -34,13 +37,16 @@ import org.springframework.web.bind.annotation.*;
 public class ScenarioController {
 
     private final ScenarioSc01ExecutionService scenarioSc01ExecutionService;
+    private final ScenarioSc02ExecutionService scenarioSc02ExecutionService;
     private final ScenarioSc03ExecutionService scenarioSc03ExecutionService;
     private final ScenarioSc06ExecutionService scenarioSc06ExecutionService;
 
     public ScenarioController(ScenarioSc01ExecutionService scenarioSc01ExecutionService,
+                               ScenarioSc02ExecutionService scenarioSc02ExecutionService,
                                ScenarioSc03ExecutionService scenarioSc03ExecutionService,
                                ScenarioSc06ExecutionService scenarioSc06ExecutionService) {
         this.scenarioSc01ExecutionService = scenarioSc01ExecutionService;
+        this.scenarioSc02ExecutionService = scenarioSc02ExecutionService;
         this.scenarioSc03ExecutionService = scenarioSc03ExecutionService;
         this.scenarioSc06ExecutionService = scenarioSc06ExecutionService;
     }
@@ -82,6 +88,24 @@ public class ScenarioController {
     @PostMapping("/sc03/solve")
     public ScenarioResponseDTO solveSc03(@Valid @RequestBody Sc03ScenarioRequestDTO request) {
         return scenarioSc03ExecutionService.solve(request);
+    }
+
+    /**
+     * POST /scenarios/sc02/solve — Remplacement d'un salarié absent.
+     *
+     * Pipeline : dataSet (planning existant + indisponibilités) + salarieAbsentId
+     *            → épinglage de l'existant, libération des seuls créneaux de l'absent
+     *            → résolution solveur → ScenarioResponseDTO
+     *
+     * Aucun créneau déjà affecté à un salarié présent n'est déplaçable : le moteur répond
+     * « à pourvoir » plutôt que de remanier le planning de ceux qui n'ont rien demandé.
+     * Il ne rend jamais « pas de solution ».
+     *
+     * La réponse porte un bloc supplémentaire, remplacement, propre à ce scénario.
+     */
+    @PostMapping("/sc02/solve")
+    public ScenarioResponseDTO solveSc02(@Valid @RequestBody Sc02ScenarioRequestDTO request) {
+        return scenarioSc02ExecutionService.solve(request);
     }
 
     /**

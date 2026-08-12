@@ -75,5 +75,34 @@ public enum AlertCode {
     AUCUNE_RESSOURCE_DANS_DATASET,
 
     /** Une ressource du dataset n'a pas d'identifiant : son comportement solveur n'est pas garanti. */
-    RESSOURCE_SANS_ID
+    RESSOURCE_SANS_ID,
+
+    // ---- [S1 de SC-02] Remplacement d'un salarié absent ----
+
+    /**
+     * {@code salarieAbsentId} ne désigne aucun salarié du dataset. Le scénario s'exécute — il ne
+     * refuse pas — mais aucun créneau n'est libéré : il ne peut rien remplacer.
+     */
+    SALARIE_ABSENT_INTROUVABLE,
+
+    /**
+     * Le salarié désigné absent ne porte aucune indisponibilité dans le dataset. Le moteur ne sait
+     * donc pas <em>quand</em> il l'est, et ne libère rien.
+     *
+     * <p>C'est un vide, pas une permission : le scénario ne suppose pas une absence sur tout
+     * l'horizon.</p>
+     */
+    AUCUNE_ABSENCE_DECLAREE,
+
+    /** L'absence est déclarée mais ne recouvre aucun créneau du salarié : il n'y a rien à remplacer. */
+    AUCUN_CRENEAU_A_REMPLACER,
+
+    /**
+     * Le poste virtuel n'est pas autorisé par la demande, mais le planning existant en utilise un.
+     * Il est conservé — l'existant ne se réécrit pas — et reste donc une couverture possible.
+     */
+    POSTE_VIRTUEL_REFUSE_MAIS_PRESENT,
+
+    /** Tout ou partie des heures libérées n'a trouvé aucun salarié : elles restent à pourvoir. */
+    HEURES_RESTANT_A_POURVOIR
 }
