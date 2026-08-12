@@ -31,10 +31,10 @@ import static org.junit.jupiter.api.Assertions.*;
  * - aucuneRessourceDansDataset est calculé sur les créneaux réellement transmis au solveur
  * - cas limite : date null ni comptée, ni exclue
  */
-class ScenarioSc03PreparationServicePhase3Test {
+class ScenarioDatasetPreparationServicePhase3Test {
 
-    private final ScenarioSc03PreparationService service =
-            new ScenarioSc03PreparationService(new ScenarioResourceMapper(), new ScenarioCreneauMapper());
+    private final ScenarioDatasetPreparationService service =
+            new ScenarioDatasetPreparationService(new ScenarioResourceMapper(), new ScenarioCreneauMapper());
 
     private static final LocalDate DATE_DEBUT = LocalDate.of(2026, 5, 12);
     private static final LocalDate DATE_FIN   = LocalDate.of(2026, 5, 18);
@@ -53,7 +53,7 @@ class ScenarioSc03PreparationServicePhase3Test {
         creneauDansDataset(request, "CRE-AVANT", "ACT-CONNU", AVANT_HORIZON);
         activiteInReferentiel(request, "ACT-CONNU");
 
-        PreparedSc03Scenario scenario = service.prepare(request);
+        PreparedDatasetScenario scenario = service.prepare(request);
 
         assertEquals(0, scenario.planningRequest().creneaux().size(),
                 "Le créneau hors-horizon doit être exclu avant solveur");
@@ -66,7 +66,7 @@ class ScenarioSc03PreparationServicePhase3Test {
         creneauDansDataset(request, "CRE-APRES", "ACT-CONNU", APRES_HORIZON);
         activiteInReferentiel(request, "ACT-CONNU");
 
-        PreparedSc03Scenario scenario = service.prepare(request);
+        PreparedDatasetScenario scenario = service.prepare(request);
 
         assertEquals(0, scenario.planningRequest().creneaux().size());
         assertEquals(1, scenario.ignoredCreneaux().getHorsHorizon());
@@ -82,7 +82,7 @@ class ScenarioSc03PreparationServicePhase3Test {
         creneauDansDataset(request, "CRE-OK", "ACT-CONNU", DANS_HORIZON);
         activiteInReferentiel(request, "ACT-CONNU");
 
-        PreparedSc03Scenario scenario = service.prepare(request);
+        PreparedDatasetScenario scenario = service.prepare(request);
 
         assertEquals(1, scenario.planningRequest().creneaux().size());
         assertEquals(0, scenario.ignoredCreneaux().getHorsHorizon());
@@ -99,7 +99,7 @@ class ScenarioSc03PreparationServicePhase3Test {
         creneauDansDataset(request, "CRE-AVANT", "ACT-CONNU", AVANT_HORIZON);
         activiteInReferentiel(request, "ACT-CONNU");
 
-        PreparedSc03Scenario scenario = service.prepare(request);
+        PreparedDatasetScenario scenario = service.prepare(request);
 
         assertEquals(1, scenario.planningRequest().creneaux().size());
         assertEquals("CRE-OK", scenario.planningRequest().creneaux().get(0).getId());
@@ -113,7 +113,7 @@ class ScenarioSc03PreparationServicePhase3Test {
         creneauDansDataset(request, "CRE-B", "ACT-CONNU", APRES_HORIZON);
         activiteInReferentiel(request, "ACT-CONNU");
 
-        PreparedSc03Scenario scenario = service.prepare(request);
+        PreparedDatasetScenario scenario = service.prepare(request);
 
         assertEquals(0, scenario.planningRequest().creneaux().size());
         assertEquals(2, scenario.ignoredCreneaux().getHorsHorizon());
@@ -129,7 +129,7 @@ class ScenarioSc03PreparationServicePhase3Test {
         creneauDansDataset(request, "CRE-DOUBLE", "ACT-INCONNUE", AVANT_HORIZON);
         activiteInReferentiel(request, "ACT-CONNU"); // ACT-INCONNUE n'est pas dans le référentiel
 
-        PreparedSc03Scenario scenario = service.prepare(request);
+        PreparedDatasetScenario scenario = service.prepare(request);
 
         assertEquals(0, scenario.planningRequest().creneaux().size());
         assertEquals(1, scenario.ignoredCreneaux().getActiviteInconnue(),
@@ -149,7 +149,7 @@ class ScenarioSc03PreparationServicePhase3Test {
         creneauDansDataset(request, "CRE-HORS", "ACT-CONNU", AVANT_HORIZON);
         activiteInReferentiel(request, "ACT-CONNU");
 
-        PreparedSc03Scenario scenario = service.prepare(request);
+        PreparedDatasetScenario scenario = service.prepare(request);
 
         assertEquals(0, scenario.ignoredCreneaux().getAucuneRessourceDansDataset(),
                 "Un créneau hors-horizon ne doit pas être compté dans aucuneRessourceDansDataset");
@@ -162,7 +162,7 @@ class ScenarioSc03PreparationServicePhase3Test {
         creneauDansDataset(request, "CRE-INCONNU", "ACT-INCONNUE", DANS_HORIZON);
         activiteInReferentiel(request, "ACT-CONNU");
 
-        PreparedSc03Scenario scenario = service.prepare(request);
+        PreparedDatasetScenario scenario = service.prepare(request);
 
         assertEquals(0, scenario.ignoredCreneaux().getAucuneRessourceDansDataset(),
                 "Un créneau à activité inconnue ne doit pas être compté dans aucuneRessourceDansDataset");
@@ -175,7 +175,7 @@ class ScenarioSc03PreparationServicePhase3Test {
         creneauDansDataset(request, "CRE-OK", "ACT-CONNU", DANS_HORIZON);
         activiteInReferentiel(request, "ACT-CONNU");
 
-        PreparedSc03Scenario scenario = service.prepare(request);
+        PreparedDatasetScenario scenario = service.prepare(request);
 
         assertEquals(1, scenario.planningRequest().creneaux().size(),
                 "Le créneau doit être transmis au solveur");
@@ -194,7 +194,7 @@ class ScenarioSc03PreparationServicePhase3Test {
         creneauDansDataset(request, "CRE-NULL-DATE", "ACT-CONNU", null);
         activiteInReferentiel(request, "ACT-CONNU");
 
-        PreparedSc03Scenario scenario = service.prepare(request);
+        PreparedDatasetScenario scenario = service.prepare(request);
 
         // le créneau passe au solveur (activité connue, date null non bloquante)
         assertEquals(1, scenario.planningRequest().creneaux().size());

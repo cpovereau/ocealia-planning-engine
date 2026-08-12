@@ -34,12 +34,12 @@ public class ScenarioSc03ExecutionService {
 
     private static final Logger log = LoggerFactory.getLogger(ScenarioSc03ExecutionService.class);
 
-    private final ScenarioSc03PreparationService preparationService;
+    private final ScenarioDatasetPreparationService preparationService;
     private final PlanningService planningService;
     private final ScenarioResponseMapper responseMapper = new ScenarioResponseMapper();
 
     public ScenarioSc03ExecutionService(
-            ScenarioSc03PreparationService preparationService,
+            ScenarioDatasetPreparationService preparationService,
             PlanningService planningService
     ) {
         this.preparationService = preparationService;
@@ -47,7 +47,7 @@ public class ScenarioSc03ExecutionService {
     }
 
     public ScenarioResponseDTO solve(Sc03ScenarioRequestDTO request) {
-        PreparedSc03Scenario prepared = preparationService.prepare(request);
+        PreparedDatasetScenario prepared = preparationService.prepare(request);
 
         PlanningResponse solved = planningService.solve(prepared.planningRequest());
 

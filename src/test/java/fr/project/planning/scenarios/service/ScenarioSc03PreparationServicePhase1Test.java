@@ -24,17 +24,17 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Tests Phase 1 visibilité — ScenarioSc03PreparationService
+ * Tests Phase 1 visibilité — ScenarioDatasetPreparationService
  *
  * Vérifie les comportements implicites rendus observables en Phase 1 :
  * - activité inconnue : compteur correct, créneau transmis au solveur
  * - fallback codeActiviteId→activite : activité comptée comme inconnue si activite non référencée
  * - prioriteCouverture et periode non exploités : pas d'effet sur le PlanningContext
  */
-class ScenarioSc03PreparationServicePhase1Test {
+class ScenarioDatasetPreparationServicePhase1Test {
 
-    private final ScenarioSc03PreparationService service =
-            new ScenarioSc03PreparationService(new ScenarioResourceMapper(), new ScenarioCreneauMapper());
+    private final ScenarioDatasetPreparationService service =
+            new ScenarioDatasetPreparationService(new ScenarioResourceMapper(), new ScenarioCreneauMapper());
 
     private static final LocalDate DATE_DEBUT = LocalDate.of(2026, 5, 12);
     private static final LocalDate DATE_FIN   = LocalDate.of(2026, 5, 18);
@@ -51,7 +51,7 @@ class ScenarioSc03PreparationServicePhase1Test {
         creneauDansDataset(request, "CRE-02", "ACT-INCONNU", null);
         activiteInReferentiel(request, "ACT-CONNU");
 
-        PreparedSc03Scenario scenario = service.prepare(request);
+        PreparedDatasetScenario scenario = service.prepare(request);
 
         assertEquals(1, scenario.ignoredCreneaux().getActiviteInconnue(),
                 "Un seul créneau avec activité inconnue attendu");
@@ -66,7 +66,7 @@ class ScenarioSc03PreparationServicePhase1Test {
         creneauDansDataset(request, "CRE-FALLBACK", null, "LibelleNonReference");
         activiteInReferentiel(request, "ACT-CONNU");
 
-        PreparedSc03Scenario scenario = service.prepare(request);
+        PreparedDatasetScenario scenario = service.prepare(request);
 
         assertEquals(1, scenario.ignoredCreneaux().getActiviteInconnue());
     }
@@ -82,7 +82,7 @@ class ScenarioSc03PreparationServicePhase1Test {
         creneauDansDataset(request, "CRE-FALLBACK-OK", null, "ACT-CONNU");
         activiteInReferentiel(request, "ACT-CONNU");
 
-        PreparedSc03Scenario scenario = service.prepare(request);
+        PreparedDatasetScenario scenario = service.prepare(request);
 
         assertEquals(0, scenario.ignoredCreneaux().getActiviteInconnue(),
                 "Le fallback sur activite réussit : le créneau n'est pas comptabilisé comme activité inconnue");
@@ -95,7 +95,7 @@ class ScenarioSc03PreparationServicePhase1Test {
         creneauDansDataset(request, "CRE-PRIO", "ACT-CONNU", "LibelleIncorrecte");
         activiteInReferentiel(request, "ACT-CONNU");
 
-        PreparedSc03Scenario scenario = service.prepare(request);
+        PreparedDatasetScenario scenario = service.prepare(request);
 
         assertEquals(0, scenario.ignoredCreneaux().getActiviteInconnue(),
                 "codeActiviteId est prioritaire sur activite pour la résolution référentiel");
@@ -118,8 +118,8 @@ class ScenarioSc03PreparationServicePhase1Test {
         params.setPrioriteCouverture("CRITIQUE");
         requestAvec.setScenarioParameters(params);
 
-        PreparedSc03Scenario scenarioSans  = service.prepare(requestSans);
-        PreparedSc03Scenario scenarioAvec  = service.prepare(requestAvec);
+        PreparedDatasetScenario scenarioSans  = service.prepare(requestSans);
+        PreparedDatasetScenario scenarioAvec  = service.prepare(requestAvec);
 
         assertEquals(
                 scenarioSans.planningRequest().planningContext().getStrategieScoring(),
@@ -146,7 +146,7 @@ class ScenarioSc03PreparationServicePhase1Test {
         params.setPeriode(horizonOverride);
         request.setScenarioParameters(params);
 
-        PreparedSc03Scenario scenario = service.prepare(request);
+        PreparedDatasetScenario scenario = service.prepare(request);
 
         assertEquals(DATE_DEBUT, scenario.planningRequest().planningContext().getHorizonTemporel().getDateDebut(),
                 "La periode de scenarioParameters ne doit pas surcharger planningContext.horizon (non implémenté)");

@@ -34,10 +34,10 @@ import static org.junit.jupiter.api.Assertions.*;
  * - creneau.date == null (toléré, cas limite Phase 3 documenté)
  * - salarie.id == null (WARN logué, pas un rejet)
  */
-class ScenarioSc03PreparationServicePhase7Test {
+class ScenarioDatasetPreparationServicePhase7Test {
 
-    private final ScenarioSc03PreparationService service =
-            new ScenarioSc03PreparationService(new ScenarioResourceMapper(), new ScenarioCreneauMapper());
+    private final ScenarioDatasetPreparationService service =
+            new ScenarioDatasetPreparationService(new ScenarioResourceMapper(), new ScenarioCreneauMapper());
 
     private static final LocalDate DATE_DEBUT = LocalDate.of(2026, 6, 2);
     private static final LocalDate DATE_FIN   = LocalDate.of(2026, 6, 8);
@@ -179,7 +179,7 @@ class ScenarioSc03PreparationServicePhase7Test {
         creneauDansDataset(req, "CRE-01", "ACT-QUELCONQUE");
         // référentiel vide — aucune activité définie
 
-        PreparedSc03Scenario scenario = assertDoesNotThrow(() -> service.prepare(req));
+        PreparedDatasetScenario scenario = assertDoesNotThrow(() -> service.prepare(req));
 
         assertEquals(0, scenario.planningRequest().creneaux().size(),
                 "Aucun créneau ne doit atteindre le solveur");
@@ -204,7 +204,7 @@ class ScenarioSc03PreparationServicePhase7Test {
         req.getDataSet().getCreneaux().add(dto);
         activiteInReferentiel(req, "ACT-CONNU");
 
-        PreparedSc03Scenario scenario = assertDoesNotThrow(() -> service.prepare(req));
+        PreparedDatasetScenario scenario = assertDoesNotThrow(() -> service.prepare(req));
 
         // codeActiviteId prime → activité connue → créneau transmis au solveur
         assertEquals(1, scenario.planningRequest().creneaux().size(),
@@ -224,7 +224,7 @@ class ScenarioSc03PreparationServicePhase7Test {
         creneauDansDataset(req, "CRE-01", "ACT-CONNU");
         activiteInReferentiel(req, "ACT-CONNU");
 
-        PreparedSc03Scenario scenario = assertDoesNotThrow(() -> service.prepare(req));
+        PreparedDatasetScenario scenario = assertDoesNotThrow(() -> service.prepare(req));
 
         assertEquals(1, scenario.planningRequest().creneaux().size(),
                 "Le créneau doit atteindre le solveur même sans ressource déclarée");
@@ -243,7 +243,7 @@ class ScenarioSc03PreparationServicePhase7Test {
         creneauDansDataset(req, "CRE-01", "ACT-CONNU");
         activiteInReferentiel(req, "ACT-CONNU");
 
-        PreparedSc03Scenario scenario = assertDoesNotThrow(() -> service.prepare(req));
+        PreparedDatasetScenario scenario = assertDoesNotThrow(() -> service.prepare(req));
 
         assertEquals(1, scenario.planningRequest().creneaux().size());
         assertEquals(0, scenario.ignoredCreneaux().getActiviteInconnue());

@@ -28,10 +28,10 @@ import static org.junit.jupiter.api.Assertions.*;
  * Vérifie que les créneaux dont l'activité est absente du référentiel
  * sont réellement exclus avant solveur (et non plus seulement comptés).
  */
-class ScenarioSc03PreparationServicePhase2Test {
+class ScenarioDatasetPreparationServicePhase2Test {
 
-    private final ScenarioSc03PreparationService service =
-            new ScenarioSc03PreparationService(new ScenarioResourceMapper(), new ScenarioCreneauMapper());
+    private final ScenarioDatasetPreparationService service =
+            new ScenarioDatasetPreparationService(new ScenarioResourceMapper(), new ScenarioCreneauMapper());
 
     private static final LocalDate DATE_DEBUT = LocalDate.of(2026, 5, 12);
     private static final LocalDate DATE_FIN   = LocalDate.of(2026, 5, 18);
@@ -47,7 +47,7 @@ class ScenarioSc03PreparationServicePhase2Test {
         creneauDansDataset(request, "CRE-INCONNU", "ACT-INCONNU", null);
         activiteInReferentiel(request, "ACT-CONNU");
 
-        PreparedSc03Scenario scenario = service.prepare(request);
+        PreparedDatasetScenario scenario = service.prepare(request);
 
         assertEquals(1, scenario.planningRequest().creneaux().size(),
                 "Seul le créneau à activité connue doit être transmis au solveur");
@@ -62,7 +62,7 @@ class ScenarioSc03PreparationServicePhase2Test {
         creneauDansDataset(request, "CRE-INCONNU", "ACT-INCONNU", null);
         activiteInReferentiel(request, "ACT-CONNU");
 
-        PreparedSc03Scenario scenario = service.prepare(request);
+        PreparedDatasetScenario scenario = service.prepare(request);
 
         assertEquals(1, scenario.ignoredCreneaux().getActiviteInconnue(),
                 "Le créneau exclu doit être comptabilisé dans ignoredCreneaux.activiteInconnue");
@@ -78,7 +78,7 @@ class ScenarioSc03PreparationServicePhase2Test {
         creneauDansDataset(request, "CRE-01", "ACT-CONNU", null);
         activiteInReferentiel(request, "ACT-CONNU");
 
-        PreparedSc03Scenario scenario = service.prepare(request);
+        PreparedDatasetScenario scenario = service.prepare(request);
 
         assertEquals(1, scenario.planningRequest().creneaux().size());
         assertEquals(0, scenario.ignoredCreneaux().getActiviteInconnue());
@@ -95,7 +95,7 @@ class ScenarioSc03PreparationServicePhase2Test {
         creneauDansDataset(request, "CRE-B", "ACT-INCONNU", null);
         activiteInReferentiel(request, "ACT-CONNU");
 
-        PreparedSc03Scenario scenario = service.prepare(request);
+        PreparedDatasetScenario scenario = service.prepare(request);
 
         assertEquals(1, scenario.planningRequest().creneaux().size(),
                 "1 créneau valide attendu côté solveur");
@@ -114,7 +114,7 @@ class ScenarioSc03PreparationServicePhase2Test {
         creneauDansDataset(request, "CRE-FALLBACK-OK", null, "ACT-CONNU");
         activiteInReferentiel(request, "ACT-CONNU");
 
-        PreparedSc03Scenario scenario = service.prepare(request);
+        PreparedDatasetScenario scenario = service.prepare(request);
 
         assertEquals(1, scenario.planningRequest().creneaux().size(),
                 "Fallback réussi : le créneau doit passer au solveur");
@@ -132,7 +132,7 @@ class ScenarioSc03PreparationServicePhase2Test {
         creneauDansDataset(request, "CRE-FALLBACK-KO", null, "ACT-INCONNUE");
         activiteInReferentiel(request, "ACT-CONNU");
 
-        PreparedSc03Scenario scenario = service.prepare(request);
+        PreparedDatasetScenario scenario = service.prepare(request);
 
         assertEquals(0, scenario.planningRequest().creneaux().size(),
                 "Fallback échoué : le créneau doit être exclu avant solveur");
@@ -150,7 +150,7 @@ class ScenarioSc03PreparationServicePhase2Test {
         creneauDansDataset(request, "CRE-B", "ACT-INCONNUE-2", null);
         activiteInReferentiel(request, "ACT-CONNU");
 
-        PreparedSc03Scenario scenario = service.prepare(request);
+        PreparedDatasetScenario scenario = service.prepare(request);
 
         assertEquals(0, scenario.planningRequest().creneaux().size(),
                 "Aucun créneau valide : le solveur reçoit une liste vide");
@@ -170,7 +170,7 @@ class ScenarioSc03PreparationServicePhase2Test {
         activiteInReferentiel(request, "ACT-A");
         activiteInReferentiel(request, "ACT-B");
 
-        PreparedSc03Scenario scenario = service.prepare(request);
+        PreparedDatasetScenario scenario = service.prepare(request);
 
         assertEquals(3, scenario.planningRequest().creneaux().size());
         assertEquals(0, scenario.ignoredCreneaux().getActiviteInconnue());

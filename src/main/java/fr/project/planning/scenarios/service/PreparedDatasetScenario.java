@@ -9,9 +9,9 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * PreparedSc03Scenario — objet de transport interne pour SC-03.
+ * PreparedDatasetScenario — objet de transport interne pour SC-03.
  *
- * Contient les données préparées par ScenarioSc03PreparationService
+ * Contient les données préparées par ScenarioDatasetPreparationService
  * avant l'appel au solveur.
  *
  * Différences vs PreparedSc01Scenario :
@@ -21,7 +21,7 @@ import java.util.Set;
  * Phase 9 — ignoredCreneaux : compteurs pré-résolution produits par la couche de préparation.
  * Lot S8.4 — alerts : ce que la préparation a constaté ou décidé, jusqu'ici confiné aux journaux.
  */
-public record PreparedSc03Scenario(
+public record PreparedDatasetScenario(
         PlanningRequest planningRequest,
         String scenarioType,
         Set<String> posteVirtuelIds,
@@ -36,7 +36,7 @@ public record PreparedSc03Scenario(
      * ne les compte pas. Ils sont conservés pour être <strong>restitués</strong>, l'appelant
      * rechargeant la réponse pour réafficher son planning complet.</p>
      */
-    public PreparedSc03Scenario {
+    public PreparedDatasetScenario {
         marqueursRepos = marqueursRepos == null ? List.of() : List.copyOf(marqueursRepos);
         alerts = alerts == null ? List.of() : List.copyOf(alerts);
     }

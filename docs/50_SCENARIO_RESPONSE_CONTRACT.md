@@ -336,7 +336,7 @@ Exemple :
 
 ### 4.4 Créneaux ignorés (`ignoredCreneaux`)
 
-Ces compteurs sont calculés **en pré-résolution**, dans la couche de préparation du scénario (`ScenarioSc03PreparationService`), à partir des DTO bruts reçus de WinDev — avant tout appel au solveur.
+Ces compteurs sont calculés **en pré-résolution**, dans la couche de préparation du scénario (`ScenarioDatasetPreparationService`), à partir des DTO bruts reçus de WinDev — avant tout appel au solveur.
 
 | Champ                        | Type    | Implémenté | Description                                           |
 | ---------------------------- | ------- | :--------: | ----------------------------------------------------- |

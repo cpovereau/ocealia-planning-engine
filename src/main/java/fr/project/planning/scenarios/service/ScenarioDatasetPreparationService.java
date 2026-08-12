@@ -24,6 +24,7 @@ import fr.project.planning.scenarios.dto.CreneauIgnoreDTO;
 import fr.project.planning.scenarios.dto.IgnoredCreneauxDTO;
 import fr.project.planning.scenarios.dto.MotifCreneauIgnore;
 import fr.project.planning.scenarios.dto.Sc03ScenarioRequestDTO;
+import fr.project.planning.scenarios.dto.ScenarioDatasetRequest;
 import fr.project.planning.scenarios.dto.input.CreneauInputDTO;
 import fr.project.planning.scenarios.dto.input.PosteVirtuelInputDTO;
 import fr.project.planning.scenarios.dto.input.SalarieInputDTO;
@@ -43,20 +44,29 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * ScenarioSc03PreparationService
+ * ScenarioDatasetPreparationService
  *
- * Prépare toutes les données nécessaires avant l'appel au solveur pour SC-03.
+ * <p>Prépare toutes les données nécessaires avant l'appel au solveur pour un scénario
+ * <strong>dataset-driven</strong> — un scénario dont les créneaux sont reçus, non générés.</p>
  *
- * Différences vs SC-01 :
- * - les créneaux viennent du dataSet (pas d'un builder SC-01)
- * - le référentiel est construit depuis dataSet.referentiels (pas hardcodé "travail")
- * - pas de ressource cible unique : toutes les ressources du dataSet sont incluses
- * - PlanningContext construit avec les defaults (idem SC-01)
+ * <p>Différences vs SC-01 :</p>
+ * <ul>
+ *   <li>les créneaux viennent du dataSet (pas d'un builder SC-01) ;</li>
+ *   <li>le référentiel est construit depuis dataSet.referentiels (pas hardcodé "travail") ;</li>
+ *   <li>pas de ressource cible unique : toutes les ressources du dataSet sont incluses ;</li>
+ *   <li>PlanningContext construit avec les defaults (idem SC-01).</li>
+ * </ul>
+ *
+ * <p><strong>[Lot S1 de SC-02]</strong> Cette classe s'appelait {@code ScenarioSc03PreparationService}
+ * et ne servait qu'à SC-03. Tout ce qu'elle fait — référentiel, partitions, marqueurs de repos,
+ * cadre réglementaire, diagnostics — vaut à l'identique pour SC-02. Un seul point les sépare : ce
+ * qu'ils font de l'affectation déjà portée par un créneau d'entrée, que chacun fournit sous forme
+ * de {@link PolitiqueAffectationCreneau}. Le reste est écrit une fois.</p>
  */
 @Service
-public class ScenarioSc03PreparationService {
+public class ScenarioDatasetPreparationService {
 
-    private static final Logger log = LoggerFactory.getLogger(ScenarioSc03PreparationService.class);
+    private static final Logger log = LoggerFactory.getLogger(ScenarioDatasetPreparationService.class);
 
     private final ScenarioResourceMapper resourceMapper;
     private final ScenarioCreneauMapper creneauMapper;
@@ -64,13 +74,17 @@ public class ScenarioSc03PreparationService {
     private final ScenarioRegulatoryParametersMapper regulatoryMapper =
             new ScenarioRegulatoryParametersMapper();
 
-    public ScenarioSc03PreparationService(ScenarioResourceMapper resourceMapper,
+    public ScenarioDatasetPreparationService(ScenarioResourceMapper resourceMapper,
                                           ScenarioCreneauMapper creneauMapper) {
         this.resourceMapper = resourceMapper;
         this.creneauMapper  = creneauMapper;
     }
 
-    public PreparedSc03Scenario prepare(Sc03ScenarioRequestDTO request) {
+    /**
+     * Prépare SC-03 : aucune affectation d'entrée n'est reprise, tout créneau reste une variable
+     * de décision. Comportement historique du moteur, inchangé.
+     */
+    public PreparedDatasetScenario prepare(Sc03ScenarioRequestDTO request) {
         Objects.requireNonNull(request, "request");
 
         // [Phase 1 visibilité] Signalement des champs SC-03 reçus mais non exploités
@@ -88,6 +102,23 @@ public class ScenarioSc03PreparationService {
             throw new IllegalArgumentException("Seul SC-03 est supporté par cet endpoint.");
         }
 
+        return preparer(request, "SC-03", PolitiqueAffectationCreneau.AUCUNE);
+    }
+
+    /**
+     * Prépare un scénario dataset-driven quelconque.
+     *
+     * @param request   contexte et jeu de données ; les paramètres propres au scénario restent
+     *                  chez l'appelant
+     * @param scenario  étiquette du scénario, utilisée dans les journaux et les alertes
+     * @param politique ce que le scénario fait de l'affectation déjà portée par un créneau
+     */
+    public PreparedDatasetScenario preparer(ScenarioDatasetRequest request,
+                                            String scenario,
+                                            PolitiqueAffectationCreneau politique) {
+        Objects.requireNonNull(request, "request");
+        Objects.requireNonNull(politique, "politique");
+
         if (request.getPlanningContext() == null) {
             throw new IllegalArgumentException("planningContext est requis.");
         }
@@ -104,32 +135,32 @@ public class ScenarioSc03PreparationService {
         //   Ces vérifications remplacent les NPE silencieuses qui se produiraient plus loin dans la méthode.
         //   dateDebut et dateFin sont déclarées ici pour être réutilisées par la partition Phase 3.
         if (request.getPlanningContext().getHorizon() == null) {
-            throw new IllegalArgumentException("[SC-03] planningContext.horizon est requis.");
+            throw new IllegalArgumentException("[" + scenario + "] planningContext.horizon est requis.");
         }
         LocalDate dateDebut = request.getPlanningContext().getHorizon().getDateDebut();
         LocalDate dateFin   = request.getPlanningContext().getHorizon().getDateFin();
         if (dateDebut == null) {
-            throw new IllegalArgumentException("[SC-03] planningContext.horizon.dateDebut est requise.");
+            throw new IllegalArgumentException("[" + scenario + "] planningContext.horizon.dateDebut est requise.");
         }
         if (dateFin == null) {
-            throw new IllegalArgumentException("[SC-03] planningContext.horizon.dateFin est requise.");
+            throw new IllegalArgumentException("[" + scenario + "] planningContext.horizon.dateFin est requise.");
         }
         if (dateDebut.isAfter(dateFin)) {
             throw new IllegalArgumentException(
-                    "[SC-03] planningContext.horizon incohérent : dateDebut (" + dateDebut + ") est postérieure à dateFin (" + dateFin + ").");
+                    "[" + scenario + "] planningContext.horizon incohérent : dateDebut (" + dateDebut + ") est postérieure à dateFin (" + dateFin + ").");
         }
 
         // [Phase 7] Guard — referentiels requis
         //   Sans référentiel, toReferentiel() retournerait neutre() silencieusement et tous les créneaux
         //   seraient exclus comme activité inconnue — comportement trompeur non signalé.
         if (request.getDataSet().getReferentiels() == null) {
-            throw new IllegalArgumentException("[SC-03] dataSet.referentiels est requis.");
+            throw new IllegalArgumentException("[" + scenario + "] dataSet.referentiels est requis.");
         }
 
         // [S8.4] Ce que la préparation constate part désormais dans les deux canaux à la fois :
         //        le journal du serveur, et les `alerts` de la réponse. SC-03 émettait `List.of()`
         //        en dur — tout ce qui suit n'atteignait donc jamais l'appelant.
-        CollecteurAlertes alertes = new CollecteurAlertes("SC-03");
+        CollecteurAlertes alertes = new CollecteurAlertes(scenario);
         List<CreneauIgnoreDTO> creneauxSignales = new ArrayList<>();
 
         // 1. Référentiel d'activités — construit en premier pour filtrer les créneaux avant solveur
@@ -140,7 +171,7 @@ public class ScenarioSc03PreparationService {
         // [Phase 7] WARN — référentiel vide
         if (request.getDataSet().getReferentiels().getActivites() == null
                 || request.getDataSet().getReferentiels().getActivites().isEmpty()) {
-            log.warn("[SC-03] dataSet.referentiels.activites est vide — tous les créneaux seront exclus comme activité inconnue");
+            log.warn("[" + scenario + "] dataSet.referentiels.activites est vide — tous les créneaux seront exclus comme activité inconnue");
         }
 
         // 1 bis. [S7.9b] Marqueurs de repos hebdomadaire — extraits avant toute autre partition.
@@ -166,11 +197,11 @@ public class ScenarioSc03PreparationService {
             // [Phase 7] Guards — champs horaires requis (NPE garantie sinon dans calculerDureeMinutes)
             if (dto.getHeureDebut() == null) {
                 throw new IllegalArgumentException(
-                        "[SC-03] créneau id='" + dto.getId() + "' : heureDebut est requise.");
+                        "[" + scenario + "] créneau id='" + dto.getId() + "' : heureDebut est requise.");
             }
             if (dto.getHeureFin() == null) {
                 throw new IllegalArgumentException(
-                        "[SC-03] créneau id='" + dto.getId() + "' : heureFin est requise.");
+                        "[" + scenario + "] créneau id='" + dto.getId() + "' : heureFin est requise.");
             }
 
             // [S7.8] La règle de repli vit dans CodeActivite ; ici on ne fait que la diagnostiquer.
@@ -182,18 +213,18 @@ public class ScenarioSc03PreparationService {
             if (!estFallback && codeUtilise != null
                     && dto.getActivite() != null && !dto.getActivite().isBlank()
                     && !codeUtilise.equals(dto.getActivite())) {
-                log.warn("[SC-03] créneau id='{}' : codeActiviteId='{}' et activite='{}' discordants — activite ignorée",
+                log.warn("[" + scenario + "] créneau id='{}' : codeActiviteId='{}' et activite='{}' discordants — activite ignorée",
                         dto.getId(), codeUtilise, dto.getActivite());
             }
 
             if (estFallback) {
-                log.warn("[SC-03] créneau id='{}' : codeActiviteId absent — fallback sur activite='{}' utilisé comme clé référentiel",
+                log.warn("[" + scenario + "] créneau id='{}' : codeActiviteId absent — fallback sur activite='{}' utilisé comme clé référentiel",
                         dto.getId(), codeUtilise);
             }
 
             if (codeUtilise == null || referentiel.getByCode(codeUtilise) == null) {
                 activiteInconnue++;
-                log.warn("[SC-03] créneau id='{}' : activité '{}' absente du référentiel — créneau exclu avant solveur",
+                log.warn("[" + scenario + "] créneau id='{}' : activité '{}' absente du référentiel — créneau exclu avant solveur",
                         dto.getId(), codeUtilise);
                 creneauxSignales.add(CreneauIgnoreDTO.exclu(
                         dto.getId(), dto.getDate(), MotifCreneauIgnore.ACTIVITE_INCONNUE,
@@ -213,7 +244,7 @@ public class ScenarioSc03PreparationService {
         for (CreneauInputDTO dto : creneauxValides) {
             if (dto.getDate() != null && (dto.getDate().isBefore(dateDebut) || dto.getDate().isAfter(dateFin))) {
                 horsHorizon++;
-                log.warn("[SC-03] créneau id='{}' : date '{}' hors horizon [{} — {}] — créneau exclu avant solveur",
+                log.warn("[" + scenario + "] créneau id='{}' : date '{}' hors horizon [{} — {}] — créneau exclu avant solveur",
                         dto.getId(), dto.getDate(), dateDebut, dateFin);
                 creneauxSignales.add(CreneauIgnoreDTO.exclu(
                         dto.getId(), dto.getDate(), MotifCreneauIgnore.HORS_HORIZON,
@@ -241,11 +272,27 @@ public class ScenarioSc03PreparationService {
                             + "problème vide.");
         }
 
-        // 4. Créneaux — activité connue ET dans l'horizon
-        List<Creneau> creneaux = creneauMapper.toCreneaux(creneauxDansHorizon);
-
-        // 5. Ressources (salariés + postes virtuels + RessourceNonAffectee)
+        // 4. Ressources (salariés + postes virtuels + RessourceNonAffectee)
+        //    [S1 de SC-02] Construites avant les créneaux : figer un créneau exige les instances
+        //    du value range, une copie distincte sortirait du domaine de la variable de décision.
         List<Ressource> ressources = resourceMapper.toRessources(request.getDataSet());
+        Map<String, Ressource> ressourcesParId = new HashMap<>();
+        for (Ressource r : ressources) {
+            if (r.getId() != null) {
+                ressourcesParId.putIfAbsent(r.getId(), r);
+            }
+        }
+
+        // 5. Créneaux — activité connue ET dans l'horizon.
+        //    [S1 de SC-02] Chaque créneau passe ensuite sous la politique du scénario, seule à
+        //    savoir ce qu'il faut faire de l'affectation déjà portée par l'entrée : SC-03 l'ignore,
+        //    SC-02 fige l'existant et ne libère que les créneaux de l'absent.
+        List<Creneau> creneaux = new ArrayList<>(creneauxDansHorizon.size());
+        for (CreneauInputDTO dto : creneauxDansHorizon) {
+            Creneau creneau = creneauMapper.toCreneau(dto);
+            politique.appliquer(dto, creneau, ressourcesParId);
+            creneaux.add(creneau);
+        }
 
 
         // 6. Indisponibilités
@@ -272,12 +319,12 @@ public class ScenarioSc03PreparationService {
         RegulatoryParameters regulatoryParameters = regulatoryMapper.toRegulatoryParameters(
                 request.getPlanningContext().getRegulatoryParameters(),
                 CalendrierJoursFeries.declaresParLesCreneaux(creneaux),
-                "SC-03",
+                scenario,
                 alertes);
 
         // 7 bis. [S7.9b] Calendrier de repos hebdomadaire — repos déclarés par l'appelant,
         //        complétés semaine par semaine par le repli samedi/dimanche.
-        ReposPrepares repos = preparerRepos(marqueursRepos, referentiel, ressources,
+        ReposPrepares repos = preparerRepos(scenario, marqueursRepos, referentiel, ressources,
                 planningContext.getHorizonTemporel(), creneauxSignales);
 
         // 8. Planning Request
@@ -341,7 +388,7 @@ public class ScenarioSc03PreparationService {
         IgnoredCreneauxDTO ignoredCreneaux = new IgnoredCreneauxDTO(
                 horsHorizon, aucuneRessourceDansDataset, activiteInconnue, creneauxSignales);
 
-        return new PreparedSc03Scenario(
+        return new PreparedDatasetScenario(
                 planningRequest,
                 request.getScenarioType(),
                 posteVirtuelIds,
@@ -363,6 +410,7 @@ public class ScenarioSc03PreparationService {
     private record ReposPrepares(List<Creneau> marqueurs, List<ReposHebdomadaire> calendrier) {}
 
     private ReposPrepares preparerRepos(
+            String scenario,
             List<CreneauInputDTO> marqueursDto,
             ReferentielComptabiliteActivite referentiel,
             List<Ressource> ressources,
@@ -381,7 +429,7 @@ public class ScenarioSc03PreparationService {
             String salarieId = dto.getRessourceAffecteeId();
 
             if (salarieId == null || salarieId.isBlank()) {
-                log.warn("[SC-03] créneau id='{}' : repos hebdomadaire sans ressourceAffecteeId — "
+                log.warn("[" + scenario + "] créneau id='{}' : repos hebdomadaire sans ressourceAffecteeId — "
                         + "impossible de savoir de qui c'est le repos, marqueur ignoré", dto.getId());
                 creneauxSignales.add(CreneauIgnoreDTO.exclu(
                         dto.getId(), dto.getDate(), MotifCreneauIgnore.MARQUEUR_REPOS_NON_RATTACHE,
@@ -391,7 +439,7 @@ public class ScenarioSc03PreparationService {
             }
             Ressource ressource = ressourcesParId.get(salarieId);
             if (!(ressource instanceof SalarieReel)) {
-                log.warn("[SC-03] créneau id='{}' : repos hebdomadaire rattaché à '{}', absent du "
+                log.warn("[" + scenario + "] créneau id='{}' : repos hebdomadaire rattaché à '{}', absent du "
                         + "dataset ou non salarié — marqueur ignoré", dto.getId(), salarieId);
                 creneauxSignales.add(CreneauIgnoreDTO.exclu(
                         dto.getId(), dto.getDate(), MotifCreneauIgnore.MARQUEUR_REPOS_NON_RATTACHE,
@@ -416,7 +464,7 @@ public class ScenarioSc03PreparationService {
                 CalendrierReposHebdomadaire.depuisLesMarqueurs(marqueurs, referentiel),
                 horizon);
 
-        log.info("[SC-03] repos hebdomadaire : {} marqueur(s) déclaré(s), {} jour(s) de repos au "
+        log.info("[" + scenario + "] repos hebdomadaire : {} marqueur(s) déclaré(s), {} jour(s) de repos au "
                 + "calendrier pour {} salarié(s)", marqueurs.size(), calendrier.size(), salarieIds.size());
 
         return new ReposPrepares(marqueurs, calendrier);

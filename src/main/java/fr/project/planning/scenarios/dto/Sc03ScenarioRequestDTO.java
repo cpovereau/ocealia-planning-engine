@@ -18,7 +18,7 @@ import jakarta.validation.constraints.NotNull;
  * Phase 4.1 : requestId + metadata obligatoires.
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class Sc03ScenarioRequestDTO {
+public class Sc03ScenarioRequestDTO implements ScenarioDatasetRequest {
 
     @NotBlank(message = "requestId est obligatoire")
     private String requestId;
