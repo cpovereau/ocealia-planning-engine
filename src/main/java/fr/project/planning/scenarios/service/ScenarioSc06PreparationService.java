@@ -20,6 +20,7 @@ import fr.project.planning.scenarios.dto.Sc06ScenarioRequestDTO;
 import fr.project.planning.scenarios.dto.input.CreneauInputDTO;
 import fr.project.planning.scenarios.dto.request.BesoinCreneauDTO;
 import fr.project.planning.scenarios.dto.request.BesoinDTO;
+import fr.project.planning.scenarios.mapper.CoefficientsPenibiliteMapper;
 import fr.project.planning.scenarios.mapper.ScenarioCreneauMapper;
 import fr.project.planning.scenarios.alerte.CollecteurAlertes;
 import fr.project.planning.scenarios.mapper.ScenarioRegulatoryParametersMapper;
@@ -142,24 +143,26 @@ public class ScenarioSc06PreparationService {
         StrategieScoring strategieScoring = StrategieScoring.valueOf(
                 request.getPlanningContext().getStrategieScoring());
 
+        // [S8.4] SC-06 refuse plutôt qu'il n'ignore : ses garde-fous lèvent des exceptions, et
+        //        aucun créneau n'est écarté en silence. Restait le cadre réglementaire, seul
+        //        endroit où le moteur décide à la place de l'appelant — c'est ce que ce collecteur
+        //        rend visible.
+        CollecteurAlertes alertes = new CollecteurAlertes("SC-06");
+
         PlanningContext planningContext = new PlanningContext(
                 ObjectifResolution.ANALYSER_LE_MANQUE,
                 strategieScoring,
                 request.getPlanningContext().getHorizon().getDateDebut(),
                 request.getPlanningContext().getHorizon().getDateFin(),
                 ResolutionType.PLANNING_GLOBAL,
-                HypotheseHistorique.NEUTRE
+                HypotheseHistorique.NEUTRE,
+                // [Équité L1] Ce que vaut une heure selon quand elle est travaillée.
+                CoefficientsPenibiliteMapper.depuis(request.getPlanningContext(), "SC-06", alertes)
         );
 
         List<Creneau> tousCreneaux = new ArrayList<>(planningFige.size() + creneauxBesoin.size());
         tousCreneaux.addAll(planningFige);
         tousCreneaux.addAll(creneauxBesoin);
-
-        // [S8.4] SC-06 refuse plutôt qu'il n'ignore : ses garde-fous lèvent des exceptions, et
-        //        aucun créneau n'est écarté en silence. Restait le cadre réglementaire, seul
-        //        endroit où le moteur décide à la place de l'appelant — c'est ce que ce collecteur
-        //        rend visible.
-        CollecteurAlertes alertes = new CollecteurAlertes("SC-06");
 
         // [S8.0] Le calendrier déclaré au contrat fait autorité ; à défaut, les fériés restent
         // ceux que les créneaux déclarent, planning figé et besoin confondus (S7.9a).

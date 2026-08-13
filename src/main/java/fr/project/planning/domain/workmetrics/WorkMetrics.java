@@ -20,6 +20,27 @@ public class WorkMetrics {
     // Phase 8 — inadéquation nuit : créneaux de nuit affectés à un salarié non-nuit
     private int nbCreneauxNuitNonNuit;
 
+    /*
+     * [Équité L1] Minutes réparties par dominance — une minute n'appartient qu'à une catégorie.
+     *
+     * Distinctes de minutesNuit et minutesJourFerie ci-dessus, qui comptent les intersections
+     * brutes et se recouvrent : une nuit du dimanche y figure dans les deux. Ici elle ne compte
+     * qu'une fois, dans la dominante. Les quatre volumes s'additionnent exactement à
+     * minutesTravaillees : toute minute est quelque part, et nulle part deux fois.
+     */
+    private int minutesNuitDominante;
+    private int minutesDimancheDominante;
+    private int minutesFerieDominante;
+    private int minutesOrdinaires;
+
+    /**
+     * [Équité L1] Minutes ramenées à l'unité commune de l'heure ordinaire.
+     *
+     * <p>Fractionnaire par nature : un coefficient de 1,5 sur 47 minutes ne tombe pas juste. La
+     * mesure sert à comparer, pas à facturer.</p>
+     */
+    private double minutesPonderees;
+
     public WorkMetrics(String ressourceId) {
         this.ressourceId = ressourceId;
     }
@@ -57,4 +78,19 @@ public class WorkMetrics {
     // Phase 8 — inadéquation nuit
     public int getNbCreneauxNuitNonNuit() { return nbCreneauxNuitNonNuit; }
     public void incNuitNonNuit() { this.nbCreneauxNuitNonNuit++; }
+
+    // [Équité L1] Répartition par dominance et mesure pondérée
+    public int getMinutesNuitDominante() { return minutesNuitDominante; }
+    public int getMinutesDimancheDominante() { return minutesDimancheDominante; }
+    public int getMinutesFerieDominante() { return minutesFerieDominante; }
+    public int getMinutesOrdinaires() { return minutesOrdinaires; }
+    public double getMinutesPonderees() { return minutesPonderees; }
+
+    public void addPenibilites(int nuit, int dimanche, int ferie, int ordinaires, double ponderees) {
+        this.minutesNuitDominante += nuit;
+        this.minutesDimancheDominante += dimanche;
+        this.minutesFerieDominante += ferie;
+        this.minutesOrdinaires += ordinaires;
+        this.minutesPonderees += ponderees;
+    }
 }

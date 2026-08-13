@@ -29,6 +29,7 @@ import fr.project.planning.scenarios.dto.ScenarioDatasetRequest;
 import fr.project.planning.scenarios.dto.input.CreneauInputDTO;
 import fr.project.planning.scenarios.dto.input.PosteVirtuelInputDTO;
 import fr.project.planning.scenarios.dto.input.SalarieInputDTO;
+import fr.project.planning.scenarios.mapper.CoefficientsPenibiliteMapper;
 import fr.project.planning.scenarios.mapper.ScenarioCreneauMapper;
 import fr.project.planning.scenarios.mapper.ScenarioRegulatoryParametersMapper;
 import fr.project.planning.scenarios.mapper.ScenarioResourceMapper;
@@ -312,7 +313,9 @@ public class ScenarioDatasetPreparationService {
                 request.getPlanningContext().getHorizon().getDateDebut(),
                 request.getPlanningContext().getHorizon().getDateFin(),
                 ResolutionType.PLANNING_GLOBAL,
-                HypotheseHistorique.NEUTRE
+                HypotheseHistorique.NEUTRE,
+                // [Équité L1] Ce que vaut une heure selon quand elle est travaillée.
+                CoefficientsPenibiliteMapper.depuis(request.getPlanningContext(), scenario, alertes)
         );
 
         // 7. Paramètres réglementaires — [S8.0] le calendrier déclaré au contrat fait autorité ;

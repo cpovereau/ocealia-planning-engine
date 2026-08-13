@@ -13,6 +13,14 @@ public class PlanningContextDTO {
      */
     private RegulatoryParametersDTO regulatoryParameters;
 
+    /**
+     * [Équité L1] Ce que vaut une heure selon quand elle est travaillée.
+     *
+     * <p>Facultatif. Absent, aucune pondération n'est appliquée — la mesure pondérée vaut alors
+     * les heures brutes — et le moteur le signale plutôt que d'inventer une échelle.</p>
+     */
+    private CoefficientsPenibiliteDTO coefficientsPenibilite;
+
     public HorizonDTO getHorizon() {
         return horizon;
     }
@@ -35,5 +43,13 @@ public class PlanningContextDTO {
 
     public void setRegulatoryParameters(RegulatoryParametersDTO regulatoryParameters) {
         this.regulatoryParameters = regulatoryParameters;
+    }
+
+    public CoefficientsPenibiliteDTO getCoefficientsPenibilite() {
+        return coefficientsPenibilite;
+    }
+
+    public void setCoefficientsPenibilite(CoefficientsPenibiliteDTO coefficientsPenibilite) {
+        this.coefficientsPenibilite = coefficientsPenibilite;
     }
 }

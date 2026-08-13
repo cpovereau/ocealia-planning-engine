@@ -673,7 +673,50 @@ components:
           $ref: '#/components/schemas/RegulatoryParameters'
           description: |
             [S8.0] Cadre réglementaire de la résolution. **Facultatif.**
+        coefficientsPenibilite:
+          $ref: '#/components/schemas/CoefficientsPenibilite'
+          description: |
+            [Équité L1] Ce que vaut une heure selon quand elle est travaillée. **Facultatif.**
       required: [strategieScoring, horizon]
+
+    CoefficientsPenibilite:
+      type: object
+      description: |
+        [Équité L1] Ce que vaut une heure selon quand elle est travaillée.
+
+        Sert à rendre comparables des heures qui ne le sont pas : **on ne juge l'équité qu'à
+        pénibilité équivalente**. Huit heures un mardi et huit heures un dimanche ne sont pas la
+        même chose, et ne doivent pas entrer dans la même addition sans être ramenées à une unité
+        commune. **L'heure ordinaire est cette unité** : son coefficient vaut 1 et ne se transmet
+        pas.
+
+        **Une minute ne relève que d'une catégorie** — celle que la dominance retient,
+        `NUIT > DIMANCHE > FERIE` — de sorte que ces coefficients ne se multiplient jamais entre
+        eux. Une nuit du dimanche est pondérée comme une nuit, une fois.
+
+        ⚠️ **Chaque coefficient absent vaut 1.** Le bloc entier absent laisse `heuresPonderees`
+        égal à `heuresTravaillees` : le moteur n'invente pas une échelle que seule la simulation
+        peut établir, et **ne le signale pas** — c'est le cas de toutes les demandes tant que les
+        coefficients ne sont pas calibrés, et une alerte sur cent pour cent des réponses ne serait
+        pas un signal. En revanche, un bloc **transmis** qui ne pondère rien lève
+        `COEFFICIENTS_PENIBILITE_SANS_EFFET` : là, quelqu'un a cru configurer quelque chose.
+
+        Une valeur négative est **refusée** (`422 BUSINESS_ERROR`) : une pénibilité ne s'allège
+        pas. Une valeur inférieure à 1 reste acceptée — c'est un choix d'échelle, pas une
+        incohérence.
+      properties:
+        nuit:
+          type: number
+          format: double
+          description: Ce que vaut une heure de nuit, en heures ordinaires.
+        dimanche:
+          type: number
+          format: double
+          description: Ce que vaut une heure de dimanche non nocturne.
+        ferie:
+          type: number
+          format: double
+          description: Ce que vaut une heure de jour férié ni nocturne ni dominicale.
 
     RegulatoryParameters:
       type: object
@@ -1797,6 +1840,23 @@ components:
         nbCreneauxNuitNonNuit:
           type: integer
           description: "[Phase 8] Créneaux de nuit affectés à un non-travailleur de nuit"
+        heuresPonderees:
+          type: number
+          format: double
+          description: |
+            [Équité L1] Charge ramenée à l'unité commune de l'heure ordinaire.
+
+            Chaque minute est pondérée par le coefficient de **sa seule** catégorie de pénibilité —
+            celle que la dominance retient — de sorte qu'une nuit du dimanche n'est jamais comptée
+            deux fois. C'est cette grandeur, et non `heuresTravaillees`, qui rend deux personnes
+            comparables.
+
+            ⚠️ **Sans `planningContext.coefficientsPenibilite`, elle vaut exactement
+            `heuresTravaillees`.** Deux valeurs identiques ne veulent donc pas dire « aucune
+            pénibilité » mais « aucune pondération demandée ».
+
+            À ne pas confondre avec `heuresNuit` et `heuresJourFerie`, qui comptent des
+            intersections **brutes et se recouvrent** : une nuit du dimanche figure dans les deux.
       required: [resourceId]
 
     WorkMetricsGlobal:

@@ -33,6 +33,10 @@ public final class PlanningContext implements Serializable {
     private final DominancePenibilites dominancePenibilites;
     private final OptionsExplicabilite optionsExplicabilite;
 
+    /** [Équité L1] Ce que vaut une heure selon quand elle est travaillée. Neutre par défaut. */
+    private final CoefficientsPenibilite coefficientsPenibilite;
+
+    /** Constructeur historique — coefficients de pénibilité neutres. */
     public PlanningContext(
             ObjectifResolution objectif,
             StrategieScoring strategieScoring,
@@ -45,6 +49,26 @@ public final class PlanningContext implements Serializable {
             DominancePenibilites dominancePenibilites,
             OptionsExplicabilite optionsExplicabilite
     ) {
+        this(objectif, strategieScoring, resolutionType, hypotheseHistorique, horizonTemporel,
+                strategieCouverture, seuilsDeTolerance, penalites, dominancePenibilites,
+                optionsExplicabilite, CoefficientsPenibilite.neutres());
+    }
+
+    public PlanningContext(
+            ObjectifResolution objectif,
+            StrategieScoring strategieScoring,
+            ResolutionType resolutionType,
+            HypotheseHistorique hypotheseHistorique,
+            HorizonTemporel horizonTemporel,
+            StrategieCouverture strategieCouverture,
+            SeuilsDeTolerance seuilsDeTolerance,
+            Penalites penalites,
+            DominancePenibilites dominancePenibilites,
+            OptionsExplicabilite optionsExplicabilite,
+            CoefficientsPenibilite coefficientsPenibilite
+    ) {
+        this.coefficientsPenibilite = coefficientsPenibilite == null
+                ? CoefficientsPenibilite.neutres() : coefficientsPenibilite;
         this.objectif = Objects.requireNonNull(objectif);
         this.strategieScoring = Objects.requireNonNull(strategieScoring);
         this.resolutionType = Objects.requireNonNull(resolutionType);
@@ -91,7 +115,12 @@ public final class PlanningContext implements Serializable {
 
     public DominancePenibilites getDominancePenibilites() {
     return dominancePenibilites;
-    }   
+    }
+
+    /** [Équité L1] Ce que vaut une heure selon quand elle est travaillée. Jamais {@code null}. */
+    public CoefficientsPenibilite getCoefficientsPenibilite() {
+        return coefficientsPenibilite;
+    }
 
     public OptionsExplicabilite getOptionsExplicabilite() {
         return optionsExplicabilite;
@@ -166,6 +195,20 @@ public PlanningContext(
             ResolutionType resolutionType,
             HypotheseHistorique hypotheseHistorique
         ) {
+        this(objectif, strategieScoring, dateDebut, dateFin, resolutionType, hypotheseHistorique,
+                CoefficientsPenibilite.neutres());
+    }
+
+    /** [Équité L1] Même contexte par défaut, avec les coefficients transmis par l'appelant. */
+    public PlanningContext(
+            ObjectifResolution objectif,
+            StrategieScoring strategieScoring,
+            LocalDate dateDebut,
+            LocalDate dateFin,
+            ResolutionType resolutionType,
+            HypotheseHistorique hypotheseHistorique,
+            CoefficientsPenibilite coefficientsPenibilite
+        ) {
         this(
             objectif,
             strategieScoring,
@@ -176,7 +219,8 @@ public PlanningContext(
             defaultSeuilsDeTolerance(),
             defaultPenalites(),
             defaultDominancePenibilites(),
-            defaultOptionsExplicabilite()
+            defaultOptionsExplicabilite(),
+            coefficientsPenibilite
         );
     }
 }

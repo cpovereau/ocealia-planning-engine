@@ -207,6 +207,31 @@ Les WorkMetrics :
 | `nbDimanchesTravailles`         | integer | Nombre de dimanches travaillés                                   |
 | `maxJoursConsecutifsObservees`  | integer | Séquence max de jours consécutifs travaillés                     |
 | `maxNuitsConsecutivesObservees` | integer | Séquence max de nuits consécutives                               |
+| `nbCreneauxNuitNonNuit`         | integer | Créneaux de nuit confiés à un salarié non déclaré travailleur de nuit |
+| `heuresPonderees`               | double  | Charge ramenée à l'unité de l'heure ordinaire — voir §3.2 bis    |
+
+### 3.2 bis `heuresPonderees` — la seule mesure comparable entre deux personnes
+
+> Inscrit au contrat au **lot L1 du chantier équité**. Cadrage : `92_CADRAGE_WORKMETRICS_EQUITE.md`.
+
+Huit heures un mardi et huit heures un dimanche ne sont pas la même chose. **On ne juge l'équité
+qu'à pénibilité équivalente** : `heuresPonderees` ramène la charge à une unité commune — l'heure
+ordinaire — en pondérant chaque minute par le coefficient de **sa seule** catégorie de pénibilité,
+celle que la dominance `NUIT > DIMANCHE > FERIE` retient. Une nuit du dimanche n'est donc jamais
+comptée deux fois.
+
+C'est cette grandeur, et non `heuresTravaillees`, qui rend deux personnes comparables.
+
+> ⚠️ **Sans `planningContext.coefficientsPenibilite`, elle vaut exactement `heuresTravaillees`.**
+> Le moteur n'invente pas une échelle que seule la simulation peut établir. Deux valeurs
+> identiques ne veulent donc pas dire « aucune pénibilité » mais « aucune pondération demandée ».
+> Ce silence est délibéré : c'est le cas de toutes les demandes tant que les coefficients ne sont
+> pas calibrés, et une alerte sur cent pour cent des réponses ne serait pas un signal. Un bloc
+> **transmis** qui ne pondère rien, en revanche, lève `COEFFICIENTS_PENIBILITE_SANS_EFFET`.
+
+**À ne pas confondre avec `heuresNuit` et `heuresJourFerie`**, qui comptent des intersections
+brutes et **se recouvrent** : une nuit du dimanche figure dans les deux. Elles décrivent une
+exposition ; `heuresPonderees` mesure une charge.
 
 Exemple :
 

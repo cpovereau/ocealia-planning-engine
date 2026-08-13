@@ -135,5 +135,22 @@ public enum AlertCode {
      * moteur refuserait de produire — sans quoi il lirait un score parfait sur un planning qui ne
      * l'est pas.</p>
      */
-    REPOS_DOMINICAL_TRAVAILLE
+    REPOS_DOMINICAL_TRAVAILLE,
+
+    /**
+     * Un bloc {@code coefficientsPenibilite} est transmis, mais aucun coefficient ne pondère quoi
+     * que ce soit (lot L1 du chantier équité).
+     *
+     * <p>Quelqu'un a cru configurer une échelle, et n'en a configuré aucune : les heures pondérées
+     * valent les heures brutes, et la mesure compare des durées là où l'appelant croit comparer
+     * des pénibilités.</p>
+     *
+     * <p><strong>L'absence complète du bloc ne déclenche rien</strong>, elle. C'est le cas de
+     * toutes les demandes tant que les coefficients ne sont pas calibrés, et une alerte sur cent
+     * pour cent des réponses n'est pas un signal. L'information est portée là où elle se vérifie :
+     * {@code heuresPonderees} vaut alors exactement {@code heuresTravaillees}.</p>
+     *
+     * <p>{@code INFO} et non {@code WARNING} : c'est une configuration valide, pas une anomalie.</p>
+     */
+    COEFFICIENTS_PENIBILITE_SANS_EFFET
 }

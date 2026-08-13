@@ -581,7 +581,9 @@
         "heuresReposHebdoTravaille",
         "nbDimanchesTravailles",
         "maxJoursConsecutifsObservees",
-        "maxNuitsConsecutivesObservees"
+        "maxNuitsConsecutivesObservees",
+        "nbCreneauxNuitNonNuit",
+        "heuresPonderees"
       ],
       "properties": {
         "resourceId": {
@@ -599,7 +601,8 @@
           "type": "number"
         },
         "heuresNuit": {
-          "type": "number"
+          "type": "number",
+          "description": "Heures situées dans la plage de nuit. Se recoupe avec heuresJourFerie et le dimanche : une nuit du dimanche est comptée dans les deux. Pour une mesure sans recouvrement, voir heuresPonderees."
         },
         "heuresJourFerie": {
           "type": "number"
@@ -615,6 +618,14 @@
         },
         "maxNuitsConsecutivesObservees": {
           "type": "integer"
+        },
+        "nbCreneauxNuitNonNuit": {
+          "type": "integer",
+          "description": "Créneaux de nuit confiés à un salarié qui n'est pas déclaré travailleur de nuit. Restitué depuis la phase 8 ; ce schéma ne le déclarait pas, et un client validant sa réponse la voyait rejetée."
+        },
+        "heuresPonderees": {
+          "type": "number",
+          "description": "[Équité L1] Charge ramenée à l'unité commune de l'heure ordinaire. Chaque minute est pondérée par le coefficient de SA SEULE catégorie de pénibilité — celle que la dominance retient — de sorte qu'une nuit du dimanche n'est jamais comptée deux fois. C'est cette grandeur, et non heuresTravaillees, qui rend deux personnes comparables : on ne juge l'équité qu'à pénibilité équivalente. ATTENTION : sans coefficients transmis dans planningContext.coefficientsPenibilite, elle vaut exactement heuresTravaillees — le moteur n'invente pas d'échelle, il applique le neutre et le signale par une alerte COEFFICIENTS_PENIBILITE_PAR_DEFAUT."
         }
       }
     },

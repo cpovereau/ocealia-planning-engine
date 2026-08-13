@@ -288,6 +288,11 @@ public class ScenarioResponseMapper {
                         dto.setMaxNuitsConsecutivesObservees(wm.getMaxNuitsConsecutivesObservees());
                         dto.setNbCreneauxNuitNonNuit(wm.getNbCreneauxNuitNonNuit());
 
+                        // [Équité L1] Charge ramenée à l'unité de l'heure ordinaire — arrondie au
+                        // centième, comme toutes les heures de la réponse.
+                        dto.setHeuresPonderees(
+                                Math.round(wm.getMinutesPonderees() / 60.0 * 100.0) / 100.0);
+
                         byRessource.add(dto);
         }
 

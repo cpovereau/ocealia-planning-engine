@@ -1,5 +1,6 @@
 package fr.project.planning.domain.workmetrics;
 
+import fr.project.planning.domain.contexte.CoefficientsPenibilite;
 import fr.project.planning.domain.contexte.HorizonTemporel;
 import fr.project.planning.domain.creneau.Creneau;
 import fr.project.planning.domain.creneau.TypePlageHoraire;
@@ -10,6 +11,8 @@ import fr.project.planning.domain.repos.ReposHebdomadaire;
 import fr.project.planning.domain.ressource.Ressource;
 import fr.project.planning.domain.ressource.SalarieReel;
 import fr.project.planning.solution.PlanningProblem;
+import fr.project.planning.scoring.PenibiliteType;
+import fr.project.planning.time.RepartitionPenibilites;
 import fr.project.planning.time.TimeBreakdown;
 import fr.project.planning.time.TimeBreakdownCalculator;
 
@@ -119,6 +122,35 @@ public class WorkMetricsCalculator {
                 joursTravaillesParRessourceId
                         .computeIfAbsent(ressourceId, x -> new HashSet<>())
                         .add(c.getDate());
+
+                /*
+                 * [Équité L1] Répartition par dominance, puis pondération.
+                 *
+                 * Une minute n'appartient qu'à une catégorie — la dominante — de sorte qu'une
+                 * nuit du dimanche n'est jamais pondérée deux fois. C'est le même calcul que
+                 * celui du score, et c'est la même classe qui le fait : deux implémentations de
+                 * la dominance auraient fini par diverger.
+                 */
+                RepartitionPenibilites repartition = RepartitionPenibilites.de(
+                        breakdown, solution.getPlanningContext().getDominancePenibilites());
+
+                CoefficientsPenibilite coefficients =
+                        solution.getPlanningContext().getCoefficientsPenibilite();
+
+                long nuitDominante = repartition.minutes(PenibiliteType.NUIT);
+                long dimancheDominante = repartition.minutes(PenibiliteType.DIMANCHE);
+                long ferieDominante = repartition.minutes(PenibiliteType.FERIE);
+                long ordinaires = repartition.minutesOrdinaires();
+
+                wm.addPenibilites(
+                        Math.toIntExact(nuitDominante),
+                        Math.toIntExact(dimancheDominante),
+                        Math.toIntExact(ferieDominante),
+                        Math.toIntExact(ordinaires),
+                        nuitDominante * coefficients.pour(PenibiliteType.NUIT)
+                                + dimancheDominante * coefficients.pour(PenibiliteType.DIMANCHE)
+                                + ferieDominante * coefficients.pour(PenibiliteType.FERIE)
+                                + ordinaires * CoefficientsPenibilite.ORDINAIRE);
             }
 
             /*

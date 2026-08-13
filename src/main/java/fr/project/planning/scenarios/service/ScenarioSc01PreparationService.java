@@ -25,6 +25,7 @@ import fr.project.planning.scenarios.dto.ScenarioRequestDTO;
 import fr.project.planning.scenarios.dto.input.PosteVirtuelInputDTO;
 import fr.project.planning.scenarios.dto.input.ReferentielsDTO;
 import fr.project.planning.scenarios.dto.request.Sc01ScenarioParametersDTO;
+import fr.project.planning.scenarios.mapper.CoefficientsPenibiliteMapper;
 import fr.project.planning.scenarios.mapper.ScenarioRegulatoryParametersMapper;
 import fr.project.planning.scenarios.mapper.ScenarioResourceMapper;
 import fr.project.planning.scoring.StrategieScoring;
@@ -172,21 +173,24 @@ public class ScenarioSc01PreparationService {
         StrategieScoring strategieScoring = StrategieScoring.valueOf(
                 request.getPlanningContext().getStrategieScoring()
         );
+        // [S8.4] Les constats du cadre réglementaire rejoignent les alertes du builder : SC-01
+        //        avait déjà un canal d'alertes, mais le mapper réglementaire n'y déversait rien.
+        CollecteurAlertes alertes = new CollecteurAlertes("SC-01");
+
         PlanningContext planningContext = new PlanningContext(
                 ObjectifResolution.ANALYSER_LE_MANQUE,
                 strategieScoring,
                 br.dateDebut,
                 br.dateFin,
                 ResolutionType.PLANNING_GLOBAL,
-                HypotheseHistorique.NEUTRE
+                HypotheseHistorique.NEUTRE,
+                // [Équité L1] Ce que vaut une heure selon quand elle est travaillée.
+                CoefficientsPenibiliteMapper.depuis(request.getPlanningContext(), "SC-01", alertes)
         );
 
         // 5. Paramètres réglementaires — [S8.0] ce que l'appelant déclare fait autorité ;
         //    à défaut, le calendrier des fériés reste celui de scenarioParameters.holidayDates
         //    (S7.9a), qui servait jusque-là uniquement à ne pas générer de créneau ces jours-là.
-        // [S8.4] Les constats du cadre réglementaire rejoignent les alertes du builder : SC-01
-        //        avait déjà un canal d'alertes, mais le mapper réglementaire n'y déversait rien.
-        CollecteurAlertes alertes = new CollecteurAlertes("SC-01");
         RegulatoryParameters regulatoryParameters = regulatoryMapper.toRegulatoryParameters(
                 request.getPlanningContext().getRegulatoryParameters(),
                 br.holidayDates,
