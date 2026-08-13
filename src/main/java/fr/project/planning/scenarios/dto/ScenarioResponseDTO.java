@@ -31,6 +31,15 @@ public class ScenarioResponseDTO {
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private RemplacementDTO remplacement;
 
+    /**
+     * [Lot A2 de SC-05] Ce que l'arbitrage a déplacé — <strong>propre à SC-05</strong>.
+     *
+     * <p>Même règle que {@code candidats} et {@code remplacement} : la clé est omise pour tous les
+     * autres scénarios.</p>
+     */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private ArbitrageDTO arbitrage;
+
     public ScenarioResponseDTO() {
     }
 
@@ -112,5 +121,13 @@ public class ScenarioResponseDTO {
 
     public void setRemplacement(RemplacementDTO remplacement) {
         this.remplacement = remplacement;
+    }
+
+    public ArbitrageDTO getArbitrage() {
+        return arbitrage;
+    }
+
+    public void setArbitrage(ArbitrageDTO arbitrage) {
+        this.arbitrage = arbitrage;
     }
 }

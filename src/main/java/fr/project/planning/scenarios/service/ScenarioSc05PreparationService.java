@@ -2,8 +2,12 @@ package fr.project.planning.scenarios.service;
 
 import fr.project.planning.api.PlanningRequest;
 import fr.project.planning.domain.contexte.PerimetreArbitre;
+import fr.project.planning.domain.creneau.Creneau;
 import fr.project.planning.domain.ressource.Ressource;
 import fr.project.planning.domain.ressource.SalarieReel;
+import fr.project.planning.domain.workmetrics.WorkMetrics;
+import fr.project.planning.domain.workmetrics.WorkMetricsCalculator;
+import fr.project.planning.solution.PlanningProblem;
 import fr.project.planning.scenarios.alerte.AlertCode;
 import fr.project.planning.scenarios.alerte.AlertSeverity;
 import fr.project.planning.scenarios.alerte.CollecteurAlertes;
@@ -13,8 +17,10 @@ import fr.project.planning.scenarios.dto.request.Sc05ScenarioParametersDTO;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
@@ -89,6 +95,11 @@ public class ScenarioSc05PreparationService {
         Set<String> tenusParUnTiers = new LinkedHashSet<>();
         Set<String> besoinsRencontres = new LinkedHashSet<>();
 
+        // [A2] Qui tenait quoi avant l'arbitrage. Un créneau libéré perd son affectation en
+        //      devenant une variable de décision : sans cette carte, l'état d'avant serait perdu
+        //      et la réponse ne pourrait dire que l'après.
+        Map<String, String> ressourceAvantParCreneau = new LinkedHashMap<>();
+
         // La politique : ce que SC-05 fait de l'affectation portée par chaque créneau d'entrée.
         PolitiqueAffectationCreneau politique = (dto, creneau, ressourcesParId) -> {
             String besoin = creneau.getIdBesoin();
@@ -98,6 +109,9 @@ public class ScenarioSc05PreparationService {
             }
 
             String ressourceId = dto.getRessourceAffecteeId();
+            if (duPerimetre && ressourceId != null && !ressourceId.isBlank()) {
+                ressourceAvantParCreneau.put(creneau.getId(), ressourceId);
+            }
 
             // Un créneau sans affectation est un besoin nu : il l'était déjà, il le reste. S'il est
             // du périmètre, l'arbitrage le couvre — c'est du travail à répartir comme un autre.
@@ -151,11 +165,83 @@ public class ScenarioSc05PreparationService {
         PerimetreArbitre perimetre = new PerimetreArbitre(perimetreDemande, autorisees);
         PlanningRequest problemeSoumis = avecLePerimetre(base.planningRequest(), perimetre);
 
+        // [A2] Mesuré avant que le solveur ne touche à quoi que ce soit.
+        Map<String, WorkMetrics> metriquesAvant =
+                mesurerAvant(problemeSoumis, ressourceAvantParCreneau);
+
         List<ScenarioAlertDTO> toutesLesAlertes = new ArrayList<>(base.alerts());
         toutesLesAlertes.addAll(alertes.versDto());
 
         return new PreparedSc05Scenario(
-                base, problemeSoumis, autorisees, creneauxLiberes, tenusParUnTiers, toutesLesAlertes);
+                base, problemeSoumis, autorisees, creneauxLiberes, tenusParUnTiers,
+                besoinsRencontres, ressourceAvantParCreneau, metriquesAvant, toutesLesAlertes);
+    }
+
+    /**
+     * [A2] Les indicateurs de chacun <strong>avant</strong> l'arbitrage.
+     *
+     * <h3>Pourquoi le même calculateur, et pas un calcul dédié</h3>
+     * <p>L'avant et l'après servent à être <strong>comparés</strong> : « SAL-A passe de −8,6 % à
+     * +2,9 % ». Deux calculs différents feraient passer une divergence de méthode pour un
+     * mouvement — et la pondération par la pénibilité, la fenêtre d'observation et le filtre
+     * {@code compteDansCharge} offrent trois occasions de diverger. {@link WorkMetricsCalculator}
+     * est donc appelé deux fois sur deux états, jamais réécrit.</p>
+     *
+     * <h3>Pourquoi les créneaux sont modifiés puis remis en l'état</h3>
+     * <p>Le calculateur lit une solution, et l'état d'avant n'existe nulle part sous cette forme :
+     * les créneaux libérés ont perdu leur affectation en devenant des variables de décision. On la
+     * leur rend le temps de la mesure, puis on la retire. La fenêtre est étroite — ces créneaux
+     * n'ont pas encore été confiés au solveur — et l'alternative, remapper tout le dataset une
+     * seconde fois, coûterait davantage pour le même résultat.</p>
+     *
+     * <p>⚠️ La remise en l'état garantit que <strong>mesurer ne modifie pas le problème</strong> :
+     * les rendre au solveur avec cette affectation lui donnerait un point de départ différent de
+     * celui que le lot A1 définit, et ce point de départ dépendrait alors d'un calcul de
+     * restitution. Le résultat n'en changerait pas forcément — sur le jeu d'essai du projet il ne
+     * change pas, et <em>aucun test bout-en-bout ne discrimine donc cette ligne</em> —, mais un
+     * couplage entre la mesure et la recherche n'a pas à exister. C'est
+     * {@code ScenarioSc05PreparationServiceTest} qui le vérifie, en constatant directement l'état
+     * du créneau libéré au sortir de la préparation.</p>
+     */
+    private static Map<String, WorkMetrics> mesurerAvant(PlanningRequest requete,
+                                                         Map<String, String> ressourceAvantParCreneau) {
+        Map<String, Ressource> parId = new LinkedHashMap<>();
+        for (Ressource r : requete.ressources()) {
+            if (r.getId() != null) {
+                parId.putIfAbsent(r.getId(), r);
+            }
+        }
+
+        List<Creneau> aRestaurer = new ArrayList<>();
+        for (Creneau creneau : requete.creneaux()) {
+            // Les créneaux épinglés portent déjà leur titulaire d'avant : seuls les libérés sont nus.
+            if (creneau.getRessourceAffectee() != null) {
+                continue;
+            }
+            Ressource avant = parId.get(ressourceAvantParCreneau.get(creneau.getId()));
+            if (avant != null) {
+                creneau.setRessourceAffectee(avant);
+                aRestaurer.add(creneau);
+            }
+        }
+
+        PlanningProblem etatAvant = new PlanningProblem(
+                requete.planningContext(),
+                requete.regulatoryParameters(),
+                requete.referentielComptabiliteActivite(),
+                requete.ressources(),
+                requete.creneaux(),
+                requete.indisponibilites());
+        etatAvant.setReposHebdomadaires(requete.reposHebdomadaires());
+
+        Map<String, WorkMetrics> metriques = new LinkedHashMap<>();
+        new WorkMetricsCalculator().compute(etatAvant)
+                .forEach((ressource, wm) -> metriques.put(ressource.getId(), wm));
+
+        for (Creneau creneau : aRestaurer) {
+            creneau.setRessourceAffectee(null);
+        }
+        return metriques;
     }
 
     /**

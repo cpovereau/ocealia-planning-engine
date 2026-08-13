@@ -195,8 +195,113 @@ class ScenarioSc05ArbitrageTest {
     }
 
     // =========================================================
+    // Le bloc arbitrage — lot A2
+    // =========================================================
+
+    @Test
+    @DisplayName("Le bloc arbitrage dit ce qui a bougé, et combien")
+    void leBlocArbitrage_ditCeQuiABouge() throws Exception {
+        JsonNode arbitrage = solve(avecTolerance(10.0)).get("arbitrage");
+
+        assertNotNull(arbitrage, "Le bloc arbitrage est à SC-05 ce que remplacement est à SC-02.");
+        assertEquals(2, arbitrage.get("creneauxArbitres").asInt());
+        assertEquals(1, arbitrage.get("creneauxDeplaces").asInt(), "Seul PLN-ARB-V change de main.");
+        assertEquals(1, arbitrage.get("creneauxEpinglesSurUnTiers").asInt());
+        assertEquals(0, arbitrage.get("creneauxNonCouverts").asInt());
+        assertEquals(List.of("SAL-A", "SAL-B"),
+                List.of(arbitrage.get("ressourcesArbitrees").get(0).asText(),
+                        arbitrage.get("ressourcesArbitrees").get(1).asText()));
+    }
+
+    @Test
+    @DisplayName("L'avant et l'après sont mesurés, et c'est leur comparaison qui justifie")
+    void lAvantEtLApres_sontMesures() throws Exception {
+        // SAL-A cède le vendredi : 40 h → 32 h, et son écart au contrat passe de +14,29 % à
+        // −8,57 %. SAL-B le reprend : 24 h → 32 h, de −31,43 % à −8,57 %. C'est ce rapprochement
+        // qui rend l'arbitrage justifiable ligne à ligne devant les deux intéressés.
+        JsonNode parSalarie = solve(avecTolerance(10.0)).get("arbitrage").get("parSalarie");
+
+        JsonNode a = mouvement(parSalarie, "SAL-A");
+        assertEquals(0, a.get("creneauxRepris").asInt());
+        assertEquals(1, a.get("creneauxCedes").asInt());
+        assertEquals(40.0, a.get("heuresAvant").asDouble(), 0.01);
+        assertEquals(32.0, a.get("heuresApres").asDouble(), 0.01);
+        assertEquals(14.29, a.get("ecartContratAvantPourcent").asDouble(), 0.01);
+        assertEquals(-8.57, a.get("ecartContratApresPourcent").asDouble(), 0.01);
+
+        JsonNode b = mouvement(parSalarie, "SAL-B");
+        assertEquals(1, b.get("creneauxRepris").asInt());
+        assertEquals(0, b.get("creneauxCedes").asInt());
+        assertEquals(24.0, b.get("heuresAvant").asDouble(), 0.01);
+        assertEquals(32.0, b.get("heuresApres").asDouble(), 0.01);
+        assertEquals(-31.43, b.get("ecartContratAvantPourcent").asDouble(), 0.01);
+        assertEquals(-8.57, b.get("ecartContratApresPourcent").asDouble(), 0.01);
+    }
+
+    @Test
+    @DisplayName("Chaque créneau du périmètre a son détail, déplacé ou non")
+    void chaqueCreneauDuPerimetre_aSonDetail() throws Exception {
+        // Un arbitrage qui n'a rien changé est une information, pas un silence : le créneau du
+        // tiers figure au détail avec deplace=false, pas par son absence.
+        JsonNode details = solve(avecTolerance(10.0)).get("arbitrage").get("details");
+        assertEquals(2, details.size());
+
+        JsonNode deplace = detail(details, CRENEAU_ARBITRE);
+        assertEquals("SAL-A", deplace.get("ressourceAvantId").asText());
+        assertEquals("SAL-B", deplace.get("ressourceApresId").asText());
+        assertTrue(deplace.get("deplace").asBoolean());
+        assertTrue(!deplace.get("tenuParUnTiers").asBoolean());
+        assertEquals("SALARIE", deplace.get("nature").asText());
+
+        JsonNode tiers = detail(details, CRENEAU_DU_TIERS);
+        assertEquals("SAL-TIERS", tiers.get("ressourceAvantId").asText());
+        assertEquals("SAL-TIERS", tiers.get("ressourceApresId").asText());
+        assertTrue(!tiers.get("deplace").asBoolean());
+        assertTrue(tiers.get("tenuParUnTiers").asBoolean(),
+                "Le créneau n'a pas pu bouger, et ce n'est pas un échec de l'arbitrage.");
+    }
+
+    @Test
+    @DisplayName("Le détail est trié par date, comme le planning")
+    void leDetail_estTrieParDate() throws Exception {
+        JsonNode details = solve(avecTolerance(10.0)).get("arbitrage").get("details");
+
+        assertEquals(CRENEAU_ARBITRE, details.get(0).get("creneauId").asText());
+        assertEquals(CRENEAU_DU_TIERS, details.get(1).get("creneauId").asText());
+    }
+
+    @Test
+    @DisplayName("Un créneau du périmètre absent du dataset ne gonfle pas les compteurs")
+    void creneauIntrouvable_neGonflePasLesCompteurs() throws Exception {
+        // creneauxArbitres compte le périmètre EFFECTIVEMENT soumis. Compter ce qui a été demandé
+        // ferait lire « un créneau sur trois déplacé » là où il n'y en avait que deux à arbitrer.
+        ObjectNode requete = (ObjectNode) avecTolerance(10.0);
+        ((ArrayNode) requete.get("scenarioParameters").get("creneauxArbitres")).add("PLN-FANTOME");
+
+        assertEquals(2, solve(requete).get("arbitrage").get("creneauxArbitres").asInt());
+    }
+
+    // =========================================================
     // Helpers
     // =========================================================
+
+    private static JsonNode mouvement(JsonNode parSalarie, String ressourceId) {
+        for (JsonNode mouvement : parSalarie) {
+            if (ressourceId.equals(mouvement.get("ressourceId").asText())) {
+                return mouvement;
+            }
+        }
+        throw new AssertionError("'" + ressourceId + "' est absent de arbitrage.parSalarie.");
+    }
+
+    private static JsonNode detail(JsonNode details, String creneauId) {
+        for (JsonNode detail : details) {
+            if (creneauId.equals(detail.get("creneauId").asText())) {
+                return detail;
+            }
+        }
+        throw new AssertionError("'" + creneauId + "' est absent de arbitrage.details.");
+    }
 
     /** Identifiant de la ressource qui tient un créneau dans le planning restitué. */
     private static String titulaire(JsonNode reponse, String creneauId) {

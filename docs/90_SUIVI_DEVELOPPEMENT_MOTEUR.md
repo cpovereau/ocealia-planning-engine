@@ -816,12 +816,14 @@ Ordonné par **dépendance**, pas par valeur métier. Les rangs renvoient au bac
 2. **Rang 8** — trancher les champs sans effet. Indépendant du reste, et il retire du contrat des
    promesses que personne ne tient. SC-02 en a rendu un plus visible : `capaciteCible` ne borne pas
    le volume qu'on gare sur un poste virtuel.
-3. **SC-05, lots A2 à A4** — le chantier équité est clos (L0 à L5 livrés) et **A0 et A1 sont livrés
-   le 2026-08-14** : la contrainte HARD borne l'affectation à un ensemble de ressources autorisées,
-   et `POST /scenarios/sc05/solve` répond. Suite : **A2**, le bloc `arbitrage` —
-   `92_CADRAGE_SCENARIO_SC-05.md` §8. ⚠️ SC-05 n'est **pas encore au contrat série 50** : c'est A4.
-   Ce qui manque par ailleurs n'est plus un outil mais **des plannings réels** à donner au harnais
-   de calibration — `92_CALIBRATION_PENIBILITE.md` §2.
+3. **SC-05, lots A3 et A4** — le chantier équité est clos (L0 à L5 livrés) et **A0, A1 et A2 sont
+   livrés le 2026-08-14** : la contrainte HARD borne l'affectation à un ensemble de ressources
+   autorisées, `POST /scenarios/sc05/solve` répond, et le bloc `arbitrage` dit ce qui a bougé.
+   Suite : **A3**, l'inéquité résiduelle — `92_CADRAGE_SCENARIO_SC-05.md` §8. ⚠️ SC-05 n'est **pas
+   encore au contrat série 50**, et le bloc `arbitrage` **pas encore au schéma de réponse publié** :
+   c'est A4, dont la liste bloquante est en §8.1 du cadrage. Ce qui manque par ailleurs n'est plus
+   un outil mais **des plannings réels** à donner au harnais de calibration —
+   `92_CALIBRATION_PENIBILITE.md` §2.
 4. **Rang 13** — garder le schéma d'entrée comme le schéma de sortie l'est. Correctif pur, sans
    arbitrage.
 5. **Rang 10** — dès que la Production a rendu ses arbitrages.
@@ -1707,6 +1709,62 @@ SC-06, et mérite son propre lot.
 
 Les **quatre scénarios exposés voyagent maintenant par les deux canaux**. Le document d'échange
 fichier n'en connaissait que deux — SC-06 n'y avait jamais été inscrit à son lot S6 ; c'est réparé.
+
+### SC-05 — lot A2 : l'avant, l'après, et une ligne que les tests ne couvraient pas (2026-08-14)
+
+772 tests, 0 échec (+10). Le bloc `arbitrage` est à SC-05 ce que `remplacement` est à SC-02 : la
+réponse à *qu'est-ce qui a bougé, et pour qui*. Le bloc `planning` ne restitue que l'après ; SC-05
+rend une répartition qui doit se justifier **ligne à ligne devant les intéressés**, et une
+justification sans terme de comparaison n'en est pas une.
+
+#### La difficulté du lot est de mesurer l'avant
+
+L'état d'avant n'existe nulle part sous une forme mesurable : un créneau libéré **perd son
+affectation** en devenant une variable de décision. Deux règles se rencontrent ici :
+
+* l'avant et l'après servent à être **comparés** — « SAL-A passe de +14,29 % à −8,57 % ». Deux
+  calculs différents feraient passer une divergence de méthode pour un mouvement, et la pondération
+  par la pénibilité, la fenêtre d'observation et le filtre `compteDansCharge` offrent trois
+  occasions de diverger. `WorkMetricsCalculator` est donc **appelé deux fois**, jamais réécrit ;
+* mais il lui faut une solution à lire. Les créneaux libérés sont donc réaffectés à leur titulaire
+  d'origine le temps de la mesure, puis **remis en l'état**.
+
+#### Ce que la vérification par mutation a appris, et qui a changé le code
+
+J'affirmais en commentaire que la remise en l'état « garantit que mesurer l'avant ne déplace pas
+l'après ». **Mutation faite : aucun test ne tombe.** Sur ce jeu d'essai, le solveur retrouve la même
+répartition qu'on rende le créneau libéré nu ou pré-affecté.
+
+L'affirmation était donc plus forte que ce que le projet démontrait. Deux corrections :
+
+1. le commentaire dit maintenant ce qui est vrai — la remise en l'état garantit que **mesurer ne
+   modifie pas le problème**, ce qui est une propriété de bonne construction, pas un effet observé,
+   et il dit explicitement qu'aucun test bout-en-bout ne discrimine cette ligne ;
+2. un test de niveau service la couvre désormais : `ScenarioSc05PreparationServiceTest` constate
+   directement qu'au sortir de la préparation, le créneau libéré part **sans affectation**.
+   Re-mutation : il tombe.
+
+Croire une ligne couverte parce que la suite est verte est pire que la savoir découverte.
+
+#### Un défaut trouvé au passage : `Set.copyOf` ne conserve pas l'ordre
+
+`ressourcesAutorisees` était figé par `Set.copyOf`, dont l'ordre d'itération est **explicitement non
+spécifié**. La réponse listait donc `[SAL-B, SAL-A]` là où l'appelant avait nommé A puis B — et
+`parSalarie` suivait le même ordre. Sur une réponse destinée à justifier un arbitrage devant deux
+personnes, l'ordre n'est pas cosmétique. Remplacé par un `LinkedHashSet` non modifiable, pour les
+quatre ensembles qui atteignent la réponse ou une alerte.
+
+#### ⚠️ Ce que le lot A4 doit impérativement porter
+
+A1 et A2 ont livré **une route et un bloc de réponse que le contrat publié ne connaît pas**. Rien
+n'est cassé — aucun client n'appelle SC-05 — mais `50_ScenarioResponse.schema.json` porte
+`additionalProperties: false` : **un client qui valide rejetterait la réponse**. Même classe de
+défaut que le rang 13 sur le schéma d'entrée, à ceci près que l'écart est ici connu et daté. La
+liste est en §8.1 du cadrage.
+
+#### Reste du chantier
+
+A3 (inéquité résiduelle et moins mauvaise répartition), A4 (contrat série 50 + FileAdapter).
 
 ### SC-05 — lot A1 : le squelette, et une borne qu'on peut voir agir (2026-08-14)
 
