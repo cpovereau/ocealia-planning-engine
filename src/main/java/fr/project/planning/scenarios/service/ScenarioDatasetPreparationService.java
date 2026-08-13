@@ -29,6 +29,7 @@ import fr.project.planning.scenarios.dto.ScenarioDatasetRequest;
 import fr.project.planning.scenarios.dto.input.CreneauInputDTO;
 import fr.project.planning.scenarios.dto.input.PosteVirtuelInputDTO;
 import fr.project.planning.scenarios.dto.input.SalarieInputDTO;
+import fr.project.planning.scenarios.mapper.ToleranceEquiteMapper;
 import fr.project.planning.scenarios.mapper.CoefficientsPenibiliteMapper;
 import fr.project.planning.scenarios.mapper.ScenarioCreneauMapper;
 import fr.project.planning.scenarios.mapper.ScenarioRegulatoryParametersMapper;
@@ -315,7 +316,10 @@ public class ScenarioDatasetPreparationService {
                 ResolutionType.PLANNING_GLOBAL,
                 HypotheseHistorique.NEUTRE,
                 // [Équité L1] Ce que vaut une heure selon quand elle est travaillée.
-                CoefficientsPenibiliteMapper.depuis(request.getPlanningContext(), scenario, alertes)
+                CoefficientsPenibiliteMapper.depuis(request.getPlanningContext(), scenario, alertes),
+                // [Équité L5] Au-delà de quel écart au contrat il y a inéquité. Absente, la
+                // contrainte d'équité ne pèse rien.
+                ToleranceEquiteMapper.depuis(request.getPlanningContext())
         );
 
         // 7. Paramètres réglementaires — [S8.0] le calendrier déclaré au contrat fait autorité ;

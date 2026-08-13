@@ -288,12 +288,17 @@ marqueurs de repos, et le planning existant avec ses `ressourceAffecteeId`.
 
 | Champ | Obligatoire | Rôle |
 |---|:---:|---|
-| coefficients de pondération de pénibilité | ○ | défaut appliqué si absents, et **le moteur dit lequel** |
-| — | — | *aucun autre champ nouveau* |
+| `planningContext.coefficientsPenibilite` | ○ | défaut neutre appliqué si absents (L1) |
+| `planningContext.equite.ecartTolerePourcent` | ○ | à partir de quand un écart gêne (L5) |
 
-**Aucune donnée nouvelle n'est demandée à WinDev**, hors les coefficients. Ce que le chantier
-demande est une **règle de transmission** (§4.3), pas un champ : élargir la fenêtre quand un
-arbitrage l'exige.
+**Aucune donnée nouvelle n'est demandée à WinDev**, hors ces deux blocs de paramétrage. Ce que le
+chantier demande est une **règle de transmission** (§4.3), pas un champ : élargir la fenêtre quand
+un arbitrage l'exige.
+
+> **Correction apportée par L5.** Ce paragraphe n'annonçait que les coefficients. La contrainte
+> SOFT en demande un second : une **tolérance**. C'était prévisible dès le §5.3 — *l'encadrement dit
+> à partir de quand un écart gêne* — mais ce n'était pas écrit ici. Les deux blocs sont facultatifs
+> et sans effet en leur absence : le contrat ne se durcit pas, il s'ouvre.
 
 ---
 
@@ -323,7 +328,7 @@ Ordonné par dépendance. Chaque lot est livrable seul et testable seul.
 | **L2** ✅ | Écart signé au contrat + parts de pénibilité, restitution, fenêtre observée | La mesure comparative. **Descriptive, sans décision** |
 | **L3** ✅ | Harnais de simulation et calibration des coefficients | Ne peut venir qu'après L1 et L2 : on calibre sur des mesures qui existent |
 | **L4** ✅ | Les trois critères de §4.7 câblés dans la sélection **SC-06** | Premier effet visible sur une décision. Deux critères sur trois sont déjà mesurés |
-| **L5** | Contrainte SOFT d'équité — **et c'est par elle que SC-02 est servi** | Pèse l'écart au score. Séparé de L2 pour être évalué seul |
+| **L5** ✅ | Contrainte SOFT d'équité — **et c'est par elle que SC-02 est servi** | Pèse l'écart au score. Séparé de L2 pour être évalué seul |
 | **L6** | SC-05 — arbitrage entre deux salariés | Le scénario que tout ceci débloque |
 
 ### 8.1 Correction apportée par L4 — SC-02 n'a pas de sélection à câbler
@@ -375,6 +380,18 @@ et le moteur doit alors le **signaler** plutôt que de produire un chiffre qui n
 
 Reste hors de portée : une vraie référence annuelle, que le moteur ne reçoit pas et qui relève du
 même manque que l'historique de SC-04.
+
+### 9.2 bis Le poids de la contrainte — ouvert par construction
+
+Le lot L5 pèse chaque point d'écart au-delà de la tolérance **10 points de score**. Cette valeur
+départage sans jamais interdire — il faut cent points d'écart, soit un salarié entièrement
+inoccupé, pour approcher le coût d'un créneau non couvert — mais elle **pèse une mesure dont
+l'échelle n'est pas calibrée** : les coefficients de pénibilité sortiront de L3, sur des plannings
+réels.
+
+Elle relève donc du même protocole, et pour la même raison qu'eux : aucune valeur *a priori* n'est
+défendable. C'est ce qui justifie que la contrainte soit **inactive par défaut** — livrer le
+mécanisme sans imposer l'échelle.
 
 ### 9.3 Le volontariat
 

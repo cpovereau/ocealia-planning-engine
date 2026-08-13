@@ -18,11 +18,15 @@ import fr.project.planning.time.RepartitionPenibilites;
  * évaluer autant de jeux de coefficients qu'on veut</strong>, et les points de bascule se calculent
  * exactement plutôt que de se chercher à tâtons sur une grille.</p>
  *
- * <p>⚠️ Cette propriété tient tant que les coefficients <strong>ne participent pas au score</strong>.
- * C'est le cas à ce jour : {@code heuresPonderees} est une mesure post-résolution, aucune contrainte
- * ne la lit. Le lot L5 y introduira une contrainte SOFT d'équité — à partir de là, changer les
- * coefficients pourra changer le planning lui-même, et le harnais devra résoudre à nouveau pour
- * chaque jeu. La limite est ici parce qu'elle ne se verrait pas autrement.</p>
+ * <p>⚠️ Cette propriété tient tant que les coefficients <strong>ne pèsent pas au score</strong>.
+ * Depuis le lot L5, une contrainte SOFT d'équité les lit — mais elle <strong>ne pèse rien tant
+ * qu'aucune tolérance n'est transmise</strong>, et une demande de calibration n'en transmet pas :
+ * on calibre la mesure, pas la sanction. Sur ces demandes-là, le planning ne dépend toujours pas de
+ * l'échelle, et une seule résolution suffit.</p>
+ *
+ * <p><strong>Calibrer sur une demande qui porte une tolérance serait faux</strong> : le planning
+ * lui-même changerait avec l'échelle, et rejouer la seule pondération mesurerait un planning que le
+ * moteur n'aurait pas produit. La limite est ici parce qu'elle ne se verrait pas autrement.</p>
  *
  * @param ressourceId      identifiant de la personne
  * @param minutesNuit      minutes attribuées à la nuit par la dominance

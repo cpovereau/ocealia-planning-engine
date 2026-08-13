@@ -677,7 +677,43 @@ components:
           $ref: '#/components/schemas/CoefficientsPenibilite'
           description: |
             [Équité L1] Ce que vaut une heure selon quand elle est travaillée. **Facultatif.**
+        equite:
+          $ref: '#/components/schemas/Equite'
+          description: |
+            [Équité L5] À partir de quel écart au contrat il y a inéquité. **Facultatif.**
       required: [strategieScoring, horizon]
+
+    Equite:
+      type: object
+      description: |
+        [Équité L5] À partir de quel écart au contrat l'encadrement estime qu'il y a inéquité.
+
+        **Mesurer n'est pas sanctionner.** Le moteur mesure l'écart au contrat depuis le lot L2 et
+        le restitue dans `workMetrics.byRessource.ecartContratPourcent` : la mesure *décrit* une
+        répartition, elle ne statue pas qu'elle est mauvaise. Un écart de 5 % gêne-t-il ? de 20 % ?
+        Le moteur n'en sait rien, et la réponse n'est pas la même d'un client à l'autre.
+
+        ⚠️ **Bloc facultatif, et il l'est pour de bon** : absent, la contrainte d'équité ne pèse
+        rien et le score est **exactement** celui d'avant le lot L5. C'est le cas de toutes les
+        demandes à ce jour — les coefficients de pénibilité qui pondèrent cet écart ne sont pas
+        encore calibrés (`92_CALIBRATION_PENIBILITE.md`), et peser une mesure dont l'échelle reste
+        à établir reviendrait à deviner deux fois.
+
+        Même logique que `scenarioParameters.surchargeMaxHeuresJour` de SC-02 : c'est l'encadrement
+        qui dit à partir de quand une situation gêne.
+      properties:
+        ecartTolerePourcent:
+          type: number
+          format: double
+          minimum: 0
+          description: |
+            Écart au volume contractuel, en **points de pourcentage**, au-delà duquel le moteur
+            pénalise — SOFT, jamais éliminatoire.
+
+            La **valeur absolue** de l'écart est comparée à cette tolérance : la sous-charge compte
+            autant que la surcharge, sans quoi le moteur éviterait de surcharger sans jamais
+            rééquilibrer. `0` signifie « tout écart compte ». Une valeur négative est **refusée**
+            (`422 BUSINESS_ERROR`) : une tolérance décrit une marge, pas une exigence.
 
     CoefficientsPenibilite:
       type: object

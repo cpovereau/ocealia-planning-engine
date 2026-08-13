@@ -4,6 +4,7 @@ import fr.project.planning.constraints.legales.DureeMaximaleLegaleParSalarie;
 import fr.project.planning.constraints.physiques.LimitePhysique;
 import fr.project.planning.constraints.metier.AffectationPosteVirtuel;
 import fr.project.planning.constraints.metier.CreneauNonAffecte;
+import fr.project.planning.constraints.metier.EquiteChargeAuContrat;
 import fr.project.planning.constraints.metier.BlocConfieTropCourt;
 import fr.project.planning.constraints.metier.CohesionCreneauOrigine;
 import fr.project.planning.constraints.metier.IndisponibiliteSalarie;
@@ -100,6 +101,11 @@ public class ConstraintProviderImpl implements ConstraintProvider {
             CohesionCreneauOrigine.cohesionCreneauOrigine(factory),
             SurchargeAcceptable.surchargeJournaliere(factory),
             SurchargeAcceptable.surchargeHebdomadaire(factory),
+
+            // [Équité L5] La première règle qui rend un déséquilibre entre personnes coûteux.
+            // Inactive tant qu'aucune tolérance n'est déclarée.
+            EquiteChargeAuContrat.equiteChargeAuContrat(factory),
+            EquiteChargeAuContrat.equiteSalarieSansAffectation(factory),
             PenibilitesLegalesMinutes.penaliser(factory),
             DetteReposSurReposHebdomadaire.penaliser(factory),
 

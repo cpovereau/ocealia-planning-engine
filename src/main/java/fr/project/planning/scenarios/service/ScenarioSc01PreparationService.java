@@ -25,6 +25,7 @@ import fr.project.planning.scenarios.dto.ScenarioRequestDTO;
 import fr.project.planning.scenarios.dto.input.PosteVirtuelInputDTO;
 import fr.project.planning.scenarios.dto.input.ReferentielsDTO;
 import fr.project.planning.scenarios.dto.request.Sc01ScenarioParametersDTO;
+import fr.project.planning.scenarios.mapper.ToleranceEquiteMapper;
 import fr.project.planning.scenarios.mapper.CoefficientsPenibiliteMapper;
 import fr.project.planning.scenarios.mapper.ScenarioRegulatoryParametersMapper;
 import fr.project.planning.scenarios.mapper.ScenarioResourceMapper;
@@ -185,7 +186,9 @@ public class ScenarioSc01PreparationService {
                 ResolutionType.PLANNING_GLOBAL,
                 HypotheseHistorique.NEUTRE,
                 // [Équité L1] Ce que vaut une heure selon quand elle est travaillée.
-                CoefficientsPenibiliteMapper.depuis(request.getPlanningContext(), "SC-01", alertes)
+                CoefficientsPenibiliteMapper.depuis(request.getPlanningContext(), "SC-01", alertes),
+                // [Équité L5] Absente, la contrainte d'équité ne pèse rien.
+                ToleranceEquiteMapper.depuis(request.getPlanningContext())
         );
 
         // 5. Paramètres réglementaires — [S8.0] ce que l'appelant déclare fait autorité ;

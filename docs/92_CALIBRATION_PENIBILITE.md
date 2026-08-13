@@ -168,11 +168,16 @@ coefficients : la rejouer donnerait chaque fois le même résultat. Ce que l'éc
 uniquement ce que ces minutes **pèsent**. Une seule résolution permet donc d'évaluer autant
 d'échelles qu'on veut.
 
-> ⚠️ **Cette licence expire au lot L5.** Elle tient tant que les coefficients ne participent pas au
-> score. La contrainte SOFT d'équité les y fera entrer : changer l'échelle changera alors le
-> planning lui-même, et rejouer la seule pondération deviendra faux — le harnais devra résoudre par
-> échelle. `HarnaisDeCalibrationTest` garde cette hypothèse et échouera le jour où elle cesse d'être
-> vraie.
+> ⚠️ **Cette licence a été mise à l'épreuve au lot L5, et elle tient — sous condition.** La
+> contrainte SOFT d'équité lit les coefficients, ce qui a fait échouer le garde-fou posé ici,
+> exactement comme il l'annonçait. Elle **ne pèse rien tant qu'aucune tolérance n'est transmise**,
+> et une demande de calibration n'en transmet pas : on calibre la mesure, pas la sanction. Sur ces
+> demandes-là, le planning ne dépend toujours pas de l'échelle.
+>
+> **Corollaire à tenir** : calibrer sur une demande portant `planningContext.equite` serait faux —
+> le planning changerait avec l'échelle, et rejouer la seule pondération mesurerait un planning que
+> le moteur n'aurait pas produit. `HarnaisDeCalibrationTest` garde la liste des contraintes
+> autorisées à lire les coefficients ; toute nouvelle entrée doit être justifiée de la même façon.
 
 ### 5.2 Les bascules se calculent, elles ne se cherchent pas
 
@@ -209,7 +214,7 @@ en a exactement la même allure — c'est le genre d'écart qui ne se voit jamai
 | Limite | Portée |
 |---|---|
 | **Les jeux du dépôt ne calibrent rien** | Ce sont des cas de démonstration. Des exports réels sont nécessaires (§2.3) |
-| **Une résolution par cas, pas par échelle** | Valable jusqu'au lot L5 (§5.1) |
+| **Une résolution par cas, pas par échelle** | Valable **si la demande ne porte pas `planningContext.equite`** (§5.1) |
 | **Arrondi des parts au centième de pourcent** | La reconstitution redonne les minutes exactes sur une fenêtre de l'ordre de la semaine ; sur une fenêtre très longue, l'erreur grandirait |
 | **La bascule dépend du cas** | Elle décrit ce planning-là. Un intervalle défendable demande plusieurs cas, pas un seul |
 | **Le volontariat n'est pas connu** | Certains veulent ces heures. Le moteur ne le saura pas avant le rang 10 du backlog — voir §9.3 du cadrage |

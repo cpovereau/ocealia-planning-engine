@@ -20,6 +20,7 @@ import fr.project.planning.scenarios.dto.Sc06ScenarioRequestDTO;
 import fr.project.planning.scenarios.dto.input.CreneauInputDTO;
 import fr.project.planning.scenarios.dto.request.BesoinCreneauDTO;
 import fr.project.planning.scenarios.dto.request.BesoinDTO;
+import fr.project.planning.scenarios.mapper.ToleranceEquiteMapper;
 import fr.project.planning.scenarios.mapper.CoefficientsPenibiliteMapper;
 import fr.project.planning.scenarios.mapper.ScenarioCreneauMapper;
 import fr.project.planning.scenarios.alerte.CollecteurAlertes;
@@ -157,7 +158,9 @@ public class ScenarioSc06PreparationService {
                 ResolutionType.PLANNING_GLOBAL,
                 HypotheseHistorique.NEUTRE,
                 // [Équité L1] Ce que vaut une heure selon quand elle est travaillée.
-                CoefficientsPenibiliteMapper.depuis(request.getPlanningContext(), "SC-06", alertes)
+                CoefficientsPenibiliteMapper.depuis(request.getPlanningContext(), "SC-06", alertes),
+                // [Équité L5] Absente, la contrainte d'équité ne pèse rien.
+                ToleranceEquiteMapper.depuis(request.getPlanningContext())
         );
 
         List<Creneau> tousCreneaux = new ArrayList<>(planningFige.size() + creneauxBesoin.size());

@@ -45,6 +45,35 @@ public enum PenaliteKey {
     /** Lot S3 de SC-02 — charge hebdomadaire au-delà du seuil déclaré par la demande. */
     METIER_SOFT_SURCHARGE_SEMAINE(ScoreBreakdownUnit.MINUTE_PONDEREE),
 
+    /**
+     * [Équité L5] Écart au contrat au-delà de la tolérance déclarée, pour un salarié qui travaille.
+     *
+     * <p>Première règle du moteur à rendre coûteux un <strong>déséquilibre entre personnes</strong>.
+     * Toutes les autres vérifient une personne contre <em>sa</em> borne : un planning où l'un fait
+     * 48 h et l'autre 25 h y obtenait exactement le même score qu'un planning à 35 h chacun.</p>
+     *
+     * <p>L'unité est le <strong>point de pourcentage</strong> d'écart au-delà de la tolérance, la
+     * valeur absolue étant retenue — la sous-charge compte autant que la surcharge, sans quoi le
+     * moteur éviterait de surcharger sans jamais rééquilibrer.</p>
+     *
+     * <p>Inactive tant qu'aucune tolérance n'est transmise, ce qui est le cas de toutes les
+     * demandes à ce jour.</p>
+     */
+    METIER_SOFT_EQUITE_ECART_CONTRAT(ScoreBreakdownUnit.OCCURRENCE),
+
+    /**
+     * [Équité L5] Salarié qui ne travaille rien du tout, quand une tolérance est déclarée.
+     *
+     * <p>Second volet de la même règle, et il lui est indispensable : un salarié sans aucun créneau
+     * n'apparaît dans aucune jointure, donc dans aucun total. Son écart — le plus défavorable
+     * possible, −100 % — resterait invisible, et le moteur n'aurait <strong>aucune raison de lui
+     * donner du travail</strong>, alors que c'est précisément la personne que l'équité désigne.</p>
+     *
+     * <p>Même découpage en deux volets que {@code LEGAL_SOFT_HEURES_MIN_PAR_SEMAINE}, et pour la
+     * même raison.</p>
+     */
+    METIER_SOFT_EQUITE_SANS_AFFECTATION(ScoreBreakdownUnit.OCCURRENCE),
+
     // =========================
     // Contraintes légales (SOFT)
     // =========================

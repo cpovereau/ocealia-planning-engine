@@ -21,6 +21,15 @@ public class PlanningContextDTO {
      */
     private CoefficientsPenibiliteDTO coefficientsPenibilite;
 
+    /**
+     * [Équité L5] À partir de quel écart au contrat il y a inéquité.
+     *
+     * <p>Facultatif. Absent, la contrainte d'équité ne pèse rien : le moteur mesure l'écart et le
+     * restitue, il ne le sanctionne pas. <strong>C'est l'encadrement qui dit à partir de quand un
+     * écart gêne</strong>, comme le seuil de surcharge de SC-02 dit jusqu'où l'on accepte d'aller.</p>
+     */
+    private EquiteDTO equite;
+
     public HorizonDTO getHorizon() {
         return horizon;
     }
@@ -51,5 +60,13 @@ public class PlanningContextDTO {
 
     public void setCoefficientsPenibilite(CoefficientsPenibiliteDTO coefficientsPenibilite) {
         this.coefficientsPenibilite = coefficientsPenibilite;
+    }
+
+    public EquiteDTO getEquite() {
+        return equite;
+    }
+
+    public void setEquite(EquiteDTO equite) {
+        this.equite = equite;
     }
 }

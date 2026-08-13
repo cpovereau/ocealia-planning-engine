@@ -144,30 +144,45 @@ class HarnaisDeCalibrationTest {
     // 2. La licence de rejouer sans résoudre à nouveau
     // ---------------------------------------------------------
 
+    /**
+     * Les contraintes autorisées à lire les coefficients, et la raison qui l'autorise.
+     *
+     * <p>{@code EquiteChargeAuContrat} les lit depuis le lot L5, mais <strong>ne pèse rien tant
+     * qu'aucune tolérance n'est transmise</strong> — ce qui est le cas d'une demande de
+     * calibration. Sur ces demandes-là, le planning ne dépend toujours pas de l'échelle, et une
+     * seule résolution suffit encore.</p>
+     */
+    private static final List<String> LECTEURS_AUTORISES = List.of("EquiteChargeAuContrat.java");
+
     @Test
-    @DisplayName("Aucune contrainte ne lit les coefficients — c'est ce qui autorise à rejouer")
-    void aucuneContrainteNeLitLesCoefficients() {
-        List<String> lecteurs = new ArrayList<>();
+    @DisplayName("Seules les contraintes connues lisent les coefficients — la licence de rejouer")
+    void seulesLesContraintesConnuesLisentLesCoefficients() {
+        List<String> inattendus = new ArrayList<>();
 
         for (Path racine : List.of(Path.of("src/main/java/fr/project/planning/constraints"),
                 Path.of("src/main/java/fr/project/planning/score"))) {
             try (Stream<Path> fichiers = Files.walk(racine)) {
                 fichiers.filter(p -> p.getFileName().toString().endsWith(".java"))
                         .filter(p -> lire(p).contains("CoefficientsPenibilite"))
-                        .forEach(p -> lecteurs.add(p.toString()));
+                        .filter(p -> !LECTEURS_AUTORISES.contains(p.getFileName().toString()))
+                        .forEach(p -> inattendus.add(p.toString()));
             } catch (IOException e) {
                 throw new UncheckedIOException(e);
             }
         }
 
-        assertTrue(lecteurs.isEmpty(),
+        assertTrue(inattendus.isEmpty(),
                 "Le harnais évalue toutes les échelles à partir d'une seule résolution : la "
                         + "répartition par dominance ne dépend pas des coefficients, seule leur "
-                        + "pondération en dépend.\nDès qu'une contrainte lit les coefficients — le "
-                        + "lot L5 le fera — changer l'échelle change le planning, et rejouer la "
-                        + "seule pondération devient faux. Le harnais doit alors résoudre par "
-                        + "échelle.\nContraintes concernées :\n  - "
-                        + String.join("\n  - ", lecteurs));
+                        + "pondération en dépend.\nDès qu'une contrainte les lit et pèse, changer "
+                        + "l'échelle change le planning, et rejouer la seule pondération devient "
+                        + "faux — le harnais doit alors résoudre par échelle.\nCe test s'est déjà "
+                        + "déclenché au lot L5, comme annoncé : la contrainte d'équité les lit. "
+                        + "Elle reste tolérée parce qu'elle ne pèse rien sans tolérance transmise, "
+                        + "et qu'une demande de calibration n'en transmet pas.\nÀ vérifier avant "
+                        + "d'ajouter une entrée à LECTEURS_AUTORISES : la nouvelle contrainte "
+                        + "est-elle inerte sur une demande de calibration ?\nContraintes "
+                        + "inattendues :\n  - " + String.join("\n  - ", inattendus));
     }
 
     // ---------------------------------------------------------

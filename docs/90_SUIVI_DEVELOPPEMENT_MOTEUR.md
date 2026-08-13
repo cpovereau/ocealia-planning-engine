@@ -810,11 +810,12 @@ Ordonné par **dépendance**, pas par valeur métier. Les rangs renvoient au bac
 2. **Rang 8** — trancher les champs sans effet. Indépendant du reste, et il retire du contrat des
    promesses que personne ne tient. SC-02 en a rendu un plus visible : `capaciteCible` ne borne pas
    le volume qu'on gare sur un poste virtuel.
-3. **Équité, lots L5 et L6** — la contrainte SOFT, puis SC-05. **L0 à L4 sont livrés** : voir
-   `92_CADRAGE_WORKMETRICS_EQUITE.md` §8. L5 porte deux exigences héritées : c'est **par elle que
-   SC-02 est servi** (§8.1), et son arbitrage doit coïncider avec les paliers de SC-06. Ce qui
-   manque par ailleurs n'est plus un outil mais **des plannings réels** à donner au harnais de
-   calibration — `92_CALIBRATION_PENIBILITE.md` §2.
+3. **Équité, lot L6** — SC-05. **L0 à L5 sont livrés** : voir `92_CADRAGE_WORKMETRICS_EQUITE.md`
+   §8. ⚠️ **L6 n'est pas actionnable en l'état** : SC-05 est un scénario complet sans contrat
+   d'entrée, et ses arbitrages relèvent du métier — cadrage prêt dans
+   `92_CADRAGE_SCENARIO_SC-05.md`, arbitrages à rendre. Ce qui manque par ailleurs n'est plus un
+   outil mais **des plannings réels** à donner au harnais de calibration —
+   `92_CALIBRATION_PENIBILITE.md` §2.
 4. **Rang 13** — garder le schéma d'entrée comme le schéma de sortie l'est. Correctif pur, sans
    arbitrage.
 5. **Rang 10** — dès que la Production a rendu ses arbitrages.
@@ -1700,6 +1701,65 @@ SC-06, et mérite son propre lot.
 
 Les **quatre scénarios exposés voyagent maintenant par les deux canaux**. Le document d'échange
 fichier n'en connaissait que deux — SC-06 n'y avait jamais été inscrit à son lot S6 ; c'est réparé.
+
+### Équité — lot L5 : la première règle qui compare deux personnes (2026-08-13)
+
+741 tests, 0 échec.
+
+#### Ce qu'elle répare
+
+Toutes les contraintes du moteur vérifient une personne contre *sa* borne. Conséquence relevée au
+cadrage : **un planning où l'un fait 48 h et l'autre 25 h obtenait exactement le même score qu'un
+planning à 35 h chacun.** Rien ne rendait un déséquilibre coûteux.
+
+`EquiteChargeAuContrat` pèse l'écart **signé** au contrat, sur les heures **pondérées**, en valeur
+absolue au-delà d'une tolérance. La sous-charge coûte donc autant que la surcharge — sans quoi le
+moteur éviterait de surcharger sans jamais rééquilibrer.
+
+#### Elle ne pèse rien tant qu'on ne le demande pas
+
+`planningContext.equite.ecartTolerePourcent` absent : la contrainte est inerte, et le score est
+**exactement** celui d'avant le lot. C'est le test le plus important de la livraison. Deux raisons,
+la seconde étant la vraie :
+
+* le moteur n'invente pas un seuil que personne ne lui a donné — *l'encadrement dit à partir de
+  quand un écart gêne*, comme le seuil de surcharge de SC-02 ;
+* **les coefficients qui pondèrent cet écart ne sont pas calibrés** (lot L3). Peser au score une
+  mesure dont l'échelle reste à établir reviendrait à deviner deux fois.
+
+Le poids retenu — 10 points par point d'écart — départage sans jamais interdire : il faut cent
+points d'écart, soit un salarié entièrement inoccupé, pour approcher le coût d'un créneau non
+couvert. Il relève du même protocole de calibration, et le cadrage le dit désormais (§9.2 bis).
+
+#### C'est par le score que SC-02 est servi
+
+SC-06 classe par paliers depuis L4 ; **SC-02 n'a aucun comparateur** — il laisse le solveur
+décider. Le jeu d'essai le montre : deux remplaçants possibles, l'un à 32 h et l'autre à 8 h dans
+la semaine, que rien d'autre ne départage. Avant ce lot les deux affectations avaient le même
+score. Avec une tolérance de 10 %, le vendredi libéré revient au moins servi.
+
+#### Deux volets, et le second n'est pas un détail
+
+Un salarié sans aucun créneau n'apparaît dans aucune jointure, donc dans aucun total : son écart de
+−100 % resterait invisible, et le moteur n'aurait **aucune raison de lui donner du travail** — alors
+que c'est exactement la personne que l'équité désigne. Même découpage que
+`HeuresMinimumParSemaine`, et pour la même raison.
+
+Le second volet joint le référentiel **avant** de constater l'absence de travail : sans cela, une
+semaine entière d'activités hors charge — une formation — échapperait aux deux volets à la fois,
+pénalisée nulle part. Trouvé en écrivant le test, pas en relisant le code.
+
+#### Le garde-fou du lot L3 s'est déclenché, comme annoncé
+
+`HarnaisDeCalibrationTest` vérifiait qu'aucune contrainte ne lit les coefficients de pénibilité —
+c'est ce qui autorise le harnais de calibration à rejouer toutes les échelles à partir d'une seule
+résolution. La contrainte d'équité les lit : **le test a échoué au premier build du lot**, à
+l'endroit exact où son message disait qu'il le ferait.
+
+La licence tient, mais sous condition, et elle est réécrite : la contrainte **ne pèse rien sans
+tolérance transmise**, et une demande de calibration n'en transmet pas — on calibre la mesure, pas
+la sanction. Le corollaire est désormais écrit : **calibrer sur une demande portant
+`planningContext.equite` serait faux**. Le test garde maintenant la liste des lecteurs autorisés.
 
 ### Équité — lot L4 : les critères entrent dans une décision (2026-08-13)
 

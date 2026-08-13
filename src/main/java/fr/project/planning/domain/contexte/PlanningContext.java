@@ -33,6 +33,16 @@ public final class PlanningContext implements Serializable {
     /** [Équité L1] Ce que vaut une heure selon quand elle est travaillée. Neutre par défaut. */
     private final CoefficientsPenibilite coefficientsPenibilite;
 
+    /**
+     * [Équité L5] À partir de quel écart au contrat l'encadrement estime qu'il y a inéquité.
+     *
+     * <p>Jamais {@code null}, et <strong>vide par défaut</strong> : sans tolérance déclarée, la
+     * contrainte d'équité ne pèse rien. Elle voyage dans le contexte plutôt qu'à côté de lui parce
+     * que SC-02 reconstruit sa {@code PlanningRequest} trois fois — un champ posé ailleurs se
+     * perdrait à la première reconstruction qui l'oublierait.</p>
+     */
+    private final ToleranceEquite toleranceEquite;
+
     /** Constructeur historique — coefficients de pénibilité neutres. */
     public PlanningContext(
             ObjectifResolution objectif,
@@ -51,6 +61,7 @@ public final class PlanningContext implements Serializable {
                 optionsExplicabilite, CoefficientsPenibilite.neutres());
     }
 
+    /** Constructeur lot L1 — sans tolérance d'équité : la contrainte du lot L5 reste inactive. */
     public PlanningContext(
             ObjectifResolution objectif,
             StrategieScoring strategieScoring,
@@ -64,8 +75,29 @@ public final class PlanningContext implements Serializable {
             OptionsExplicabilite optionsExplicabilite,
             CoefficientsPenibilite coefficientsPenibilite
     ) {
+        this(objectif, strategieScoring, resolutionType, hypotheseHistorique, horizonTemporel,
+                strategieCouverture, seuilsDeTolerance, penalites, dominancePenibilites,
+                optionsExplicabilite, coefficientsPenibilite, new ToleranceEquite(null));
+    }
+
+    public PlanningContext(
+            ObjectifResolution objectif,
+            StrategieScoring strategieScoring,
+            ResolutionType resolutionType,
+            HypotheseHistorique hypotheseHistorique,
+            HorizonTemporel horizonTemporel,
+            StrategieCouverture strategieCouverture,
+            SeuilsDeTolerance seuilsDeTolerance,
+            Penalites penalites,
+            DominancePenibilites dominancePenibilites,
+            OptionsExplicabilite optionsExplicabilite,
+            CoefficientsPenibilite coefficientsPenibilite,
+            ToleranceEquite toleranceEquite
+    ) {
         this.coefficientsPenibilite = coefficientsPenibilite == null
                 ? CoefficientsPenibilite.neutres() : coefficientsPenibilite;
+        this.toleranceEquite = toleranceEquite == null
+                ? new ToleranceEquite(null) : toleranceEquite;
         this.objectif = Objects.requireNonNull(objectif);
         this.strategieScoring = Objects.requireNonNull(strategieScoring);
         this.resolutionType = Objects.requireNonNull(resolutionType);
@@ -117,6 +149,16 @@ public final class PlanningContext implements Serializable {
     /** [Équité L1] Ce que vaut une heure selon quand elle est travaillée. Jamais {@code null}. */
     public CoefficientsPenibilite getCoefficientsPenibilite() {
         return coefficientsPenibilite;
+    }
+
+    /**
+     * [Équité L5] À partir de quel écart au contrat il y a inéquité. Jamais {@code null}.
+     *
+     * <p>Vide tant que l'appelant n'en déclare pas : la contrainte d'équité ne pèse alors rien, et
+     * le score est exactement celui d'avant le lot L5.</p>
+     */
+    public ToleranceEquite getToleranceEquite() {
+        return toleranceEquite;
     }
 
     public OptionsExplicabilite getOptionsExplicabilite() {
@@ -207,6 +249,21 @@ public PlanningContext(
             HypotheseHistorique hypotheseHistorique,
             CoefficientsPenibilite coefficientsPenibilite
         ) {
+        this(objectif, strategieScoring, dateDebut, dateFin, resolutionType, hypotheseHistorique,
+                coefficientsPenibilite, new ToleranceEquite(null));
+    }
+
+    /** [Équité L5] Même contexte, avec la tolérance au-delà de laquelle l'écart est pesé. */
+    public PlanningContext(
+            ObjectifResolution objectif,
+            StrategieScoring strategieScoring,
+            LocalDate dateDebut,
+            LocalDate dateFin,
+            ResolutionType resolutionType,
+            HypotheseHistorique hypotheseHistorique,
+            CoefficientsPenibilite coefficientsPenibilite,
+            ToleranceEquite toleranceEquite
+        ) {
         this(
             objectif,
             strategieScoring,
@@ -218,7 +275,8 @@ public PlanningContext(
             defaultPenalites(),
             defaultDominancePenibilites(),
             defaultOptionsExplicabilite(),
-            coefficientsPenibilite
+            coefficientsPenibilite,
+            toleranceEquite
         );
     }
 }
