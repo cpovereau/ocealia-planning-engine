@@ -33,6 +33,30 @@ public class ImpactCandidatDTO {
      */
     private Double heuresHabituellesSemaine;
 
+    /**
+     * [Équité L4] Série de jours travaillés d'affilée contenant le jour du besoin — <strong>en
+     * jours</strong>, et non en heures comme les autres mesures de ce bloc.
+     *
+     * <p>Palier 5 du classement : ne pas rappeler qui enchaîne. {@code avant} vaut 0 quand la
+     * personne ne travaille pas ce jour-là ; le besoin la fait alors entrer dans une série.
+     * {@code plafond} reprend {@code joursConsecutifsMaximum} du salarié, s'il est déclaré.</p>
+     */
+    private ImpactMesureDTO joursConsecutifs;
+
+    /**
+     * [Équité L4] Écart <strong>signé</strong> au volume contractuel après affectation, en
+     * pourcentage — palier 6 du classement.
+     *
+     * <p>Mesuré sur les heures <strong>pondérées</strong> par la pénibilité : on ne juge l'équité
+     * qu'à pénibilité équivalente. Sans coefficients transmis, la pondération est neutre et cet
+     * écart se recoupe avec {@code heuresSemaine.apres} et {@code heuresHabituellesSemaine}.</p>
+     *
+     * <p>Négatif : la personne est en dessous de son contrat, ce qui la rend <strong>préférable</strong>.
+     * {@code null} quand le contrat ne déclare pas de volume — rien n'est alors comparable, et le
+     * candidat est classé en dernier de ce palier plutôt que crédité d'un écart favorable.</p>
+     */
+    private Double ecartContratPourcent;
+
     public ImpactCandidatDTO() {
     }
 
@@ -47,6 +71,16 @@ public class ImpactCandidatDTO {
         this.heuresSemaine = heuresSemaine;
         this.heuresHabituellesSemaine = heuresHabituellesSemaine;
     }
+
+    /** [Équité L4] Les deux grandeurs qui départagent aux paliers 5 et 6. */
+    public void setCriteresEquite(ImpactMesureDTO joursConsecutifs, Double ecartContratPourcent) {
+        this.joursConsecutifs = joursConsecutifs;
+        this.ecartContratPourcent = ecartContratPourcent;
+    }
+
+    public ImpactMesureDTO getJoursConsecutifs() { return joursConsecutifs; }
+
+    public Double getEcartContratPourcent() { return ecartContratPourcent; }
 
     public String getRessourceId() { return ressourceId; }
     public void setRessourceId(String ressourceId) { this.ressourceId = ressourceId; }

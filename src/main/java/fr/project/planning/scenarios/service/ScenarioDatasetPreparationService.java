@@ -348,8 +348,14 @@ public class ScenarioDatasetPreparationService {
         );
 
         // 9. IDs postes virtuels (pour les diagnostics)
-        Set<String> posteVirtuelIds = request.getDataSet().getRessources().getPostesVirtuels()
-                .stream().map(PosteVirtuelInputDTO::getId).collect(Collectors.toSet());
+        //    Le bloc est facultatif : ne pas déclarer de poste virtuel dit qu'aucun n'est
+        //    mobilisable, ce qui est une demande légitime. Le moteur y répondait 500 jusqu'au
+        //    lot L4 — la garde existait déjà trois lignes plus bas, pour les salariés.
+        Set<String> posteVirtuelIds =
+                request.getDataSet().getRessources().getPostesVirtuels() == null
+                        ? Set.of()
+                        : request.getDataSet().getRessources().getPostesVirtuels()
+                                .stream().map(PosteVirtuelInputDTO::getId).collect(Collectors.toSet());
 
         // 10. Comptage ignoredCreneaux (pré-résolution)
         //     horsHorizon est produit par la partition Phase 3 (cf. étape 3 ci-dessus).

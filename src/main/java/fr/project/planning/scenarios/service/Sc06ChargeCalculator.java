@@ -1,15 +1,22 @@
 package fr.project.planning.scenarios.service;
 
 import fr.project.planning.constraints.legales.AmplitudeJournaliere;
+import fr.project.planning.domain.contexte.CoefficientsPenibilite;
+import fr.project.planning.domain.contexte.DominancePenibilites;
 import fr.project.planning.domain.creneau.Creneau;
 import fr.project.planning.domain.metier.ComptabiliteActivite;
 import fr.project.planning.domain.metier.ReferentielComptabiliteActivite;
+import fr.project.planning.domain.reglementaire.RegulatoryParameters;
 import fr.project.planning.domain.ressource.Ressource;
+import fr.project.planning.time.RepartitionPenibilites;
+import fr.project.planning.time.TimeBreakdownCalculator;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Sc06ChargeCalculator — primitives de charge partagées par SC-06 (lot S5).
@@ -123,6 +130,76 @@ public final class Sc06ChargeCalculator {
         }
         ComptabiliteActivite activite = referentiel.getByCode(creneau.getCodeActiviteEffectif());
         return activite != null && activite.isCompteDansCharge();
+    }
+
+    /**
+     * [Équité L4] Minutes ramenées à l'unité de l'heure ordinaire.
+     *
+     * <p>La grandeur que compare le palier d'équité : <em>on ne juge l'équité qu'à pénibilité
+     * équivalente</em>. Chaque minute est pondérée par le coefficient de sa seule catégorie —
+     * celle que la dominance retient — de sorte qu'une nuit du dimanche n'est jamais comptée deux
+     * fois.</p>
+     *
+     * <p>La répartition et la pondération viennent des mêmes classes que
+     * {@code workMetrics.heuresPonderees} : le classement de SC-06 et la mesure restituée disent
+     * la même chose, ou le rang contredirait la réponse qui le justifie.</p>
+     *
+     * <p>Sans coefficients transmis — le cas de toutes les demandes jusqu'à leur calibration — la
+     * pondération est neutre et cette grandeur vaut exactement les minutes travaillées.</p>
+     */
+    public static double minutesPonderees(List<Creneau> creneaux, PreparedSc06Scenario prepared) {
+        TimeBreakdownCalculator decoupage = new TimeBreakdownCalculator();
+        RegulatoryParameters reglementaire = prepared.problem().getRegulatoryParameters();
+        DominancePenibilites dominance =
+                prepared.problem().getPlanningContext().getDominancePenibilites();
+        CoefficientsPenibilite coefficients =
+                prepared.problem().getPlanningContext().getCoefficientsPenibilite();
+
+        double total = 0.0;
+        for (Creneau creneau : creneaux) {
+            if (!compteDansCharge(creneau, prepared.referentiel())) {
+                continue;
+            }
+            total += RepartitionPenibilites
+                    .de(decoupage.compute(creneau, reglementaire, true), dominance)
+                    .minutesPondereesPar(coefficients);
+        }
+        return total;
+    }
+
+    /**
+     * [Équité L4] Longueur de la série de jours travaillés d'affilée qui contient {@code jour}.
+     *
+     * <h3>Pourquoi cette série-là, et pas le maximum de la fenêtre</h3>
+     * <p>Le critère métier est <em>ne pas rappeler qui enchaîne</em>. Ce qui compte est donc la
+     * série à laquelle le besoin rattacherait la personne, pas une série plus longue survenue
+     * ailleurs dans la fenêtre : celle-là est acquise, et aucun choix ne la change. Mesurer le
+     * maximum ferait perdre le candidat pour un enchaînement dont il n'est pas question.</p>
+     *
+     * @return 0 si la personne ne travaille pas ce jour-là — auquel cas il n'y a pas de série à
+     *         prolonger
+     */
+    public static int joursConsecutifsAutour(List<Creneau> creneaux,
+                                             ReferentielComptabiliteActivite referentiel,
+                                             LocalDate jour) {
+        Set<LocalDate> travailles = new HashSet<>();
+        for (Creneau creneau : creneaux) {
+            if (compteDansCharge(creneau, referentiel)) {
+                travailles.add(creneau.getDate());
+            }
+        }
+        if (!travailles.contains(jour)) {
+            return 0;
+        }
+
+        int serie = 1;
+        for (LocalDate avant = jour.minusDays(1); travailles.contains(avant); avant = avant.minusDays(1)) {
+            serie++;
+        }
+        for (LocalDate apres = jour.plusDays(1); travailles.contains(apres); apres = apres.plusDays(1)) {
+            serie++;
+        }
+        return serie;
     }
 
     /** Conversion en heures décimales, alignée sur {@code workMetrics.byRessource}. */

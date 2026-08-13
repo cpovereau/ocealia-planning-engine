@@ -2238,7 +2238,36 @@ components:
           format: double
           nullable: true
           description: Volume hebdomadaire habituel déclaré au contrat, en heures.
-      required: [ressourceId, amplitudeJournaliere, heuresJour, heuresSemaine]
+        joursConsecutifs:
+          $ref: '#/components/schemas/ImpactMesure'
+          description: |
+            [Équité L4] Série de jours travaillés d'affilée **contenant le jour du besoin**, avant
+            et après affectation. Palier 5 du classement : *ne pas rappeler qui enchaîne*.
+
+            ⚠️ **En jours** — seule mesure de ce bloc à ne pas être en heures. `plafond` reprend
+            `joursConsecutifsMaximum` du salarié. `avant` vaut 0 quand la personne ne travaille pas
+            ce jour-là : le besoin la ferait alors entrer dans une série.
+
+            Le critère porte sur la série que le besoin prolongerait, et non sur la plus longue de
+            la fenêtre : celle-là est acquise, et aucun choix ne la change.
+        ecartContratPourcent:
+          type: number
+          format: double
+          nullable: true
+          description: |
+            [Équité L4] Écart **signé** au volume contractuel après affectation, en pourcentage.
+            Palier 6 du classement — l'équité proprement dite.
+
+            Mesuré sur les heures **pondérées** par la pénibilité : *on ne juge l'équité qu'à
+            pénibilité équivalente*. Sans `coefficientsPenibilite` transmis, la pondération est
+            neutre et cet écart se recoupe avec `heuresSemaine.apres` et
+            `heuresHabituellesSemaine`.
+
+            Négatif : la personne est **en dessous** de son contrat, ce qui la rend *préférable* —
+            pas seulement « non exclue ». `null` quand le contrat ne déclare pas de volume : rien
+            n'est alors comparable, et le candidat est classé en dernier de ce palier plutôt que
+            crédité d'un écart favorable.
+      required: [ressourceId, amplitudeJournaliere, heuresJour, heuresSemaine, joursConsecutifs]
 
     AffectationCandidat:
       type: object

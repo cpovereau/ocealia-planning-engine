@@ -146,14 +146,18 @@ La meilleure solution et deux alternatives, classées. Nombre fixe, non paramét
 
 Dans l'ordre, chaque palier départageant à égalité du précédent :
 
+> ⚠️ **Ce classement a été remanié au lot L4 du chantier équité** — voir §4.4 bis. Le tableau
+> ci-dessous est celui livré au lot S4 ; il est conservé parce que les paliers 1 à 4 sont
+> inchangés et que leur justification reste la bonne.
+
 | Rang | Palier | Justification |
 |---|---|---|
 | 1 | **Conformité** — aucune règle éliminatoire violée | ne jamais recommander l'illégal en tête |
 | 2 | **Couverture complète** avant couverture partielle | le besoin prime |
 | 3 | **Une seule personne** avant plusieurs ; **salarié réel** avant poste virtuel | réponse 2 du cadrage |
 | 4 | **Personne déjà en poste ce jour-là** avant personne rappelée | éviter de casser un repos |
-| 5 | **Score SOFT du moteur** | amplitude, nuit, jours consécutifs, pénibilités |
-| 6 | **Écart aux heures hebdomadaires habituelles** | départage : le plus loin de son volume habituel |
+| 5 | ~~**Score SOFT du moteur**~~ → devenu palier 7 | amplitude, nuit, jours consécutifs, pénibilités |
+| 6 | ~~**Écart aux heures hebdomadaires habituelles**~~ → remplacé | départage : le plus loin de son volume habituel |
 
 Motif du choix lexicographique plutôt qu'un score unique : les `ScoreWeights` ont été calibrés
 pour optimiser un planning, pas pour choisir une personne. Les réemployer tels quels pour arbitrer
@@ -175,6 +179,51 @@ Le palier 6 suppose le bloc `contrat` (lot **S2**).
   ailleurs, on préfère la personne dont on peut mesurer l'impact. WinDev étant tenu de toujours
   transmettre ce volume (§5.3), le cas traduit un défaut d'intégration — le classement le rend
   visible au lieu de l'absorber.
+
+### 4.4 bis Remanié au lot L4 de l'équité — les trois critères de départage
+
+Le classement du lot S4 passait du palier « déjà en poste » directement au **score SOFT**, puis à
+une charge brute rapportée au volume hebdomadaire. L'arbitrage §4.7 de
+`92_CADRAGE_WORKMETRICS_EQUITE.md` fixe trois critères et leur ordre — aptitude, partage, confort.
+Ils s'insèrent ici :
+
+| Rang | Palier | Ce qui change |
+|---|---|---|
+| 1 à 4 | inchangés | — |
+| **5** | **Jours travaillés consécutifs**, la série la plus courte d'abord | **nouveau** |
+| **6** | **Écart signé au contrat**, le moins servi d'abord | remplace la charge relative |
+| **7** | Score SOFT du moteur | descend d'un rang |
+| **8** | **Amplitude après affectation**, la plus faible d'abord | **nouveau** |
+
+**Deux placements ne vont pas de soi, et ce sont eux l'arbitrage :**
+
+* **L'écart au contrat passe devant le score SOFT.** Derrière, il n'aurait quasiment jamais servi —
+  le score départage presque toujours. Un salarié à +30 % ne doit pas perdre contre un salarié à
+  +5 % pour trente minutes d'amplitude.
+* **Les jours consécutifs passent devant l'écart.** L'aptitude prime sur le partage : faire revenir
+  quelqu'un au sixième jour d'affilée n'est pas un arbitrage qu'un écart favorable doit pouvoir
+  emporter.
+
+**Ce que l'écart gagne en remplaçant la charge relative.** Il est mesuré sur les heures
+**pondérées** par la pénibilité — on ne juge l'équité qu'à pénibilité équivalente —, il est
+**signé** — une sous-charge rend préférable au lieu de simplement ne pas disqualifier —, et sa
+référence est **proratisée sur la fenêtre** au lieu d'être supposée d'une semaine. Sur ce dernier
+point le lot S4 comparait un numérateur couvrant tout l'horizon à un dénominateur d'une semaine ;
+la garantie de semaine pleine (§4.8) rendait les deux égaux, et masquait l'écart.
+
+**Le score SOFT garde son rôle** au palier 7 : il porte ce que les paliers explicites ne disent
+pas — nuits, pénibilités, dépassements. Il pèse aussi les jours consécutifs et l'amplitude, que
+les paliers 5 et 8 reprennent ; le recouvrement est assumé, l'ordre voulu par le métier ne se
+lisant pas dans un score agrégé.
+
+**Amplitude : après affectation, jamais avant.** Une amplitude de départ vaut zéro pour qui ne
+travaille pas ce jour-là, ce qui ferait mécaniquement préférer un rappel sur repos — l'inverse du
+palier 4.
+
+⚠️ **Chaque palier est désormais restitué** — `impacts[].joursConsecutifs` et
+`impacts[].ecartContratPourcent` s'ajoutent au bloc. Deux paliers qui décident du podium sans rien
+laisser voir rendraient le rang inexplicable, et le classement lexicographique n'a été retenu que
+pour éviter cela.
 
 ### 4.5 Tranché — les solutions non conformes sont restituées, jamais masquées
 

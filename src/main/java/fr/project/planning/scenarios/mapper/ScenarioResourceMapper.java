@@ -199,15 +199,29 @@ public class ScenarioResourceMapper {
     /**
      * Construit la liste complète de ressources pour le value range OptaPlanner.
      * Inclut automatiquement RessourceNonAffectee.INSTANCE.
+     *
+     * <p><strong>Les deux blocs sont facultatifs.</strong> Ni {@code salaries} ni
+     * {@code postesVirtuels} n'est exigé par le contrat, et une demande qui n'en déclare qu'un
+     * décrit quelque chose de parfaitement légitime — un dataset sans poste virtuel, par exemple,
+     * dit simplement qu'aucun n'est mobilisable. Le moteur répondait jusqu'ici {@code 500
+     * INTERNAL_ERROR} à ces demandes-là. Constaté au lot L4 du chantier équité, sur un jeu d'essai
+     * qui ne déclarait pas de poste virtuel.</p>
+     *
+     * <p>Un dataset sans aucune ressource reste possible et reste signalé — par
+     * {@code AUCUNE_RESSOURCE_DANS_DATASET}, à la préparation, où l'appelant peut le lire.</p>
      */
     public List<Ressource> toRessources(DataSetDTO dataSet) {
         List<Ressource> ressources = new ArrayList<>();
-        dataSet.getRessources().getSalaries()
+        listeOuVide(dataSet.getRessources().getSalaries())
                 .forEach(s -> ressources.add(toSalarieReel(s)));
-        dataSet.getRessources().getPostesVirtuels()
+        listeOuVide(dataSet.getRessources().getPostesVirtuels())
                 .forEach(p -> ressources.add(toPosteVirtuel(p)));
         ressources.add(RessourceNonAffectee.INSTANCE);
         return ressources;
+    }
+
+    private static <T> List<T> listeOuVide(List<T> liste) {
+        return liste == null ? List.of() : liste;
     }
 
     // =========================

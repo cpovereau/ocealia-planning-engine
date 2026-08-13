@@ -533,23 +533,43 @@ distinctes de couvrir ce besoin.
 
 Paliers lexicographiques : chacun ne départage que les ex æquo du précédent.
 
-| Rang | Palier |
-|---|---|
-| 1 | **Conformité** — aucune règle éliminatoire violée |
-| 2 | **Couverture complète** avant couverture partielle |
-| 3 | **Une seule personne** avant plusieurs ; **salarié réel** avant poste virtuel |
-| 4 | **Personne déjà en poste ce jour-là** avant personne rappelée sur son repos |
-| 5 | **Score SOFT** du moteur |
-| 6 | **Charge** rapportée au volume hebdomadaire habituel |
+| Rang | Palier | Restitué dans |
+|---|---|---|
+| 1 | **Conformité** — aucune règle éliminatoire violée | `motifs[]` |
+| 2 | **Couverture complète** avant couverture partielle | `affectations[]` |
+| 3 | **Une seule personne** avant plusieurs ; **salarié réel** avant poste virtuel | `nature` |
+| 4 | **Personne déjà en poste ce jour-là** avant personne rappelée sur son repos | `motifs[]` |
+| 5 | **Jours travaillés consécutifs** — la série la plus courte d'abord | `impacts[].joursConsecutifs` |
+| 6 | **Écart signé au contrat** — le moins servi d'abord | `impacts[].ecartContratPourcent` |
+| 7 | **Score SOFT** du moteur | `scoreBreakdown` |
+| 8 | **Amplitude après affectation** — la plus faible d'abord | `impacts[].amplitudeJournaliere` |
 
 Le choix d'un ordre lexicographique plutôt que d'un score unique est délibéré : les pondérations
 du moteur ont été calibrées pour optimiser un planning, pas pour choisir une personne. Ici, chaque
-rang se lit ligne à ligne.
+rang se lit ligne à ligne — et chaque palier est restitué, sans quoi le rang serait inexplicable.
+
+> **Les paliers 5, 6 et 8 sont ceux du lot L4 du chantier équité**, et remplacent le classement
+> livré au lot S4, qui passait du palier 4 au score SOFT puis à une charge brute rapportée au
+> volume hebdomadaire. Deux placements en découlent, qui ne sont pas neutres :
+>
+> * **l'écart au contrat passe devant le score SOFT.** Derrière, il n'aurait quasiment jamais
+>   servi : le score départage presque toujours. Un salarié à +30 % ne doit pas perdre contre un
+>   salarié à +5 % pour trente minutes d'amplitude ;
+> * **les jours consécutifs passent devant l'écart.** L'aptitude prime sur le partage : faire
+>   revenir quelqu'un au sixième jour d'affilée n'est pas un arbitrage qu'un écart favorable doit
+>   pouvoir emporter.
+>
+> Le score SOFT garde le palier 7 et son rôle : il porte ce que les paliers explicites ne disent
+> pas — nuits, pénibilités, dépassements.
 
 > **Palier 6, donnée absente** : un salarié dont le contrat ne déclare pas
 > `heuresHebdomadairesHabituelles` est classé en dernier de ce palier. À égalité par ailleurs, le
 > moteur préfère la personne dont il peut mesurer l'impact — et rend ainsi visible un défaut
 > d'intégration au lieu de l'absorber.
+
+> **Palier 8, l'amplitude se lit après affectation, jamais avant.** Une amplitude de départ vaut
+> zéro pour qui ne travaille pas ce jour-là, ce qui ferait mécaniquement préférer un rappel sur
+> repos — l'inverse du palier 4.
 
 ### 6.3 `affectations[]`
 
@@ -574,9 +594,24 @@ contrat ni contraintes individuelles. Une solution `RESSOURCE_A_POURVOIR` a donc
 | `heuresJour` | objet | Heures travaillées le jour du besoin |
 | `heuresSemaine` | objet | Heures travaillées sur la semaine lundi → dimanche |
 | `heuresHabituellesSemaine` | double | Volume habituel déclaré au contrat ; `null` si absent |
+| `joursConsecutifs` | objet | **[Équité L4]** Série de jours travaillés d'affilée contenant le jour du besoin — palier 5 |
+| `ecartContratPourcent` | double | **[Équité L4]** Écart **signé** au volume contractuel après affectation — palier 6 ; `null` sans contrat déclaré |
 
 Chaque mesure porte `avant`, `apres`, `delta`, `plafond` et `depassement`, en **heures décimales**
 — même unité que `workMetrics.byRessource`.
+
+> ⚠️ **`joursConsecutifs` est la seule mesure de ce bloc qui ne soit pas en heures** : elle compte
+> des **jours**. Son `plafond` reprend `joursConsecutifsMaximum` du salarié. `avant` vaut 0 quand
+> la personne ne travaille pas ce jour-là — le besoin la ferait alors entrer dans une série.
+>
+> Le critère porte sur la série que le besoin **prolongerait**, et non sur la plus longue de la
+> fenêtre : celle-là est acquise, et aucun choix ne la change.
+
+> **`ecartContratPourcent` est mesuré sur les heures pondérées** par la pénibilité — on ne juge
+> l'équité qu'à pénibilité équivalente — et sur la fenêtre transmise. Sans
+> `planningContext.coefficientsPenibilite`, la pondération est neutre et cet écart se recoupe avec
+> `heuresSemaine.apres` et `heuresHabituellesSemaine`. Négatif : la personne est **en dessous** de
+> son contrat, ce qui la rend *préférable*.
 
 `plafond` vaut `null` quand la limite individuelle n'est pas transmise, et `depassement` reste
 alors `false` : **une limite absente n'est pas une limite à zéro**.
@@ -659,7 +694,9 @@ Ces deux blocs décrivent la **solution de rang 1, et elle seule** :
         "amplitudeJournaliere": { "avant": 4.0,  "apres": 14.0, "delta": 10.0, "plafond": 14.0, "depassement": false },
         "heuresJour":           { "avant": 4.0,  "apres": 12.0, "delta": 8.0,  "plafond": null, "depassement": false },
         "heuresSemaine":        { "avant": 20.0, "apres": 28.0, "delta": 8.0,  "plafond": 44.0, "depassement": false },
-        "heuresHabituellesSemaine": 35.0
+        "heuresHabituellesSemaine": 35.0,
+        "joursConsecutifs":     { "avant": 3.0,  "apres": 3.0,  "delta": 0.0,  "plafond": 6.0,  "depassement": false },
+        "ecartContratPourcent": -20.0
       }
     ],
     "motifs": []

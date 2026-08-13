@@ -4,6 +4,7 @@ import fr.project.planning.domain.creneau.Creneau;
 import fr.project.planning.domain.ressource.ContraintesReglementairesSalarie;
 import fr.project.planning.domain.ressource.Ressource;
 import fr.project.planning.domain.ressource.SalarieReel;
+import fr.project.planning.domain.workmetrics.EcartAuContrat;
 import fr.project.planning.scenarios.dto.ImpactCandidatDTO;
 import fr.project.planning.scenarios.dto.ImpactMesureDTO;
 import fr.project.planning.scenarios.service.Candidat;
@@ -48,7 +49,7 @@ public final class Sc06ImpactFactory {
 
             ContraintesReglementairesSalarie contraintes = contraintesDe(prepared, ressourceId);
 
-            impacts.add(new ImpactCandidatDTO(
+            ImpactCandidatDTO impact = new ImpactCandidatDTO(
                     ressourceId,
                     mesure(
                             Sc06ChargeCalculator.amplitudeMinutes(avantCeJour, prepared.referentiel()),
@@ -63,7 +64,20 @@ public final class Sc06ImpactFactory {
                             Sc06ChargeCalculator.minutesTravaillees(apres, prepared.referentiel()),
                             contraintes == null ? null : contraintes.getHeuresMaximumParSemaine()),
                     volumeHebdomadaireHabituel(prepared, ressourceId)
-            ));
+            );
+
+            /*
+             * [Équité L4] Les deux grandeurs qui départagent aux paliers 5 et 6.
+             *
+             * Elles sont restituées parce que SC-06 se lit ligne à ligne : deux paliers qui
+             * décident du podium sans rien laisser voir rendraient le rang inexplicable — et le
+             * classement lexicographique n'a été retenu que pour éviter cela.
+             */
+            impact.setCriteresEquite(
+                    joursConsecutifs(prepared, avant, apres, contraintes),
+                    ecartAuContrat(prepared, ressourceId, apres));
+
+            impacts.add(impact);
         }
 
         return impacts;
@@ -72,6 +86,41 @@ public final class Sc06ImpactFactory {
     // =========================================================
     // Helpers
     // =========================================================
+
+    /**
+     * [Équité L4] La série de jours travaillés d'affilée contenant le jour du besoin, avant et
+     * après affectation. En jours, seule mesure de ce bloc à ne pas être en heures.
+     */
+    private static ImpactMesureDTO joursConsecutifs(PreparedSc06Scenario prepared,
+                                                    List<Creneau> avant, List<Creneau> apres,
+                                                    ContraintesReglementairesSalarie contraintes) {
+        Integer plafond = contraintes == null ? null : contraintes.getJoursConsecutifsMaximum();
+        return new ImpactMesureDTO(
+                Sc06ChargeCalculator.joursConsecutifsAutour(avant, prepared.referentiel(),
+                        prepared.dateBesoin()),
+                Sc06ChargeCalculator.joursConsecutifsAutour(apres, prepared.referentiel(),
+                        prepared.dateBesoin()),
+                plafond == null ? null : plafond.doubleValue());
+    }
+
+    /**
+     * [Équité L4] L'écart signé au contrat après affectation, mesuré comme le classement le mesure.
+     *
+     * <p>Sur les heures pondérées et sur la fenêtre transmise : ce sont les mêmes primitives que
+     * {@code Sc06CandidatEnumerationService}, sans quoi la réponse justifierait un rang qu'elle
+     * n'a pas produit.</p>
+     */
+    private static Double ecartAuContrat(PreparedSc06Scenario prepared, String ressourceId,
+                                         List<Creneau> apres) {
+        SalarieReel salarie = salarie(prepared, ressourceId);
+        if (salarie == null) {
+            return null;
+        }
+        return EcartAuContrat.ecartPourcent(
+                Sc06ChargeCalculator.minutesPonderees(apres, prepared),
+                EcartAuContrat.minutesAttendues(salarie.getContrat(),
+                        prepared.problem().getPlanningContext().getHorizonTemporel()));
+    }
 
     private static ImpactMesureDTO mesure(int minutesAvant, int minutesApres, Double plafondHeures) {
         return new ImpactMesureDTO(

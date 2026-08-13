@@ -232,8 +232,12 @@ public class ScenarioSc01PreparationService {
         );
 
         // 10. IDs postes virtuels (pour les diagnostics)
-        Set<String> posteVirtuelIds = request.getDataSet().getRessources().getPostesVirtuels()
-                .stream().map(PosteVirtuelInputDTO::getId).collect(Collectors.toSet());
+        //     Bloc facultatif — voir ScenarioDatasetPreparationService, même correctif (lot L4).
+        Set<String> posteVirtuelIds =
+                request.getDataSet().getRessources().getPostesVirtuels() == null
+                        ? Set.of()
+                        : request.getDataSet().getRessources().getPostesVirtuels()
+                                .stream().map(PosteVirtuelInputDTO::getId).collect(Collectors.toSet());
 
         // 11. C1 — IgnoredCreneauxDTO diagnostique (mesure, pas d'exclusion en Phase C)
         IgnoredCreneauxDTO ignoredCreneaux = computeIgnoredCreneaux(

@@ -147,12 +147,15 @@ jour où quelqu'un touchera à l'ordre.
 
 **S'y adosser est impossible.** Adopter 3 : 4 : 5 normalisé donnerait à la nuit le coefficient le
 plus faible, ce qui contredit l'arbitrage métier et viole la condition de cohérence du §3.
-L'échelle d'équité sera donc **distincte et inversée** par rapport à celle des pénalités.
+L'échelle d'équité est donc **distincte et inversée** par rapport à celle des pénalités.
 
-⚠️ **Reste à confirmer par le métier** : ce n'est pas un détail d'implémentation. Cela signifie que
-le moteur, sur le même planning, peut *pénaliser* le moins la nuit tout en la *mesurant* comme la
-plus lourde. Les deux répondent à des questions différentes — « jusqu'où a-t-on le droit d'aller »
-contre « qui a été le plus sollicité » —, mais l'écart doit être voulu, et non subi.
+> ✅ **Tranché par le métier le 2026-08-13.** Le score conserve sa lecture — *la situation la plus
+> favorable au salarié*, donc la catégorie la moins chère — et **rien n'y est modifié**.
+>
+> Sur un même planning, le moteur pénalise donc le moins la nuit tout en la mesurant comme la plus
+> lourde. Ce n'est pas une contradiction : les deux répondent à des questions différentes — *jusqu'où
+> a-t-on le droit d'aller* contre *qui a été le plus sollicité*. L'écart est **voulu**, et
+> `CoherenceEchelleTest` garde les deux moitiés de la condition qui le rend tenable.
 
 ---
 

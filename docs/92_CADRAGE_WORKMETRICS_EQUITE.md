@@ -151,8 +151,12 @@ coefficients d'équité s'y adossent, soit l'écart est documenté et voulu.
 > couplage réel. `CoherenceEchelleTest` verrouille les deux moitiés de la condition.
 >
 > **S'adosser est impossible** : adopter 3 : 4 : 5 donnerait à la nuit le coefficient le plus
-> faible. L'écart est donc assumé — ⚠️ **et reste à confirmer par le métier** : sur un même
-> planning, le moteur pénalisera le moins la nuit tout en la mesurant comme la plus lourde.
+> faible.
+>
+> ✅ **Tranché le 2026-08-13** : le score garde sa lecture — *la situation la plus favorable au
+> salarié* — et **rien n'y est modifié**. Sur un même planning, le moteur pénalise donc le moins la
+> nuit tout en la mesurant comme la plus lourde ; les deux répondent à des questions différentes, et
+> l'écart est voulu.
 
 ### 4.3 Tranché — l'historique vient de l'horizon transmis
 
@@ -318,9 +322,32 @@ Ordonné par dépendance. Chaque lot est livrable seul et testable seul.
 | **L1** ✅ | Heures pondérées : coefficients paramétrables, mesure individuelle | L'unité, sans laquelle rien n'est comparable. Aucune comparaison encore |
 | **L2** ✅ | Écart signé au contrat + parts de pénibilité, restitution, fenêtre observée | La mesure comparative. **Descriptive, sans décision** |
 | **L3** ✅ | Harnais de simulation et calibration des coefficients | Ne peut venir qu'après L1 et L2 : on calibre sur des mesures qui existent |
-| **L4** | Les trois critères de §4.7 câblés dans la sélection SC-02 et SC-06 | Premier effet visible sur une décision. Deux critères sur trois sont déjà mesurés |
-| **L5** | Contrainte SOFT d'équité | Pèse l'écart au score. Séparé de L2 pour être évalué seul |
+| **L4** ✅ | Les trois critères de §4.7 câblés dans la sélection **SC-06** | Premier effet visible sur une décision. Deux critères sur trois sont déjà mesurés |
+| **L5** | Contrainte SOFT d'équité — **et c'est par elle que SC-02 est servi** | Pèse l'écart au score. Séparé de L2 pour être évalué seul |
 | **L6** | SC-05 — arbitrage entre deux salariés | Le scénario que tout ceci débloque |
+
+### 8.1 Correction apportée par L4 — SC-02 n'a pas de sélection à câbler
+
+La ligne L4 annonçait « SC-02 **et** SC-06 ». Vérification faite en réalisant le lot, **les deux
+scénarios ne choisissent pas de la même façon**, et un seul des deux a quelque chose où insérer un
+critère :
+
+| | Comment le remplaçant est choisi | Où insérer les critères |
+|---|---|---|
+| **SC-06** | énumération explicite, classement par paliers lexicographiques | dans les paliers — **fait au lot L4** |
+| **SC-02** | **le solveur décide** : les créneaux libérés redeviennent des variables | dans le score, donc **au lot L5** |
+
+SC-02 ne comporte aucun comparateur : sa préparation libère les créneaux de l'absent, épingle tout
+le reste, et laisse le solveur affecter. Y faire entrer les trois critères n'a qu'une forme
+possible — une contrainte qui les pèse — c'est-à-dire exactement l'objet du lot L5.
+
+**Ce n'est pas un report de L4, c'est un déplacement de frontière** : le travail que la ligne
+attribuait à L4 pour SC-02 n'existait pas sous cette forme. Rien n'est perdu, et L5 hérite d'un
+objet plus clair — *la même équité, servie aux deux scénarios par deux mécanismes différents*.
+
+⚠️ Conséquence à tenir au lot L5 : **les deux mécanismes doivent produire le même arbitrage**. Une
+contrainte SOFT qui classerait autrement que les paliers de SC-06 ferait dire au moteur deux choses
+différentes sur la même situation, selon le scénario interrogé.
 
 ---
 

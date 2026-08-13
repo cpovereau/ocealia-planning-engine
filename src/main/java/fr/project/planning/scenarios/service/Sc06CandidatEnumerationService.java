@@ -2,6 +2,7 @@ package fr.project.planning.scenarios.service;
 
 import fr.project.planning.domain.creneau.Creneau;
 import fr.project.planning.domain.ressource.Indisponibilite;
+import fr.project.planning.domain.workmetrics.EcartAuContrat;
 import fr.project.planning.domain.ressource.PosteVirtuel;
 import fr.project.planning.domain.ressource.Ressource;
 import fr.project.planning.domain.ressource.RessourceNonAffectee;
@@ -126,14 +127,39 @@ public class Sc06CandidatEnumerationService {
      * pondérations du moteur ont été calibrées pour optimiser un planning, pas pour choisir une
      * personne. Les réemployer telles quelles produirait un classement défendable en théorie et
      * injustifiable devant l'utilisateur. Ici, chaque rang se lit ligne à ligne.</p>
+     *
+     * <h3>[Équité L4] Les trois critères d'équité s'insèrent aux paliers 5, 6 et 8</h3>
+     * <p>L'arbitrage §4.7 du cadrage d'équité fixe leur ordre — aptitude, puis partage, puis
+     * confort — et deux placements en découlent, qui ne sont pas neutres :</p>
+     * <ul>
+     *   <li><strong>L'écart au contrat passe devant le score SOFT.</strong> Derrière, il n'aurait
+     *       quasiment jamais servi : le score départage presque toujours. Un salarié à +30 % ne
+     *       doit pas perdre contre un salarié à +5 % pour trente minutes d'amplitude.</li>
+     *   <li><strong>Les jours consécutifs passent devant l'écart.</strong> L'aptitude prime sur le
+     *       partage : faire revenir quelqu'un au sixième jour d'affilée n'est pas un arbitrage
+     *       qu'un écart favorable doit pouvoir emporter.</li>
+     * </ul>
+     *
+     * <p>Le score SOFT garde le palier 7 et son rôle : il porte ce que les paliers explicites ne
+     * disent pas — nuits, pénibilités, dépassements. Il pèse aussi les jours consécutifs et
+     * l'amplitude, que les paliers 5 et 8 reprennent : le recouvrement est assumé, l'ordre voulu
+     * par le métier ne se lisant pas dans un score agrégé.</p>
+     *
+     * <p><strong>Ce classement remplace celui du lot S4</strong>, dont le palier 6 comparait une
+     * charge brute rapportée au volume hebdomadaire. Il est désormais mesuré sur les heures
+     * <em>pondérées</em> — on ne juge l'équité qu'à pénibilité équivalente — <em>signé</em>, et
+     * proratisé sur la fenêtre transmise. Voir {@code 92_CADRAGE_SCENARIO_SC-06.md} §4.4.</p>
      */
     static final Comparator<Candidat> COMPARATEUR =
             Comparator.comparing(Candidat::conforme).reversed()                     // 1. conformité
                     .thenComparing(Comparator.comparing(Candidat::couvertureComplete).reversed()) // 2. couverture
                     .thenComparing(c -> c.nature().ordinal())                       // 3. mono avant composée
                     .thenComparingInt(Candidat::nbRessourcesRappelees)              // 4. déjà en poste
-                    .thenComparing(Comparator.comparingInt(Candidat::softScore).reversed()) // 5. score SOFT
-                    .thenComparingDouble(Candidat::ratioCharge);                    // 6. charge relative
+                    .thenComparingInt(Candidat::joursConsecutifs)                   // 5. aptitude
+                    .thenComparing(Candidat::ecartContratPourcent,
+                            Comparator.nullsLast(Comparator.naturalOrder()))        // 6. équité
+                    .thenComparing(Comparator.comparingInt(Candidat::softScore).reversed()) // 7. score SOFT
+                    .thenComparingInt(Candidat::amplitudeApresMinutes);             // 8. confort
 
     // =========================================================
     // Passe 1 — mono-ressource
@@ -373,8 +399,10 @@ public class Sc06CandidatEnumerationService {
                 conforme,
                 couvertureComplete,
                 rappelees,
-                pireRatioCharge(prepared, affectations),
+                pireSerieDeJours(prepared, affectations),
+                pireEcartAuContrat(prepared, affectations),
                 evaluation.score().softScore(),
+                pireAmplitudeApres(prepared, affectations),
                 List.copyOf(motifs)
         );
     }
@@ -407,38 +435,101 @@ public class Sc06CandidatEnumerationService {
     }
 
     /**
-     * Charge hebdomadaire résultante rapportée au volume habituel, la plus défavorable parmi les
-     * ressources mobilisées.
+     * [Équité L4] La plus longue série de jours travaillés d'affilée que le besoin prolongerait.
      *
-     * <p>Palier 6 — dernier départage. Une ressource dont le contrat ne déclare pas de volume
-     * hebdomadaire habituel obtient {@link Double#MAX_VALUE} et se retrouve donc classée en
-     * dernier à égalité par ailleurs : à information égale, on préfère la personne dont on peut
-     * mesurer l'impact. WinDev est tenu de toujours transmettre ce volume — le cas traduit donc
-     * un défaut d'intégration, que ce classement rend visible plutôt que d'absorber.</p>
+     * <p>Palier 5 — l'aptitude. Ne pas rappeler qui enchaîne : à conformité et forme égales, on
+     * préfère la personne dont la série reste courte. Le critère porte sur la série qui contient
+     * le jour du besoin, celle que le choix allonge ; une série plus longue survenue ailleurs dans
+     * la fenêtre est acquise et ne se départage pas.</p>
      */
-    private double pireRatioCharge(PreparedSc06Scenario prepared, Map<String, Ressource> affectations) {
-        double pire = 0.0;
+    private int pireSerieDeJours(PreparedSc06Scenario prepared, Map<String, Ressource> affectations) {
+        int pire = 0;
+        for (SalarieReel salarie : mobilises(affectations)) {
+            pire = Math.max(pire, Sc06ChargeCalculator.joursConsecutifsAutour(
+                    apresAffectation(prepared, affectations, salarie),
+                    prepared.referentiel(), prepared.dateBesoin()));
+        }
+        return pire;
+    }
+
+    /**
+     * [Équité L4] Amplitude du jour du besoin après affectation, la plus élevée des mobilisées.
+     *
+     * <p>Palier 8 — le confort, dernier départage. Il porte sur l'amplitude <strong>après</strong>
+     * affectation, jamais sur celle de départ : celle-ci vaut zéro pour qui ne travaille pas ce
+     * jour-là, ce qui ferait mécaniquement préférer un rappel sur repos — l'inverse du palier 4.</p>
+     */
+    private int pireAmplitudeApres(PreparedSc06Scenario prepared, Map<String, Ressource> affectations) {
+        int pire = 0;
+        for (SalarieReel salarie : mobilises(affectations)) {
+            List<Creneau> apres = apresAffectation(prepared, affectations, salarie);
+            pire = Math.max(pire, Sc06ChargeCalculator.amplitudeMinutes(
+                    Sc06ChargeCalculator.duJour(apres, prepared.dateBesoin()), prepared.referentiel()));
+        }
+        return pire;
+    }
+
+    /** La situation « après » d'une ressource : son planning figé, plus sa part du besoin. */
+    private static List<Creneau> apresAffectation(PreparedSc06Scenario prepared,
+                                                  Map<String, Ressource> affectations,
+                                                  SalarieReel salarie) {
+        return Sc06ChargeCalculator.avecLeBesoin(
+                Sc06ChargeCalculator.planningFige(prepared, salarie.getId()),
+                Sc06ChargeCalculator.partDuBesoin(prepared, affectations, salarie.getId()));
+    }
+
+    /** Les salariés réels que ce candidat mobilise, une seule fois chacun. */
+    private static List<SalarieReel> mobilises(Map<String, Ressource> affectations) {
+        List<SalarieReel> salaries = new ArrayList<>();
         Set<String> deja = new HashSet<>();
-
         for (Ressource ressource : affectations.values()) {
-            if (!(ressource instanceof SalarieReel salarie) || !deja.add(salarie.getId())) {
-                continue;
+            if (ressource instanceof SalarieReel salarie && deja.add(salarie.getId())) {
+                salaries.add(salarie);
             }
-            if (salarie.getContrat() == null
-                    || salarie.getContrat().getHeuresHebdomadairesHabituelles() == null
-                    || salarie.getContrat().getHeuresHebdomadairesHabituelles() <= 0) {
-                return Double.MAX_VALUE;
+        }
+        return salaries;
+    }
+
+    /**
+     * [Équité L4] Écart <strong>signé</strong> au volume contractuel après affectation, le plus
+     * élevé parmi les ressources mobilisées.
+     *
+     * <p>Palier 6 — l'équité proprement dite. Trois propriétés le distinguent de la charge
+     * relative que comparait le lot S4 :</p>
+     * <ul>
+     *   <li>il porte sur les heures <strong>pondérées</strong> — on ne juge l'équité qu'à
+     *       pénibilité équivalente ;</li>
+     *   <li>il est <strong>signé</strong> : une sous-charge rend préférable, elle ne se contente
+     *       pas de ne pas disqualifier ;</li>
+     *   <li>la référence est <strong>proratisée sur la fenêtre</strong>, et non supposée d'une
+     *       semaine. Numérateur et dénominateur portent enfin sur la même période.</li>
+     * </ul>
+     *
+     * <p>Retour {@code null} dès qu'une ressource mobilisée ne déclare pas de volume hebdomadaire :
+     * rien n'est alors comparable, et le candidat est classé <strong>en dernier</strong> de ce
+     * palier plutôt que crédité d'un écart favorable. À information égale, on préfère la personne
+     * dont on peut mesurer l'impact. WinDev étant tenu de toujours transmettre ce volume, le cas
+     * traduit un défaut d'intégration — que le classement rend visible au lieu de l'absorber.</p>
+     */
+    private Double pireEcartAuContrat(PreparedSc06Scenario prepared,
+                                      Map<String, Ressource> affectations) {
+        Double pire = null;
+
+        for (SalarieReel salarie : mobilises(affectations)) {
+            Double attendues = EcartAuContrat.minutesAttendues(salarie.getContrat(),
+                    prepared.problem().getPlanningContext().getHorizonTemporel());
+
+            // Même mesure que celle restituée dans impacts[] : le classement et la réponse ne
+            // peuvent pas diverger, ils passent par les mêmes primitives.
+            Double ecart = EcartAuContrat.ecartPourcent(
+                    Sc06ChargeCalculator.minutesPonderees(
+                            apresAffectation(prepared, affectations, salarie), prepared),
+                    attendues);
+
+            if (ecart == null) {
+                return null;
             }
-
-            // Même calcul que celui restitué dans impacts[].heuresSemaine : le classement et la
-            // réponse ne peuvent pas diverger, ils passent par les mêmes primitives.
-            List<Creneau> apres = Sc06ChargeCalculator.avecLeBesoin(
-                    Sc06ChargeCalculator.planningFige(prepared, salarie.getId()),
-                    Sc06ChargeCalculator.partDuBesoin(prepared, affectations, salarie.getId()));
-
-            int minutes = Sc06ChargeCalculator.minutesTravaillees(apres, prepared.referentiel());
-            double ratio = minutes / (salarie.getContrat().getHeuresHebdomadairesHabituelles() * 60.0);
-            pire = Math.max(pire, ratio);
+            pire = pire == null ? ecart : Math.max(pire, ecart);
         }
         return pire;
     }

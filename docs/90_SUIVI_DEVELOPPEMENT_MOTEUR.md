@@ -810,10 +810,11 @@ Ordonné par **dépendance**, pas par valeur métier. Les rangs renvoient au bac
 2. **Rang 8** — trancher les champs sans effet. Indépendant du reste, et il retire du contrat des
    promesses que personne ne tient. SC-02 en a rendu un plus visible : `capaciteCible` ne borne pas
    le volume qu'on gare sur un poste virtuel.
-3. **Équité, lots L4 à L6** — l'effet des critères sur la sélection, la contrainte SOFT, puis
-   SC-05. **L0 à L3 sont livrés** : voir `92_CADRAGE_WORKMETRICS_EQUITE.md` §8. L3 a livré
-   l'instrument de calibration ; ce qui manque désormais n'est plus un outil mais **des plannings
-   réels** à lui donner — `92_CALIBRATION_PENIBILITE.md` §2.
+3. **Équité, lots L5 et L6** — la contrainte SOFT, puis SC-05. **L0 à L4 sont livrés** : voir
+   `92_CADRAGE_WORKMETRICS_EQUITE.md` §8. L5 porte deux exigences héritées : c'est **par elle que
+   SC-02 est servi** (§8.1), et son arbitrage doit coïncider avec les paliers de SC-06. Ce qui
+   manque par ailleurs n'est plus un outil mais **des plannings réels** à donner au harnais de
+   calibration — `92_CALIBRATION_PENIBILITE.md` §2.
 4. **Rang 13** — garder le schéma d'entrée comme le schéma de sortie l'est. Correctif pur, sans
    arbitrage.
 5. **Rang 10** — dès que la Production a rendu ses arbitrages.
@@ -1700,6 +1701,65 @@ SC-06, et mérite son propre lot.
 Les **quatre scénarios exposés voyagent maintenant par les deux canaux**. Le document d'échange
 fichier n'en connaissait que deux — SC-06 n'y avait jamais été inscrit à son lot S6 ; c'est réparé.
 
+### Équité — lot L4 : les critères entrent dans une décision (2026-08-13)
+
+728 tests, 0 échec. Premier lot du chantier à **changer ce que le moteur recommande**.
+
+#### Le classement de SC-06 remanié
+
+Les trois critères de l'arbitrage §4.7 s'insèrent dans les paliers lexicographiques : **jours
+consécutifs** au 5, **écart signé au contrat** au 6, **amplitude après affectation** au 8. Le score
+SOFT descend au 7 et garde son rôle — nuits, pénibilités, dépassements.
+
+Deux placements sont l'arbitrage lui-même. **L'écart passe devant le score SOFT** : derrière, il
+n'aurait quasiment jamais servi, le score départageant presque toujours. **Les jours consécutifs
+passent devant l'écart** : l'aptitude prime sur le partage.
+
+Le jeu d'essai le montre en une ligne. Trois salariés à 35 h, tous en poste ce jeudi-là :
+
+```
+                planning existant                      série   semaine+besoin   écart au contrat
+SAL-DISPO       mer 8 h · jeu 4 h                        2          16 h           −54,29 %
+SAL-CHARGE      lun 8 h · mer 8 h · jeu 4 h              2          24 h           −31,43 %
+SAL-ENCHAINE    lun 2 h · mar 2 h · mer 2 h · jeu 2 h    4          12 h           −65,71 %
+```
+
+**SAL-ENCHAINE est le moins servi de tous, et il arrive dernier.** Avec l'ordre du lot S4, il
+arrivait premier — vérifié en restaurant l'ancien comparateur : le score SOFT ne les séparait pas,
+et la charge relative le désignait. C'est exactement ce que l'arbitrage voulait empêcher.
+
+#### Ce que l'écart gagne en remplaçant la charge relative
+
+Il est mesuré sur les heures **pondérées**, il est **signé**, et sa référence est **proratisée sur
+la fenêtre** au lieu d'être supposée d'une semaine. Sur ce dernier point le lot S4 comparait un
+numérateur couvrant tout l'horizon à un dénominateur d'une semaine ; la garantie de semaine pleine
+rendait les deux égaux, et masquait l'écart.
+
+Chaque nouveau palier est **restitué** — `impacts[].joursConsecutifs`,
+`impacts[].ecartContratPourcent`. Deux paliers qui décident du podium sans rien laisser voir
+rendraient le rang inexplicable, et le classement lexicographique n'a été retenu que pour éviter
+cela.
+
+#### SC-02 n'avait pas de sélection à câbler
+
+Le cadrage annonçait « SC-02 **et** SC-06 ». Les deux ne choisissent pas de la même façon : SC-06
+énumère et classe, **SC-02 laisse le solveur décider** — sa préparation libère les créneaux de
+l'absent, épingle le reste, et n'a aucun comparateur. Y faire entrer les trois critères n'a qu'une
+forme possible, une contrainte qui les pèse : c'est l'objet du lot L5. Frontière déplacée, rien
+reporté — et L5 hérite d'une exigence explicite : **les deux mécanismes doivent produire le même
+arbitrage**, sous peine que le moteur dise deux choses différentes selon le scénario interrogé.
+
+#### Un défaut trouvé en chemin : un bloc facultatif absent faisait un 500
+
+Un jeu d'essai qui ne déclarait pas de poste virtuel — parce qu'il n'en avait pas besoin — recevait
+**500 INTERNAL_ERROR**. `ScenarioResourceMapper.toRessources` et deux préparations itéraient
+`salaries` et `postesVirtuels` sans les tester, alors qu'aucun des deux n'est exigé par le contrat.
+Dans l'une de ces méthodes, la garde existait **trois lignes plus bas**, pour l'autre bloc.
+
+Le défaut touchait les quatre scénarios : le mapper est commun. Corrigé, et gardé par
+`BlocRessourcesFacultatifTest`, qui vérifie aussi que l'absence de *toute* ressource reste
+signalée — `AUCUNE_RESSOURCE_DANS_DATASET` — plutôt que refusée.
+
 ### Équité — lot L3 : l'instrument de calibration, et l'échelle que le moteur portait déjà (2026-08-13)
 
 707 tests, 0 échec. Le lot livre **de quoi calibrer**, et non des coefficients — c'est la même
@@ -1743,9 +1803,10 @@ la pénibilité la plus lourde. **L'accord est une coïncidence entretenue, pas 
 réordonner la liste pour servir l'une casserait l'autre en silence, et depuis L1 les deux partagent
 la même implémentation. `CoherenceEchelleTest` verrouille les deux moitiés.
 
-⚠️ **À confirmer par le métier** : s'adosser à 3 : 4 : 5 est impossible sans donner à la nuit le
-coefficient le plus faible. L'écart est donc assumé — sur un même planning, le moteur pénalisera le
-moins la nuit tout en la mesurant comme la plus lourde.
+✅ **Tranché par le métier le 2026-08-13** : le score garde sa lecture — *la situation la plus
+favorable au salarié* — et **rien n'y est modifié**. Sur un même planning, le moteur pénalise donc
+le moins la nuit tout en la mesurant comme la plus lourde ; les deux répondent à des questions
+différentes, et l'écart est voulu.
 
 #### Une condition que toute calibration doit respecter
 
