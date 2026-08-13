@@ -306,7 +306,7 @@ Ordonné par dépendance. Chaque lot est livrable seul et testable seul.
 |---|---|---|
 | **S0** ✅ | Correctif : `IndisponibiliteSalarie` et le passage de minuit | Prérequis. La contrainte compare `creneau.getDate()` aux bornes de l'absence : un créneau du 3 mars 22:00 → 06:00 échappe à une absence du 4 mars. Bâtir SC-02 sur cette règle sans la réparer serait bâtir sur du sable. **Livré le 2026-08-11** — le défaut avait un second lecteur, le filtre d'éligibilité de SC-06 |
 | **S1** ✅ | Squelette SC-02 **sans découpage** : endpoint, contrat d'entrée, épinglage, reprise entière ou « à pourvoir » | Livrable et déjà utile seul. Couvre le cas majoritaire — un remplaçant prend la journée. **Livré le 2026-08-11**, précédé de l'extraction de la préparation dataset commune à SC-02 et SC-03 |
-| **S2** | Découpage aux frontières de disponibilité, recombinaison à la restitution, seuil des 30 minutes sur le bloc confié, contrainte SOFT de cohésion | Le cœur technique (§5). Isolé pour être évalué seul, y compris son effet sur le score |
+| **S2** ✅ | Découpage aux frontières de disponibilité, recombinaison à la restitution, seuil des 30 minutes sur le bloc confié, contrainte SOFT de cohésion | Le cœur technique (§5). Isolé pour être évalué seul, y compris son effet sur le score. **Livré le 2026-08-11** |
 | **S3** | Surcharge : seuils, alerte, niveaux restitués | Réemploi de `ImpactMesureDTO` ; aucune mesure nouvelle à écrire |
 | **S4** | Restitution complète avant / après + inscription au contrat série 50 (OpenAPI, schémas JSON) | Une seule migration de contrat pour WinDev, à la fin, plutôt que quatre |
 | **S5** | Canal FileAdapter (`scenarioType: SC-02`) | Symétrie avec SC-06 lot S6 : les deux canaux doivent produire le même résultat, vérifié par test |

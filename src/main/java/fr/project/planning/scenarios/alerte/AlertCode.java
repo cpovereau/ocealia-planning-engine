@@ -104,5 +104,14 @@ public enum AlertCode {
     POSTE_VIRTUEL_REFUSE_MAIS_PRESENT,
 
     /** Tout ou partie des heures libérées n'a trouvé aucun salarié : elles restent à pourvoir. */
-    HEURES_RESTANT_A_POURVOIR
+    HEURES_RESTANT_A_POURVOIR,
+
+    /**
+     * Des créneaux libérés ont été découpés, faute d'un remplaçant disponible sur toute leur durée.
+     *
+     * <p>Informative et non fautive : c'est le mécanisme prévu. Elle est signalée parce que la
+     * réponse peut alors contenir <strong>plus de créneaux que la demande</strong>, et que
+     * l'appelant doit le savoir sans avoir à le déduire.</p>
+     */
+    CRENEAUX_DECOUPES
 }

@@ -1,0 +1,124 @@
+{
+  "requestId": "REQ-SC02-DECOUPE-001",
+  "metadata": {
+    "clientId": "WINDEV",
+    "timestamp": "2026-05-10T09:00:00",
+    "source": "TEST"
+  },
+  "scenarioType": "SC-02",
+  "planningContext": {
+    "horizon": {
+      "dateDebut": "2026-05-11",
+      "dateFin": "2026-05-17"
+    },
+    "strategieScoring": "ANALYSE_RH"
+  },
+  "scenarioParameters": {
+    "salarieAbsentId": "SAL-MARIE"
+  },
+  "dataSet": {
+    "referentiels": {
+      "activites": [
+        {
+          "codeActiviteId": "ACT-SOIN",
+          "libelle": "Soins infirmiers",
+          "compteDansCharge": true,
+          "genereDetteRepos": false,
+          "estServiceCritique": true
+        }
+      ]
+    },
+    "ressources": {
+      "salaries": [
+        {
+          "id": "SAL-MARIE",
+          "statut": "CDI",
+          "contrat": { "heuresHebdomadairesHabituelles": 35.0 },
+          "contraintesReglementaires": { "reposQuotidienMinimum": 11.0 },
+          "travailleJourFerie": true
+        },
+        {
+          "id": "SAL-X",
+          "statut": "CDI",
+          "contrat": { "heuresHebdomadairesHabituelles": 35.0 },
+          "contraintesReglementaires": { "reposQuotidienMinimum": 11.0 },
+          "travailleJourFerie": true
+        },
+        {
+          "id": "SAL-Y",
+          "statut": "CDI",
+          "contrat": { "heuresHebdomadairesHabituelles": 35.0 },
+          "contraintesReglementaires": { "reposQuotidienMinimum": 11.0 },
+          "travailleJourFerie": true
+        }
+      ],
+      "postesVirtuels": []
+    },
+    "creneaux": [
+      {
+        "id": "BESOIN-MARDI",
+        "date": "2026-05-12",
+        "heureDebut": "13:30",
+        "heureFin": "16:00",
+        "lieu": "HOPITAL-NORD",
+        "codeActiviteId": "ACT-SOIN",
+        "ressourceAffecteeId": "SAL-MARIE"
+      },
+      {
+        "id": "BESOIN-MERCREDI",
+        "date": "2026-05-13",
+        "heureDebut": "13:30",
+        "heureFin": "16:00",
+        "lieu": "HOPITAL-NORD",
+        "codeActiviteId": "ACT-SOIN",
+        "ressourceAffecteeId": "SAL-MARIE"
+      },
+      {
+        "id": "PLN-X-MAR",
+        "date": "2026-05-12",
+        "heureDebut": "15:30",
+        "heureFin": "20:00",
+        "lieu": "HOPITAL-NORD",
+        "codeActiviteId": "ACT-SOIN",
+        "ressourceAffecteeId": "SAL-X"
+      },
+      {
+        "id": "PLN-X-MER",
+        "date": "2026-05-13",
+        "heureDebut": "08:00",
+        "heureFin": "17:00",
+        "lieu": "HOPITAL-SUD",
+        "codeActiviteId": "ACT-SOIN",
+        "ressourceAffecteeId": "SAL-X"
+      },
+      {
+        "id": "PLN-Y-MAR",
+        "date": "2026-05-12",
+        "heureDebut": "08:00",
+        "heureFin": "17:00",
+        "lieu": "HOPITAL-SUD",
+        "codeActiviteId": "ACT-SOIN",
+        "ressourceAffecteeId": "SAL-Y"
+      },
+      {
+        "id": "PLN-Y-MER",
+        "date": "2026-05-13",
+        "heureDebut": "13:45",
+        "heureFin": "18:00",
+        "lieu": "HOPITAL-NORD",
+        "codeActiviteId": "ACT-SOIN",
+        "ressourceAffecteeId": "SAL-Y"
+      }
+    ],
+    "indisponibilites": {
+      "items": [
+        {
+          "ressourceId": "SAL-MARIE",
+          "dateDebut": "2026-05-12",
+          "dateFin": "2026-05-13",
+          "motif": "ARRET_MALADIE"
+        }
+      ]
+    }
+  }
+}

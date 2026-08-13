@@ -96,6 +96,20 @@ public final class Penalites implements Serializable {
     /** Valeur retenue à défaut : couvre largement l'écart maximal de plage (~360 points). */
     private static final int NUIT_SALARIE_NON_NUIT_PAR_DEFAUT = 2_000;
 
+    /**
+     * Pénalité, par ressource en excédent de la première, d'un besoin découpé entre plusieurs
+     * personnes (lot S2 de SC-02).
+     *
+     * <p>Elle vaut moins que {@link #nonAffectation} (2 000) et moins que
+     * {@link #affectationPosteVirtuel} (500) : mieux vaut deux remplaçants réels que des heures à
+     * pourvoir, et mieux vaut deux remplaçants réels qu'un poste fictif. Elle reste assez élevée
+     * pour qu'un découpage gratuit — deux personnes là où une suffisait — ne passe pas inaperçu.</p>
+     */
+    private final int fragmentationCreneauOrigine;
+
+    /** Valeur retenue à défaut, en attendant qu'un besoin de la régler se manifeste. */
+    private static final int FRAGMENTATION_CRENEAU_ORIGINE_PAR_DEFAUT = 300;
+
     /** Constructeur historique — applique le poids par défaut de {@link #nuitSalarieNonNuit}. */
     public Penalites(
             int violationPhysique,
@@ -137,6 +151,7 @@ public final class Penalites implements Serializable {
             int nuitSalarieNonNuit
     ) {
         this.nuitSalarieNonNuit = nuitSalarieNonNuit;
+        this.fragmentationCreneauOrigine = FRAGMENTATION_CRENEAU_ORIGINE_PAR_DEFAUT;
         this.violationPhysique = violationPhysique;
         this.violationLegale = violationLegale;
         this.violationMetier = violationMetier;
@@ -154,6 +169,10 @@ public final class Penalites implements Serializable {
 
     public int getNuitSalarieNonNuit() {
         return nuitSalarieNonNuit;
+    }
+
+    public int getFragmentationCreneauOrigine() {
+        return fragmentationCreneauOrigine;
     }
 
     public int getViolationPhysique() {

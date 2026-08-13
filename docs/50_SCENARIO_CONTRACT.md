@@ -318,7 +318,7 @@ Assurer la continuité de service **en perturbant le moins possible l’existant
 * niveaux de surcharge par salarié ;
 * volume de besoin résiduel (poste virtuel).
 
-#### État d'implémentation — lot S1 livré le 2026-08-11
+#### État d'implémentation — lots S1 et S2 livrés le 2026-08-11
 
 `POST /scenarios/sc02/solve` est exposé. ⚠️ **Le contrat ci-dessous n'est pas complet** : il
 grandira aux lots S2 (découpage) et S3 (seuils de surcharge), et son inscription définitive à
@@ -335,14 +335,34 @@ pire qu'un champ absent.
 Le bloc `scenarioParameters` est **strict** : un paramètre d'un lot à venir produit une erreur
 explicite, jamais un silence.
 
-**Ce que le lot S1 fait.** Seuls les créneaux du salarié absent que son absence recouvre sont
+**Ce que le moteur fait.** Seuls les créneaux du salarié absent que son absence recouvre sont
 rendus au solveur. Tout le reste du planning transmis est épinglé — aucune affectation existante
 n'est déplacée pour faire de la place, y compris les créneaux de l'absent situés hors de sa
 période d'absence.
 
-**Ce que le lot S1 restitue** : un bloc `remplacement`, propre à SC-02 et absent des autres
-scénarios — `salarieAbsentId`, `creneauxLiberes`, `creneauxRepris`, `heuresAPourvoir`, et le
-`details[]` du sort de chaque créneau libéré, y compris ceux que personne n'a repris.
+**Couverture partielle (lot S2).** Quand aucun remplaçant n'est disponible sur toute la durée d'un
+créneau libéré, celui-ci est couvert en partie. Les coupes tombent aux **frontières de
+disponibilité réelles** des remplaçants — début ou fin d'un de leurs créneaux, bord d'une de leurs
+absences — et jamais sur une grille horaire.
+
+* **Un bloc confié à un salarié ne fait jamais moins de 30 minutes.** Sur un créneau 13h30–16h00,
+  un remplaçant qui prend son service à 13h45 ne se verra pas proposer les quinze minutes qui
+  précèdent.
+* **Le reliquat non couvert n'a aucun minimum** : il part à pourvoir tel qu'il est.
+* Un même besoin éclaté entre plusieurs personnes est **pénalisé** — sans être interdit : mieux
+  vaut deux remplaçants que des heures à pourvoir.
+
+⚠️ **La réponse peut donc contenir plus de créneaux que la demande.** Un créneau couvert en deux
+fois ressort en deux entrées, dont les identifiants sont dérivés du sien — `<id>#S1`, `<id>#S2` —
+et qui portent un `creneauOrigineId` pour être rattachées sans analyser la chaîne. Un créneau
+repris en entier par une seule personne **garde son identifiant inchangé**, comme s'il n'avait
+jamais été découpé : c'est le cas courant. Le découpage est signalé par une alerte
+`CRENEAUX_DECOUPES` de sévérité `INFO`.
+
+**Ce que le moteur restitue** : un bloc `remplacement`, propre à SC-02 et absent des autres
+scénarios — `salarieAbsentId`, `creneauxLiberes` (créneaux d'origine, que le découpage ne gonfle
+pas), `creneauxRepris` (repris **en entier**), `heuresAPourvoir`, et le `details[]` du sort de
+chaque morceau restitué, y compris ceux que personne n'a repris.
 
 ⚠️ **Limite connue de ce lot** : le moteur n'oppose pas encore `activitesCompatibles` à une
 affectation — aucune contrainte ne lit ce champ (rang 10 du backlog). Un salarié peut donc se voir

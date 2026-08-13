@@ -10,12 +10,17 @@ import java.util.List;
  * croire à une capacité inexistante.</p>
  *
  * @param salarieAbsentId          salarié dont l'absence a motivé le scénario
- * @param creneauxLiberes          nombre de créneaux rendus au solveur par cette absence
- * @param creneauxRepris           nombre d'entre eux repris par un salarié réel
+ * @param creneauxLiberes          nombre de créneaux <strong>d'origine</strong> rendus au solveur
+ *                                 par cette absence — le découpage éventuel ne le gonfle pas
+ * @param creneauxRepris           nombre d'entre eux repris <strong>en entier</strong> par des
+ *                                 salariés réels. Un créneau couvert à moitié n'y figure pas : il
+ *                                 laisse des heures à pourvoir
  * @param heuresAPourvoir          heures décimales que <strong>personne de réel</strong> ne couvre
  *                                 — poste virtuel compris. Le planning dit où elles sont, ce total
  *                                 dit combien il y en a
- * @param details                  le sort de chaque créneau libéré, y compris ceux non repris
+ * @param details                  le sort de chaque morceau restitué, y compris ceux que personne
+ *                                 n'a repris. Un créneau couvert en deux fois y apparaît deux fois,
+ *                                 chaque entrée portant alors son {@code creneauOrigineId}
  */
 public record RemplacementDTO(
         String salarieAbsentId,

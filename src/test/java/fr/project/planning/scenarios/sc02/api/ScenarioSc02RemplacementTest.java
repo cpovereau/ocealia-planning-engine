@@ -95,18 +95,23 @@ class ScenarioSc02RemplacementTest {
     }
 
     @Test
-    @DisplayName("Quand personne ne peut couvrir, les heures deviennent à pourvoir — jamais zéro solution")
+    @DisplayName("Ce que personne ne peut couvrir devient des heures à pourvoir — jamais zéro solution")
     void creneauSansRepreneur_devientDesHeuresAPourvoir() throws Exception {
+        // [Lot S2] Le mardi n'est plus insoluble d'un bloc : il est coupé à 09:00, l'heure où
+        // Sophie prend son service, et elle en couvre la première heure. Restent sept heures.
+        // Avant le découpage, les huit heures partaient à pourvoir d'un seul tenant.
         JsonNode reponse = objectMapper.readTree(postSc02());
         JsonNode remplacement = reponse.get("remplacement");
-        JsonNode mardi = detail(remplacement, "PLN-MARIE-MAR");
+        JsonNode reste = detail(remplacement, "PLN-MARIE-MAR#S2");
 
-        assertEquals("NON_COUVERT", mardi.get("nature").asText());
-        assertFalse(mardi.has("ressourceApresId"),
+        assertEquals("NON_COUVERT", reste.get("nature").asText());
+        assertFalse(reste.has("ressourceApresId"),
                 "Personne ne le reprend : la clé est omise plutôt que rendue vide.");
-        assertEquals(1, remplacement.get("creneauxRepris").asInt());
-        assertEquals(8.0, remplacement.get("heuresAPourvoir").asDouble(),
-                "Les huit heures du mardi restent à staffer.");
+        assertEquals("PLN-MARIE-MAR", reste.get("creneauOrigineId").asText(),
+                "Un morceau se rattache à son origine sans qu'on ait à analyser son identifiant.");
+        assertEquals(1, remplacement.get("creneauxRepris").asInt(),
+                "Seul le mercredi est repris en entier ; le mardi ne l'est qu'à moitié.");
+        assertEquals(7.0, remplacement.get("heuresAPourvoir").asDouble());
 
         // Le scénario aboutit malgré tout : il rend visible l'impossible, il ne refuse pas.
         assertEquals("SOLVED", reponse.get("solverResult").get("status").asText());

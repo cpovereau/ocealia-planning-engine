@@ -130,6 +130,20 @@ public class Creneau implements Serializable {
     @PlanningPin
     private boolean fige;
 
+    /**
+     * Créneau dont celui-ci est un morceau, ou {@code null} s'il n'en est pas un.
+     *
+     * <p>[Lot S2 de SC-02] OptaPlanner affecte des valeurs à un ensemble d'entités fixé à la
+     * construction du problème : découper un créneau ne peut donc pas être une décision du
+     * solveur. Les segments sont préparés en amont, et ce champ est ce qui permet ensuite de les
+     * reconnaître — pour mesurer le bloc réellement confié à quelqu'un, pour pénaliser
+     * l'éparpillement d'un même besoin entre plusieurs personnes, et pour recombiner les segments
+     * contigus au moment de restituer.</p>
+     *
+     * <p>Nul pour tout créneau reçu tel quel, donc pour l'intégralité de SC-01, SC-03 et SC-06.</p>
+     */
+    private String creneauOrigineId;
+
     /* =========================
        Bornes absolues du créneau
        ========================= */
@@ -398,6 +412,23 @@ public class Creneau implements Serializable {
      */
     public boolean isFige() {
         return fige;
+    }
+
+    /** Créneau dont celui-ci est un morceau, ou {@code null} s'il n'en est pas un. */
+    public String getCreneauOrigineId() {
+        return creneauOrigineId;
+    }
+
+    public void setCreneauOrigineId(String creneauOrigineId) {
+        this.creneauOrigineId = creneauOrigineId;
+    }
+
+    /**
+     * Identifiant du besoin auquel ce créneau répond : le sien s'il est entier, celui de son
+     * origine s'il n'en est qu'un morceau.
+     */
+    public String getIdBesoin() {
+        return creneauOrigineId != null ? creneauOrigineId : id;
     }
 
     /**

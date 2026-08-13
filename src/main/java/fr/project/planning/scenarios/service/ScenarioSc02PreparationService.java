@@ -123,16 +123,71 @@ public class ScenarioSc02PreparationService {
                             + "il n'y a rien à remplacer.");
         }
 
-        // 4. Le poste virtuel ne s'invite jamais de lui-même.
+        // 4. [S2] Découpage des créneaux libérés aux frontières de disponibilité.
+        PlanningRequest apresDecoupage = decouper(base.planningRequest(), creneauxLiberes,
+                salarieAbsentId, alertes);
+
+        // 5. Le poste virtuel ne s'invite jamais de lui-même.
         PlanningRequest problemeSoumis = request.getScenarioParameters().estPosteVirtuelAutorise()
-                ? base.planningRequest()
-                : sansPostesVirtuels(base.planningRequest(), alertes);
+                ? apresDecoupage
+                : sansPostesVirtuels(apresDecoupage, alertes);
 
         List<ScenarioAlertDTO> toutesLesAlertes = new ArrayList<>(base.alerts());
         toutesLesAlertes.addAll(alertes.versDto());
 
         return new PreparedSc02Scenario(
                 base, problemeSoumis, salarieAbsentId, creneauxLiberes, toutesLesAlertes);
+    }
+
+    /**
+     * Remplace chaque créneau libéré par ses segments, coupés aux frontières de disponibilité des
+     * remplaçants possibles (lot S2).
+     *
+     * <p>Un créneau qu'aucune frontière ne traverse est laissé <strong>tel quel</strong> : il
+     * garde son identifiant, et le cas courant — un remplaçant prend la journée entière — reste
+     * exactement ce qu'il était au lot S1.</p>
+     */
+    private static PlanningRequest decouper(PlanningRequest requete,
+                                            Set<String> creneauxLiberes,
+                                            String salarieAbsentId,
+                                            CollecteurAlertes alertes) {
+        if (creneauxLiberes.isEmpty()) {
+            return requete;
+        }
+
+        List<Creneau> apres = new ArrayList<>(requete.creneaux().size());
+        int decoupes = 0;
+        int segments = 0;
+
+        for (Creneau creneau : requete.creneaux()) {
+            if (!creneauxLiberes.contains(creneau.getId())) {
+                apres.add(creneau);
+                continue;
+            }
+            List<Creneau> morceaux = DecoupageAuxFrontieres.decouper(
+                    creneau, requete.creneaux(), requete.indisponibilites(), salarieAbsentId);
+            if (morceaux.size() > 1) {
+                decoupes++;
+                segments += morceaux.size();
+            }
+            apres.addAll(morceaux);
+        }
+
+        if (decoupes > 0) {
+            alertes.signaler(AlertCode.CRENEAUX_DECOUPES, AlertSeverity.INFO,
+                    decoupes + " créneau(x) libéré(s) découpé(s) en " + segments + " segments, aux "
+                            + "heures où la disponibilité des remplaçants change. Les segments "
+                            + "contigus confiés à la même personne sont recombinés à la restitution.");
+        }
+
+        return new PlanningRequest(
+                requete.planningContext(),
+                requete.regulatoryParameters(),
+                requete.referentielComptabiliteActivite(),
+                requete.ressources(),
+                apres,
+                requete.indisponibilites(),
+                requete.reposHebdomadaires());
     }
 
     /** Le créneau tombe-t-il, ne serait-ce qu'en partie, dans l'une des absences déclarées ? */

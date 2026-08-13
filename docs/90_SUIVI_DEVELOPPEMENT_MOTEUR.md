@@ -1401,3 +1401,89 @@ dans son énumération, hors solveur. Un scénario qui affecte réellement n'a p
 
 S2 (découpage aux frontières de disponibilité), S3 (surcharge), S4 (restitution complète et
 inscription au contrat série 50), S5 (canal FileAdapter). Voir `92_CADRAGE_SCENARIO_SC-02.md` §8.
+
+### SC-02 — lot S2 : couvrir un créneau en partie (2026-08-11)
+
+641 tests, 0 échec (623 avant). **Aucun autre scénario n'est touché** : les deux contraintes
+ajoutées ne regardent que les créneaux portant un `creneauOrigineId`, que SC-01, SC-03 et SC-06 ne
+produisent jamais.
+
+#### Où l'on coupe
+
+Le lot initial du cadrage prévoyait une grille de 30 minutes. L'arbitrage métier du 11/08 l'a
+écartée, et pour une raison qui tient en un exemple : sur un créneau 13h30–16h00, un remplaçant qui
+prend son service à **13h45** crée une coupe légitime — qu'aucune grille de 30 minutes n'aurait
+produite.
+
+Les coupes viennent donc des **frontières de disponibilité réelles** : début ou fin d'un créneau
+déjà affecté à un remplaçant, bord d'une de ses indisponibilités. C'est à la fois plus juste et
+moins coûteux — une ou deux frontières par remplaçant, au lieu de seize segments pour une journée
+de huit heures.
+
+Un créneau qu'aucune frontière ne traverse n'est **pas touché** : il garde son identifiant, et le
+cas courant reste ce qu'il était au lot S1.
+
+#### Le seuil des 30 minutes porte sur le bloc, pas sur le morceau
+
+C'est la lecture que l'arbitrage a corrigée. Un bloc **confié à quelqu'un** ne fait jamais moins de
+30 minutes ; le **reliquat non couvert**, lui, n'a aucun minimum et part à pourvoir tel qu'il est.
+
+`BlocConfieTropCourt` (HARD) reconstitue donc les suites contiguës avant de mesurer : deux segments
+de quinze minutes attribués à la même personne bout à bout forment une demi-heure valide, puisque
+c'est une demi-heure qu'elle travaillera. Elle compte une violation par suite trop courte — on peut
+en avoir deux sur le même créneau si on y fait revenir la même personne.
+
+Cette contrainte HARD ne rend jamais le problème insoluble : le morceau trop court a toujours une
+issue, rester à pourvoir. C'est précisément la réponse attendue.
+
+#### Le contrepoids
+
+Rien n'empêchait un créneau découpé de partir à quatre personnes — conforme aux règles, et
+inutilisable sur le terrain. `CohesionCreneauOrigine` (SOFT, 300 points par ressource en excédent
+de la première) rend l'éparpillement coûteux sans l'interdire. Le poids est délibérément inférieur
+à celui d'un créneau non couvert (2 000) et à celui d'un poste virtuel (500) : mieux vaut deux
+remplaçants réels que des heures à pourvoir, et mieux vaut deux remplaçants qu'un poste fictif.
+
+Une part laissée à pourvoir n'est **pas** comptée comme de l'éparpillement : elle a déjà son propre
+coût, et le compter deux fois pousserait le solveur à préférer un éparpillement à une couverture
+partielle.
+
+#### Le découpage est un moyen, pas un résultat
+
+`RecombinaisonSegments` refait un créneau des morceaux qu'une même personne a repris. Un créneau
+repris en entier ressort **entier et sous son identifiant d'origine** — la coupe interne n'a jamais
+existé pour l'appelant. C'est le cas courant, et c'est le comportement du jeu de référence : le
+mercredi est bien coupé à 09:00, mais Paul reprend les deux morceaux, et la réponse montre un
+créneau unique de huit heures.
+
+Quand le créneau ressort réellement en plusieurs morceaux, chacun porte un identifiant dérivé —
+`<id>#S1`, `#S2` — **renumérotés après recombinaison**, et un `creneauOrigineId` qui évite d'avoir
+à analyser la chaîne. Une alerte `CRENEAUX_DECOUPES` (INFO) prévient que la réponse contient plus
+de créneaux que la demande.
+
+#### Un invariant précisé plutôt que cassé
+
+`Creneau.duree` était « calculée à l'entrée, jamais recalculée » — formulation qui supposait que
+tout créneau vienne de l'appelant. SC-02 en fabrique. L'invariant tient, sa formulation se
+précise : la durée est calculée **une seule fois, avant la résolution**, et « l'amont » inclut
+désormais une étape de préparation côté moteur. Écrit dans
+`20_DECISIONS_CONCEPTION_OPTAPLANNER.md`.
+
+#### Ce que les tests prouvent
+
+Les deux cas de l'arbitrage sont joués mot pour mot dans `sc02_decoupage.json` : le service à 15h30
+qui produit une couverture partielle, et celui à 13h45 dont on ne veut pas les quinze minutes.
+Vérification que la règle mord : en retirant `BlocConfieTropCourt` du provider, **le remplaçant
+récupère les quinze minutes** et deux tests tombent.
+
+`DecoupageEtCohesionTest` complète en isolation — où l'on coupe (V1, calcul pur, y compris le
+passage de minuit sur le bord d'une absence) et ce qu'il en coûte (V3, contraintes vérifiées une à
+une).
+
+#### ⚠️ Effet de bord mesuré, laissé tel quel
+
+`CreneauNonAffecte` pénalise **par occurrence**. Un créneau libéré découpé en trois morceaux tous
+non couverts coûte donc trois fois, là où il coûtait une fois entier. La direction reste juste — ce
+sont bien des heures non couvertes — mais l'ampleur dépend du découpage. Sans conséquence
+aujourd'hui : SC-02 est un scénario neuf, aucun score de référence n'est comparé d'une version à
+l'autre. À reconsidérer si le scoring de SC-02 devient un critère de décision.

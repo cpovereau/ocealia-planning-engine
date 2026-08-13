@@ -26,6 +26,14 @@ public enum PenaliteKey {
      */
     METIER_SOFT_NUIT_SALARIE_NON_NUIT(ScoreBreakdownUnit.OCCURRENCE),
 
+    /**
+     * Lot S2 de SC-02 — un même besoin découpé et confié à plusieurs personnes.
+     *
+     * <p>Une occurrence par ressource <strong>en excédent de la première</strong> : couvrir avec
+     * une seule personne ne coûte rien.</p>
+     */
+    METIER_SOFT_FRAGMENTATION_CRENEAU_ORIGINE(ScoreBreakdownUnit.OCCURRENCE),
+
     // =========================
     // Contraintes légales (SOFT)
     // =========================
@@ -76,6 +84,14 @@ public enum PenaliteKey {
 
     METIER_HARD_JOUR_FERIE_REFUSE(ScoreBreakdownUnit.OCCURRENCE),
     METIER_HARD_INDISPONIBILITE(ScoreBreakdownUnit.OCCURRENCE),
+
+    /**
+     * Lot S2 de SC-02 — bloc de moins de 30 minutes confié à un salarié.
+     *
+     * <p>Une occurrence par suite contiguë trop courte. Le morceau a toujours une issue — rester
+     * à pourvoir — de sorte que cette contrainte HARD ne rend jamais le problème insoluble.</p>
+     */
+    METIER_HARD_BLOC_CONFIE_TROP_COURT(ScoreBreakdownUnit.OCCURRENCE),
 
     // =========================
     // Contraintes légales (HARD)

@@ -738,6 +738,27 @@ Cette décision vise à **trancher explicitement cette ambiguïté**.
 
 ---
 
+#### ⚠️ Précision apportée au lot S2 de SC-02 (2026-08-11)
+
+La formulation initiale disait : durée « calculée à l'entrée, jamais recalculée ensuite ». Elle
+supposait que tout créneau vienne de l'appelant.
+
+SC-02 **fabrique des créneaux** : quand aucun remplaçant n'est disponible sur toute la durée d'un
+créneau libéré, celui-ci est découpé en segments aux frontières de disponibilité, et la durée de
+chaque segment est nécessairement calculée par le moteur.
+
+> **L'invariant tient, sa formulation se précise** : la durée est calculée **une seule fois, avant
+> la résolution**, et rien ne la recalcule ensuite. Ce qui change, c'est que « l'amont » inclut
+> désormais une étape de préparation côté moteur.
+
+Ce que cela ne change pas : aucune contrainte, aucun agrégat, aucune restitution ne recompose une
+durée à partir des heures. La recombinaison des segments à la restitution calcule elle aussi la
+durée du bloc une fois, au moment de le construire.
+
+Voir `92_CADRAGE_SCENARIO_SC-02.md` §5.2.
+
+---
+
 #### Règles associées
 
 1. Restitution API

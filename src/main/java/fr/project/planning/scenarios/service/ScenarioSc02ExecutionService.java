@@ -26,8 +26,10 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * ScenarioSc02ExecutionService — préparation → résolution → conséquences de l'absence.
@@ -55,7 +57,12 @@ public class ScenarioSc02ExecutionService {
         PreparedSc02Scenario prepared = preparationService.prepare(request);
 
         PlanningResponse solved = planningService.solve(prepared.planningRequest());
-        List<Creneau> creneauxResolus = solved.solution().getCreneaux();
+
+        // [S2] Le découpage est un moyen, pas un résultat : les segments contigus repris par la
+        //      même personne redeviennent un créneau, et celui qu'une seule personne a repris en
+        //      entier retrouve son identifiant d'origine.
+        List<Creneau> creneauxResolus = RecombinaisonSegments.recombiner(
+                solved.solution().getCreneaux());
 
         WorkMetricsCalculator calculator = new WorkMetricsCalculator();
         Map<String, WorkMetrics> byId = new HashMap<>();
@@ -116,25 +123,26 @@ public class ScenarioSc02ExecutionService {
     private static RemplacementDTO construireRemplacement(PreparedSc02Scenario prepared,
                                                           List<Creneau> creneauxResolus) {
         List<CreneauRemplaceDTO> details = new ArrayList<>();
-        int repris = 0;
+        Set<String> besoinsCouvertsEnEntier = new LinkedHashSet<>(prepared.creneauxLiberes());
         int minutesAPourvoir = 0;
 
         for (Creneau creneau : creneauxResolus) {
-            if (!prepared.creneauxLiberes().contains(creneau.getId())) {
+            // [S2] Un créneau découpé se reconnaît par son origine, pas par son identifiant.
+            if (!prepared.creneauxLiberes().contains(creneau.getIdBesoin())) {
                 continue;
             }
 
             Ressource apres = creneau.getRessourceAffectee();
             NatureCouverture nature = natureDe(apres);
-            if (nature == NatureCouverture.SALARIE) {
-                repris++;
-            } else {
+            if (nature != NatureCouverture.SALARIE) {
                 minutesAPourvoir += creneau.getDuree();
+                // Un seul morceau non repris suffit à ce que le besoin ne soit pas couvert.
+                besoinsCouvertsEnEntier.remove(creneau.getIdBesoin());
             }
 
             details.add(new CreneauRemplaceDTO(
                     creneau.getId(),
-                    null,                               // creneauOrigineId — le lot S1 ne découpe pas
+                    creneau.getCreneauOrigineId(),
                     creneau.getDate(),
                     creneau.getHeureDebut(),
                     creneau.getHeureFin(),
@@ -150,8 +158,8 @@ public class ScenarioSc02ExecutionService {
 
         return new RemplacementDTO(
                 prepared.salarieAbsentId(),
-                details.size(),
-                repris,
+                prepared.creneauxLiberes().size(),
+                besoinsCouvertsEnEntier.size(),
                 enHeures(minutesAPourvoir),
                 details);
     }
