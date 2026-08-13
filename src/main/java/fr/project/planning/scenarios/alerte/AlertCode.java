@@ -202,5 +202,19 @@ public enum AlertCode {
      * alerte nomme ceux qui manquent — un périmètre partiellement inconnu rendrait sinon
      * l'arbitrage plus étroit que demandé, sans que personne ne le voie.</p>
      */
-    CRENEAU_ARBITRE_INTROUVABLE
+    CRENEAU_ARBITRE_INTROUVABLE,
+
+    /**
+     * L'écart au contrat d'un salarié arbitré reste au-delà de la tolérance déclarée, une fois
+     * l'arbitrage fait (lot A3 de SC-05, §7 du cadrage).
+     *
+     * <p>L'arbitrage a fait ce qu'il pouvait, et ce n'était pas assez : il n'y avait pas, dans le
+     * périmètre remis en jeu, de quoi ramener tout le monde dans la marge. <strong>Ce n'est pas un
+     * défaut du moteur</strong> — c'est un constat sur le périmètre, et l'élargir est une décision
+     * d'encadrement, pas une décision de moteur.</p>
+     *
+     * <p>Ne peut pas être levée sans tolérance déclarée : une borne absente n'est pas une borne à
+     * zéro, et le moteur ne juge pas inéquitable un écart que personne ne lui a dit de juger.</p>
+     */
+    INEQUITE_RESIDUELLE
 }

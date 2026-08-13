@@ -6,13 +6,19 @@ import fr.project.planning.domain.creneau.Creneau;
 import fr.project.planning.domain.ressource.PosteVirtuel;
 import fr.project.planning.domain.ressource.Ressource;
 import fr.project.planning.domain.ressource.SalarieReel;
+import fr.project.planning.domain.contexte.ToleranceEquite;
 import fr.project.planning.domain.workmetrics.WorkMetrics;
 import fr.project.planning.domain.workmetrics.WorkMetricsCalculator;
+import fr.project.planning.scenarios.alerte.AlertCode;
+import fr.project.planning.scenarios.alerte.AlertSeverity;
+import fr.project.planning.scenarios.alerte.CollecteurAlertes;
 import fr.project.planning.scenarios.dto.ArbitrageDTO;
 import fr.project.planning.scenarios.dto.CreneauArbitreDTO;
+import fr.project.planning.scenarios.dto.MotifArbitrage;
 import fr.project.planning.scenarios.dto.MouvementSalarieDTO;
 import fr.project.planning.scenarios.dto.NatureCouverture;
 import fr.project.planning.scenarios.dto.Sc05ScenarioRequestDTO;
+import fr.project.planning.scenarios.dto.ScenarioAlertDTO;
 import fr.project.planning.scenarios.dto.ScenarioResponseDTO;
 import fr.project.planning.scenarios.mapper.ScenarioResponseMapper;
 import fr.project.planning.scenarios.mapper.ScoreBreakdownFactory;
@@ -42,8 +48,11 @@ import java.util.Set;
  * vient, ni ce que l'arbitrage a coûté à chacun, alors que SC-05 rend précisément une répartition
  * qui doit se justifier ligne à ligne devant les intéressés.</p>
  *
- * <p>L'alerte d'inéquité résiduelle, et la restitution assumée de la moins mauvaise répartition
- * quand aucune n'est acceptable, sont le lot <strong>A3</strong>.</p>
+ * <h3>[A3] La moins mauvaise, avec les motifs qui la disqualifient</h3>
+ * <p>§5.6 du cadrage : <em>jamais une erreur</em>. La répartition est toujours rendue, et
+ * {@code arbitrage.acceptable} plus {@code arbitrage.motifs} disent ce qui, le cas échéant, la
+ * disqualifie. Une inéquité que le périmètre ne permettait pas de résorber est de surcroît
+ * signalée par une alerte nominative.</p>
  */
 @Service
 public class ScenarioSc05ExecutionService {
@@ -70,12 +79,14 @@ public class ScenarioSc05ExecutionService {
         calculator.compute(solved.solution()).forEach((r, wm) -> apres.put(r.getId(), wm));
 
         List<Creneau> creneauxResolus = solved.solution().getCreneaux();
-        ArbitrageDTO arbitrage = construireArbitrage(prepared, creneauxResolus, apres);
+        ArbitrageDTO arbitrage = construireArbitrage(
+                prepared, creneauxResolus, apres, solved.solution().getScore().hardScore());
 
         log.info("[SC-05] Arbitrage entre {} — {} créneau(x) au périmètre, {} déplacé(s), "
-                        + "{} épinglé(s) sur un tiers",
+                        + "{} épinglé(s) sur un tiers, acceptable={}",
                 prepared.ressourcesAutorisees(), arbitrage.creneauxArbitres(),
-                arbitrage.creneauxDeplaces(), arbitrage.creneauxEpinglesSurUnTiers());
+                arbitrage.creneauxDeplaces(), arbitrage.creneauxEpinglesSurUnTiers(),
+                arbitrage.acceptable());
 
         ScenarioResponseDTO response = responseMapper.toResponse(
                 "SC-05",
@@ -87,7 +98,7 @@ public class ScenarioSc05ExecutionService {
                 creneauxResolus,
                 prepared.base().marqueursRepos(),
                 apres,
-                prepared.alerts(),
+                alertesCompletes(prepared, arbitrage.parSalarie()),
                 prepared.base().posteVirtuelIds(),
                 prepared.base().ignoredCreneaux(),
                 prepared.planningRequest().regulatoryParameters()
@@ -107,13 +118,15 @@ public class ScenarioSc05ExecutionService {
      */
     private static ArbitrageDTO construireArbitrage(PreparedSc05Scenario prepared,
                                                     List<Creneau> creneauxResolus,
-                                                    Map<String, WorkMetrics> apres) {
+                                                    Map<String, WorkMetrics> apres,
+                                                    int hardScore) {
         List<CreneauArbitreDTO> details = new ArrayList<>();
         Map<String, Integer> repris = new LinkedHashMap<>();
         Map<String, Integer> cedes = new LinkedHashMap<>();
         Set<String> besoinsDuPerimetre = new LinkedHashSet<>();
         int deplaces = 0;
         int nonCouverts = 0;
+        int perdus = 0;
 
         for (Creneau creneau : creneauxResolus) {
             if (!prepared.perimetreRetenu().contains(creneau.getIdBesoin())) {
@@ -138,6 +151,12 @@ public class ScenarioSc05ExecutionService {
             }
             if (nature == NatureCouverture.NON_COUVERT) {
                 nonCouverts++;
+                // Perdu, et non simplement non couvert : quelqu'un l'assurait. Un créneau qui
+                // n'était déjà à personne n'a rien perdu, et le compter ici ferait crier au
+                // dommage là où il n'y en a pas.
+                if (avantId != null) {
+                    perdus++;
+                }
             }
 
             details.add(new CreneauArbitreDTO(
@@ -172,14 +191,102 @@ public class ScenarioSc05ExecutionService {
                     apresLui == null ? null : apresLui.getEcartContratPourcent()));
         }
 
+        List<MotifArbitrage> motifs = motifs(prepared, parSalarie, hardScore, deplaces, perdus);
+
         return new ArbitrageDTO(
                 List.copyOf(prepared.ressourcesAutorisees()),
                 besoinsDuPerimetre.size(),
                 deplaces,
                 prepared.creneauxTenusParUnTiers().size(),
                 nonCouverts,
+                motifs.stream().noneMatch(MotifArbitrage::isEliminatoire),
+                motifs.stream().map(MotifArbitrage::toDto).toList(),
                 parSalarie,
                 details);
+    }
+
+    /**
+     * [A3] Ce qui disqualifie la répartition rendue, ou la décrit.
+     *
+     * <p>§5.6 du cadrage : <em>sans répartition acceptable, la moins mauvaise est rendue, jamais
+     * une erreur</em>. Ces motifs sont ce qui rend cette restitution honnête — sans eux, l'appelant
+     * recevrait une répartition inacceptable présentée comme un résultat ordinaire.</p>
+     */
+    private static List<MotifArbitrage> motifs(PreparedSc05Scenario prepared,
+                                               List<MouvementSalarieDTO> parSalarie,
+                                               int hardScore,
+                                               int deplaces,
+                                               int perdus) {
+        List<MotifArbitrage> motifs = new ArrayList<>();
+
+        if (hardScore < 0) {
+            motifs.add(MotifArbitrage.REPARTITION_NON_CONFORME);
+        }
+        if (perdus > 0) {
+            motifs.add(MotifArbitrage.CRENEAU_ARBITRE_PERDU);
+        }
+        if (!inequitesResiduelles(prepared, parSalarie).isEmpty()) {
+            motifs.add(MotifArbitrage.INEQUITE_RESIDUELLE);
+        }
+        if (deplaces == 0) {
+            motifs.add(MotifArbitrage.ARBITRAGE_SANS_EFFET);
+        }
+        return motifs;
+    }
+
+    /**
+     * [A3] Les salariés dont l'écart au contrat reste au-delà de la tolérance après arbitrage.
+     *
+     * <p>Sans tolérance déclarée, la liste est vide : <em>une borne absente n'est pas une borne à
+     * zéro</em>, et le moteur ne juge pas inéquitable un écart que personne ne lui a dit de juger.
+     * C'est la même lecture que celle qui rend la contrainte du lot L5 inerte.</p>
+     *
+     * <p>Le seuil est franchi selon {@link ToleranceEquite#pointsExcedentaires} — la même méthode
+     * que celle dont le score se sert. Deux lectures du même seuil finiraient par diverger, et
+     * l'appelant lirait une alerte que le score ne pèse pas, ou l'inverse.</p>
+     */
+    private static List<MouvementSalarieDTO> inequitesResiduelles(PreparedSc05Scenario prepared,
+                                                                  List<MouvementSalarieDTO> parSalarie) {
+        ToleranceEquite tolerance = prepared.planningRequest().planningContext().getToleranceEquite();
+        if (tolerance == null || tolerance.estVide()) {
+            return List.of();
+        }
+        return parSalarie.stream()
+                .filter(m -> m.ecartContratApresPourcent() != null)
+                .filter(m -> tolerance.pointsExcedentaires(m.ecartContratApresPourcent()) > 0)
+                .toList();
+    }
+
+    /**
+     * Les alertes de la préparation, complétées de ce que seule la résolution pouvait établir.
+     *
+     * <p>Une inéquité résiduelle n'est pas un échec du moteur — c'est un constat sur le périmètre
+     * remis en jeu, qui ne contenait pas de quoi ramener tout le monde dans la marge. Mais c'est
+     * une information que l'appelant doit recevoir, pas déduire d'un écart qu'il aurait pensé à
+     * comparer à sa propre tolérance.</p>
+     */
+    private static List<ScenarioAlertDTO> alertesCompletes(PreparedSc05Scenario prepared,
+                                                           List<MouvementSalarieDTO> parSalarie) {
+        List<MouvementSalarieDTO> residuelles = inequitesResiduelles(prepared, parSalarie);
+        if (residuelles.isEmpty()) {
+            return prepared.alerts();
+        }
+
+        Double tolere = prepared.planningRequest().planningContext()
+                .getToleranceEquite().getEcartTolerePourcent();
+        CollecteurAlertes apresResolution = new CollecteurAlertes("SC-05");
+        for (MouvementSalarieDTO mouvement : residuelles) {
+            apresResolution.signaler(AlertCode.INEQUITE_RESIDUELLE, AlertSeverity.WARNING,
+                    "'" + mouvement.ressourceId() + "' reste à "
+                            + mouvement.ecartContratApresPourcent() + " % de son contrat, au-delà "
+                            + "de la tolérance de " + tolere + " % déclarée par la demande. "
+                            + "Le périmètre remis en jeu ne contenait pas de quoi l'y ramener : "
+                            + "l'élargir est une décision d'encadrement.");
+        }
+
+        List<ScenarioAlertDTO> completes = new ArrayList<>(prepared.alerts());
+        completes.addAll(apresResolution.versDto());
+        return completes;
     }
 
     private static NatureCouverture natureDe(Ressource ressource) {

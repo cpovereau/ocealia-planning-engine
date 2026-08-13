@@ -816,14 +816,15 @@ Ordonné par **dépendance**, pas par valeur métier. Les rangs renvoient au bac
 2. **Rang 8** — trancher les champs sans effet. Indépendant du reste, et il retire du contrat des
    promesses que personne ne tient. SC-02 en a rendu un plus visible : `capaciteCible` ne borne pas
    le volume qu'on gare sur un poste virtuel.
-3. **SC-05, lots A3 et A4** — le chantier équité est clos (L0 à L5 livrés) et **A0, A1 et A2 sont
-   livrés le 2026-08-14** : la contrainte HARD borne l'affectation à un ensemble de ressources
-   autorisées, `POST /scenarios/sc05/solve` répond, et le bloc `arbitrage` dit ce qui a bougé.
-   Suite : **A3**, l'inéquité résiduelle — `92_CADRAGE_SCENARIO_SC-05.md` §8. ⚠️ SC-05 n'est **pas
-   encore au contrat série 50**, et le bloc `arbitrage` **pas encore au schéma de réponse publié** :
-   c'est A4, dont la liste bloquante est en §8.1 du cadrage. Ce qui manque par ailleurs n'est plus
-   un outil mais **des plannings réels** à donner au harnais de calibration —
-   `92_CALIBRATION_PENIBILITE.md` §2.
+3. **SC-05, lot A4** — le chantier équité est clos (L0 à L5 livrés) et **A0 à A3 sont livrés le
+   2026-08-14** : la contrainte HARD borne l'affectation à un ensemble de ressources autorisées,
+   `POST /scenarios/sc05/solve` répond, le bloc `arbitrage` dit ce qui a bougé, et la moins
+   mauvaise répartition est rendue avec les motifs qui la disqualifient. ⚠️ **Il ne reste que
+   l'inscription au contrat**, et elle est bloquante : SC-05 n'est ni à `50_SCENARIO_CONTRACT.md`,
+   ni à l'OpenAPI, et le bloc `arbitrage` n'est pas au schéma de réponse publié — lequel porte
+   `additionalProperties: false`. Liste complète en §8.1 de `92_CADRAGE_SCENARIO_SC-05.md`. Ce qui
+   manque par ailleurs n'est plus un outil mais **des plannings réels** à donner au harnais de
+   calibration — `92_CALIBRATION_PENIBILITE.md` §2.
 4. **Rang 13** — garder le schéma d'entrée comme le schéma de sortie l'est. Correctif pur, sans
    arbitrage.
 5. **Rang 10** — dès que la Production a rendu ses arbitrages.
@@ -1709,6 +1710,58 @@ SC-06, et mérite son propre lot.
 
 Les **quatre scénarios exposés voyagent maintenant par les deux canaux**. Le document d'échange
 fichier n'en connaissait que deux — SC-06 n'y avait jamais été inscrit à son lot S6 ; c'est réparé.
+
+### SC-05 — lot A3 : la moins mauvaise, et les motifs qui la disqualifient (2026-08-14)
+
+778 tests, 0 échec (+6). L'arbitrage rendu porte désormais son propre jugement :
+`arbitrage.acceptable` et `arbitrage.motifs`, plus une alerte `INEQUITE_RESIDUELLE` **nominative**
+pour chaque salarié resté hors de la marge.
+
+C'est l'arbitrage §5.6 : *sans répartition acceptable, la moins mauvaise est rendue — jamais une
+erreur*. Même traitement qu'en SC-06 §4.5. Sans les motifs, cette restitution serait malhonnête :
+l'appelant recevrait une répartition inacceptable présentée comme un résultat ordinaire.
+
+#### Quatre motifs, décalqués de `MotifCandidat`
+
+| Motif | Sévérité | Éliminatoire |
+|---|---|:---:|
+| `REPARTITION_NON_CONFORME` — points HARD au score | ERROR | ✅ |
+| `CRENEAU_ARBITRE_PERDU` — un créneau que quelqu'un assurait ne trouve plus personne | ERROR | ✅ |
+| `INEQUITE_RESIDUELLE` — la tolérance reste dépassée | WARNING | ✅ |
+| `ARBITRAGE_SANS_EFFET` — rien n'a changé de main | INFO | ❌ |
+
+`CRENEAU_ARBITRE_PERDU` distingue **perdu** de **non couvert** : un créneau qui n'était déjà à
+personne n'a rien perdu, et le compter ferait crier au dommage là où il n'y en a pas.
+
+#### La §9.1 n'a pas eu à être tranchée, et c'est vérifiable
+
+Le cadrage laissait ouvert : *l'arbitrage doit-il chercher à dégrader une situation conforme ?* —
+question renvoyée au protocole de calibration. **A3 rapporte, il ne change pas ce que le solveur
+cherche** : aucun poids nouveau, le score est celui du lot L5. La question reste donc entière, et
+la même retenue s'applique — peser une mesure dont l'échelle reste à établir reviendrait à deviner
+deux fois.
+
+#### Un test qui avait tort, et ce qu'il a révélé
+
+`arbitrageSansEffet_seDitSansDisqualifier` posait qu'un arbitrage ne déplaçant rien reste
+acceptable. Il a échoué : périmètre réduit au seul créneau du tiers, avec une tolérance de 10, rien
+ne peut bouger **et** SAL-A reste à +14,29 %. La répartition *est* disqualifiée — le test avait
+tort, pas le code.
+
+Le cas est désormais couvert par deux tests au lieu d'un : sans tolérance, `ARBITRAGE_SANS_EFFET`
+seul et `acceptable = true` ; avec tolérance, les deux motifs et `acceptable = false`. C'est ce qui
+vérifie qu'un motif `INFO` ne disqualifie pas, et qu'un `WARNING` éliminatoire le fait.
+
+#### Un seul seuil, lu une seule fois
+
+L'alerte et le motif passent tous deux par `ToleranceEquite.pointsExcedentaires` — la méthode dont
+le score se sert. Deux lectures du même seuil finiraient par diverger, et l'appelant lirait une
+alerte que le score ne pèse pas, ou l'inverse.
+
+#### Reste du chantier
+
+**A4 seul** : inscription au contrat série 50 et canal FileAdapter. Sa liste bloquante est en §8.1
+du cadrage — notamment le bloc `arbitrage` au schéma de réponse publié.
 
 ### SC-05 — lot A2 : l'avant, l'après, et une ligne que les tests ne couvraient pas (2026-08-14)
 

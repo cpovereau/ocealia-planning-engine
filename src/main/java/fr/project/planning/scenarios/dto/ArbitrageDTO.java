@@ -35,6 +35,14 @@ import java.util.List;
  *                                   respect du travail de quelqu'un qui n'a rien demandé
  * @param creneauxNonCouverts        ceux que personne ne tient au bout du compte. Le moteur ne
  *                                   refuse pas — il rend visible ce qu'il n'a pas su couvrir
+ * @param acceptable                 [A3] {@code false} dès qu'un motif éliminatoire est levé. La
+ *                                   répartition est <strong>rendue quand même</strong> : c'est la
+ *                                   moins mauvaise, et jamais une erreur (§5.6). ⚠️ {@code true}
+ *                                   veut dire « acceptable au regard de ce que le moteur sait » —
+ *                                   et il ne connaît pas les préférences des intéressés, qui sont
+ *                                   au rang 10 du backlog
+ * @param motifs                     [A3] ce qui disqualifie la répartition, ou la décrit. Vide
+ *                                   quand rien n'est à signaler
  * @param parSalarie                 l'avant et l'après de chaque salarié arbitré
  * @param details                    le sort de chaque créneau du périmètre, y compris ceux que
  *                                   l'arbitrage n'a pas déplacés
@@ -45,11 +53,14 @@ public record ArbitrageDTO(
         int creneauxDeplaces,
         int creneauxEpinglesSurUnTiers,
         int creneauxNonCouverts,
+        boolean acceptable,
+        List<MotifArbitrageDTO> motifs,
         List<MouvementSalarieDTO> parSalarie,
         List<CreneauArbitreDTO> details) {
 
     public ArbitrageDTO {
         ressourcesArbitrees = ressourcesArbitrees == null ? List.of() : List.copyOf(ressourcesArbitrees);
+        motifs = motifs == null ? List.of() : List.copyOf(motifs);
         parSalarie = parSalarie == null ? List.of() : List.copyOf(parSalarie);
         details = details == null ? List.of() : List.copyOf(details);
     }

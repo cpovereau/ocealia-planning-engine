@@ -282,8 +282,109 @@ class ScenarioSc05ArbitrageTest {
     }
 
     // =========================================================
+    // La moins mauvaise, avec ses motifs — lot A3
+    // =========================================================
+
+    @Test
+    @DisplayName("Tolérance tenue : la répartition est acceptable et ne porte aucun motif")
+    void toleranceTenue_repartitionAcceptable() throws Exception {
+        // Après arbitrage, SAL-A et SAL-B sont tous deux à −8,57 %, dans la tolérance de 10 points.
+        // Le pendant indispensable du test suivant : un « acceptable » toujours faux ne dirait rien.
+        JsonNode arbitrage = solve(avecTolerance(10.0)).get("arbitrage");
+
+        assertTrue(arbitrage.get("acceptable").asBoolean());
+        assertEquals(0, arbitrage.get("motifs").size());
+        assertNull(alerte(solve(avecTolerance(10.0)), "INEQUITE_RESIDUELLE"));
+    }
+
+    @Test
+    @DisplayName("Tolérance trop étroite : l'inéquité résiduelle disqualifie, et se dit nominativement")
+    void toleranceTropEtroite_inequiteResiduelle() throws Exception {
+        // À 2 points de tolérance, −8,57 % dépasse de 7 points — pour les deux salariés. Le
+        // périmètre remis en jeu ne contenait pas de quoi les y ramener : ce n'est pas un défaut du
+        // moteur, c'est un constat sur le périmètre.
+        JsonNode reponse = solve(avecTolerance(2.0));
+        JsonNode arbitrage = reponse.get("arbitrage");
+
+        assertTrue(!arbitrage.get("acceptable").asBoolean());
+        assertNotNull(motif(arbitrage, "INEQUITE_RESIDUELLE"));
+        assertEquals("WARNING", motif(arbitrage, "INEQUITE_RESIDUELLE").get("severite").asText());
+
+        JsonNode alerte = alerte(reponse, "INEQUITE_RESIDUELLE");
+        assertNotNull(alerte, "Sans l'alerte, l'appelant devrait comparer lui-même chaque écart à "
+                + "sa propre tolérance pour découvrir ce que le moteur savait déjà.");
+        assertTrue(alerte.get("message").asText().contains("SAL-"),
+                "L'alerte doit nommer le salarié resté hors de la marge.");
+    }
+
+    @Test
+    @DisplayName("Disqualifiée ne veut pas dire refusée : la répartition est rendue quand même")
+    void disqualifiee_maisRendueQuandMeme() throws Exception {
+        // Invariant du projet : le moteur ne refuse pas, il rend visible l'impossible. Même
+        // traitement qu'en SC-06 §4.5, où les solutions non conformes sont restituées, jamais
+        // masquées.
+        JsonNode reponse = solve(avecTolerance(2.0));
+
+        assertTrue(!reponse.get("arbitrage").get("acceptable").asBoolean());
+        assertEquals("SAL-B", titulaire(reponse, CRENEAU_ARBITRE),
+                "La répartition est là, entière, et c'est la moins mauvaise que le solveur ait su "
+                        + "produire dans les bornes de l'arbitrage.");
+        assertEquals(2, reponse.get("arbitrage").get("details").size());
+    }
+
+    @Test
+    @DisplayName("Sans tolérance, aucune inéquité n'est jugée : une borne absente n'est pas une borne à zéro")
+    void sansTolerance_aucuneInequiteJugee() throws Exception {
+        // Le moteur ne juge pas inéquitable un écart que personne ne lui a dit de juger. Même
+        // lecture que celle qui rend la contrainte du lot L5 inerte.
+        JsonNode reponse = solve(lire());
+
+        assertNull(alerte(reponse, "INEQUITE_RESIDUELLE"));
+        assertNull(motif(reponse.get("arbitrage"), "INEQUITE_RESIDUELLE"));
+    }
+
+    @Test
+    @DisplayName("Un arbitrage qui ne déplace rien le dit, sans se disqualifier pour autant")
+    void arbitrageSansEffet_seDitSansDisqualifier() throws Exception {
+        // Périmètre réduit au seul créneau du tiers : il est épinglé, donc rien ne peut bouger.
+        // Sans ce signalement, l'appelant recevrait son propre planning et chercherait l'échec.
+        JsonNode arbitrage = solve(perimetreReduitAuTiers(lire())).get("arbitrage");
+
+        assertEquals(0, arbitrage.get("creneauxDeplaces").asInt());
+        assertNotNull(motif(arbitrage, "ARBITRAGE_SANS_EFFET"));
+        assertEquals("INFO", motif(arbitrage, "ARBITRAGE_SANS_EFFET").get("severite").asText());
+        assertTrue(arbitrage.get("acceptable").asBoolean(),
+                "Ne rien avoir à déplacer n'est pas, en soi, une répartition inacceptable.");
+    }
+
+    @Test
+    @DisplayName("Ne rien pouvoir déplacer et rester hors marge : les deux motifs, et disqualifiée")
+    void rienADeplacerEtHorsMarge_estDisqualifiee() throws Exception {
+        // Le cas où l'arbitrage constate son impuissance : le périmètre ne contient rien de
+        // mobilisable, et SAL-A reste à +14,29 % pour une tolérance de 10. C'est exactement la
+        // situation que §5.6 vise — on rend la moins mauvaise, en disant pourquoi elle ne va pas.
+        JsonNode arbitrage = solve(perimetreReduitAuTiers(avecTolerance(10.0))).get("arbitrage");
+
+        assertEquals(0, arbitrage.get("creneauxDeplaces").asInt());
+        assertNotNull(motif(arbitrage, "ARBITRAGE_SANS_EFFET"));
+        assertNotNull(motif(arbitrage, "INEQUITE_RESIDUELLE"));
+        assertTrue(!arbitrage.get("acceptable").asBoolean(),
+                "Un motif INFO ne disqualifie pas ; le motif d'inéquité, si.");
+    }
+
+    // =========================================================
     // Helpers
     // =========================================================
+
+    /** Premier motif portant ce code dans le bloc arbitrage, ou {@code null}. */
+    private static JsonNode motif(JsonNode arbitrage, String code) {
+        for (JsonNode motif : arbitrage.get("motifs")) {
+            if (code.equals(motif.get("code").asText())) {
+                return motif;
+            }
+        }
+        return null;
+    }
 
     private static JsonNode mouvement(JsonNode parSalarie, String ressourceId) {
         for (JsonNode mouvement : parSalarie) {
@@ -327,6 +428,14 @@ class ScenarioSc05ArbitrageTest {
 
     private JsonNode lire() throws Exception {
         return objectMapper.readTree(Files.readString(ARBITRAGE));
+    }
+
+    /** Le périmètre ne retient que le créneau du tiers : épinglé, donc rien n'est mobilisable. */
+    private JsonNode perimetreReduitAuTiers(JsonNode requete) {
+        ObjectNode copie = (ObjectNode) requete;
+        ((ObjectNode) copie.get("scenarioParameters"))
+                .set("creneauxArbitres", objectMapper.createArrayNode().add(CRENEAU_DU_TIERS));
+        return copie;
     }
 
     private JsonNode avecTolerance(double ecartTolerePourcent) throws Exception {
