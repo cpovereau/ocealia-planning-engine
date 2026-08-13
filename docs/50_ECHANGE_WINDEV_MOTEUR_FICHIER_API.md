@@ -5,9 +5,14 @@
 # 📌 1. Contexte
 
 Le moteur de planification OptaPlanner est désormais capable de :
-- recevoir un contrat d’entrée structuré (SC-01, SC-03) ;
+- recevoir un contrat d’entrée structuré (**SC-01, SC-02, SC-03, SC-06**) ;
 - exécuter un pipeline complet de résolution ;
 - restituer une réponse métier stabilisée (`ScenarioResponseDTO`).
+
+> **Les quatre scénarios exposés voyagent par les deux canaux.** Le FileAdapter route sur le champ
+> `scenarioType` ; chaque scénario y est branché à la même façade qui sert la voie HTTP, et non à
+> une variante. SC-06 a rejoint le canal fichier à son lot S6, SC-02 au sien (S5), tous deux avec
+> le test de symétrie qui va avec.
 
 L’intégration avec le logiciel WinDev doit maintenant être industrialisée.
 
@@ -52,7 +57,7 @@ L’architecture repose sur une règle centrale :
 On distingue 3 couches :
 
 ### 1. Contrat métier
-- JSON SC-01 / SC-03
+- JSON SC-01 / SC-02 / SC-03 / SC-06
 - DTO
 - `ScenarioResponseDTO`
 
@@ -185,7 +190,27 @@ dataSet.creneaux → solveur
 
 ---
 
-## 6.3 Trajectoire cible
+## 6.3 Contrat dataset-driven à planning existant (SC-02, SC-06)
+
+Même alimentation que SC-03 — les créneaux viennent de WinDev — mais le `dataSet` y porte en plus
+un **planning existant**, chaque créneau servi déclarant son `ressourceAffecteeId`. Ce planning est
+**épinglé** : le moteur le voit et le mesure, il ne le remanie pas.
+
+| | SC-02 | SC-06 |
+|---|---|---|
+| Ce qui est décidé | les créneaux du salarié absent que son absence recouvre | rien — le besoin est **classé**, jamais affecté |
+| Ce que porte `scenarioParameters` | `salarieAbsentId` et les seuils de confort | le `besoin` à couvrir |
+| Bloc de réponse propre | `remplacement` | `candidats` |
+
+### Logique
+
+```
+planning existant épinglé + question posée → solveur (SC-02) ou énumération (SC-06)
+```
+
+---
+
+## 6.4 Trajectoire cible
 
 À terme :
 
@@ -322,7 +347,7 @@ Arborescence standard recommandée :
 
 - `timestamp` : UTC ISO compact
 - `clientId` : identifiant client
-- `scenario` : SC-01, SC-03, ...
+- `scenario` : SC-01, SC-02, SC-03, SC-06
 - `requestId` : identifiant unique de requête
 
 ---

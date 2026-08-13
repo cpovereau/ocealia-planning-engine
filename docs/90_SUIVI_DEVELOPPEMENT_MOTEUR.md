@@ -491,6 +491,15 @@ soit explicitement hors moteur (§ Analyse métier aval).
 | **8** | Champs au contrat sans effet : `capaciteCible`, structuration des besoins | arbitrage — activer ou retirer — **non traitable avant le 25/08/2026** | Métier + moteur |
 | **9** | SC-04 et SC-05 — deux scénarios annoncés, jamais écrits | cadrage — aucun n'a de contrat d'entrée. **SC-02 est sorti de ce rang** : cadré le 11/08, lots S0 à S4 livrés, inscrit au contrat série 50 le 13/08 | Métier |
 | **10** | Contraintes personnelles : lieux, activités, préférences, annualisation | échanges avec la Production | Production |
+| **11** | Blocs annoncés stricts qui ignorent en silence | technique — aucun arbitrage, mais changement de comportement pour SC-01, SC-03 et SC-06 | moteur |
+
+**Rang 11, découvert au lot S5 de SC-02.** Retirer `@JsonIgnoreProperties` d'un DTO **ne le rend
+pas strict** : Spring Boot désactive `FAIL_ON_UNKNOWN_PROPERTIES`, et le champ inconnu reste ignoré
+en silence. Les phases 10B et 10C ont conclu au « contrat strict » sur cette base, et
+`50_SCENARIO_TECHNICAL_CONTRACT.md` §3 l'annonce comme une règle générale. Seul
+`Sc02ScenarioParametersDTO` refuse réellement à ce jour, par un `@JsonAnySetter` qui nomme le
+paramètre en cause. Un contrat qui promet un refus qu'il ne prononce pas est pire qu'un contrat
+tolérant assumé : l'appelant repart avec une réponse 200 et la conviction d'avoir été entendu.
 
 Deux chantiers plus anciens restent ouverts **sans dépendre d'un arbitrage** : les WorkMetrics
 d'équité (§ 2️⃣ — écart à la moyenne, dispersion de charge) et l'explicabilité pédagogique du score
@@ -552,7 +561,7 @@ qu'une intention métier : **aucun n'a de contrat d'entrée, d'endpoint, ni de j
 
 | Scénario | Intention | Ce qui existe déjà | Ce qui manque |
 |---|---|---|---|
-| **SC-02** — remplacement d'un absent | assurer la continuité en perturbant le moins possible l'existant | **lots S0 à S4 livrés** : endpoint, épinglage, reprise entière ou partielle, « à pourvoir », seuils de surcharge, restitution avant / après complète, **inscrit au contrat série 50** | canal FileAdapter (S5) |
+| ~~**SC-02** — remplacement d'un absent~~ | ~~assurer la continuité en perturbant le moins possible l'existant~~ | ✅ **Clos le 2026-08-13** — six lots S0 à S5, inscrit au contrat série 50, accessible par les deux canaux | — |
 | **SC-04** — optimisation globale d'un planning existant | améliorer sans reconstruire | figement, WorkMetrics | historique des compteurs, degrés de liberté, indicateurs comparatifs |
 | **SC-05** — arbitrage entre deux salariés | répartir équitablement un périmètre commun | WorkMetrics de charge | objectif d'arbitrage, historique de charge, seuils comparatifs, WorkMetrics d'équité |
 
@@ -766,8 +775,10 @@ Voir :
 
 Ordonné par **dépendance**, pas par valeur métier. Les rangs renvoient au backlog du § C.
 
-1. **SC-02 — lot S5**, le canal FileAdapter, dernier lot du scénario. Les lots S0 à S4 sont livrés
-   et le scénario est inscrit au contrat série 50.
+> **SC-02 est clos** (six lots, 2026-08-11 → 2026-08-13) et sort de cette liste.
+
+1. **Rang 11** — les blocs annoncés stricts qui ignorent en silence. Aucun arbitrage à demander, et
+   c'est du contrat déjà publié qui ne dit pas la vérité.
 2. **Rang 8** — trancher les champs sans effet. Indépendant du reste, et il retire du contrat des
    promesses que personne ne tient. SC-02 en a rendu un plus visible : `capaciteCible` ne borne pas
    le volume qu'on gare sur un poste virtuel.
@@ -1610,3 +1621,49 @@ absence d'exemple.
 #### Reste du chantier
 
 S5 (canal FileAdapter, `scenarioType: SC-02`), dernier lot. Voir `92_CADRAGE_SCENARIO_SC-02.md` §8.
+
+### SC-02 — lot S5 : le canal fichier, et deux promesses non tenues (2026-08-13)
+
+660 tests, 0 échec. **SC-02 est clos** : les six lots S0 à S5 sont livrés.
+
+La façade fait quinze lignes — le dispatcher enregistre automatiquement tout bean implémentant
+`FileScenarioExecutionFacade`, et le scénario n'est pas réécrit, il est appelé. Le lot ne tient pas
+dans ce branchement mais dans ce qu'il a fallu prouver, et dans ce que la preuve a révélé.
+
+#### Prouver la symétrie, ce n'est pas la réaffirmer
+
+Le test de SC-06 vérifiait, par la voie fichier, des valeurs que son auteur avait recopiées de la
+voie HTTP. Cela ne prouve que ce qu'il a pensé à recopier. Le test de SC-02 **compare les deux
+réponses entières**, sérialisées, sur deux jeux d'essai. Deux canaux qui appellent le même service
+peuvent malgré tout diverger : une désérialisation qui ne suit pas les mêmes règles, une valeur par
+défaut appliquée d'un côté, un bloc omis à la sérialisation.
+
+La comparaison a d'abord échoué — sur les accents des messages d'alerte. **Artefact du harnais, pas
+du moteur** : `MockHttpServletResponse.getContentAsString()` décode avec l'encodage déclaré par la
+réponse, or un `application/json` n'en déclare pas — JSON est UTF-8 par spécification — et MockMvc
+retombe sur le défaut servlet, ISO-8859-1. Les octets émis sont corrects. Aucun des quinze appels à
+cette méthode dans le projet ne précisait l'encodage : personne ne l'avait vu parce que toutes les
+assertions portaient sur de l'ASCII.
+
+#### Le bloc annoncé strict ne l'était pas
+
+`scenarioParameters` de SC-02 était déclaré strict — au contrat, à l'OpenAPI, dans le code — au
+motif qu'il ne portait **pas** de `@JsonIgnoreProperties`. C'était faux : Spring Boot désactive
+`FAIL_ON_UNKNOWN_PROPERTIES`, si bien qu'un paramètre inconnu était silencieusement ignoré. Un
+appelant envoyant `remplacantsAutorises` — paramètre que le cadrage annonce et que le moteur
+n'honore pas — recevait une réponse **200** et repartait convaincu d'avoir été entendu.
+
+C'est le pire cas : un contrat tolérant assumé vaut mieux qu'un contrat qui promet un refus qu'il
+ne prononce pas. Le refus est désormais réel et local à ce bloc, par un `@JsonAnySetter` qui nomme
+le paramètre en cause — et les deux canaux refusent pareil, puisqu'ils partagent la
+désérialisation.
+
+⚠️ **La même illusion couvre plusieurs autres DTO** du contrat d'entrée, où les phases 10B et 10C
+ont retiré des `@JsonIgnoreProperties` en concluant à un « contrat strict ». Inscrit au backlog
+(§ C) plutôt que corrigé ici : aligner les autres blocs change le comportement de SC-01, SC-03 et
+SC-06, et mérite son propre lot.
+
+#### Ce que le lot laisse au projet
+
+Les **quatre scénarios exposés voyagent maintenant par les deux canaux**. Le document d'échange
+fichier n'en connaissait que deux — SC-06 n'y avait jamais été inscrit à son lot S6 ; c'est réparé.

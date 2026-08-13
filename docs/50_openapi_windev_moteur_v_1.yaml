@@ -221,6 +221,10 @@ paths:
         Controller : `ScenarioController.solveSc02()`
         DTO d'entrée : `Sc02ScenarioRequestDTO` + `Sc02ScenarioParametersDTO`
         DTO de sortie : `ScenarioResponseDTO`, enrichi du bloc `remplacement`
+
+        Également accessible par le **FileAdapter** (`scenarioType: SC-02`). Les deux canaux
+        entrent dans le même service au même point, et un test compare leurs deux réponses
+        entières : l'un ne peut pas devenir une variante silencieuse de l'autre.
       operationId: solveSc02
       requestBody:
         required: true
@@ -1350,11 +1354,16 @@ components:
       description: |
         Paramètres du scénario SC-02. Correspond à `Sc02ScenarioParametersDTO`.
 
-        **Bloc strict** : tout champ inconnu est rejeté, jamais ignoré en silence. Un paramètre
-        transporté que personne n'exploite est pire qu'un paramètre absent — l'appelant le
-        renseigne et croit l'avoir dit. Ce bloc n'expose donc que ce que le moteur honore
-        aujourd'hui ; les paramètres prévus au cadrage (`remplacantsAutorises`,
-        `decoupageAutorise`) arriveront avec les lots qui les mettent en œuvre.
+        **Bloc strict** : tout champ inconnu est rejeté — `400 MALFORMED_JSON`, avec un message
+        nommant le paramètre en cause — jamais ignoré en silence. Un paramètre transporté que
+        personne n'exploite est pire qu'un paramètre absent : l'appelant le renseigne et croit
+        l'avoir dit. Ce bloc n'expose donc que ce que le moteur honore aujourd'hui ; les paramètres
+        prévus au cadrage (`remplacantsAutorises`, `decoupageAutorise`) arriveront avec les lots qui
+        les mettent en œuvre, et sont refusés d'ici là.
+
+        ⚠️ **Ce bloc est le seul du contrat à être réellement strict.** Ailleurs, un champ inconnu
+        est encore silencieusement ignoré — l'alignement est un chantier ouvert, voir
+        `90_SUIVI_DEVELOPPEMENT_MOTEUR.md`.
       properties:
         salarieAbsentId:
           type: string

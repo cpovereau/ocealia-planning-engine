@@ -2,11 +2,12 @@
 
 > **Statut** : cadrage d'analyse, 2026-08-11. Les arbitrages de la §4 sont **tranchés** (métier,
 > 2026-08-11, complétés le même jour sur le seuil des 30 minutes et sur la distinction poste
-> virtuel / heures à pourvoir). Le découpage de la §8 reste à valider ; la §9 porte le dernier
-> point ouvert. Ce document sert à découper le chantier, pas à le réaliser.
+> virtuel / heures à pourvoir). La §9 porte le dernier point ouvert.
 >
-> Il ne modifie ni `50_SCENARIO_CONTRACT.md`, ni le code. L'inscription de SC-02 au contrat
-> fonctionnel est une décision d'architecture, portée par le lot **S1**.
+> ✅ **Chantier clos le 2026-08-13** : les six lots S0 à S5 de la §8 sont livrés. SC-02 est inscrit
+> au contrat série 50 et accessible par les deux canaux, HTTP et FileAdapter. Ce document reste la
+> référence des arbitrages métier ; l'état d'avancement vit dans
+> `90_SUIVI_DEVELOPPEMENT_MOTEUR.md`.
 
 ---
 
@@ -328,7 +329,7 @@ Ordonné par dépendance. Chaque lot est livrable seul et testable seul.
 | **S2** ✅ | Découpage aux frontières de disponibilité, recombinaison à la restitution, seuil des 30 minutes sur le bloc confié, contrainte SOFT de cohésion | Le cœur technique (§5). Isolé pour être évalué seul, y compris son effet sur le score. **Livré le 2026-08-11** |
 | **S3** ✅ | Surcharge : seuils, alerte, niveaux restitués | Réemploi de `ImpactMesureDTO` ; aucune mesure nouvelle à écrire. **Livré le 2026-08-11** |
 | **S4** ✅ | Restitution complète avant / après + inscription au contrat série 50 (OpenAPI, schémas JSON) | Une seule migration de contrat pour WinDev, à la fin, plutôt que quatre. **Livré le 2026-08-13** — trois divergences de contrat trouvées en écrivant, dont deux qui auraient fait rejeter une requête ou une réponse conforme |
-| **S5** | Canal FileAdapter (`scenarioType: SC-02`) | Symétrie avec SC-06 lot S6 : les deux canaux doivent produire le même résultat, vérifié par test |
+| **S5** ✅ | Canal FileAdapter (`scenarioType: SC-02`) | Symétrie avec SC-06 lot S6 : les deux canaux doivent produire le même résultat, vérifié par test. **Livré le 2026-08-13** — la symétrie est prouvée en comparant les deux réponses entières, et non en réaffirmant les mêmes valeurs des deux côtés. Un contrôle de strictness annoncé mais inexistant a été découvert au passage |
 
 **S0 et S1 sont immédiatement actionnables** : aucun arbitrage en attente, aucune dépendance.
 

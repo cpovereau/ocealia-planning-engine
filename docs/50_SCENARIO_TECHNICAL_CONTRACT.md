@@ -56,8 +56,17 @@ ex : POST /scenarios/sc01/solve
 }
 ```
 
-📌 **Tout champ inconnu est rejeté**
 📌 **Tout champ obligatoire manquant est rejeté**
+
+📌 **Tout champ inconnu doit être rejeté** — c'est la règle du contrat, et elle n'est **pas encore
+tenue partout**. Constaté au lot S5 de SC-02 : l'absence de `@JsonIgnoreProperties` sur un DTO ne
+suffit pas à le rendre strict, Spring Boot désactivant `FAIL_ON_UNKNOWN_PROPERTIES`. Plusieurs
+blocs annoncés stricts ignoraient donc en silence. Seul `scenarioParameters` de SC-02 refuse
+réellement à ce jour ; l'alignement des autres est inscrit au backlog de
+`90_SUIVI_DEVELOPPEMENT_MOTEUR.md`.
+
+⚠️ Un contrat qui promet un refus qu'il ne prononce pas est pire qu'un contrat tolérant assumé :
+l'appelant en repart avec une réponse 200 et la conviction d'avoir été entendu.
 
 ---
 

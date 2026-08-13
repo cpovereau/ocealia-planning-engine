@@ -1,20 +1,29 @@
 package fr.project.planning.scenarios.dto.request;
 
+import com.fasterxml.jackson.annotation.JsonAnySetter;
 import jakarta.validation.constraints.NotBlank;
 
 /**
  * Sc02ScenarioParametersDTO — paramètres propres au remplacement d'un salarié absent.
  *
- * <h3>Ce bloc n'expose que ce que le lot S1 honore</h3>
- * <p>Le cadrage prévoit d'autres paramètres — liste de remplaçants autorisés, seuils de surcharge,
- * autorisation de découpage. Ils <strong>ne figurent pas ici</strong> tant qu'aucune règle ne les
- * lit : un champ transporté que personne n'exploite est pire qu'un champ absent, puisque
- * l'appelant le renseigne et croit l'avoir dit. Ils arriveront avec les lots qui les mettent en
- * œuvre. Voir {@code 92_CADRAGE_SCENARIO_SC-02.md} §6.2 et §8.</p>
+ * <h3>Ce bloc n'expose que ce que le moteur honore</h3>
+ * <p>Le cadrage prévoit d'autres paramètres — liste de remplaçants autorisés, autorisation de
+ * découpage. Ils <strong>ne figurent pas ici</strong> tant qu'aucune règle ne les lit : un champ
+ * transporté que personne n'exploite est pire qu'un champ absent, puisque l'appelant le renseigne
+ * et croit l'avoir dit. Ils arriveront avec les lots qui les mettent en œuvre. Voir
+ * {@code 92_CADRAGE_SCENARIO_SC-02.md} §6.2 et §8.</p>
  *
- * <p>Le bloc est <strong>strict</strong> — aucun {@code @JsonIgnoreProperties}. Un appelant qui
- * enverrait aujourd'hui un paramètre d'un lot à venir obtient une erreur explicite plutôt qu'un
- * silence : c'est ce qu'on veut pendant un déploiement par étapes.</p>
+ * <h3>[S5] Le bloc est strict — et il l'est vraiment</h3>
+ * <p>Il était annoncé strict au motif qu'il ne portait <em>pas</em> de
+ * {@code @JsonIgnoreProperties}. C'était faux : Spring Boot désactive
+ * {@code FAIL_ON_UNKNOWN_PROPERTIES}, si bien qu'un paramètre inconnu était <strong>silencieusement
+ * ignoré</strong>. Le contrat promettait donc un refus que le moteur ne prononçait pas — le pire
+ * cas exactement, puisqu'un appelant qui envoie {@code remplacantsAutorises} en repartait avec une
+ * réponse 200 et la conviction d'avoir été entendu.</p>
+ *
+ * <p>Le refus est désormais explicite et local à ce bloc, et il nomme le paramètre en cause. Les
+ * autres DTO du contrat gardent le comportement tolérant : les aligner est un chantier à part,
+ * inscrit au backlog.</p>
  */
 public class Sc02ScenarioParametersDTO {
 
@@ -95,5 +104,22 @@ public class Sc02ScenarioParametersDTO {
     /** Lecture décidée du drapeau : un vide ne suppose jamais que la chose est possible. */
     public boolean estPosteVirtuelAutorise() {
         return Boolean.TRUE.equals(posteVirtuelAutorise);
+    }
+
+    /**
+     * Refuse tout paramètre que ce lot n'honore pas, en le nommant.
+     *
+     * <p>C'est ce qu'on veut pendant un déploiement par étapes : un appelant en avance sur le
+     * moteur doit l'apprendre de la réponse, pas le déduire d'un résultat qui ne tient pas compte
+     * de ce qu'il a demandé. Les deux canaux — HTTP et FileAdapter — s'appuient sur la même
+     * désérialisation et refusent donc pareil.</p>
+     */
+    @JsonAnySetter
+    void refuserParametreInconnu(String nom, Object valeur) {
+        throw new IllegalArgumentException(
+                "[SC-02] paramètre inconnu dans scenarioParameters : '" + nom + "'. Le bloc est "
+                        + "strict — seuls salarieAbsentId, posteVirtuelAutorise, "
+                        + "surchargeMaxHeuresJour et surchargeMaxHeuresSemaine sont honorés. "
+                        + "Voir 50_SCENARIO_CONTRACT.md, section SC-02.");
     }
 }
