@@ -816,11 +816,12 @@ Ordonné par **dépendance**, pas par valeur métier. Les rangs renvoient au bac
 2. **Rang 8** — trancher les champs sans effet. Indépendant du reste, et il retire du contrat des
    promesses que personne ne tient. SC-02 en a rendu un plus visible : `capaciteCible` ne borne pas
    le volume qu'on gare sur un poste virtuel.
-3. **SC-05, lots A1 à A4** — le chantier équité est clos (L0 à L5 livrés) et **A0 est livré le
-   2026-08-14** : la contrainte HARD borne l'affectation à un ensemble de ressources autorisées.
-   Suite : **A1**, le squelette, décalque de SC-02 S1 — `92_CADRAGE_SCENARIO_SC-05.md` §8. Ce qui
-   manque par ailleurs n'est plus un outil mais **des plannings réels** à donner au harnais de
-   calibration — `92_CALIBRATION_PENIBILITE.md` §2.
+3. **SC-05, lots A2 à A4** — le chantier équité est clos (L0 à L5 livrés) et **A0 et A1 sont livrés
+   le 2026-08-14** : la contrainte HARD borne l'affectation à un ensemble de ressources autorisées,
+   et `POST /scenarios/sc05/solve` répond. Suite : **A2**, le bloc `arbitrage` —
+   `92_CADRAGE_SCENARIO_SC-05.md` §8. ⚠️ SC-05 n'est **pas encore au contrat série 50** : c'est A4.
+   Ce qui manque par ailleurs n'est plus un outil mais **des plannings réels** à donner au harnais
+   de calibration — `92_CALIBRATION_PENIBILITE.md` §2.
 4. **Rang 13** — garder le schéma d'entrée comme le schéma de sortie l'est. Correctif pur, sans
    arbitrage.
 5. **Rang 10** — dès que la Production a rendu ses arbitrages.
@@ -1706,6 +1707,64 @@ SC-06, et mérite son propre lot.
 
 Les **quatre scénarios exposés voyagent maintenant par les deux canaux**. Le document d'échange
 fichier n'en connaissait que deux — SC-06 n'y avait jamais été inscrit à son lot S6 ; c'est réparé.
+
+### SC-05 — lot A1 : le squelette, et une borne qu'on peut voir agir (2026-08-14)
+
+762 tests, 0 échec (+10). `POST /scenarios/sc05/solve` existe. Décalque de SC-02 S1 : préparation
+commune, une politique d'affectation propre au scénario, un service d'exécution de trente lignes.
+
+⚠️ **L'endpoint n'est pas au contrat.** SC-05 n'est inscrit ni à `50_SCENARIO_CONTRACT.md` ni à
+l'OpenAPI : c'est le lot **A4**. La route répond, le contrat ne la promet pas encore — et c'est
+volontaire, publier à WinDev est une décision qui se prend une fois.
+
+#### La politique, en trois cas
+
+| Créneau | Sort | Pourquoi |
+|---|---|---|
+| Du périmètre, tenu par A ou B | **libéré** | c'est l'objet même de l'arbitrage |
+| Du périmètre, tenu par un tiers | **épinglé + alerte** | §5.2 — le tiers n'a rien demandé |
+| Hors du périmètre | **épinglé** | y compris les autres créneaux de A et de B |
+
+Un quatrième cas n'était pas au cadrage : un créneau du périmètre porté par un **poste virtuel**. Il
+est **libéré**. L'argument du §5.2 est personnel — *« le tiers n'a rien demandé »* — et n'a aucune
+prise sur un emplacement que personne n'occupe. L'épingler rendrait de surcroît sans effet un
+créneau que l'appelant a explicitement désigné, ce que le §5.1 range parmi les défauts à éviter.
+Inscrit au cadrage comme décision de lot, à confirmer si le cas se présente.
+
+#### Le jeu d'essai est construit pour que la borne se voie
+
+Trois salariés, et **SAL-TIERS est de loin le plus sous-servi** : 4 h contre 24 h et 32 h. Sans la
+contrainte du lot A0, le score lui donnerait le créneau arbitré — c'est l'affectation la moins
+inéquitable de toutes, 77 points contre 79 pour SAL-B.
+
+C'est ce qui rend le test probant. Un jeu d'essai où l'arbitrage borné et l'arbitrage libre donnent
+le même résultat passerait au vert **même si le périmètre n'atteignait jamais le solveur**. Vérifié
+par mutation : périmètre débranché, le créneau part chez SAL-TIERS et le test tombe.
+
+#### Trois alertes, dont deux au-delà du cadrage
+
+Le cadrage n'en demandait qu'une, celle du tiers. Deux autres se sont imposées, décalquées de ce que
+SC-02 signale déjà :
+
+* `SALARIE_ARBITRE_INTROUVABLE` — sans elle, l'arbitrage se ferait entre moins de personnes que
+  demandé, en silence ;
+* `CRENEAU_ARBITRE_INTROUVABLE` — le périmètre est transmis et jamais déduit (§5.1) ; un identifiant
+  que le dataset ne porte pas rendrait l'arbitrage plus étroit que demandé, sans que personne ne le
+  voie.
+
+Un test vérifie qu'un arbitrage ordinaire **n'en produit aucune** : une alerte qui se déclenche
+toujours n'est pas un signal.
+
+#### Ce que la préparation refuse
+
+Deux salariés identiques — arbitrer quelqu'un avec lui-même n'a pas d'objet, et le moteur y
+répondrait par une répartition inchangée que l'appelant lirait comme un refus silencieux. Et un
+périmètre vide, pour la raison du §5.1.
+
+#### Reste du chantier
+
+A2 (bloc `arbitrage`), A3 (inéquité résiduelle et moins mauvaise répartition), A4 (contrat série 50
++ FileAdapter). `92_CADRAGE_SCENARIO_SC-05.md` §8.
 
 ### SC-05 — lot A0 : la brique qui manquait, bornée à un ensemble (2026-08-14)
 

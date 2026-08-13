@@ -61,6 +61,10 @@ public class PlanningService {
         if (request.seuilsSurcharge() != null && !request.seuilsSurcharge().estVide()) {
             problem.setSeuilsSurcharge(java.util.List.of(request.seuilsSurcharge()));
         }
+        // [SC-05 A0] Absent partout ailleurs : la contrainte qui le lit reste alors inerte.
+        if (request.perimetreArbitre() != null) {
+            problem.setPerimetresArbitres(java.util.List.of(request.perimetreArbitre()));
+        }
 
         PlanningProblem solved = solverLauncher.solve(problem);
 

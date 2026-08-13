@@ -2,12 +2,14 @@ package fr.project.planning.api;
 
 import fr.project.planning.scenarios.dto.Sc02ScenarioRequestDTO;
 import fr.project.planning.scenarios.dto.Sc03ScenarioRequestDTO;
+import fr.project.planning.scenarios.dto.Sc05ScenarioRequestDTO;
 import fr.project.planning.scenarios.dto.Sc06ScenarioRequestDTO;
 import fr.project.planning.scenarios.dto.ScenarioRequestDTO;
 import fr.project.planning.scenarios.dto.ScenarioResponseDTO;
 import fr.project.planning.scenarios.service.ScenarioSc01ExecutionService;
 import fr.project.planning.scenarios.service.ScenarioSc02ExecutionService;
 import fr.project.planning.scenarios.service.ScenarioSc03ExecutionService;
+import fr.project.planning.scenarios.service.ScenarioSc05ExecutionService;
 import fr.project.planning.scenarios.service.ScenarioSc06ExecutionService;
 
 import jakarta.validation.Valid;
@@ -26,7 +28,12 @@ import org.springframework.web.bind.annotation.*;
  *   POST /scenarios/sc01/solve/file
  *   POST /scenarios/sc02/solve
  *   POST /scenarios/sc03/solve
+ *   POST /scenarios/sc05/solve
  *   POST /scenarios/sc06/solve
+ *
+ * SC-05 est exposé depuis le lot A1 mais n'est PAS encore inscrit au contrat série 50 ni à
+ * l'OpenAPI : son inscription est le lot A4. L'endpoint existe, le contrat ne le promet pas
+ * encore.
  *
  * Principe : validation HTTP minimale (@Valid) et délégation aux services.
  * Toute la logique métier est dans les services d'exécution par scénario.
@@ -39,15 +46,18 @@ public class ScenarioController {
     private final ScenarioSc01ExecutionService scenarioSc01ExecutionService;
     private final ScenarioSc02ExecutionService scenarioSc02ExecutionService;
     private final ScenarioSc03ExecutionService scenarioSc03ExecutionService;
+    private final ScenarioSc05ExecutionService scenarioSc05ExecutionService;
     private final ScenarioSc06ExecutionService scenarioSc06ExecutionService;
 
     public ScenarioController(ScenarioSc01ExecutionService scenarioSc01ExecutionService,
                                ScenarioSc02ExecutionService scenarioSc02ExecutionService,
                                ScenarioSc03ExecutionService scenarioSc03ExecutionService,
+                               ScenarioSc05ExecutionService scenarioSc05ExecutionService,
                                ScenarioSc06ExecutionService scenarioSc06ExecutionService) {
         this.scenarioSc01ExecutionService = scenarioSc01ExecutionService;
         this.scenarioSc02ExecutionService = scenarioSc02ExecutionService;
         this.scenarioSc03ExecutionService = scenarioSc03ExecutionService;
+        this.scenarioSc05ExecutionService = scenarioSc05ExecutionService;
         this.scenarioSc06ExecutionService = scenarioSc06ExecutionService;
     }
 
@@ -106,6 +116,24 @@ public class ScenarioController {
     @PostMapping("/sc02/solve")
     public ScenarioResponseDTO solveSc02(@Valid @RequestBody Sc02ScenarioRequestDTO request) {
         return scenarioSc02ExecutionService.solve(request);
+    }
+
+    /**
+     * POST /scenarios/sc05/solve — Arbitrage d'un périmètre commun entre deux salariés.
+     *
+     * Pipeline : dataSet (planning existant) + salarieAId / salarieBId + creneauxArbitres
+     *            → épinglage de tout ce qui n'est pas du périmètre, libération des créneaux
+     *              du périmètre tenus par l'un des deux
+     *            → résolution solveur → ScenarioResponseDTO
+     *
+     * Le périmètre est transmis, jamais déduit. Un créneau du périmètre tenu par un tiers est
+     * épinglé et signalé : on ne retire pas son travail à quelqu'un qui n'a rien demandé.
+     *
+     * C'est le score qui arbitre — SC-05 rend une répartition, pas un podium.
+     */
+    @PostMapping("/sc05/solve")
+    public ScenarioResponseDTO solveSc05(@Valid @RequestBody Sc05ScenarioRequestDTO request) {
+        return scenarioSc05ExecutionService.solve(request);
     }
 
     /**

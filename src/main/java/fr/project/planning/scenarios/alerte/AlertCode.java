@@ -167,5 +167,40 @@ public enum AlertCode {
      * seulement elle-même. Le moteur produit la mesure et dit ce qu'elle vaut — c'est à l'appelant
      * de trancher entre changer ses coefficients et changer son ordre de dominance.</p>
      */
-    COEFFICIENTS_PENIBILITE_INCOHERENTS
+    COEFFICIENTS_PENIBILITE_INCOHERENTS,
+
+    // ---- [A1 de SC-05] Arbitrage de répartition entre salariés ----
+
+    /**
+     * Un créneau du périmètre à arbitrer est tenu par quelqu'un qui n'est pas de l'arbitrage
+     * (arbitrage métier du 13/08, §5.2 du cadrage SC-05).
+     *
+     * <p>Ni refus, ni reprise : le créneau est <strong>épinglé</strong> et l'arbitrage porte sur ce
+     * qui reste. Le tiers n'a rien demandé ; on ne lui retire pas son travail pour équilibrer deux
+     * autres personnes — <em>l'existant ne se réécrit pas</em>.</p>
+     *
+     * <p>L'appelant doit néanmoins l'apprendre : il a désigné ce créneau, et il ne bougera pas.
+     * Sans cette alerte, il lirait une répartition qui l'ignore sans savoir pourquoi.</p>
+     */
+    CRENEAU_ARBITRE_TENU_PAR_UN_TIERS,
+
+    /**
+     * Un salarié entre lesquels arbitrer n'est pas dans le dataset.
+     *
+     * <p>Même lecture que {@link #SALARIE_ABSENT_INTROUVABLE} pour SC-02 : le scénario s'exécute —
+     * il ne refuse pas — mais l'arbitrage se fait alors entre moins de personnes que demandé, et
+     * les créneaux du périmètre ne peuvent revenir qu'aux autres, ou rester à pourvoir.</p>
+     */
+    SALARIE_ARBITRE_INTROUVABLE,
+
+    /**
+     * Le périmètre désigne des créneaux qui ne sont pas dans le dataset, ou qui en ont été écartés
+     * avant le solveur.
+     *
+     * <p>Le périmètre est transmis et jamais déduit (§5.1) : le moteur ne peut donc pas deviner ce
+     * que l'appelant visait. L'arbitrage porte sur les créneaux effectivement présents, et cette
+     * alerte nomme ceux qui manquent — un périmètre partiellement inconnu rendrait sinon
+     * l'arbitrage plus étroit que demandé, sans que personne ne le voie.</p>
+     */
+    CRENEAU_ARBITRE_INTROUVABLE
 }

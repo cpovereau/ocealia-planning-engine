@@ -1,5 +1,6 @@
 package fr.project.planning.api;
 
+import fr.project.planning.domain.contexte.PerimetreArbitre;
 import fr.project.planning.domain.contexte.PlanningContext;
 import fr.project.planning.domain.contexte.SeuilsSurcharge;
 import fr.project.planning.domain.reglementaire.RegulatoryParameters;
@@ -36,6 +37,14 @@ public final class PlanningRequest {
      * aujourd'hui. Aucune contrainte ne s'en saisit alors.</p>
      */
     private final SeuilsSurcharge seuilsSurcharge;
+
+    /**
+     * Lot A0 de SC-05 : périmètre remis en jeu par un arbitrage, et ressources autorisées.
+     *
+     * <p>{@code null} pour tout scénario qui n'arbitre rien — c'est-à-dire tous sauf SC-05.
+     * {@code AffectationHorsRessourcesAutorisees} ne se déclenche alors jamais.</p>
+     */
+    private final PerimetreArbitre perimetreArbitre;
 
     /** Constructeur Phase 1/2 — sans indisponibilités (rétrocompatibilité). */
     public PlanningRequest(
@@ -87,7 +96,24 @@ public final class PlanningRequest {
             List<ReposHebdomadaire> reposHebdomadaires,
             SeuilsSurcharge seuilsSurcharge
     ) {
+        this(planningContext, regulatoryParameters, referentielComptabiliteActivite, ressources,
+                creneaux, indisponibilites, reposHebdomadaires, seuilsSurcharge, null);
+    }
+
+    /** Constructeur lot A0 de SC-05 — avec le périmètre remis en jeu par un arbitrage. */
+    public PlanningRequest(
+            PlanningContext planningContext,
+            RegulatoryParameters regulatoryParameters,
+            ReferentielComptabiliteActivite referentielComptabiliteActivite,
+            List<Ressource> ressources,
+            List<Creneau> creneaux,
+            List<Indisponibilite> indisponibilites,
+            List<ReposHebdomadaire> reposHebdomadaires,
+            SeuilsSurcharge seuilsSurcharge,
+            PerimetreArbitre perimetreArbitre
+    ) {
         this.seuilsSurcharge = seuilsSurcharge;
+        this.perimetreArbitre = perimetreArbitre;
         this.planningContext = Objects.requireNonNull(planningContext);
         this.regulatoryParameters = Objects.requireNonNull(regulatoryParameters);
         this.referentielComptabiliteActivite = Objects.requireNonNull(referentielComptabiliteActivite);
@@ -105,4 +131,5 @@ public final class PlanningRequest {
     public List<Indisponibilite> indisponibilites() { return indisponibilites; }
     public List<ReposHebdomadaire> reposHebdomadaires() { return reposHebdomadaires; }
     public SeuilsSurcharge seuilsSurcharge() { return seuilsSurcharge; }
+    public PerimetreArbitre perimetreArbitre() { return perimetreArbitre; }
 }

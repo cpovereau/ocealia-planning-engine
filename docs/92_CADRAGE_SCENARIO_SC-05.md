@@ -1,8 +1,8 @@
 # 92 — Cadrage : SC-05, arbitrage de répartition entre deux salariés
 
 > **Statut** : cadrage d'analyse, 2026-08-13, produit au lot **L6** du chantier équité.
-> Les arbitrages de la §5 sont **tranchés** (métier, 2026-08-13). Le découpage de la §8 est
-> **actionnable**, et le lot **A0 est livré** (2026-08-14).
+> Les arbitrages de la §5 sont **tranchés** (métier, 2026-08-13). Les lots **A0 et A1 sont livrés**
+> (2026-08-14) ; il reste A2 à A4.
 >
 > Ce document ne modifie ni `50_SCENARIO_CONTRACT.md`, ni le code : l'inscription de SC-05 au
 > contrat fonctionnel est portée par le lot **A4**.
@@ -130,7 +130,7 @@ effet — et dans les deux cas l'appelant ne verrait pas pourquoi.
 Conséquence pour WinDev : désigner le périmètre est de sa responsabilité, et à porter au dossier de
 livraison au même titre que la semaine pleine de SC-06.
 
-### 5.2 Tranché — un créneau tenu par un tiers est épinglé et signalé
+### 5.2 Tranché — un créneau tenu par un tiers est épinglé et signalé — ✅ lot A1
 
 > Ni refus, ni reprise : l'arbitrage porte sur ce qui reste, et l'appelant apprend ce qui a été
 > écarté.
@@ -140,6 +140,12 @@ mieux qu'un refus. Le tiers n'a rien demandé ; on ne lui retire pas son travail
 deux autres personnes.
 
 Demande une alerte dédiée, portant les identifiants des créneaux écartés (lot **A1**).
+
+> ⚠️ **Ce que l'arbitrage protège est le travail d'une personne, pas un emplacement vide.** Un
+> créneau du périmètre porté par un **poste virtuel** est donc **libéré**, pas épinglé : un poste
+> virtuel n'est le travail de personne, l'argument du §5.2 ne lui vaut rien, et l'épingler rendrait
+> sans effet un créneau que l'appelant a désigné. Décidé au lot A1 ; à confirmer si le cas se
+> présente en production.
 
 ### 5.3 Tranché — `objectif` est supprimé, et son retour est conditionné
 
@@ -251,7 +257,7 @@ Ordonné par dépendance. **Actionnable** depuis les arbitrages du 2026-08-13.
 | Lot | Objet | Pourquoi à ce rang |
 |---|---|---|
 | ~~**A0**~~ | ~~Contrainte HARD « affectation bornée aux ressources autorisées »~~ | ✅ **Livré le 2026-08-14** — `PerimetreArbitre` (fait) + `AffectationHorsRessourcesAutorisees` (HARD), écrits sur un **ensemble** (§5.5). Inerte tant qu'aucun périmètre n'est transmis |
-| **A1** | Endpoint, préparation, périmètre épinglé / libéré, alerte du créneau tenu par un tiers (§5.2) | Le squelette. Décalque de SC-02 S1 |
+| ~~**A1**~~ | ~~Endpoint, préparation, périmètre épinglé / libéré, alerte du créneau tenu par un tiers (§5.2)~~ | ✅ **Livré le 2026-08-14** — `POST /scenarios/sc05/solve`, décalque de SC-02 S1. Trois alertes : tiers, salarié introuvable, créneau du périmètre introuvable. ⚠️ Non inscrit au contrat série 50 ni à l'OpenAPI — c'est le lot **A4** |
 | **A2** | Bloc `arbitrage` — avant / après par salarié | La réponse à « qu'est-ce qui a bougé » |
 | **A3** | Alerte d'inéquité résiduelle, et restitution de la moins mauvaise répartition (§5.6) | Ce que la tolérance ne parvient pas à résorber |
 | **A4** | Inscription au contrat série 50 + canal FileAdapter | Comme SC-02 S4 et S5 |

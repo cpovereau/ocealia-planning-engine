@@ -1,0 +1,165 @@
+{
+  "requestId": "REQ-SC05-ARBITRAGE-001",
+  "metadata": {
+    "clientId": "WINDEV",
+    "timestamp": "2026-05-11T08:00:00Z",
+    "source": "TEST"
+  },
+  "scenarioType": "SC-05",
+
+  "planningContext": {
+    "horizon": {
+      "dateDebut": "2026-05-11",
+      "dateFin": "2026-05-17"
+    },
+    "strategieScoring": "ANALYSE_RH"
+  },
+
+  "scenarioParameters": {
+    "salarieAId": "SAL-A",
+    "salarieBId": "SAL-B",
+    "creneauxArbitres": ["PLN-ARB-V", "PLN-ARB-TIERS"]
+  },
+
+  "dataSet": {
+    "referentiels": {
+      "activites": [
+        {
+          "codeActiviteId": "ACT-SOIN",
+          "libelle": "Soins infirmiers",
+          "compteDansCharge": true,
+          "genereDetteRepos": false,
+          "estServiceCritique": true
+        }
+      ]
+    },
+
+    "ressources": {
+      "salaries": [
+        {
+          "id": "SAL-A",
+          "statut": "CDI",
+          "sitesAutorises": ["HOPITAL-NORD"],
+          "activitesCompatibles": ["ACT-SOIN"],
+          "contrat": { "heuresHebdomadairesHabituelles": 35.0 },
+          "contraintesReglementaires": {
+            "amplitudeJournaliereMaximum": 14.0,
+            "reposQuotidienMinimum": 11.0,
+            "heuresMaximumParSemaine": 44.0,
+            "joursConsecutifsMaximum": 6
+          }
+        },
+        {
+          "id": "SAL-B",
+          "statut": "CDI",
+          "sitesAutorises": ["HOPITAL-NORD"],
+          "activitesCompatibles": ["ACT-SOIN"],
+          "contrat": { "heuresHebdomadairesHabituelles": 35.0 },
+          "contraintesReglementaires": {
+            "amplitudeJournaliereMaximum": 14.0,
+            "reposQuotidienMinimum": 11.0,
+            "heuresMaximumParSemaine": 44.0,
+            "joursConsecutifsMaximum": 6
+          }
+        },
+        {
+          "id": "SAL-TIERS",
+          "statut": "CDI",
+          "sitesAutorises": ["HOPITAL-NORD"],
+          "activitesCompatibles": ["ACT-SOIN"],
+          "contrat": { "heuresHebdomadairesHabituelles": 35.0 },
+          "contraintesReglementaires": {
+            "amplitudeJournaliereMaximum": 14.0,
+            "reposQuotidienMinimum": 11.0,
+            "heuresMaximumParSemaine": 44.0,
+            "joursConsecutifsMaximum": 6
+          }
+        }
+      ]
+    },
+
+    "creneaux": [
+      {
+        "id": "PLN-A-L",
+        "date": "2026-05-11",
+        "heureDebut": "08:00",
+        "heureFin": "16:00",
+        "lieu": "HOPITAL-NORD",
+        "codeActiviteId": "ACT-SOIN",
+        "ressourceAffecteeId": "SAL-A"
+      },
+      {
+        "id": "PLN-A-MA",
+        "date": "2026-05-12",
+        "heureDebut": "08:00",
+        "heureFin": "16:00",
+        "lieu": "HOPITAL-NORD",
+        "codeActiviteId": "ACT-SOIN",
+        "ressourceAffecteeId": "SAL-A"
+      },
+      {
+        "id": "PLN-A-ME",
+        "date": "2026-05-13",
+        "heureDebut": "08:00",
+        "heureFin": "16:00",
+        "lieu": "HOPITAL-NORD",
+        "codeActiviteId": "ACT-SOIN",
+        "ressourceAffecteeId": "SAL-A"
+      },
+      {
+        "id": "PLN-A-J",
+        "date": "2026-05-14",
+        "heureDebut": "08:00",
+        "heureFin": "16:00",
+        "lieu": "HOPITAL-NORD",
+        "codeActiviteId": "ACT-SOIN",
+        "ressourceAffecteeId": "SAL-A"
+      },
+      {
+        "id": "PLN-B-L",
+        "date": "2026-05-11",
+        "heureDebut": "08:00",
+        "heureFin": "16:00",
+        "lieu": "HOPITAL-NORD",
+        "codeActiviteId": "ACT-SOIN",
+        "ressourceAffecteeId": "SAL-B"
+      },
+      {
+        "id": "PLN-B-MA",
+        "date": "2026-05-12",
+        "heureDebut": "08:00",
+        "heureFin": "16:00",
+        "lieu": "HOPITAL-NORD",
+        "codeActiviteId": "ACT-SOIN",
+        "ressourceAffecteeId": "SAL-B"
+      },
+      {
+        "id": "PLN-B-ME",
+        "date": "2026-05-13",
+        "heureDebut": "08:00",
+        "heureFin": "16:00",
+        "lieu": "HOPITAL-NORD",
+        "codeActiviteId": "ACT-SOIN",
+        "ressourceAffecteeId": "SAL-B"
+      },
+      {
+        "id": "PLN-ARB-V",
+        "date": "2026-05-15",
+        "heureDebut": "08:00",
+        "heureFin": "16:00",
+        "lieu": "HOPITAL-NORD",
+        "codeActiviteId": "ACT-SOIN",
+        "ressourceAffecteeId": "SAL-A"
+      },
+      {
+        "id": "PLN-ARB-TIERS",
+        "date": "2026-05-16",
+        "heureDebut": "08:00",
+        "heureFin": "12:00",
+        "lieu": "HOPITAL-NORD",
+        "codeActiviteId": "ACT-SOIN",
+        "ressourceAffecteeId": "SAL-TIERS"
+      }
+    ]
+  }
+}
