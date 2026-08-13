@@ -329,7 +329,7 @@ Ordonné par dépendance. Chaque lot est livrable seul et testable seul.
 | **L3** ✅ | Harnais de simulation et calibration des coefficients | Ne peut venir qu'après L1 et L2 : on calibre sur des mesures qui existent |
 | **L4** ✅ | Les trois critères de §4.7 câblés dans la sélection **SC-06** | Premier effet visible sur une décision. Deux critères sur trois sont déjà mesurés |
 | **L5** ✅ | Contrainte SOFT d'équité — **et c'est par elle que SC-02 est servi** | Pèse l'écart au score. Séparé de L2 pour être évalué seul |
-| **L6** | SC-05 — arbitrage entre deux salariés | Le scénario que tout ceci débloque |
+| **L6** ⏸ | SC-05 — arbitrage entre deux salariés | Le scénario que tout ceci débloque. **Cadré, pas réalisable en l'état** — voir §8.2 |
 
 ### 8.1 Correction apportée par L4 — SC-02 n'a pas de sélection à câbler
 
@@ -353,6 +353,35 @@ objet plus clair — *la même équité, servie aux deux scénarios par deux mé
 ⚠️ Conséquence à tenir au lot L5 : **les deux mécanismes doivent produire le même arbitrage**. Une
 contrainte SOFT qui classerait autrement que les paliers de SC-06 ferait dire au moteur deux choses
 différentes sur la même situation, selon le scénario interrogé.
+
+### 8.2 L6 est cadré, et il s'arrête là où le métier doit trancher
+
+SC-05 n'est pas un lot du chantier équité : c'est un **scénario complet**, du même ordre que SC-02
+— cinq à six lots — et le seul des six annoncés à n'avoir toujours ni contrat d'entrée, ni
+endpoint, ni jeu d'essai. Le construire suppose de décider ce qu'il fait.
+
+Le cadrage est écrit : `92_CADRAGE_SCENARIO_SC-05.md`. Il établit trois choses.
+
+**Ce que le chantier a effectivement débloqué.** L1 donne l'unité, L2 la mesure comparative, L4 les
+trois critères et leur ordre, L5 la contrainte qui rend un déséquilibre coûteux. SC-05 **assemble**
+— il n'a aucune mesure nouvelle à inventer, ce qui était précisément le blocage que le backlog
+signalait.
+
+**La seule brique qui manque, et elle est structurante** : restreindre l'affectation d'un créneau à
+**deux ressources désignées**. Le domaine de la variable de décision est global ; rien ne permet
+aujourd'hui de dire « ce créneau ne peut revenir qu'à A ou à B ». Une contrainte HARD est la seule
+forme sûre — réduire le dataset aux deux salariés rendrait leurs bornes hebdomadaires
+invérifiables.
+
+**Six arbitrages qui n'appartiennent pas au moteur** : le périmètre commun, le sort d'un créneau
+tenu par un tiers, la survie de l'enum `objectif` — dont deux des trois valeurs sont désormais
+portées par des paramètres livrés, et la troisième bloquée au rang 10 —, le remplacement
+d'`autoriserDesequilibre` par la tolérance de L5, la limite à deux salariés, et la réponse quand
+aucune répartition n'est acceptable.
+
+> Les décider à la place du métier reviendrait à publier à WinDev un contrat que personne n'a
+> validé. Le cadrage propose, il ne tranche pas — comme celui de SC-02 le 11/08 et celui de SC-06
+> le 10/08, tous deux réalisés **après** arbitrage.
 
 ---
 

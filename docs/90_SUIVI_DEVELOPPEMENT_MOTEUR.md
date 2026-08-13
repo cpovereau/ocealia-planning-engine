@@ -589,7 +589,7 @@ qu'une intention métier : **aucun n'a de contrat d'entrée, d'endpoint, ni de j
 |---|---|---|---|
 | ~~**SC-02** — remplacement d'un absent~~ | ~~assurer la continuité en perturbant le moins possible l'existant~~ | ✅ **Clos le 2026-08-13** — six lots S0 à S5, inscrit au contrat série 50, accessible par les deux canaux | — |
 | **SC-04** — optimisation globale d'un planning existant | améliorer sans reconstruire | figement, WorkMetrics | historique des compteurs, degrés de liberté, indicateurs comparatifs |
-| **SC-05** — arbitrage entre deux salariés | répartir équitablement un périmètre commun | WorkMetrics de charge | objectif d'arbitrage, historique de charge, seuils comparatifs, WorkMetrics d'équité |
+| **SC-05** — arbitrage entre deux salariés | répartir équitablement un périmètre commun | ✅ **WorkMetrics d'équité livrées** (lots L1 à L5), planning figé, seuils comparatifs | **six arbitrages métier** et une contrainte HARD « affectation bornée au couple » — cadré le 13/08 : `92_CADRAGE_SCENARIO_SC-05.md` |
 
 `92_CADRAGE_DONNEES_AMONT_SCENARIOS.md` §7 le résume : trois familles de données apparaissent dès
 SC-02 et ne disparaissent plus — le **planning existant**, le **contrat salarié** et le **seuil de
@@ -597,8 +597,10 @@ surcharge**. Les trois sont désormais câblées : le planning existant est épi
 l'était par SC-06, et le seuil de surcharge a ses deux contraintes depuis le lot S3. Le contrat
 salarié reste **transporté sans qu'aucune contrainte ne le lise**.
 
-SC-04 dépend d'un historique de compteurs qui n'existe pas ; SC-05, de WorkMetrics d'équité non
-implémentées. **Aucun des deux n'est actionnable aujourd'hui.**
+SC-04 dépend d'un historique de compteurs qui n'existe pas. **SC-05 ne dépend plus de rien de
+technique** : les WorkMetrics d'équité qui le bloquaient sont livrées (lots L1 à L5), et son cadrage
+est écrit. Ce qui l'attend désormais est un **arbitrage métier** — six questions, dont aucune ne se
+déduit du code : `92_CADRAGE_SCENARIO_SC-05.md` §5.
 
 📄 **SC-02 est cadré et livré à 5/6** — arbitrages métier rendus le 11/08/2026, découpage en six
 lots S0 à S5, **S0 à S4 livrés**, S5 (canal FileAdapter) restant :
@@ -1701,6 +1703,37 @@ SC-06, et mérite son propre lot.
 
 Les **quatre scénarios exposés voyagent maintenant par les deux canaux**. Le document d'échange
 fichier n'en connaissait que deux — SC-06 n'y avait jamais été inscrit à son lot S6 ; c'est réparé.
+
+### Équité — lot L6 : SC-05 est cadré, et il s'arrête là où le métier doit trancher (2026-08-13)
+
+L6 n'est pas un lot du chantier : c'est un **scénario complet**, du même ordre que SC-02 — cinq à
+six lots — et le seul des six annoncés à n'avoir toujours ni contrat d'entrée, ni endpoint, ni jeu
+d'essai. Cadrage écrit : `92_CADRAGE_SCENARIO_SC-05.md`. Aucune ligne de code.
+
+**Ce que le chantier a effectivement débloqué.** Le backlog disait *SC-05 dépend de WorkMetrics
+d'équité non implémentées*. Elles le sont : L1 donne l'unité, L2 la mesure comparative, L4 les trois
+critères et leur ordre, L5 la contrainte qui rend un déséquilibre coûteux. SC-05 **assemble** — il
+n'a aucune mesure nouvelle à inventer.
+
+**La brique qui manque, et elle est structurante** : restreindre l'affectation d'un créneau à deux
+ressources désignées. Le domaine de la variable de décision est global. Réduire le dataset aux deux
+salariés serait le raccourci tentant et il est faux — sans le planning des autres, les bornes
+hebdomadaires deviennent invérifiables et le moteur déclarerait conforme une répartition qui ne
+l'est pas. Une contrainte HARD est la seule forme sûre.
+
+**Six arbitrages qui n'appartiennent pas au moteur** : le périmètre commun, le sort d'un créneau
+tenu par un tiers, la survie de l'enum `objectif`, le remplacement d'`autoriserDesequilibre`, la
+limite à deux salariés, et la réponse quand aucune répartition n'est acceptable.
+
+Deux d'entre eux sont des constats plus que des questions. `objectif` annonce trois valeurs dont
+**deux sont désormais portées par des paramètres livrés** — la tolérance d'équité (L5) et le seuil
+de surcharge (S3) — et la troisième, les préférences, est bloquée au rang 10 : un enum qui double
+des paramètres existants finit par les contredire. Et `autoriserDesequilibre`, booléen, ne dit pas
+*jusqu'où* : `ecartTolerePourcent` le dit, et « équité stricte » s'y transmet comme une tolérance à
+zéro.
+
+Les décider à la place du métier reviendrait à publier à WinDev un contrat que personne n'a validé.
+SC-02 et SC-06 ont été cadrés puis réalisés **après** arbitrage ; SC-05 suit le même chemin.
 
 ### Équité — lot L5 : la première règle qui compare deux personnes (2026-08-13)
 
