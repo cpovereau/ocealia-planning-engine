@@ -137,6 +137,7 @@
       "salaries": [
         {
           "id": "SAL-2001",
+          "contrat": { "heuresHebdomadairesHabituelles": 35.0 },
           "statut": "CDI",
           "sitesAutorises": ["HOPITAL-NORD"],
           "activitesCompatibles": ["ACT-SOIN", "ACT-ADMIN"],
@@ -155,6 +156,7 @@
         },
         {
           "id": "SAL-2002",
+          "contrat": { "heuresHebdomadairesHabituelles": 35.0 },
           "statut": "CDI",
           "sitesAutorises": ["HOPITAL-NORD"],
           "activitesCompatibles": ["ACT-SOIN"],

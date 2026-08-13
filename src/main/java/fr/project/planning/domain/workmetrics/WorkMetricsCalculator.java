@@ -273,6 +273,32 @@ public class WorkMetricsCalculator {
             }
         }
 
+        /*
+         * [Équité L2] Seconde passe : ce que chacun fait, rapporté à ce qu'il doit.
+         *
+         * Séparée de l'accumulation, comme 40_WORKMETRICS.md §5.1.5 le prévoyait : une mesure
+         * rapportée au contrat suppose que tout ait été compté. Le poste virtuel en est exclu —
+         * il ne porte pas de contrat, et n'a donc rien à quoi être comparé.
+         */
+        int joursObserves = (int) EcartAuContrat.joursObserves(horizon);
+
+        for (Map.Entry<Ressource, WorkMetrics> entry : result.entrySet()) {
+            WorkMetrics wm = entry.getValue();
+
+            // La fenêtre est celle du problème : elle vaut pour tout le monde, y compris un poste
+            // virtuel dont rien n'est comparable. Elle dit sur quoi le moteur a jugé.
+            Double attendues = entry.getKey() instanceof SalarieReel salarie
+                    ? EcartAuContrat.minutesAttendues(salarie.getContrat(), horizon)
+                    : null;
+
+            wm.setMesuresContractuelles(
+                    joursObserves,
+                    EcartAuContrat.ecartPourcent(wm.getMinutesPonderees(), attendues),
+                    EcartAuContrat.pourcentageDuContrat(wm.getMinutesNuitDominante(), attendues),
+                    EcartAuContrat.pourcentageDuContrat(wm.getMinutesDimancheDominante(), attendues),
+                    EcartAuContrat.pourcentageDuContrat(wm.getMinutesFerieDominante(), attendues));
+        }
+
         return result;
     }
 

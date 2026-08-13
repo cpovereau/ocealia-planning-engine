@@ -41,6 +41,19 @@ public class WorkMetrics {
      */
     private double minutesPonderees;
 
+    /*
+     * [Équité L2] Mesures rapportées au contrat, en pourcentage — nulles quand le salarié ne
+     * déclare pas de volume hebdomadaire. Rien n'est alors comparable, et le moteur préfère ne
+     * rien dire plutôt que de supposer.
+     */
+    private Double ecartContratPourcent;
+    private Double partNuits;
+    private Double partDimanches;
+    private Double partFeries;
+
+    /** [Équité L2] Jours de l'horizon déclaré — le dénominateur de {@code ecartContratPourcent}. */
+    private int joursObserves;
+
     public WorkMetrics(String ressourceId) {
         this.ressourceId = ressourceId;
     }
@@ -85,6 +98,24 @@ public class WorkMetrics {
     public int getMinutesFerieDominante() { return minutesFerieDominante; }
     public int getMinutesOrdinaires() { return minutesOrdinaires; }
     public double getMinutesPonderees() { return minutesPonderees; }
+
+    // [Équité L2] Mesures rapportées au contrat
+    public Double getEcartContratPourcent() { return ecartContratPourcent; }
+    public Double getPartNuits() { return partNuits; }
+    public Double getPartDimanches() { return partDimanches; }
+    public Double getPartFeries() { return partFeries; }
+
+    public int getJoursObserves() { return joursObserves; }
+
+    public void setMesuresContractuelles(int joursObserves, Double ecartContratPourcent,
+                                         Double partNuits, Double partDimanches,
+                                         Double partFeries) {
+        this.joursObserves = joursObserves;
+        this.ecartContratPourcent = ecartContratPourcent;
+        this.partNuits = partNuits;
+        this.partDimanches = partDimanches;
+        this.partFeries = partFeries;
+    }
 
     public void addPenibilites(int nuit, int dimanche, int ferie, int ordinaires, double ponderees) {
         this.minutesNuitDominante += nuit;

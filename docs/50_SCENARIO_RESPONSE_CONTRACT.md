@@ -233,6 +233,40 @@ C'est cette grandeur, et non `heuresTravaillees`, qui rend deux personnes compar
 brutes et **se recouvrent** : une nuit du dimanche figure dans les deux. Elles décrivent une
 exposition ; `heuresPonderees` mesure une charge.
 
+### 3.2 ter Les mesures rapportées au contrat
+
+> Inscrites au contrat au **lot L2 du chantier équité**.
+
+| Champ | Type | Description |
+|---|---|---|
+| `joursObserves` | integer | Jours de l'**horizon déclaré** — le dénominateur des mesures ci-dessous |
+| `ecartContratPourcent` | double | Écart **signé** entre la charge pondérée et le volume contractuel attendu |
+| `partNuits` / `partDimanches` / `partFeries` | double | Part de chaque pénibilité dans ce même volume |
+
+**On compare au contrat de chacun, jamais à la moyenne du groupe** — un salarié à 50 % y serait
+perpétuellement « sous la moyenne », et le moteur passerait son temps à vouloir le charger. Un
+salarié à 30 h à qui l'on demande 35 h est à **+16,7 %** ; un salarié à 35 h à qui l'on demande
+40 h est à **+14,3 %**. Le second est le moins sollicité, bien qu'il travaille cinq heures de plus.
+
+**L'écart est signé.** Positif : au-dessus de son contrat. Négatif : en dessous — et cela doit le
+rendre **préférable**, pas seulement « non exclu ». Sans signe, le moteur éviterait de surcharger
+sans jamais rééquilibrer, et l'équité ne se produirait pas : elle serait seulement moins violée.
+
+**Les pénibilités se rapportent au contrat comme les heures.** Huit heures de nuit représentent
+23 % du contrat d'un temps plein et 46 % de celui d'un mi-temps : le même volume ne pèse pas
+pareil.
+
+> **`joursObserves` n'est pas `periodeDebut` / `periodeFin`.** L'horizon dit sur quelle fenêtre le
+> moteur a jugé ; ces deux dates disent ce que les données couvraient. Le contrat hebdomadaire est
+> proratisé sur l'horizon — c'est aussi ce qui traite l'**annualisation** sans cas particulier :
+> lue sur toute la fenêtre, la mesure ne pénalise pas un salarié annualisé pour une semaine
+> au-dessus de sa moyenne, qui est l'objet même de l'annualisation. **Plus la fenêtre est large,
+> plus le chiffre a de sens** — c'est la raison de la règle de transmission J-7 / J+7.
+
+> **`null` sans volume contractuel déclaré.** Rien n'est alors comparable, et une valeur inventée
+> serait pire qu'une absence de valeur. Un poste virtuel est dans ce cas par nature : il ne porte
+> pas de contrat.
+
 Exemple :
 
 ```json

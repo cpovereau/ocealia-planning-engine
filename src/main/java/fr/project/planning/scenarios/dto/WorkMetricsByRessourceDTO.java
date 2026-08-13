@@ -35,6 +35,42 @@ public class WorkMetricsByRessourceDTO {
      */
     private double heuresPonderees;
 
+    /**
+     * [Équité L2] Écart <strong>signé</strong> entre la charge pondérée et le volume contractuel
+     * attendu sur la fenêtre observée, en pourcentage.
+     *
+     * <p>Positif : au-dessus de son contrat. Négatif : en dessous — et cela doit le rendre
+     * <strong>préférable</strong>, pas seulement « non exclu ». Sans écart signé, le moteur se
+     * contenterait d'éviter de surcharger : il ne rééquilibrerait jamais.</p>
+     *
+     * <p>La comparaison se fait au contrat de chacun, jamais à la moyenne du groupe : un salarié
+     * à 50 % y serait perpétuellement « sous la moyenne ».</p>
+     *
+     * <p>{@code null} si le salarié ne déclare pas de volume hebdomadaire — rien n'est alors
+     * comparable, et le moteur préfère ne rien dire plutôt que de supposer.</p>
+     */
+    private Double ecartContratPourcent;
+
+    /** [Équité L2] Part des heures de nuit dans le volume contractuel attendu, en pourcentage. */
+    private Double partNuits;
+
+    /** [Équité L2] Part des heures de dimanche non nocturnes, en pourcentage du contrat. */
+    private Double partDimanches;
+
+    /** [Équité L2] Part des heures de jour férié ni nocturnes ni dominicales, idem. */
+    private Double partFeries;
+
+    /**
+     * [Équité L2] Jours de l'<strong>horizon déclaré</strong> — le dénominateur de
+     * {@code ecartContratPourcent}, qui rapporte le contrat hebdomadaire à cette durée.
+     *
+     * <p>À ne pas confondre avec {@code periodeDebut} / {@code periodeFin}, qui bornent les
+     * créneaux effectivement reçus : l'horizon dit sur quelle fenêtre le moteur a jugé, ces deux
+     * dates disent ce que les données couvraient. Plus la fenêtre est large, plus l'écart au
+     * contrat a de sens.</p>
+     */
+    private int joursObserves;
+
     public WorkMetricsByRessourceDTO() {
     }
 
@@ -152,6 +188,23 @@ public class WorkMetricsByRessourceDTO {
 
     public void setHeuresPonderees(double heuresPonderees) {
         this.heuresPonderees = heuresPonderees;
+    }
+
+    public Double getEcartContratPourcent() { return ecartContratPourcent; }
+    public Double getPartNuits() { return partNuits; }
+    public Double getPartDimanches() { return partDimanches; }
+    public Double getPartFeries() { return partFeries; }
+
+    public int getJoursObserves() { return joursObserves; }
+
+    public void setMesuresContractuelles(int joursObserves, Double ecartContratPourcent,
+                                         Double partNuits, Double partDimanches,
+                                         Double partFeries) {
+        this.joursObserves = joursObserves;
+        this.ecartContratPourcent = ecartContratPourcent;
+        this.partNuits = partNuits;
+        this.partDimanches = partDimanches;
+        this.partFeries = partFeries;
     }
 
     public void setNbCreneauxNuitNonNuit(int nbCreneauxNuitNonNuit) {

@@ -798,9 +798,8 @@ Ordonné par **dépendance**, pas par valeur métier. Les rangs renvoient au bac
 2. **Rang 8** — trancher les champs sans effet. Indépendant du reste, et il retire du contrat des
    promesses que personne ne tient. SC-02 en a rendu un plus visible : `capaciteCible` ne borne pas
    le volume qu'on gare sur un poste virtuel.
-3. **Équité, lot L0** — le RHD inviolable. Ne dépend d'aucun des précédents, et corrige un manque
-   réel : voir `92_CADRAGE_WORKMETRICS_EQUITE.md` §2.3.
-4. **Équité, lots L1 à L6** — la mesure, sa calibration, son effet sur la sélection, puis SC-05.
+3. **Équité, lots L3 à L6** — la calibration des coefficients, puis leur effet sur la sélection,
+   puis SC-05. **L0 à L2 sont livrés** : voir `92_CADRAGE_WORKMETRICS_EQUITE.md` §8.
 5. **Rang 10** — dès que la Production a rendu ses arbitrages.
 6. **SC-04** — le dernier, conditionné à un historique des compteurs qui n'existe pas.
 
@@ -1684,6 +1683,61 @@ SC-06, et mérite son propre lot.
 
 Les **quatre scénarios exposés voyagent maintenant par les deux canaux**. Le document d'échange
 fichier n'en connaissait que deux — SC-06 n'y avait jamais été inscrit à son lot S6 ; c'est réparé.
+
+### Équité — lots L0 à L2 : le RHD inviolable, puis l'unité de comparaison (2026-08-13)
+
+689 tests, 0 échec. Trois lots livrés d'affilée : une règle forte, une unité, une mesure.
+
+#### L0 — le repos dominical déclaré devient inviolable
+
+`DetteReposSurReposHebdomadaire` était la seule règle à regarder le travail posé un jour de repos,
+et elle cumulait trois limites : SOFT, ne distinguant pas RH de RHD alors que le fait porte la
+nature, et conditionnée à `genereDetteRepos`. **Pour toute autre activité, faire travailler
+quelqu'un son dimanche de repos ne coûtait rien du tout.** Le partage est désormais net : RHD
+interdit, RH pesé.
+
+⚠️ **Seul un RHD déclaré est inviolable.** Le repli fait de *tout* dimanche un RHD pour qui ne
+déclare rien cette semaine-là ; interdire là rendrait le dimanche impossible à couvrir pour la
+plupart des appelants. L'argument qui fonde la règle — le délai de prévenance — ne vaut que contre
+un repos planifié et connu.
+
+Seules les décisions du solveur sont jugées : l'existant épinglé est **signalé**, pas pesé. Le
+pénaliser rendrait le problème insoluble pour une faute qu'il ne peut pas défaire.
+
+#### L1 — l'heure pondérée
+
+« On ne juge l'équité qu'à pénibilité équivalente » est un **changement d'unité**, pas un critère
+de départage. Chaque minute est pondérée par le coefficient de sa seule catégorie — celle que la
+dominance retient — de sorte qu'une nuit du dimanche n'est jamais comptée deux fois.
+
+La répartition par dominance vivait enfouie dans la construction du score. Elle est **extraite**
+en `RepartitionPenibilites` : deux implémentations de la même règle auraient fini par diverger,
+et c'est exactement la classe d'écart que ce projet passe son temps à réparer.
+
+Les coefficients sont transmis, jamais écrits en dur. Absents, tout vaut 1 — le défaut neutre est
+le seul honnête, et **il ne déclenche pas d'alerte** : ce serait le cas de cent pour cent des
+réponses jusqu'à la calibration. Une alerte permanente n'est pas un signal.
+
+#### L2 — ce que chacun fait, rapporté à ce qu'il doit
+
+`ecartContratPourcent`, **signé**, sur la fenêtre transmise. Sans signe, le moteur éviterait de
+surcharger sans jamais rééquilibrer : l'équité ne se produirait pas, elle serait moins violée.
+
+La proratisation sur la fenêtre traite l'**annualisation sans cas particulier** : lue sur toute la
+fenêtre, la mesure ne pénalise pas un salarié annualisé pour une semaine au-dessus de sa moyenne.
+`joursObserves` restitue ce dénominateur — le moteur dit sur quoi il a jugé.
+
+#### Un défaut trouvé en chemin
+
+Rien ne confrontait `workMetrics` au schéma publié, et il avait déjà dérivé :
+`nbCreneauxNuitNonNuit` était restitué depuis la phase 8 sans y être déclaré. Même défaut qu'au lot
+S8.4, autre bloc. La confrontation couvre désormais `workMetrics`.
+
+#### Reste du chantier
+
+L3 (harnais de simulation et calibration des coefficients), L4 (les trois critères de sélection
+dans SC-02 et SC-06), L5 (contrainte SOFT), L6 (SC-05). Voir
+`92_CADRAGE_WORKMETRICS_EQUITE.md` §8.
 
 ### Rang 11 — le contrat refuse enfin ce qu'il annonçait refuser (2026-08-13)
 

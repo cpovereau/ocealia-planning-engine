@@ -297,9 +297,9 @@ Ordonné par dépendance. Chaque lot est livrable seul et testable seul.
 
 | Lot | Objet | Pourquoi à ce rang |
 |---|---|---|
-| **L0** | Le RHD devient inviolable : HARD, sur toutes activités, RH/RHD distingués | **Indépendant de l'équité et immédiatement actionnable.** Corrige un manque réel (§2.3), et la donnée existe déjà |
-| **L1** | Heures pondérées : coefficients paramétrables, mesure individuelle | L'unité, sans laquelle rien n'est comparable. Aucune comparaison encore |
-| **L2** | Écart signé au contrat + parts de pénibilité, restitution, fenêtre observée | La mesure comparative. **Descriptive, sans décision** |
+| **L0** ✅ | Le RHD devient inviolable : HARD, sur toutes activités, RH/RHD distingués | **Indépendant de l'équité et immédiatement actionnable.** Corrige un manque réel (§2.3), et la donnée existe déjà |
+| **L1** ✅ | Heures pondérées : coefficients paramétrables, mesure individuelle | L'unité, sans laquelle rien n'est comparable. Aucune comparaison encore |
+| **L2** ✅ | Écart signé au contrat + parts de pénibilité, restitution, fenêtre observée | La mesure comparative. **Descriptive, sans décision** |
 | **L3** | Harnais de simulation et calibration des coefficients | Ne peut venir qu'après L1 et L2 : on calibre sur des mesures qui existent |
 | **L4** | Les trois critères de §4.7 câblés dans la sélection SC-02 et SC-06 | Premier effet visible sur une décision. Deux critères sur trois sont déjà mesurés |
 | **L5** | Contrainte SOFT d'équité | Pèse l'écart au score. Séparé de L2 pour être évalué seul |

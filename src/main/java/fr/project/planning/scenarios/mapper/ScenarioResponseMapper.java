@@ -293,6 +293,15 @@ public class ScenarioResponseMapper {
                         dto.setHeuresPonderees(
                                 Math.round(wm.getMinutesPonderees() / 60.0 * 100.0) / 100.0);
 
+                        // [Équité L2] Ce que chacun fait, rapporté à ce qu'il doit. Calculé par
+                        // WorkMetricsCalculator, qui seul connaît les contrats et l'horizon.
+                        dto.setMesuresContractuelles(
+                                wm.getJoursObserves(),
+                                wm.getEcartContratPourcent(),
+                                wm.getPartNuits(),
+                                wm.getPartDimanches(),
+                                wm.getPartFeries());
+
                         byRessource.add(dto);
         }
 

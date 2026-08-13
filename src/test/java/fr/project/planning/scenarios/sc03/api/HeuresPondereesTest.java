@@ -111,6 +111,48 @@ class HeuresPondereesTest {
     }
 
     @Test
+    @DisplayName("L'écart au contrat est restitué, signé, avec la fenêtre qui lui sert de référence")
+    void ecartAuContrat_estRestitueAvecSaFenetre() throws Exception {
+        // [Équité L2] La mesure comparative : ce que chacun fait rapporté à ce qu'il doit.
+        JsonNode reponse = solve(lire());
+        JsonNode horizon = lire().get("planningContext").get("horizon");
+        long joursAttendus = java.time.temporal.ChronoUnit.DAYS.between(
+                java.time.LocalDate.parse(horizon.get("dateDebut").asText()),
+                java.time.LocalDate.parse(horizon.get("dateFin").asText())) + 1;
+
+        boolean auMoinsUnEcart = false;
+        for (JsonNode metrique : reponse.get("workMetrics").get("byRessource")) {
+            assertEquals(joursAttendus, metrique.get("joursObserves").asLong(),
+                    "Le dénominateur est l'horizon déclaré, et l'appelant doit pouvoir le vérifier.");
+
+            if (!metrique.get("ecartContratPourcent").isNull()) {
+                auMoinsUnEcart = true;
+                assertTrue(metrique.has("partNuits") && metrique.has("partDimanches")
+                                && metrique.has("partFeries"),
+                        "Les pénibilités se rapportent au contrat comme les heures.");
+            }
+        }
+        assertTrue(auMoinsUnEcart,
+                "Le jeu d'essai doit déclarer au moins un contrat, sinon rien n'est comparable.");
+    }
+
+    @Test
+    @DisplayName("Sans volume contractuel, le moteur ne dit rien plutôt que de supposer")
+    void sansContrat_lesMesuresComparativesSontNulles() throws Exception {
+        ObjectNode requete = (ObjectNode) lire();
+        for (JsonNode salarie : requete.get("dataSet").get("ressources").get("salaries")) {
+            ((ObjectNode) salarie).remove("contrat");
+        }
+
+        for (JsonNode metrique : solve(requete).get("workMetrics").get("byRessource")) {
+            assertTrue(metrique.get("ecartContratPourcent").isNull(),
+                    "Rien n'est comparable sans référence : une valeur inventée serait pire "
+                            + "qu'une absence de valeur.");
+            assertTrue(metrique.get("partNuits").isNull());
+        }
+    }
+
+    @Test
     @DisplayName("Le bloc workMetrics n'a ni champ non déclaré ni champ requis manquant")
     void workMetricsProduites_correspondentAuSchemaPublie() throws Exception {
         // Rien ne confrontait workMetrics au schéma publié, et il avait déjà dérivé :

@@ -583,7 +583,8 @@
         "maxJoursConsecutifsObservees",
         "maxNuitsConsecutivesObservees",
         "nbCreneauxNuitNonNuit",
-        "heuresPonderees"
+        "heuresPonderees",
+        "joursObserves"
       ],
       "properties": {
         "resourceId": {
@@ -626,6 +627,26 @@
         "heuresPonderees": {
           "type": "number",
           "description": "[Équité L1] Charge ramenée à l'unité commune de l'heure ordinaire. Chaque minute est pondérée par le coefficient de SA SEULE catégorie de pénibilité — celle que la dominance retient — de sorte qu'une nuit du dimanche n'est jamais comptée deux fois. C'est cette grandeur, et non heuresTravaillees, qui rend deux personnes comparables : on ne juge l'équité qu'à pénibilité équivalente. ATTENTION : sans coefficients transmis dans planningContext.coefficientsPenibilite, elle vaut exactement heuresTravaillees — le moteur n'invente pas d'échelle, il applique le neutre et le signale par une alerte COEFFICIENTS_PENIBILITE_PAR_DEFAUT."
+        },
+        "joursObserves": {
+          "type": "integer",
+          "description": "[Équité L2] Jours de l'HORIZON DÉCLARÉ — le dénominateur de ecartContratPourcent, qui rapporte le contrat hebdomadaire à cette durée. À ne pas confondre avec periodeDebut/periodeFin, qui bornent les créneaux effectivement reçus : l'horizon dit sur quelle fenêtre le moteur a jugé, ces deux dates disent ce que les données couvraient. Plus la fenêtre est large, plus l'écart au contrat a de sens."
+        },
+        "ecartContratPourcent": {
+          "type": ["number", "null"],
+          "description": "[Équité L2] Écart SIGNÉ entre la charge pondérée et le volume contractuel attendu sur la fenêtre, en pourcentage. Positif : au-dessus de son contrat. Négatif : en dessous — et cela doit le rendre PRÉFÉRABLE, pas seulement « non exclu » ; sans écart signé le moteur éviterait de surcharger sans jamais rééquilibrer. La comparaison se fait au contrat de chacun, jamais à la moyenne du groupe, qui mettrait un temps partiel perpétuellement « sous la moyenne ». null si le salarié ne déclare pas de volume hebdomadaire : rien n'est alors comparable, et le moteur préfère ne rien dire plutôt que de supposer."
+        },
+        "partNuits": {
+          "type": ["number", "null"],
+          "description": "[Équité L2] Part des heures de nuit dans le volume contractuel attendu, en pourcentage. Rapportée au contrat comme les heures : un salarié à 50 % doit une part de nuits proportionnée à son contrat."
+        },
+        "partDimanches": {
+          "type": ["number", "null"],
+          "description": "[Équité L2] Part des heures de dimanche non nocturnes, en pourcentage du contrat."
+        },
+        "partFeries": {
+          "type": ["number", "null"],
+          "description": "[Équité L2] Part des heures de jour férié ni nocturnes ni dominicales, en pourcentage du contrat."
         }
       }
     },
