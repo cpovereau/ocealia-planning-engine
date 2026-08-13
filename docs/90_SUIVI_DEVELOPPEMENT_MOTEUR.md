@@ -506,8 +506,18 @@ Le cas le plus tentant est `Sc03ScenarioParametersDTO`, symétrique de celui de 
 le rang 11 : un intégrateur qui envoie à SC-03 un paramètre inexistant reçoit encore un 200.
 
 Deux chantiers plus anciens restent ouverts **sans dépendre d'un arbitrage** : les WorkMetrics
-d'équité (§ 2️⃣ — écart à la moyenne, dispersion de charge) et l'explicabilité pédagogique du score
-(§ 1️⃣). Réalisables à tout moment ; l'équité est de surcroît un prérequis de SC-05.
+d'équité et l'explicabilité pédagogique du score (§ 1️⃣). Réalisables à tout moment ; l'équité est
+de surcroît un prérequis de SC-05.
+
+📄 **L'équité est cadrée** — arbitrages métier rendus le 13/08/2026, découpage en sept lots L0 à
+L6 : `92_CADRAGE_WORKMETRICS_EQUITE.md`. Le lot **L0 est immédiatement actionnable** et ne porte
+pas sur l'équité : il rend le **RHD inviolable**. Le cadrage a mis au jour que travailler le repos
+dominical de quelqu'un est aujourd'hui pénalisé en SOFT, sans distinguer RH de RHD, et **coûte
+zéro** dès que l'activité ne porte pas `genereDetteRepos`.
+
+⚠️ Ce cadrage **corrige `40_WORKMETRICS.md` §5.2** : `ecartChargeAvecMoyenne` compare à la moyenne
+du groupe, quand l'arbitrage retient le **contrat de chacun**. À reprendre au lot qui livre la
+mesure.
 
 La **stabilisation du contrat d'entrée**, qui figurait ici comme jalon, est close : phases 1 à 10C
 terminées, voir `92_SUIVI_STABILISATION_CONTRAT_ENTREE.md`.
@@ -788,10 +798,11 @@ Ordonné par **dépendance**, pas par valeur métier. Les rangs renvoient au bac
 2. **Rang 8** — trancher les champs sans effet. Indépendant du reste, et il retire du contrat des
    promesses que personne ne tient. SC-02 en a rendu un plus visible : `capaciteCible` ne borne pas
    le volume qu'on gare sur un poste virtuel.
-3. **WorkMetrics d'équité** — prérequis de SC-05, réalisable sans arbitrage.
-4. **Rang 10** — dès que la Production a rendu ses arbitrages.
-5. **SC-04 / SC-05** — les derniers, chacun conditionné à une donnée qui n'existe pas encore
-   (historique des compteurs, seuils comparatifs).
+3. **Équité, lot L0** — le RHD inviolable. Ne dépend d'aucun des précédents, et corrige un manque
+   réel : voir `92_CADRAGE_WORKMETRICS_EQUITE.md` §2.3.
+4. **Équité, lots L1 à L6** — la mesure, sa calibration, son effet sur la sélection, puis SC-05.
+5. **Rang 10** — dès que la Production a rendu ses arbitrages.
+6. **SC-04** — le dernier, conditionné à un historique des compteurs qui n'existe pas.
 
 L'explicabilité pédagogique du score (§ 1️⃣) et le nettoyage technique OptaPlanner restent
 souhaitables mais ne conditionnent rien : ils s'intercalent où ils veulent.
