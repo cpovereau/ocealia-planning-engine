@@ -108,12 +108,20 @@ public class ScenarioSc02ExecutionService {
         CollecteurAlertes apresResolution = new CollecteurAlertes("SC-02");
 
         if (remplacement.heuresAPourvoir() > 0) {
+            // [S4] Une reprise partielle n'est pas une absence de repreneur : le message la
+            //      comptait pourtant parmi les créneaux « qui n'ont trouvé personne ».
+            int sansRepreneur = remplacement.creneauxLiberes()
+                    - remplacement.creneauxRepris()
+                    - remplacement.creneauxPartiellementRepris();
             apresResolution.signaler(AlertCode.HEURES_RESTANT_A_POURVOIR, AlertSeverity.WARNING,
-                    remplacement.heuresAPourvoir() + " h de l'absence de '"
-                            + prepared.salarieAbsentId() + "' n'ont trouvé aucun salarié : "
-                            + (remplacement.creneauxLiberes() - remplacement.creneauxRepris())
-                            + " créneau(x) sur " + remplacement.creneauxLiberes()
-                            + ". Le détail est dans remplacement.details.");
+                    remplacement.heuresAPourvoir() + " h sur les "
+                            + remplacement.heuresLiberees() + " h libérées par l'absence de '"
+                            + prepared.salarieAbsentId() + "' n'ont trouvé aucun salarié : sur "
+                            + remplacement.creneauxLiberes() + " créneau(x) libéré(s), "
+                            + remplacement.creneauxRepris() + " repris en entier, "
+                            + remplacement.creneauxPartiellementRepris() + " en partie et "
+                            + sansRepreneur + " sans aucun repreneur. "
+                            + "Le détail est dans remplacement.details.");
         }
 
         // [S3] Un dépassement de seuil n'interdit rien — il se dit. Le taire reviendrait à
@@ -145,11 +153,23 @@ public class ScenarioSc02ExecutionService {
         return completes;
     }
 
+    /**
+     * Le bloc {@code remplacement} : le sort de chaque morceau, et ce que l'absence a coûté.
+     *
+     * <p>[S4] Les volumes sont totalisés ici, sur les mêmes créneaux que ceux qui alimentent
+     * {@code details[]}. Les faire calculer par l'appelant en additionnant le détail l'exposerait à
+     * compter deux fois un créneau couvert en deux fois, ou à confondre un poste virtuel avec un
+     * salarié — deux erreurs que le contrat n'a pas à laisser possibles.</p>
+     */
     private static RemplacementDTO construireRemplacement(PreparedSc02Scenario prepared,
                                                           List<Creneau> creneauxResolus) {
         List<CreneauRemplaceDTO> details = new ArrayList<>();
         Set<String> besoinsCouvertsEnEntier = new LinkedHashSet<>(prepared.creneauxLiberes());
-        int minutesAPourvoir = 0;
+        Set<String> besoinsTouches = new LinkedHashSet<>();
+        int minutesLiberees = 0;
+        int minutesReprises = 0;
+        int minutesSurPosteVirtuel = 0;
+        int minutesNonCouvertes = 0;
 
         for (Creneau creneau : creneauxResolus) {
             // [S2] Un créneau découpé se reconnaît par son origine, pas par son identifiant.
@@ -159,10 +179,22 @@ public class ScenarioSc02ExecutionService {
 
             Ressource apres = creneau.getRessourceAffectee();
             NatureCouverture nature = natureDe(apres);
-            if (nature != NatureCouverture.SALARIE) {
-                minutesAPourvoir += creneau.getDuree();
-                // Un seul morceau non repris suffit à ce que le besoin ne soit pas couvert.
-                besoinsCouvertsEnEntier.remove(creneau.getIdBesoin());
+            minutesLiberees += creneau.getDuree();
+
+            switch (nature) {
+                case SALARIE -> {
+                    minutesReprises += creneau.getDuree();
+                    besoinsTouches.add(creneau.getIdBesoin());
+                }
+                case POSTE_VIRTUEL -> {
+                    minutesSurPosteVirtuel += creneau.getDuree();
+                    // Un seul morceau non repris suffit à ce que le besoin ne soit pas couvert.
+                    besoinsCouvertsEnEntier.remove(creneau.getIdBesoin());
+                }
+                case NON_COUVERT -> {
+                    minutesNonCouvertes += creneau.getDuree();
+                    besoinsCouvertsEnEntier.remove(creneau.getIdBesoin());
+                }
             }
 
             details.add(new CreneauRemplaceDTO(
@@ -177,6 +209,10 @@ public class ScenarioSc02ExecutionService {
                     nature));
         }
 
+        // Un besoin qu'un salarié réel a touché sans le couvrir en entier n'est ni repris ni
+        // abandonné. Le ranger d'un côté ou de l'autre ferait mentir les deux décomptes.
+        besoinsTouches.removeAll(besoinsCouvertsEnEntier);
+
         details.sort(Comparator
                 .comparing(CreneauRemplaceDTO::date)
                 .thenComparing(CreneauRemplaceDTO::heureDebut));
@@ -185,7 +221,12 @@ public class ScenarioSc02ExecutionService {
                 prepared.salarieAbsentId(),
                 prepared.creneauxLiberes().size(),
                 besoinsCouvertsEnEntier.size(),
-                enHeures(minutesAPourvoir),
+                besoinsTouches.size(),
+                enHeures(minutesLiberees),
+                enHeures(minutesReprises),
+                enHeures(minutesSurPosteVirtuel),
+                enHeures(minutesNonCouvertes),
+                enHeures(minutesSurPosteVirtuel + minutesNonCouvertes),
                 details,
                 Sc02SurchargeFactory.build(
                         creneauxResolus,

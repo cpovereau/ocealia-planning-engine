@@ -37,9 +37,166 @@
       "items": {
         "$ref": "#/$defs/Candidat"
       }
+    },
+    "remplacement": {
+      "$ref": "#/$defs/Remplacement",
+      "description": "Propre à SC-02 : les conséquences de l'absence. Même règle que candidats — la clé est ABSENTE partout ailleurs."
     }
   },
   "$defs": {
+    "Remplacement": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "[SC-02] Ce que l'absence a libéré, et ce qu'il en est advenu. Deux lectures qui ne se déduisent pas l'une de l'autre : les compteurs disent combien d'objets du planning ont changé de main, les volumes en heures disent ce que l'absence a réellement coûté. Les volumes se recomposent — heuresLiberees = heuresReprises + heuresSurPosteVirtuel + heuresNonCouvertes, et heuresAPourvoir = heuresSurPosteVirtuel + heuresNonCouvertes.",
+      "required": [
+        "salarieAbsentId",
+        "creneauxLiberes",
+        "creneauxRepris",
+        "creneauxPartiellementRepris",
+        "heuresLiberees",
+        "heuresReprises",
+        "heuresSurPosteVirtuel",
+        "heuresNonCouvertes",
+        "heuresAPourvoir",
+        "details",
+        "surchargeParRessource"
+      ],
+      "properties": {
+        "salarieAbsentId": {
+          "type": "string",
+          "description": "Salarié dont l'absence a motivé le scénario, tel que scenarioParameters le désignait."
+        },
+        "creneauxLiberes": {
+          "type": "integer",
+          "description": "Créneaux D'ORIGINE rendus au solveur par l'absence. Le découpage éventuel ne le gonfle pas : un créneau coupé en trois reste un créneau libéré."
+        },
+        "creneauxRepris": {
+          "type": "integer",
+          "description": "Repris DE BOUT EN BOUT par des salariés réels."
+        },
+        "creneauxPartiellementRepris": {
+          "type": "integer",
+          "description": "Un salarié réel en a pris une part sans prendre le tout. Ni repris ni abandonnés : les ranger d'un côté ou de l'autre ferait mentir les deux décomptes."
+        },
+        "heuresLiberees": {
+          "type": "number",
+          "description": "Volume total que l'absence a rendu au solveur, en heures décimales — la situation « avant »."
+        },
+        "heuresReprises": {
+          "type": "number",
+          "description": "Volume que des salariés réels assurent au bout du compte — la situation « après »."
+        },
+        "heuresSurPosteVirtuel": {
+          "type": "number",
+          "description": "Volume garé sur un poste fictif. Toujours 0 quand scenarioParameters.posteVirtuelAutorise n'est pas demandé : le poste virtuel ne s'invite jamais de lui-même."
+        },
+        "heuresNonCouvertes": {
+          "type": "number",
+          "description": "Volume restitué sans aucune ressource."
+        },
+        "heuresAPourvoir": {
+          "type": "number",
+          "description": "Heures que PERSONNE DE RÉEL ne couvre — poste virtuel compris. Du point de vue de l'encadrement la question est « combien me reste-t-il à staffer », et la réponse est la même que les heures soient garées sur un poste fictif ou laissées vides. Le planning dit OÙ elles sont, ce total dit COMBIEN il y en a."
+        },
+        "details": {
+          "type": "array",
+          "description": "Le sort de chaque morceau restitué, y compris ceux que personne n'a repris : un remplacement qui n'a pas eu lieu est une information, pas un silence.",
+          "items": {
+            "$ref": "#/$defs/CreneauRemplace"
+          }
+        },
+        "surchargeParRessource": {
+          "type": "array",
+          "description": "Ce que le remplacement change à la charge de ceux qui l'assurent. Vide quand personne n'a rien repris.",
+          "items": {
+            "$ref": "#/$defs/SurchargeRessource"
+          }
+        }
+      }
+    },
+    "CreneauRemplace": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "[SC-02] Un morceau de créneau libéré et son sort. Un créneau couvert en deux fois apparaît en deux entrées, dont les identifiants sont dérivés du sien — <id>#S1, <id>#S2 — et qui portent alors creneauOrigineId. Un créneau repris en entier par une seule personne garde son identifiant inchangé, comme s'il n'avait jamais été découpé.",
+      "required": [
+        "creneauId",
+        "date",
+        "heureDebut",
+        "heureFin",
+        "dureeMinutes",
+        "ressourceAvantId",
+        "nature"
+      ],
+      "properties": {
+        "creneauId": {
+          "type": "string"
+        },
+        "creneauOrigineId": {
+          "type": "string",
+          "description": "Créneau dont celui-ci est un morceau. CLÉ OMISE — et non rendue nulle — pour un créneau qui n'a pas été découpé. Elle existe pour que le rattachement ne repose jamais sur l'analyse d'une chaîne de caractères."
+        },
+        "date": {
+          "type": "string",
+          "format": "date",
+          "description": "Jour de DÉBUT du créneau. Un créneau traversant minuit n'est rattaché qu'à celui-là."
+        },
+        "heureDebut": {
+          "type": "string"
+        },
+        "heureFin": {
+          "type": "string",
+          "description": "Le lendemain si elle n'est pas postérieure au début."
+        },
+        "dureeMinutes": {
+          "type": "integer",
+          "description": "Durée telle que portée par le créneau, jamais recalculée."
+        },
+        "ressourceAvantId": {
+          "type": "string",
+          "description": "Salarié absent à qui le créneau était affecté."
+        },
+        "ressourceApresId": {
+          "type": "string",
+          "description": "Qui le reprend. CLÉ OMISE lorsque personne ne le reprend — jamais rendue nulle."
+        },
+        "nature": {
+          "type": "string",
+          "enum": [
+            "SALARIE",
+            "POSTE_VIRTUEL",
+            "NON_COUVERT"
+          ],
+          "description": "Ce qui couvre le créneau au bout du compte. POSTE_VIRTUEL et NON_COUVERT sont deux réponses distinctes à la même situation, et toutes deux comptent dans heuresAPourvoir."
+        }
+      }
+    },
+    "SurchargeRessource": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "[SC-02] Ce qu'un remplacement change à la charge de celui qui l'assure, un jour donné. Une entrée par salarié réel et par jour où il reprend quelque chose ; la mesure hebdomadaire y est répétée telle quelle pour deux jours d'une même semaine, chaque ligne se lisant seule. « Avant » est la situation qu'on aurait eue sans remplacement, c'est-à-dire le planning épinglé du salarié : le delta est donc exactement ce que l'absence lui a coûté.",
+      "required": [
+        "ressourceId",
+        "date",
+        "heuresJour",
+        "heuresSemaine"
+      ],
+      "properties": {
+        "ressourceId": {
+          "type": "string"
+        },
+        "date": {
+          "type": "string",
+          "format": "date"
+        },
+        "heuresJour": {
+          "$ref": "#/$defs/ImpactMesure"
+        },
+        "heuresSemaine": {
+          "$ref": "#/$defs/ImpactMesure",
+          "description": "Semaine calendaire lundi → dimanche contenant ce jour."
+        }
+      }
+    },
     "Candidat": {
       "type": "object",
       "additionalProperties": false,
@@ -152,7 +309,7 @@
             "number",
             "null"
           ],
-          "description": "Limite individuelle du salarié, ou null si non renseignée. Une limite absente n'est pas une limite à zéro."
+          "description": "La borne à laquelle la grandeur est comparée, ou null si aucune n'a été transmise — une limite absente n'est pas une limite à zéro. ATTENTION, deux notions distinctes selon le scénario : en SC-06 c'est la limite RÉGLEMENTAIRE INDIVIDUELLE du salarié, portée par son bloc contraintesReglementaires ; en SC-02 c'est le SEUIL DE CONFORT DÉCLARÉ PAR LA DEMANDE (surchargeMaxHeuresJour / surchargeMaxHeuresSemaine), propre à cette situation et non à la personne. Les bornes individuelles gardent leurs propres contraintes et leurs propres lignes au scoreBreakdown."
         },
         "depassement": {
           "type": "boolean"

@@ -1,0 +1,153 @@
+{
+  "requestId": "REQ-SC02-PV-001",
+  "metadata": {
+    "clientId": "WINDEV",
+    "timestamp": "2026-05-10T09:00:00",
+    "source": "TEST"
+  },
+  "scenarioType": "SC-02",
+  "planningContext": {
+    "horizon": {
+      "dateDebut": "2026-05-11",
+      "dateFin": "2026-05-17"
+    },
+    "strategieScoring": "ANALYSE_RH"
+  },
+  "scenarioParameters": {
+    "salarieAbsentId": "SAL-MARIE",
+    "posteVirtuelAutorise": true
+  },
+  "dataSet": {
+    "referentiels": {
+      "activites": [
+        {
+          "codeActiviteId": "ACT-SOIN",
+          "libelle": "Soins infirmiers",
+          "compteDansCharge": true,
+          "genereDetteRepos": false,
+          "estServiceCritique": true
+        },
+        {
+          "codeActiviteId": "ACT-ADMIN",
+          "libelle": "Administratif",
+          "compteDansCharge": true,
+          "genereDetteRepos": false,
+          "estServiceCritique": false
+        }
+      ]
+    },
+    "ressources": {
+      "salaries": [
+        {
+          "id": "SAL-MARIE",
+          "statut": "CDI",
+          "activitesCompatibles": ["ACT-SOIN"],
+          "contrat": { "heuresHebdomadairesHabituelles": 35.0 },
+          "contraintesReglementaires": {
+            "reposQuotidienMinimum": 11.0,
+            "heuresMaximumParSemaine": 44.0
+          },
+          "travailleJourFerie": true
+        },
+        {
+          "id": "SAL-PAUL",
+          "statut": "CDI",
+          "activitesCompatibles": ["ACT-SOIN"],
+          "contrat": { "heuresHebdomadairesHabituelles": 35.0 },
+          "contraintesReglementaires": {
+            "reposQuotidienMinimum": 11.0,
+            "heuresMaximumParSemaine": 44.0
+          },
+          "travailleJourFerie": true
+        },
+        {
+          "id": "SAL-SOPHIE",
+          "statut": "CDI",
+          "activitesCompatibles": ["ACT-ADMIN"],
+          "contrat": { "heuresHebdomadairesHabituelles": 35.0 },
+          "contraintesReglementaires": {
+            "reposQuotidienMinimum": 11.0,
+            "heuresMaximumParSemaine": 44.0
+          },
+          "travailleJourFerie": true
+        }
+      ],
+      "postesVirtuels": [
+        {
+          "id": "PV-SOINS",
+          "type": "POTENTIEL",
+          "capaciteCible": 2400,
+          "activitesAutorisees": ["ACT-SOIN"],
+          "lieuxAutorises": ["HOPITAL-NORD"],
+          "postesComptablesCompatibles": []
+        }
+      ]
+    },
+    "creneaux": [
+      {
+        "id": "PLN-MARIE-MAR",
+        "date": "2026-05-12",
+        "heureDebut": "08:00",
+        "heureFin": "16:00",
+        "lieu": "HOPITAL-NORD",
+        "codeActiviteId": "ACT-SOIN",
+        "ressourceAffecteeId": "SAL-MARIE"
+      },
+      {
+        "id": "PLN-MARIE-MER",
+        "date": "2026-05-13",
+        "heureDebut": "08:00",
+        "heureFin": "16:00",
+        "lieu": "HOPITAL-NORD",
+        "codeActiviteId": "ACT-SOIN",
+        "ressourceAffecteeId": "SAL-MARIE"
+      },
+      {
+        "id": "PLN-MARIE-VEN",
+        "date": "2026-05-15",
+        "heureDebut": "08:00",
+        "heureFin": "16:00",
+        "lieu": "HOPITAL-NORD",
+        "codeActiviteId": "ACT-SOIN",
+        "ressourceAffecteeId": "SAL-MARIE"
+      },
+      {
+        "id": "PLN-PAUL-MAR",
+        "date": "2026-05-12",
+        "heureDebut": "08:00",
+        "heureFin": "16:00",
+        "lieu": "HOPITAL-SUD",
+        "codeActiviteId": "ACT-SOIN",
+        "ressourceAffecteeId": "SAL-PAUL"
+      },
+      {
+        "id": "PLN-SOPHIE-MAR",
+        "date": "2026-05-12",
+        "heureDebut": "09:00",
+        "heureFin": "17:00",
+        "lieu": "HOPITAL-NORD",
+        "codeActiviteId": "ACT-ADMIN",
+        "ressourceAffecteeId": "SAL-SOPHIE"
+      },
+      {
+        "id": "PLN-SOPHIE-MER",
+        "date": "2026-05-13",
+        "heureDebut": "09:00",
+        "heureFin": "17:00",
+        "lieu": "HOPITAL-NORD",
+        "codeActiviteId": "ACT-ADMIN",
+        "ressourceAffecteeId": "SAL-SOPHIE"
+      }
+    ],
+    "indisponibilites": {
+      "items": [
+        {
+          "ressourceId": "SAL-MARIE",
+          "dateDebut": "2026-05-12",
+          "dateFin": "2026-05-13",
+          "motif": "ARRET_MALADIE"
+        }
+      ]
+    }
+  }
+}

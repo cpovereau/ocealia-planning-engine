@@ -16,7 +16,7 @@
     "scenarioType": {
       "type": "string",
       "enum": ["SC-01", "SC-02", "SC-03", "SC-04", "SC-05", "SC-06"],
-      "description": "Identifiant du scénario métier. SC-06 : désignation de la ressource la plus à même de couvrir un besoin — son besoin est porté par scenarioParameters.besoin, décrit en détail dans 50_openapi_windev_moteur_v_1.yaml (schéma Sc06ScenarioRequest)."
+      "description": "Identifiant du scénario métier. SC-02 : remplacement d'un salarié absent — l'absent est désigné par scenarioParameters.salarieAbsentId et l'absence elle-même portée par dataSet.indisponibilites ; schéma Sc02ScenarioRequest dans 50_openapi_windev_moteur_v_1.yaml. SC-06 : désignation de la ressource la plus à même de couvrir un besoin — son besoin est porté par scenarioParameters.besoin, schéma Sc06ScenarioRequest dans le même fichier."
     },
     "planningContext": {
       "type": "object",
@@ -77,6 +77,40 @@
         "creneaux": {
           "type": "array",
           "items": { "$ref": "#/definitions/Creneau" }
+        },
+        "referentiels": {
+          "type": "object",
+          "description": "Référentiels client, dont activites[] qui porte compteDansCharge, genereDetteRepos et estServiceCritique. Décrit en détail dans 50_openapi_windev_moteur_v_1.yaml (schéma Referentiels), qui fait autorité. Déclaré ici parce que ce schéma ferme dataSet : sans cette entrée, une requête SC-02, SC-03 ou SC-06 conforme serait rejetée.",
+          "additionalProperties": true
+        },
+        "indisponibilites": {
+          "type": "object",
+          "description": "Périodes d'indisponibilité individuelles, lues par la contrainte HARD METIER_HARD_INDISPONIBILITE. C'est ce bloc, et lui seul, qui décrit l'ABSENCE de SC-02 : salarieAbsentId dit de qui il s'agit, ces périodes disent quand. Aucun champ nouveau n'a été créé pour l'absence — conserver une source unique évite les divergences.",
+          "additionalProperties": false,
+          "properties": {
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["ressourceId", "dateDebut", "dateFin"],
+                "additionalProperties": false,
+                "properties": {
+                  "ressourceId": { "type": "string" },
+                  "dateDebut": {
+                    "type": "string",
+                    "format": "date",
+                    "description": "Premier jour d'absence, jour plein."
+                  },
+                  "dateFin": {
+                    "type": "string",
+                    "format": "date",
+                    "description": "Dernier jour d'absence, jour plein — inclus. Un créneau traversant minuit est recouvert dès qu'il empiète sur la période, même d'une minute."
+                  },
+                  "motif": { "type": "string" }
+                }
+              }
+            }
+          }
         },
         "ressources": {
           "type": "object",
@@ -192,7 +226,7 @@
         "estSegmentDePause": { "type": "boolean" },
         "ressourceAffecteeId": {
           "type": "string",
-          "description": "[Lot S1] Ressource qui sert déjà ce créneau. Renseigné lorsque le créneau relève d'un planning existant transmis comme fait acquis : le scénario le fige alors, et le solveur ne peut plus le modifier. Requis sur tous les créneaux du dataSet en SC-06. Sans objet en SC-01 et SC-03, où le champ est ignoré."
+          "description": "[Lot S1] Ressource qui sert déjà ce créneau. Renseigné lorsque le créneau relève d'un planning existant transmis comme fait acquis : le scénario le fige alors, et le solveur ne peut plus le modifier. Requis sur tous les créneaux du dataSet en SC-06. En SC-02, c'est ce champ qui distingue les créneaux à remplacer — ceux du salarié absent que son absence recouvre — de l'existant à préserver ; une ressource introuvable dans le dataset y fait rejeter la demande, plutôt que de laisser un créneau glisser en besoin nu. Sans objet en SC-01 et SC-03, où le champ est ignoré."
         }
       }
     },

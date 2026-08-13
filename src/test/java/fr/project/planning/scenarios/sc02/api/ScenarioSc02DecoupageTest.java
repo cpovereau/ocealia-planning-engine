@@ -61,13 +61,13 @@ class ScenarioSc02DecoupageTest {
         JsonNode couvert = detail(remplacement, "BESOIN-MARDI#S1");
         assertEquals("SALARIE", couvert.get("nature").asText());
         assertEquals("SAL-X", couvert.get("ressourceApresId").asText());
-        assertEquals("13:30:00", couvert.get("heureDebut").asText());
-        assertEquals("15:30:00", couvert.get("heureFin").asText());
+        assertEquals("13:30", couvert.get("heureDebut").asText());
+        assertEquals("15:30", couvert.get("heureFin").asText());
         assertEquals(120, couvert.get("dureeMinutes").asInt());
 
         JsonNode reste = detail(remplacement, "BESOIN-MARDI#S2");
         assertEquals("NON_COUVERT", reste.get("nature").asText());
-        assertEquals("15:30:00", reste.get("heureDebut").asText());
+        assertEquals("15:30", reste.get("heureDebut").asText());
         assertEquals(30, reste.get("dureeMinutes").asInt(),
                 "Un reliquat n'est soumis à aucun minimum : il part à pourvoir tel qu'il est.");
     }

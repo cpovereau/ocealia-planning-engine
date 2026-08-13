@@ -489,7 +489,7 @@ soit explicitement hors moteur (§ Analyse métier aval).
 | Rang | Sujet | Nature du blocage | Qui tranche |
 |---|---|---|---|
 | **8** | Champs au contrat sans effet : `capaciteCible`, structuration des besoins | arbitrage — activer ou retirer — **non traitable avant le 25/08/2026** | Métier + moteur |
-| **9** | SC-02, SC-04, SC-05 — trois scénarios annoncés, jamais écrits | cadrage — aucun n'a de contrat d'entrée | Métier |
+| **9** | SC-04 et SC-05 — deux scénarios annoncés, jamais écrits | cadrage — aucun n'a de contrat d'entrée. **SC-02 est sorti de ce rang** : cadré le 11/08, lots S0 à S4 livrés, inscrit au contrat série 50 le 13/08 | Métier |
 | **10** | Contraintes personnelles : lieux, activités, préférences, annualisation | échanges avec la Production | Production |
 
 Deux chantiers plus anciens restent ouverts **sans dépendre d'un arbitrage** : les WorkMetrics
@@ -552,22 +552,22 @@ qu'une intention métier : **aucun n'a de contrat d'entrée, d'endpoint, ni de j
 
 | Scénario | Intention | Ce qui existe déjà | Ce qui manque |
 |---|---|---|---|
-| **SC-02** — remplacement d'un absent | assurer la continuité en perturbant le moins possible l'existant | **lots S0 et S1 livrés** : endpoint, épinglage, reprise entière ou « à pourvoir », bloc `remplacement` | découpage partiel (S2), seuils de surcharge (S3), restitution avant / après complète et contrat série 50 (S4), canal FileAdapter (S5) |
+| **SC-02** — remplacement d'un absent | assurer la continuité en perturbant le moins possible l'existant | **lots S0 à S4 livrés** : endpoint, épinglage, reprise entière ou partielle, « à pourvoir », seuils de surcharge, restitution avant / après complète, **inscrit au contrat série 50** | canal FileAdapter (S5) |
 | **SC-04** — optimisation globale d'un planning existant | améliorer sans reconstruire | figement, WorkMetrics | historique des compteurs, degrés de liberté, indicateurs comparatifs |
 | **SC-05** — arbitrage entre deux salariés | répartir équitablement un périmètre commun | WorkMetrics de charge | objectif d'arbitrage, historique de charge, seuils comparatifs, WorkMetrics d'équité |
 
 `92_CADRAGE_DONNEES_AMONT_SCENARIOS.md` §7 le résume : trois familles de données apparaissent dès
 SC-02 et ne disparaissent plus — le **planning existant**, le **contrat salarié** et le **seuil de
-surcharge**. Le contrat salarié est livré (lot S2 de SC-06) mais **aucune contrainte ne le lit**.
-Le planning existant a son socle technique (lot S1) mais **n'est câblé que dans SC-06**. Le seuil
-de surcharge n'existe nulle part.
+surcharge**. Les trois sont désormais câblées : le planning existant est épinglé par SC-02 comme il
+l'était par SC-06, et le seuil de surcharge a ses deux contraintes depuis le lot S3. Le contrat
+salarié reste **transporté sans qu'aucune contrainte ne le lise**.
 
-**SC-02 est le plus proche du réalisable** : ses données d'entrée sont déjà au contrat et son
-mécanisme de figement est déjà écrit et testé. SC-04 dépend d'un historique de compteurs qui
-n'existe pas ; SC-05, de WorkMetrics d'équité non implémentées.
+SC-04 dépend d'un historique de compteurs qui n'existe pas ; SC-05, de WorkMetrics d'équité non
+implémentées. **Aucun des deux n'est actionnable aujourd'hui.**
 
-📄 **SC-02 est cadré** — arbitrages métier rendus le 11/08/2026, découpage en six lots S0 à S5,
-lots S0 et S1 immédiatement actionnables : `92_CADRAGE_SCENARIO_SC-02.md`.
+📄 **SC-02 est cadré et livré à 5/6** — arbitrages métier rendus le 11/08/2026, découpage en six
+lots S0 à S5, **S0 à S4 livrés**, S5 (canal FileAdapter) restant :
+`92_CADRAGE_SCENARIO_SC-02.md`.
 
 ---
 
@@ -766,10 +766,11 @@ Voir :
 
 Ordonné par **dépendance**, pas par valeur métier. Les rangs renvoient au backlog du § C.
 
-1. **SC-02** (rang 9) — le seul scénario manquant dont les données d'entrée sont déjà au contrat.
-   Précédé de son prérequis : le passage de minuit dans `IndisponibiliteSalarie`.
+1. **SC-02 — lot S5**, le canal FileAdapter, dernier lot du scénario. Les lots S0 à S4 sont livrés
+   et le scénario est inscrit au contrat série 50.
 2. **Rang 8** — trancher les champs sans effet. Indépendant du reste, et il retire du contrat des
-   promesses que personne ne tient.
+   promesses que personne ne tient. SC-02 en a rendu un plus visible : `capaciteCible` ne borne pas
+   le volume qu'on gare sur un poste virtuel.
 3. **WorkMetrics d'équité** — prérequis de SC-05, réalisable sans arbitrage.
 4. **Rang 10** — dès que la Production a rendu ses arbitrages.
 5. **SC-04 / SC-05** — les derniers, chacun conditionné à une donnée qui n'existe pas encore
@@ -1544,3 +1545,68 @@ qui vérifie la réponse sans vérifier le score ne teste que la moitié du lot.
 
 S4 (restitution avant / après complète et inscription au contrat série 50, OpenAPI et schémas JSON)
 et S5 (canal FileAdapter). Voir `92_CADRAGE_SCENARIO_SC-02.md` §8.
+
+### SC-02 — lot S4 : ce que l'absence a coûté, et l'entrée au contrat (2026-08-13)
+
+654 tests, 0 échec. **Aucun autre scénario n'est touché** : les évolutions portent sur le bloc
+`remplacement`, que SC-02 est seul à produire.
+
+#### Le bloc comptait des créneaux, il ne chiffrait pas des heures
+
+Jusqu'ici la réponse disait « deux créneaux libérés, un repris » et totalisait les seules heures
+restées à pourvoir. L'encadrement lisait donc un décompte d'objets sans savoir de quel volume on
+parlait — un créneau de huit heures et un créneau d'une heure y pèsent pareil.
+
+S'ajoutent quatre volumes qui se recomposent, et que l'appelant peut vérifier :
+
+```text
+heuresLiberees  = heuresReprises + heuresSurPosteVirtuel + heuresNonCouvertes
+heuresAPourvoir = heuresSurPosteVirtuel + heuresNonCouvertes
+```
+
+Le partage entre poste virtuel et heures nues n'était pas lisible non plus, alors que l'arbitrage
+du 11/08 en fait **deux notions distinctes**. Il l'est désormais, sans cesser d'être totalisé
+ensemble : la question de l'encadrement est « combien me reste-t-il à staffer », et la réponse ne
+change pas selon l'endroit où les heures sont garées. Un jeu d'essai dédié le prouve — même
+situation que la référence, à un paramètre près, et les sept heures changent d'endroit sans changer
+de volume. C'était jusqu'ici le seul chemin de SC-02 qu'aucun test n'empruntait.
+
+#### Un créneau repris en partie n'est ni repris ni abandonné
+
+`creneauxPartiellementRepris` manquait, et son absence faisait mentir l'alerte
+`HEURES_RESTANT_A_POURVOIR` : le message soustrayait les repris des libérés et annonçait le reste
+comme n'ayant « trouvé aucun salarié ». Sur le jeu de référence, il désignait ainsi un créneau dont
+Sophie couvre la première heure.
+
+#### Trois divergences trouvées en écrivant le contrat
+
+C'est le rôle du lot, et elles n'auraient pas été vues autrement :
+
+1. **`dataSet` fermé sur deux blocs.** `50_ScenarioContract.schema.json` déclarait
+   `additionalProperties: false` avec les seuls `creneaux` et `ressources` : une requête portant
+   `indisponibilites` — donc **toute** requête SC-02, l'absence n'ayant pas d'autre support — y
+   était rejetée. `referentiels` l'était aussi, ce qui touchait déjà SC-03 et SC-06.
+2. **Deux formats d'heure dans une même réponse.** `planning` produit `HH:mm`,
+   `remplacement.details[]` sortait en `HH:mm:ss`. Corrigé côté code plutôt que documenté :
+   SC-02 n'est pas encore intégré, et le lot S4 existe précisément pour n'imposer qu'une seule
+   migration de contrat.
+3. **`ImpactMesure.plafond` décrit une chose et en porte une autre.** Le schéma disait « limite
+   individuelle du salarié » ; en SC-02 c'est le seuil de confort déclaré par la demande. Les deux
+   lectures sont maintenant écrites côte à côte, dans le schéma comme dans l'OpenAPI.
+
+#### Ce que les tests prouvent
+
+Le bloc `remplacement` est **confronté au schéma publié**, dans les deux sens et sur les trois jeux
+d'essai. `50_ScenarioResponse.schema.json` porte `additionalProperties: false` : un champ ajouté au
+code et pas au schéma fait rejeter la réponse chez un client qui la valide — c'est exactement ce
+qui s'était produit au lot S8.4, et rien ne l'avait vu parce que rien ne comparait les deux. La
+confrontation, écrite alors pour `diagnostics`, est extraite en `SchemaPublie` et sert maintenant
+aux deux blocs. Discrimination vérifiée en renommant un champ du schéma : le test tombe.
+
+L'exemple JSON du contrat de sortie n'est pas rédigé à la main — il est **relevé sur la réponse
+réelle** du jeu de référence. Un exemple qui diverge de ce que le moteur produit est pire qu'une
+absence d'exemple.
+
+#### Reste du chantier
+
+S5 (canal FileAdapter, `scenarioType: SC-02`), dernier lot. Voir `92_CADRAGE_SCENARIO_SC-02.md` §8.

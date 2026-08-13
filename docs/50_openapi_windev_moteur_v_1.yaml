@@ -18,9 +18,12 @@ info:
     - Le moteur **génère les créneaux** avant de résoudre.
     - `dataSet.creneaux` est ignoré par le DatasetBuilder SC-01.
 
-    **SC-03 — Mode dataset-driven** (`/scenarios/sc03/solve`)
+    **SC-02, SC-03, SC-06 — Mode dataset-driven** (`/scenarios/sc02|sc03|sc06/solve`)
     - L'appelant fournit directement les créneaux dans `dataSet.creneaux`.
     - Le moteur **consomme le dataset fourni** sans phase de génération.
+
+    Ce qu'ils font du dataset les sépare : SC-03 décide de tout, **SC-02 épingle l'existant** et ne
+    décide que des créneaux de l'absent, SC-06 épingle tout et ne fait que classer.
 
     ## Champs obligatoires de traçabilité (depuis Phase 4.1)
 
@@ -33,8 +36,11 @@ info:
     - `PlanningContextDTO` : seuls `horizon` et `strategieScoring` sont portés
       en V1. `resolutionType`, `regulatoryParameters`, `seuils` sont définis dans
       les documents de cadrage mais **non présents dans le DTO** actuel.
-    - `referentiels` et `indisponibilites` dans `dataSet` : transportés en V1,
-      non exploités avant Phase 3 (Phase 3 = référentiel activités, indispos).
+    - `activitesCompatibles` est transporté mais **lu par aucune contrainte** : le moteur
+      n'oppose pas l'activité à une affectation. Sensible pour SC-02, qui affecte réellement.
+      Voir `90_SUIVI_DEVELOPPEMENT_MOTEUR.md`, rang 10 du backlog.
+    - `capaciteCible` d'un poste virtuel est transporté mais **ne borne rien** : rang 8 du
+      même backlog.
 
 servers:
   - url: https://moteur.example.local/api/v1
@@ -49,7 +55,7 @@ tags:
       Pipeline : scenarioParameters → génération créneaux → résolution solveur.
   - name: Scenarios-Dataset
     description: |
-      Mode dataset-driven — les créneaux sont fournis dans le corps (SC-03).
+      Mode dataset-driven — les créneaux sont fournis dans le corps (SC-02, SC-03, SC-06).
       Pipeline : dataSet.creneaux → résolution solveur directe.
 
 paths:
@@ -181,6 +187,131 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '422':
           $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # SC-02 — REMPLACEMENT D'UN SALARIÉ ABSENT (dataset-driven, existant épinglé)
+  # ─────────────────────────────────────────────────────────────────────────
+  /scenarios/sc02/solve:
+    post:
+      tags: [Scenarios-Dataset]
+      summary: Remplacer un salarié absent (SC-02)
+      description: |
+        **Mode réparation** : un salarié est absent, ses créneaux sont orphelins. Le moteur cherche
+        qui les reprend, **en perturbant le moins possible l'existant**.
+
+        **L'existant est un fait, jamais une variable.** Seuls les créneaux du salarié absent que
+        son absence recouvre sont rendus au solveur. Tout le reste du planning transmis est
+        **épinglé** — y compris les créneaux de l'absent situés hors de sa période d'absence. Le
+        solveur le voit, les contraintes le mesurent, mais aucune affectation existante n'est
+        déplacée pour faire de la place.
+
+        Le prix est assumé : le moteur répondra « à pourvoir » là où un échange entre deux collègues
+        aurait suffi. Remanier le planning des présents est une décision d'encadrement, pas une
+        décision de moteur.
+
+        **Il n'y a jamais zéro solution.** Ce qui n'a pu être couvert est chiffré et restitué comme
+        volume à pourvoir : le moteur ne refuse pas, il rend visible l'impossible.
+
+        ⚠️ **La réponse peut contenir plus de créneaux que la demande** — voir le schéma
+        `CreneauRemplace`.
+
+        Route réelle : `POST /scenarios/sc02/solve`
+        Controller : `ScenarioController.solveSc02()`
+        DTO d'entrée : `Sc02ScenarioRequestDTO` + `Sc02ScenarioParametersDTO`
+        DTO de sortie : `ScenarioResponseDTO`, enrichi du bloc `remplacement`
+      operationId: solveSc02
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Sc02ScenarioRequest'
+            examples:
+              sc02_minimal:
+                summary: Une absence d'un jour, un remplaçant possible
+                value:
+                  requestId: REQ-20260512-SC02-001
+                  metadata:
+                    clientId: CLIENT-WINDEV
+                    timestamp: '2026-05-11T09:00:00Z'
+                    source: WINDEV
+                  scenarioType: SC-02
+                  planningContext:
+                    strategieScoring: ANALYSE_RH
+                    horizon:
+                      dateDebut: '2026-05-11'
+                      dateFin: '2026-05-17'
+                  scenarioParameters:
+                    salarieAbsentId: SAL-MARIE
+                    surchargeMaxHeuresJour: 10.0
+                    surchargeMaxHeuresSemaine: 40.0
+                  dataSet:
+                    referentiels:
+                      activites:
+                        - codeActiviteId: ACT-SOIN
+                          compteDansCharge: true
+                          genereDetteRepos: false
+                          estServiceCritique: true
+                    ressources:
+                      salaries:
+                        - id: SAL-MARIE
+                          activitesCompatibles: [ACT-SOIN]
+                          contrat:
+                            heuresHebdomadairesHabituelles: 35.0
+                          contraintesReglementaires:
+                            reposQuotidienMinimum: 11.0
+                        - id: SAL-PAUL
+                          activitesCompatibles: [ACT-SOIN]
+                          contrat:
+                            heuresHebdomadairesHabituelles: 35.0
+                          contraintesReglementaires:
+                            reposQuotidienMinimum: 11.0
+                      postesVirtuels: []
+                    creneaux:
+                      - id: PLN-MARIE-MER
+                        date: '2026-05-13'
+                        heureDebut: '08:00'
+                        heureFin: '16:00'
+                        codeActiviteId: ACT-SOIN
+                        lieu: HOPITAL-NORD
+                        ressourceAffecteeId: SAL-MARIE
+                    indisponibilites:
+                      items:
+                        - ressourceId: SAL-MARIE
+                          dateDebut: '2026-05-13'
+                          dateFin: '2026-05-13'
+                          motif: ARRET_MALADIE
+      responses:
+        '200':
+          description: |
+            Conséquences de l'absence. Le bloc `remplacement` porte le sort de chaque morceau
+            restitué, les volumes en heures avant / après, et ce que le remplacement coûte à ceux
+            qui l'assurent.
+
+            Des heures restées à pourvoir **ne sont pas un échec** : c'est la réponse attendue quand
+            personne n'est disponible. Elles sont signalées par une alerte
+            `HEURES_RESTANT_A_POURVOIR`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScenarioResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          description: |
+            Requête bien formée mais incohérente (`BUSINESS_ERROR`). Cas les plus fréquents :
+            créneau du `dataSet` portant un `ressourceAffecteeId` introuvable parmi les ressources
+            transmises, `scenarioType` autre que `SC-02`, `dataSet` absent.
+
+            À ne pas confondre avec les 400 : `salarieAbsentId` manquant est rejeté par la
+            validation (`INVALID_REQUEST`), et un paramètre inconnu dans `scenarioParameters` —
+            bloc **strict** — par la désérialisation (`MALFORMED_JSON`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '500':
           $ref: '#/components/responses/InternalServerError'
 
@@ -951,7 +1082,13 @@ components:
       description: |
         Une période d'indisponibilité individuelle d'un salarié.
         Correspond à `IndisponibiliteItemDTO`.
-        Transporté en V1, non exploité avant Phase 3.
+
+        **Exploité** : la contrainte HARD `METIER_HARD_INDISPONIBILITE` interdit toute affectation
+        qui la recouvre, ne serait-ce qu'en partie. Les bornes sont des **jours pleins** — un
+        créneau du 3 mars 22:00 → 06:00 est bien recouvert par une absence du 4 mars.
+
+        C'est également ce bloc, et lui seul, qui **décrit l'absence** de SC-02 :
+        `scenarioParameters.salarieAbsentId` désigne de qui il s'agit, cette période dit quand.
       properties:
         ressourceId:
           type: string
@@ -984,9 +1121,15 @@ components:
       type: object
       description: |
         Correspond à `DataSetDTO`.
-        `creneaux` est obligatoire pour SC-03, ignoré pour SC-01.
-        `referentiels` et `indisponibilites` sont optionnels en V1 (transportés,
-        non exploités avant Phase 3).
+        `creneaux` est obligatoire pour SC-02, SC-03 et SC-06, ignoré pour SC-01.
+
+        `referentiels` et `indisponibilites` sont **structurellement optionnels**, mais chaque
+        scénario dit ce qu'il en attend :
+
+        - `referentiels.activites` conditionne le calcul de la charge (`compteDansCharge`) et la
+          qualification du repos hebdomadaire ;
+        - `indisponibilites.items` est lu par la contrainte HARD `METIER_HARD_INDISPONIBILITE`, et
+          **porte l'absence** en SC-02 — sans lui, ce scénario ne libère aucun créneau.
       properties:
         ressources:
           $ref: '#/components/schemas/Ressources'
@@ -1196,6 +1339,126 @@ components:
                   items:
                     $ref: '#/components/schemas/CreneauInput'
       required: [requestId, metadata, scenarioType, planningContext, dataSet]
+
+    # ──────────────────────────────────────────────
+    # REQUÊTE — SC-02
+    # ──────────────────────────────────────────────
+
+    Sc02ScenarioParameters:
+      type: object
+      additionalProperties: false
+      description: |
+        Paramètres du scénario SC-02. Correspond à `Sc02ScenarioParametersDTO`.
+
+        **Bloc strict** : tout champ inconnu est rejeté, jamais ignoré en silence. Un paramètre
+        transporté que personne n'exploite est pire qu'un paramètre absent — l'appelant le
+        renseigne et croit l'avoir dit. Ce bloc n'expose donc que ce que le moteur honore
+        aujourd'hui ; les paramètres prévus au cadrage (`remplacantsAutorises`,
+        `decoupageAutorise`) arriveront avec les lots qui les mettent en œuvre.
+      properties:
+        salarieAbsentId:
+          type: string
+          minLength: 1
+          description: |
+            Salarié dont l'absence motive le scénario. **Obligatoire.**
+
+            Il ne sert **pas** à la contrainte : l'absence elle-même est portée par
+            `dataSet.indisponibilites`, déjà tenu par la contrainte HARD
+            `METIER_HARD_INDISPONIBILITE`. Il sert à savoir **de quelle absence** le moteur doit
+            tirer les conséquences — donc quels créneaux libérer, et quoi restituer.
+
+            👉 Aucun champ nouveau n'est demandé pour décrire l'absence : conserver une source
+            unique évite les divergences.
+        posteVirtuelAutorise:
+          type: boolean
+          default: false
+          description: |
+            Autorise le report des heures non couvertes sur un poste fictif du `dataSet`.
+
+            Absent vaut **refus** : le poste virtuel ne s'invite jamais de lui-même, il faut
+            l'avoir demandé. Les heures non couvertes reviennent alors sans ressource.
+
+            Dans les deux cas elles comptent dans `remplacement.heuresAPourvoir` — poste virtuel et
+            heures à pourvoir sont deux réponses distinctes à la même situation, pas une solution et
+            son repli.
+
+            ⚠️ `capaciteCible` du poste virtuel n'est lu par aucune contrainte : la capacité
+            déclarée **ne bornera pas** le volume qu'on y gare.
+        surchargeMaxHeuresJour:
+          type: number
+          format: double
+          description: |
+            Charge journalière au-delà de laquelle l'encadrement estime un remplaçant en surcharge,
+            en heures décimales.
+
+            Borne de **confort**, propre à cette demande — à ne pas confondre avec les bornes
+            réglementaires individuelles du salarié, qui gardent leur rôle et restent HARD. Son
+            dépassement est pesé au score et signalé par une alerte
+            `SURCHARGE_ACCEPTABLE_DEPASSEE`, **jamais éliminatoire** : le moteur préfère confier un
+            remplacement en surcharge plutôt que de laisser des heures à pourvoir.
+
+            Absent : aucun seuil journalier, donc aucun dépassement de ce côté. Une borne absente
+            n'est pas une borne à zéro.
+        surchargeMaxHeuresSemaine:
+          type: number
+          format: double
+          description: |
+            Même chose sur la semaine calendaire lundi → dimanche. Les deux seuils sont
+            **indépendants** : une longue journée dans une semaine creuse ne franchit que le
+            premier, une semaine chargée faite de journées ordinaires que le second.
+      required: [salarieAbsentId]
+
+    Sc02ScenarioRequest:
+      type: object
+      description: |
+        Corps de requête pour SC-02 — remplacement d'un salarié absent.
+        Correspond à `Sc02ScenarioRequestDTO`.
+
+        **Ce que le `dataSet` doit porter** :
+
+        - `creneaux` — le planning existant, chaque créneau servi portant son
+          `ressourceAffecteeId`. C'est de là que sortent à la fois les créneaux à remplacer (ceux
+          de l'absent) et l'existant à préserver (tous les autres) ;
+        - `indisponibilites.items` — **l'absence elle-même**, sur le salarié désigné par
+          `salarieAbsentId`. Sans elle le moteur ne sait pas quand il est absent, ne libère aucun
+          créneau, et le dit par une alerte `AUCUNE_ABSENCE_DECLAREE` : un vide ne vaut pas absence
+          sur tout l'horizon ;
+        - `referentiels.activites` — nécessaire pour que la charge se calcule
+          (`compteDansCharge`).
+
+        **Ce qui est décidé, et ce qui ne l'est pas.** Seuls les créneaux de l'absent que son
+        absence recouvre portent une décision. Un créneau de l'absent situé **hors** de sa période
+        d'absence lui reste, épinglé.
+
+        ⚠️ **Limite connue** : `activitesCompatibles` n'est lu par aucune contrainte. Un salarié
+        peut donc se voir confier un créneau dont il ne pratique pas l'activité. Les seules règles
+        qui écartent réellement un remplaçant sont, à ce jour, le chevauchement physique,
+        l'indisponibilité et le jour férié refusé.
+      properties:
+        requestId:
+          type: string
+          description: Identifiant unique de la requête pour la traçabilité (obligatoire)
+        metadata:
+          $ref: '#/components/schemas/Metadata'
+        scenarioType:
+          type: string
+          const: SC-02
+        planningContext:
+          $ref: '#/components/schemas/PlanningContext'
+        scenarioParameters:
+          $ref: '#/components/schemas/Sc02ScenarioParameters'
+        dataSet:
+          allOf:
+            - $ref: '#/components/schemas/DataSet'
+            - type: object
+              required: [ressources, creneaux]
+              properties:
+                creneaux:
+                  type: array
+                  minItems: 1
+                  items:
+                    $ref: '#/components/schemas/CreneauInput'
+      required: [requestId, metadata, scenarioType, planningContext, scenarioParameters, dataSet]
 
     # ──────────────────────────────────────────────
     # REQUÊTE — SC-06
@@ -1774,8 +2037,20 @@ components:
           format: double
           nullable: true
           description: |
-            Limite individuelle du salarié, ou `null` si elle n'est pas renseignée.
+            La borne à laquelle la grandeur est comparée, ou `null` si aucune n'a été transmise.
             Une limite absente n'est pas une limite à zéro.
+
+            ⚠️ **Deux notions distinctes selon le scénario** :
+
+            - **SC-06** — la limite **réglementaire individuelle** du salarié, portée par son bloc
+              `contraintesReglementaires` ;
+            - **SC-02** — le **seuil de confort déclaré par la demande**
+              (`surchargeMaxHeuresJour` / `surchargeMaxHeuresSemaine`), propre à cette situation et
+              non à la personne.
+
+            Les mélanger dans un même champ aurait rendu le chiffre illisible. En SC-02, les bornes
+            individuelles du salarié gardent leurs propres contraintes et leurs propres lignes au
+            `scoreBreakdown`.
         depassement:
           type: boolean
           description: "`apres` dépasse `plafond`. Toujours `false` si `plafond` est null."
@@ -1899,17 +2174,184 @@ components:
             $ref: '#/components/schemas/MotifCandidat'
       required: [rang, conforme, couvertureComplete, nature, affectations]
 
+    CreneauRemplace:
+      type: object
+      description: |
+        [SC-02] Un morceau de créneau libéré, et son sort.
+
+        Un créneau apparaît ici **quel que soit son sort**, y compris lorsqu'il n'a trouvé
+        personne : un remplacement qui n'a pas eu lieu est une information, pas un silence.
+
+        ⚠️ **La réponse peut contenir plus de créneaux que la demande.** Un créneau couvert en deux
+        fois ressort en deux entrées, dont les identifiants sont dérivés du sien — `<id>#S1`,
+        `<id>#S2` — et qui portent alors `creneauOrigineId`. Un créneau repris en entier par une
+        seule personne **garde son identifiant inchangé**, comme s'il n'avait jamais été découpé :
+        c'est le cas courant.
+      properties:
+        creneauId:
+          type: string
+          description: Identifiant du créneau, restitué tel qu'il a été reçu.
+        creneauOrigineId:
+          type: string
+          description: |
+            Créneau dont celui-ci est un morceau. **Clé omise** — et non rendue nulle — pour un
+            créneau qui n'a pas été découpé. Elle existe pour que le rattachement ne repose jamais
+            sur l'analyse d'une chaîne de caractères.
+        date:
+          type: string
+          format: date
+          description: Jour de **début** du créneau.
+        heureDebut:
+          type: string
+        heureFin:
+          type: string
+          description: Le lendemain si elle n'est pas postérieure au début.
+        dureeMinutes:
+          type: integer
+          description: Durée telle que portée par le créneau, jamais recalculée.
+        ressourceAvantId:
+          type: string
+          description: Salarié absent à qui le créneau était affecté.
+        ressourceApresId:
+          type: string
+          description: |
+            Qui le reprend. **Clé omise** lorsque personne ne le reprend — jamais rendue nulle.
+        nature:
+          type: string
+          enum: [SALARIE, POSTE_VIRTUEL, NON_COUVERT]
+          description: |
+            Ce qui couvre le créneau au bout du compte. `POSTE_VIRTUEL` et `NON_COUVERT` sont deux
+            réponses **distinctes** à la même situation — des heures que personne de réel ne
+            couvre — et toutes deux comptent dans `heuresAPourvoir`.
+      required: [creneauId, date, heureDebut, heureFin, dureeMinutes, ressourceAvantId, nature]
+
+    SurchargeRessource:
+      type: object
+      description: |
+        [SC-02] Ce qu'un remplacement change à la charge de celui qui l'assure, un jour donné.
+
+        Une entrée par salarié réel et par jour où il reprend quelque chose. La mesure hebdomadaire
+        y est répétée telle quelle pour deux jours d'une même semaine : chaque ligne se lit seule,
+        « ce jour-là, il passe à tant d'heures dans la journée et tant dans la semaine ».
+
+        « **Avant** » est la situation qu'on aurait eue sans remplacement, c'est-à-dire le planning
+        **épinglé** du salarié ; le delta est donc exactement ce que l'absence lui a coûté.
+
+        `ImpactMesure` est repris tel quel de SC-06 : la grandeur restituée pour un candidat et
+        celle restituée pour un remplaçant sont la même grandeur. Attention toutefois au `plafond`,
+        qui ne désigne pas la même chose dans les deux scénarios — voir `ImpactMesure`.
+      properties:
+        ressourceId:
+          type: string
+        date:
+          type: string
+          format: date
+        heuresJour:
+          $ref: '#/components/schemas/ImpactMesure'
+        heuresSemaine:
+          $ref: '#/components/schemas/ImpactMesure'
+      required: [ressourceId, date, heuresJour, heuresSemaine]
+
+    Remplacement:
+      type: object
+      description: |
+        [SC-02] Ce que l'absence a libéré, et ce qu'il en est advenu.
+
+        **Deux lectures, qui ne se déduisent pas l'une de l'autre.** Les compteurs de créneaux
+        disent combien d'objets du planning ont changé de main ; les volumes en heures disent ce que
+        l'absence a réellement coûté. Un créneau de huit heures et un créneau d'une heure pèsent
+        pareil dans le premier décompte, et pas du tout dans le second.
+
+        Les volumes se recomposent, et l'appelant peut le vérifier :
+
+        ```
+        heuresLiberees  = heuresReprises + heuresSurPosteVirtuel + heuresNonCouvertes
+        heuresAPourvoir = heuresSurPosteVirtuel + heuresNonCouvertes
+        ```
+      properties:
+        salarieAbsentId:
+          type: string
+          description: Salarié dont l'absence a motivé le scénario, tel que la demande le désignait.
+        creneauxLiberes:
+          type: integer
+          description: |
+            Créneaux **d'origine** rendus au solveur par l'absence. Le découpage ne le gonfle pas :
+            un créneau coupé en trois reste un créneau libéré.
+        creneauxRepris:
+          type: integer
+          description: Repris **de bout en bout** par des salariés réels.
+        creneauxPartiellementRepris:
+          type: integer
+          description: |
+            Un salarié réel en a pris une part sans prendre le tout. Ni repris ni abandonnés : les
+            ranger d'un côté ou de l'autre ferait mentir les deux décomptes.
+        heuresLiberees:
+          type: number
+          format: double
+          description: |
+            Volume total que l'absence a rendu au solveur, en heures décimales — la situation
+            « avant ».
+        heuresReprises:
+          type: number
+          format: double
+          description: |
+            Volume que des salariés réels assurent au bout du compte — la situation « après ».
+        heuresSurPosteVirtuel:
+          type: number
+          format: double
+          description: |
+            Volume garé sur un poste fictif. Toujours 0 quand `posteVirtuelAutorise` n'a pas été
+            demandé : le poste virtuel ne s'invite jamais de lui-même.
+        heuresNonCouvertes:
+          type: number
+          format: double
+          description: Volume restitué sans aucune ressource.
+        heuresAPourvoir:
+          type: number
+          format: double
+          description: |
+            Heures que **personne de réel** ne couvre — poste virtuel compris. Du point de vue de
+            l'encadrement la question est « combien me reste-t-il à staffer », et la réponse est la
+            même que les heures soient garées sur un poste fictif ou laissées vides.
+
+            Le bloc `planning` dit **où** elles sont ; ce total dit **combien** il y en a. Les deux
+            sont nécessaires et ne se déduisent pas l'un de l'autre.
+        details:
+          type: array
+          description: Le sort de chaque morceau restitué, y compris ceux que personne n'a repris.
+          items:
+            $ref: '#/components/schemas/CreneauRemplace'
+        surchargeParRessource:
+          type: array
+          description: |
+            Ce que le remplacement change à la charge de ceux qui l'assurent. Vide quand personne
+            n'a rien repris.
+          items:
+            $ref: '#/components/schemas/SurchargeRessource'
+      required:
+        - salarieAbsentId
+        - creneauxLiberes
+        - creneauxRepris
+        - creneauxPartiellementRepris
+        - heuresLiberees
+        - heuresReprises
+        - heuresSurPosteVirtuel
+        - heuresNonCouvertes
+        - heuresAPourvoir
+        - details
+        - surchargeParRessource
+
     ScenarioResponse:
       type: object
       description: |
-        Corps de réponse HTTP 200 pour SC-01, SC-03 et SC-06.
+        Corps de réponse HTTP 200 pour SC-01, SC-02, SC-03 et SC-06.
         Correspond directement à `ScenarioResponseDTO` — pas d'enveloppe transport.
         L'enveloppe `{requestId, status, response}` est propre au FileAdapter
         et ne s'applique pas à ce contrat API.
       properties:
         scenarioType:
           type: string
-          description: Valeur reflétée depuis la requête (SC-01, SC-03 ou SC-06)
+          description: Valeur reflétée depuis la requête (SC-01, SC-02, SC-03 ou SC-06)
         solverResult:
           $ref: '#/components/schemas/SolverResult'
         planning:
@@ -1934,6 +2376,20 @@ components:
             possède déjà.
           items:
             $ref: '#/components/schemas/Candidat'
+        remplacement:
+          allOf:
+            - $ref: '#/components/schemas/Remplacement'
+          description: |
+            **Propre à SC-02.** Les conséquences de l'absence : ce qu'elle a libéré, qui l'a repris,
+            et ce qu'il reste à staffer.
+
+            Même règle que `candidats` — la clé est **absente**, et non vide, pour tous les autres
+            scénarios : une réponse ne doit pas gagner un bloc vide qui laisserait croire à une
+            capacité inexistante.
+
+            En SC-02, `planning` porte le **planning ajusté complet** — l'existant épinglé comme les
+            créneaux réaffectés — et non les seuls créneaux touchés. C'est l'inverse de SC-06, qui
+            n'émet que les créneaux du besoin.
       required: [scenarioType, solverResult, planning, workMetrics, solutionSummary, diagnostics]
 
     # ──────────────────────────────────────────────

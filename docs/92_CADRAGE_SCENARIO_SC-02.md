@@ -292,9 +292,17 @@ SC-02 restitue le tronc commun (`planning`, `score`, `workMetrics`, `diagnostics
 
 | Bloc | Contenu |
 |---|---|
-| `remplacement.creneauxReaffectes[]` | `creneauId`, `creneauOrigineId`, `ressourceAvant`, `ressourceApres`, `debut`, `fin`, `duree` |
+| `remplacement.details[]` | `creneauId`, `creneauOrigineId`, `ressourceAvantId`, `ressourceApresId`, `date`, `heureDebut`, `heureFin`, `dureeMinutes`, `nature` |
 | `remplacement.heuresAPourvoir` | volume total non couvert par un salarié réel, en heures décimales — **poste virtuel compris** (§4.6) |
 | `remplacement.surchargeParRessource[]` | par salarié mobilisé : `heuresJour` et `heuresSemaine` en `ImpactMesureDTO` — avant / après / delta / plafond / dépassement |
+
+⚠️ **Complété au lot S4.** Le bloc ne comptait que des créneaux et ne chiffrait que les heures
+restées à pourvoir : l'encadrement lisait « un créneau sur deux repris » sans savoir de combien
+d'heures on parlait. S'y ajoutent donc les volumes `heuresLiberees`, `heuresReprises`,
+`heuresSurPosteVirtuel` et `heuresNonCouvertes`, qui se recomposent
+(`heuresLiberees = heuresReprises + heuresSurPosteVirtuel + heuresNonCouvertes`), ainsi que
+`creneauxPartiellementRepris` — un créneau repris en partie n'est ni repris ni abandonné, et le
+ranger d'un côté ou de l'autre faisait mentir les deux décomptes.
 
 Le bloc `planning` dit **où** sont les heures non couvertes — sur un poste virtuel, ou sans
 ressource ; `heuresAPourvoir` dit **combien** il y en a. Les deux sont nécessaires et ne se
@@ -319,7 +327,7 @@ Ordonné par dépendance. Chaque lot est livrable seul et testable seul.
 | **S1** ✅ | Squelette SC-02 **sans découpage** : endpoint, contrat d'entrée, épinglage, reprise entière ou « à pourvoir » | Livrable et déjà utile seul. Couvre le cas majoritaire — un remplaçant prend la journée. **Livré le 2026-08-11**, précédé de l'extraction de la préparation dataset commune à SC-02 et SC-03 |
 | **S2** ✅ | Découpage aux frontières de disponibilité, recombinaison à la restitution, seuil des 30 minutes sur le bloc confié, contrainte SOFT de cohésion | Le cœur technique (§5). Isolé pour être évalué seul, y compris son effet sur le score. **Livré le 2026-08-11** |
 | **S3** ✅ | Surcharge : seuils, alerte, niveaux restitués | Réemploi de `ImpactMesureDTO` ; aucune mesure nouvelle à écrire. **Livré le 2026-08-11** |
-| **S4** | Restitution complète avant / après + inscription au contrat série 50 (OpenAPI, schémas JSON) | Une seule migration de contrat pour WinDev, à la fin, plutôt que quatre |
+| **S4** ✅ | Restitution complète avant / après + inscription au contrat série 50 (OpenAPI, schémas JSON) | Une seule migration de contrat pour WinDev, à la fin, plutôt que quatre. **Livré le 2026-08-13** — trois divergences de contrat trouvées en écrivant, dont deux qui auraient fait rejeter une requête ou une réponse conforme |
 | **S5** | Canal FileAdapter (`scenarioType: SC-02`) | Symétrie avec SC-06 lot S6 : les deux canaux doivent produire le même résultat, vérifié par test |
 
 **S0 et S1 sont immédiatement actionnables** : aucun arbitrage en attente, aucune dépendance.

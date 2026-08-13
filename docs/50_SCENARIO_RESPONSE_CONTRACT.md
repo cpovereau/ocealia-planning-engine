@@ -15,7 +15,7 @@ Pour la description de la requête champ par champ, voir `50_INTERFACE_WINDEV_MO
 ## Principe de conception
 
 La réponse du moteur est structurée en blocs fonctionnels indépendants — cinq communs à tous les
-scénarios, un sixième propre à SC-06.
+scénarios, et un bloc propre à chacun des deux scénarios qui produisent autre chose qu'un planning.
 
 | Bloc              | Rôle                                                                   |
 | ----------------- | ---------------------------------------------------------------------- |
@@ -25,6 +25,7 @@ scénarios, un sixième propre à SC-06.
 | `solutionSummary` | Fournit une lecture synthétique et pilotable de la solution produite   |
 | `diagnostics`     | Fournit des informations techniques utiles pour l'analyse et le debug  |
 | `candidats`       | **SC-06 uniquement** — classe les manières de couvrir un besoin        |
+| `remplacement`    | **SC-02 uniquement** — dit ce que l'absence a coûté — voir §7          |
 
 Cette séparation garantit que :
 - le moteur reste un moteur d'optimisation,
@@ -43,6 +44,7 @@ Cette séparation garantit que :
 | `solutionSummary` | objet  | Oui              | Résumé synthétique chiffré                       |
 | `diagnostics`     | objet  | Oui              | Alertes et diagnostics d'affectation             |
 | `candidats`       | tableau| **SC-06 seul**   | Solutions classées — **clé absente ailleurs**, voir §6 |
+| `remplacement`    | objet  | **SC-02 seul**   | Conséquences de l'absence — **clé absente ailleurs**, voir §7 |
 
 ---
 
@@ -595,7 +597,183 @@ sa semaine de 20 h à 28 h.
 
 ---
 
-## 7. Points d'attention contractuels
+## 7. `remplacement` — Conséquences de l'absence (SC-02 uniquement)
+
+> Inscrit au contrat au **lot S4 de SC-02**. Cadrage complet : `92_CADRAGE_SCENARIO_SC-02.md`.
+
+Ce bloc est **propre à SC-02**. Comme `candidats`, la clé est **absente** — et non vide — partout
+ailleurs : une réponse ne doit pas gagner un bloc vide qui laisserait croire à une capacité
+inexistante.
+
+> **En SC-02, `planning` porte le planning ajusté complet** — l'existant épinglé comme les créneaux
+> réaffectés — et non les seuls créneaux touchés. C'est l'inverse de SC-06, qui n'émet que les
+> créneaux du besoin. L'appelant peut donc recharger la réponse telle quelle pour réafficher son
+> planning.
+
+### 7.1 Structure
+
+| Champ | Type | Description |
+|---|---|---|
+| `salarieAbsentId` | string | Salarié dont l'absence a motivé le scénario |
+| `creneauxLiberes` | integer | Créneaux **d'origine** rendus au solveur. Le découpage ne le gonfle pas |
+| `creneauxRepris` | integer | Repris **de bout en bout** par des salariés réels |
+| `creneauxPartiellementRepris` | integer | Un salarié réel en a pris une part sans prendre le tout |
+| `heuresLiberees` | double | Ce que l'absence a rendu au solveur — la situation « avant » |
+| `heuresReprises` | double | Ce que des salariés réels assurent au bout du compte — « après » |
+| `heuresSurPosteVirtuel` | double | Ce qui est garé sur un poste fictif |
+| `heuresNonCouvertes` | double | Ce qui revient sans aucune ressource |
+| `heuresAPourvoir` | double | Ce que **personne de réel** ne couvre — poste virtuel compris |
+| `details[]` | tableau | Le sort de chaque morceau restitué — voir §7.3 |
+| `surchargeParRessource[]` | tableau | Ce que le remplacement coûte à ceux qui l'assurent — voir §7.4 |
+
+Toutes les heures sont **décimales**, même unité que `workMetrics.byRessource`.
+
+### 7.2 Deux lectures, qui ne se déduisent pas l'une de l'autre
+
+Les **compteurs de créneaux** disent combien d'objets du planning ont changé de main ; les
+**volumes en heures** disent ce que l'absence a réellement coûté. Un créneau de huit heures et un
+créneau d'une heure pèsent pareil dans le premier décompte, et pas du tout dans le second.
+
+Les volumes se recomposent, et l'appelant peut le vérifier :
+
+```text
+heuresLiberees  = heuresReprises + heuresSurPosteVirtuel + heuresNonCouvertes
+heuresAPourvoir = heuresSurPosteVirtuel + heuresNonCouvertes
+```
+
+> **Un créneau repris en partie n'est ni repris ni abandonné.** Il a son propre compteur. Le
+> ranger d'un côté ou de l'autre ferait mentir les deux autres.
+
+**Poste virtuel et heures à pourvoir sont deux notions distinctes**, pas une solution et son repli.
+Le poste virtuel n'existe que si le scénario l'a demandé (`posteVirtuelAutorise`) ; sinon les heures
+reviennent sans ressource. Mais **le total les compte toutes les deux** : du point de vue de
+l'encadrement, la question est « combien me reste-t-il à staffer ? », et la réponse ne change pas
+selon que les heures sont garées sur un poste fictif ou laissées vides. Le bloc `planning` dit
+**où** elles sont ; `heuresAPourvoir` dit **combien** il y en a.
+
+### 7.3 `details[]`
+
+Un créneau y figure **quel que soit son sort**, y compris lorsqu'il n'a trouvé personne : un
+remplacement qui n'a pas eu lieu est une information, pas un silence.
+
+| Champ | Type | Description |
+|---|---|---|
+| `creneauId` | string | Identifiant restitué tel qu'il a été reçu |
+| `creneauOrigineId` | string | Créneau dont celui-ci est un morceau — **clé omise** s'il n'a pas été découpé |
+| `date` | string | Jour de **début** du créneau (ISO-8601) |
+| `heureDebut` / `heureFin` | string | `HH:mm` — la fin est le lendemain si elle n'est pas postérieure au début |
+| `dureeMinutes` | integer | Durée telle que portée par le créneau, jamais recalculée |
+| `ressourceAvantId` | string | Salarié absent à qui le créneau était affecté |
+| `ressourceApresId` | string | Qui le reprend — **clé omise** si personne |
+| `nature` | string | `SALARIE` \| `POSTE_VIRTUEL` \| `NON_COUVERT` |
+
+⚠️ **La réponse peut contenir plus de créneaux que la demande.** Un créneau couvert en deux fois
+ressort en deux entrées, aux identifiants dérivés du sien — `<id>#S1`, `<id>#S2` — portant alors
+`creneauOrigineId` pour être rattachées sans analyser la chaîne. Un créneau repris en entier par une
+seule personne **garde son identifiant inchangé**, comme s'il n'avait jamais été découpé : c'est le
+cas courant. Un découpage est signalé par une alerte `CRENEAUX_DECOUPES` de sévérité `INFO`.
+
+### 7.4 `surchargeParRessource[]`
+
+Une entrée par salarié réel et par jour où il reprend quelque chose. La mesure hebdomadaire y est
+répétée telle quelle pour deux jours d'une même semaine : chaque ligne se lit seule.
+
+| Champ | Type | Description |
+|---|---|---|
+| `ressourceId` | string | Salarié qui assure le remplacement |
+| `date` | string | Jour concerné (ISO-8601) |
+| `heuresJour` | objet | Charge de la journée — même structure que les `impacts[]` de SC-06 |
+| `heuresSemaine` | objet | Charge de la semaine calendaire lundi → dimanche contenant ce jour |
+
+« **Avant** » est la situation qu'on aurait eue sans remplacement, c'est-à-dire le planning
+**épinglé** du salarié ; le delta est donc exactement ce que l'absence lui a coûté.
+
+> ⚠️ **Le `plafond` n'est pas la même chose qu'en SC-06.** Ici c'est le **seuil de confort déclaré
+> par la demande** (`surchargeMaxHeuresJour` / `surchargeMaxHeuresSemaine`), propre à cette
+> situation ; en SC-06 c'est la limite **réglementaire individuelle** du salarié. Deux notions
+> distinctes, que mélanger dans un même champ aurait rendu le chiffre illisible. Les bornes
+> individuelles gardent leurs propres contraintes et leurs propres lignes au `scoreBreakdown`.
+
+Les mesures sont rendues **même sans seuil déclaré** : elles informent, et le `plafond` vaut alors
+`null`. Un dépassement est **pesé au score et signalé** par une alerte
+`SURCHARGE_ACCEPTABLE_DEPASSEE` (WARNING), **jamais éliminatoire** : le moteur préfère confier un
+remplacement en surcharge plutôt que de laisser des heures à pourvoir.
+
+### 7.5 Alertes propres à SC-02
+
+| Code | Sévérité | Signification |
+|---|---|---|
+| `HEURES_RESTANT_A_POURVOIR` | `WARNING` | Des heures n'ont trouvé aucun salarié réel. **Ce n'est pas un échec** : c'est la réponse attendue quand personne n'est disponible. L'appelant doit l'apprendre, pas le déduire d'un total |
+| `SURCHARGE_ACCEPTABLE_DEPASSEE` | `WARNING` | Un remplaçant franchit un seuil déclaré — voir §7.4 |
+| `CRENEAUX_DECOUPES` | `INFO` | Des créneaux libérés ont été couverts en plusieurs fois — voir §7.3 |
+| `AUCUNE_ABSENCE_DECLAREE` | `WARNING` | Le salarié désigné ne porte aucune indisponibilité : aucun créneau n'est libéré. **Un vide ne vaut pas absence sur tout l'horizon** |
+| `AUCUN_CRENEAU_A_REMPLACER` | `WARNING` | L'absence ne recouvre aucun créneau du salarié : il n'y a rien à remplacer |
+| `SALARIE_ABSENT_INTROUVABLE` | `ERROR` | Le salarié désigné n'est pas au dataset : aucun créneau ne peut lui être repris |
+| `POSTE_VIRTUEL_REFUSE_MAIS_PRESENT` | `WARNING` | Le poste virtuel n'est pas autorisé mais le planning existant en affecte : conservé pour ne pas réécrire l'existant, et donc encore mobilisable |
+
+### 7.6 Exemple
+
+```json
+"remplacement": {
+  "salarieAbsentId": "SAL-MARIE",
+  "creneauxLiberes": 2,
+  "creneauxRepris": 1,
+  "creneauxPartiellementRepris": 1,
+  "heuresLiberees": 16.0,
+  "heuresReprises": 9.0,
+  "heuresSurPosteVirtuel": 0.0,
+  "heuresNonCouvertes": 7.0,
+  "heuresAPourvoir": 7.0,
+  "details": [
+    {
+      "creneauId": "PLN-MARIE-MAR#S1",
+      "creneauOrigineId": "PLN-MARIE-MAR",
+      "date": "2026-05-12", "heureDebut": "08:00", "heureFin": "09:00",
+      "dureeMinutes": 60,
+      "ressourceAvantId": "SAL-MARIE", "ressourceApresId": "SAL-SOPHIE",
+      "nature": "SALARIE"
+    },
+    {
+      "creneauId": "PLN-MARIE-MAR#S2",
+      "creneauOrigineId": "PLN-MARIE-MAR",
+      "date": "2026-05-12", "heureDebut": "09:00", "heureFin": "16:00",
+      "dureeMinutes": 420,
+      "ressourceAvantId": "SAL-MARIE",
+      "nature": "NON_COUVERT"
+    },
+    {
+      "creneauId": "PLN-MARIE-MER",
+      "date": "2026-05-13", "heureDebut": "08:00", "heureFin": "16:00",
+      "dureeMinutes": 480,
+      "ressourceAvantId": "SAL-MARIE", "ressourceApresId": "SAL-PAUL",
+      "nature": "SALARIE"
+    }
+  ],
+  "surchargeParRessource": [
+    {
+      "ressourceId": "SAL-SOPHIE",
+      "date": "2026-05-12",
+      "heuresJour":    { "avant": 8.0,  "apres": 9.0,  "delta": 1.0, "plafond": null, "depassement": false },
+      "heuresSemaine": { "avant": 16.0, "apres": 17.0, "delta": 1.0, "plafond": null, "depassement": false }
+    },
+    {
+      "ressourceId": "SAL-PAUL",
+      "date": "2026-05-13",
+      "heuresJour":    { "avant": 0.0,  "apres": 8.0,  "delta": 8.0, "plafond": null, "depassement": false },
+      "heuresSemaine": { "avant": 8.0,  "apres": 16.0, "delta": 8.0, "plafond": null, "depassement": false }
+    }
+  ]
+}
+```
+
+Lecture : l'absence de Marie a libéré seize heures. Paul reprend le mercredi entier ; le mardi est
+coupé à 09:00, heure à laquelle Sophie prend son propre service — elle n'en couvre donc que la
+première heure, et sept heures restent à pourvoir. Le créneau du mercredi, repris en entier par une
+seule personne, **garde son identifiant** ; celui du mardi ressort en deux morceaux.
+
+---
+
+## 8. Points d'attention contractuels
 
 **Séparation solveur / API** — la solution OptaPlanner est transformée en `ScenarioResponseDTO` par `ScenarioResponseMapper`. Cette couche garantit la stabilité du contrat API indépendamment des évolutions internes du solveur. Décision documentée dans `20_DECISIONS_CONCEPTION_OPTAPLANNER.md`.
 
@@ -605,9 +783,15 @@ sa semaine de 20 h à 28 h.
 
 **Restitution des données d'identification** — toute donnée reçue permettant d'identifier ou de situer un créneau (`id`, `lieu`) est restituée à l'identique. Le moteur ne normalise pas ces valeurs et ne les remplace pas par une forme canonique.
 
+**Format des heures** — toute heure de la réponse est en `HH:mm`, dans tous les blocs. Deux formats
+pour la même grandeur dans un même document obligeraient l'appelant à savoir lequel s'applique où.
+Les durées, elles, gardent l'unité de leur bloc : `HH:MM` dans `planning.jours[].creneaux[].duree`,
+minutes entières dans `remplacement.details[].dureeMinutes`, heures décimales partout où une charge
+est mesurée.
+
 ---
 
-## 8. Évolution prévue
+## 9. Évolution prévue
 
 Ce contrat pourra être enrichi progressivement avec :
 - de nouvelles WorkMetrics (équité, écarts de charge, métriques contractuelles),

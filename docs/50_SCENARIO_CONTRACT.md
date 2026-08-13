@@ -193,8 +193,9 @@ Un créneau du `dataSet` peut porter `ressourceAffecteeId` : l'identifiant de la
 sert déjà. Le créneau relève alors d'un **planning existant transmis comme fait acquis**.
 
 Le **scénario** décide de ce qu'il en fait — l'appelant ne pilote pas le figement, il désigne une
-affectation. SC-06 fige tout son `dataSet` ; SC-01 et SC-03 ignorent le champ et conservent leur
-liberté de décision entière.
+affectation. SC-06 fige tout son `dataSet` ; **SC-02 fige tout sauf les créneaux du salarié absent
+que son absence recouvre** ; SC-01 et SC-03 ignorent le champ et conservent leur liberté de
+décision entière.
 
 Un créneau figé reste **pleinement visible des contraintes** : c'est ce qui permet à un planning
 existant de peser sur les décisions restantes sans être lui-même remis en cause.
@@ -293,48 +294,136 @@ Construire un **planning de référence** conforme aux règles, sans historique.
 
 ### 🟡 SC-02 — Remplacement d’un salarié absent
 
+> Inscrit au contrat le 2026-08-13, lot S4. Cadrage complet : `92_CADRAGE_SCENARIO_SC-02.md`.
+> Schémas normatifs : `Sc02ScenarioRequest` et `Remplacement` dans
+> `50_openapi_windev_moteur_v_1.yaml`, bloc de sortie détaillé dans
+> `50_SCENARIO_RESPONSE_CONTRACT.md` §7.
+
 #### 🎯 Intention métier
 
-Assurer la continuité de service **en perturbant le moins possible l’existant**.
+Un salarié est absent, ses créneaux sont orphelins. **Qui les reprend, et à quel prix — sans
+défaire le planning de ceux qui n'ont rien demandé ?**
+
+Assurer la continuité de service **en perturbant le moins possible l’existant**. Toute la
+difficulté tient dans la seconde moitié de cette phrase.
+
+#### Ce qui distingue SC-02
+
+| | SC-02 |
+|---|---|
+| Ce qui est décidé | l'affectation des seuls créneaux du salarié absent que son absence recouvre |
+| Ce qui est figé | l'intégralité du reste du planning transmis |
+| Ce qui est restitué | un planning ajusté, les différences avant / après, et le volume à pourvoir |
+
+Par rapport aux scénarios voisins : **SC-06** part d'un besoin nu et **classe** des possibilités
+sans rien réaffecter ; **SC-03** réaffecte un sous-ensemble de créneaux, mais sans planning
+préexistant à préserver ; **SC-01** construit depuis rien, quand SC-02 répare.
+
+#### Principe structurant — l'existant est un fait, jamais une variable
+
+> Seuls les créneaux du salarié absent sont décidés. Tout le reste du planning transmis est
+> **épinglé** — y compris les créneaux de l'absent situés **hors** de sa période d'absence. Le
+> solveur le voit, les contraintes le mesurent, mais aucune affectation existante n'est déplacée
+> pour faire de la place.
+
+Le prix est assumé : le moteur répondra « à pourvoir » là où un échange entre deux collègues aurait
+suffi. **C'est voulu.** Remanier le planning des présents est une décision d'encadrement, pas une
+décision de moteur.
+
+> **Il n'y a jamais zéro solution.** SC-02 ne rend jamais « pas de solution », jamais une erreur,
+> jamais un planning vide. Ce qui n'a pas pu être couvert est **chiffré et restitué** comme volume
+> à pourvoir.
 
 #### Paramètres spécifiques
 
-* salarié absent ;
-* période d’absence ;
-* liste de remplaçants autorisés ;
-* seuil de surcharge acceptable ;
-* autorisation de poste virtuel (oui / non).
-
-#### Données clés transmises
-
-* créneaux imposés existants ;
-* planning initial partiellement figé ;
-* ressources disponibles.
-
-#### Restitution attendue
-
-* planning ajusté ;
-* différences avant / après ;
-* niveaux de surcharge par salarié ;
-* volume de besoin résiduel (poste virtuel).
-
-#### État d'implémentation — lots S1 à S3 livrés le 2026-08-11
-
-`POST /scenarios/sc02/solve` est exposé. ⚠️ **Le contrat ci-dessous n'est pas complet** : il
-grandira encore au lot S4, qui porte son inscription définitive à l'OpenAPI et aux schémas JSON. Voir `92_CADRAGE_SCENARIO_SC-02.md` §8.
-
-**Ce que le lot S1 accepte** — et rien d'autre, délibérément : un champ que personne ne lit est
-pire qu'un champ absent.
+Le bloc `scenarioParameters` est **strict** : un champ inconnu produit une erreur explicite, jamais
+un silence. Il n'expose que ce que le moteur honore — un paramètre que personne ne lit est pire
+qu'un paramètre absent, puisque l'appelant le renseigne et croit l'avoir dit.
 
 | Champ | Obligatoire | Rôle |
 |---|:---:|---|
-| `scenarioParameters.salarieAbsentId` | ✅ | Désigne le salarié dont l'absence motive le scénario. Il ne sert **pas** à la contrainte : l'absence elle-même est portée par `dataSet.indisponibilites`, déjà tenu par une contrainte HARD. Il sert à savoir de quelle absence tirer les conséquences |
-| `scenarioParameters.posteVirtuelAutorise` | ○ | Défaut `false`. Le poste virtuel ne s'invite jamais de lui-même |
-| `scenarioParameters.surchargeMaxHeuresJour` | ○ | Charge journalière au-delà de laquelle un remplaçant est jugé en surcharge, en heures décimales |
-| `scenarioParameters.surchargeMaxHeuresSemaine` | ○ | Idem sur la semaine calendaire lundi → dimanche |
+| `salarieAbsentId` | ✅ | Désigne le salarié dont l'absence motive le scénario. Il ne sert **pas** à la contrainte : l'absence elle-même est portée par `dataSet.indisponibilites`, déjà tenu par une contrainte HARD. Il sert à savoir de quelle absence tirer les conséquences |
+| `posteVirtuelAutorise` | ○ | Défaut `false`. Le poste virtuel ne s'invite jamais de lui-même |
+| `surchargeMaxHeuresJour` | ○ | Charge journalière au-delà de laquelle un remplaçant est jugé en surcharge, en heures décimales |
+| `surchargeMaxHeuresSemaine` | ○ | Idem sur la semaine calendaire lundi → dimanche |
 
-Le bloc `scenarioParameters` est **strict** : un paramètre d'un lot à venir produit une erreur
-explicite, jamais un silence.
+**Non retenus à ce jour**, faute de règle qui les lise : `remplacantsAutorises[]` — tous les
+salariés du dataset sont candidats — et `decoupageAutorise`, la reprise partielle étant toujours
+permise. Ils entreront au contrat avec le lot qui les mettra en œuvre.
+
+#### Données clés transmises
+
+| Bloc | Rôle dans SC-02 |
+|---|---|
+| `dataSet.creneaux[].ressourceAffecteeId` | le planning existant. C'est ce champ qui sépare les créneaux à remplacer de l'existant à préserver. Une ressource introuvable dans le dataset fait **rejeter la demande**, plutôt que de laisser un créneau glisser en besoin nu |
+| `dataSet.indisponibilites.items` | **porte l'absence**. Sans elle, aucun créneau n'est libéré et une alerte `AUCUNE_ABSENCE_DECLAREE` le dit : un vide ne vaut pas absence sur tout l'horizon |
+| `dataSet.referentiels.activites` | nécessaire pour que la charge se calcule (`compteDansCharge`) |
+| `salaries[].contraintesReglementaires` | bornes individuelles, actives — distinctes des seuils de surcharge |
+
+👉 **Aucun champ nouveau n'a été créé pour décrire l'absence.** Conserver une source unique évite
+précisément le genre de divergence que les lots S8.3 et S8.4 ont passé leur temps à réparer.
+
+#### Couverture partielle
+
+Quand aucun remplaçant n'est disponible sur toute la durée d'un créneau libéré, celui-ci est
+couvert en partie. Les coupes tombent aux **frontières de disponibilité réelles** des remplaçants —
+début ou fin d'un de leurs créneaux, bord d'une de leurs absences — et jamais sur une grille
+horaire.
+
+* **Un bloc confié à un salarié ne fait jamais moins de 30 minutes.** Sur un créneau 13h30–16h00,
+  un remplaçant qui prend son service à 13h45 ne se verra pas proposer les quinze minutes qui
+  précèdent.
+* **Le reliquat non couvert n'a aucun minimum** : il part à pourvoir tel qu'il est.
+* Un même besoin éclaté entre plusieurs personnes est **pénalisé** — sans être interdit : mieux
+  vaut deux remplaçants que des heures à pourvoir.
+
+⚠️ **La réponse peut donc contenir plus de créneaux que la demande.** Un créneau couvert en deux
+fois ressort en deux entrées, dont les identifiants sont dérivés du sien — `<id>#S1`, `<id>#S2` —
+et qui portent un `creneauOrigineId` pour être rattachées sans analyser la chaîne. Un créneau
+repris en entier par une seule personne **garde son identifiant inchangé**, comme s'il n'avait
+jamais été découpé : c'est le cas courant. Le découpage est signalé par une alerte
+`CRENEAUX_DECOUPES` de sévérité `INFO`.
+
+#### Seuils de surcharge
+
+Ce sont des bornes de **confort**, propres à la demande, à ne pas confondre avec les bornes
+réglementaires individuelles du salarié qui gardent leur rôle. Leur dépassement est **pesé dans le
+score et signalé** par une alerte `SURCHARGE_ACCEPTABLE_DEPASSEE` (WARNING), **jamais
+éliminatoire** : le moteur préfère confier un remplacement en surcharge plutôt que de laisser des
+heures à pourvoir. Une borne absente n'est pas une borne à zéro.
+
+#### Restitution attendue
+
+Un bloc `remplacement`, propre à SC-02 et absent des autres scénarios — voir
+`50_SCENARIO_RESPONSE_CONTRACT.md` §7 pour le détail champ par champ. Il porte :
+
+* **ce que l'absence a libéré et ce qu'il en est advenu**, en créneaux et en heures :
+  `creneauxLiberes` / `creneauxRepris` / `creneauxPartiellementRepris`, et
+  `heuresLiberees` = `heuresReprises` + `heuresSurPosteVirtuel` + `heuresNonCouvertes` ;
+* **le sort de chaque morceau** dans `details[]`, y compris ceux que personne n'a repris — un
+  remplacement qui n'a pas eu lieu est une information, pas un silence ;
+* **ce que le remplacement coûte à ceux qui l'assurent**, dans `surchargeParRessource[]`.
+
+Le bloc `planning` porte le **planning ajusté complet**, l'existant épinglé compris : l'appelant
+peut recharger la réponse telle quelle.
+
+> **Poste virtuel et heures à pourvoir sont deux notions distinctes**, pas une solution et son
+> repli. Le poste virtuel n'existe que si le scénario l'a demandé ; sinon les heures reviennent
+> sans ressource. Mais `heuresAPourvoir` **compte les deux** : du point de vue de l'encadrement, la
+> question est « combien me reste-t-il à staffer ? », et la réponse est la même dans les deux cas.
+> Le planning dit **où** elles sont, le total dit **combien** il y en a.
+
+#### ⚠️ Limites connues, et elles comptent
+
+* **`activitesCompatibles` n'est lu par aucune contrainte** (rang 10 du backlog). Un salarié peut
+  donc se voir confier un créneau dont il ne pratique pas l'activité. Les seules règles qui
+  écartent réellement un remplaçant sont, à ce jour : chevauchement physique, indisponibilité, jour
+  férié refusé. C'est SC-02 qui rend ce manque coûteux — SC-06 s'en protégeait par un filtre
+  d'éligibilité hors solveur, un scénario qui affecte réellement n'a pas cette échappatoire.
+* **`capaciteCible` du poste virtuel ne borne rien** (rang 8). Le volume qu'on y gare n'est pas
+  limité par la capacité déclarée.
+
+Voir `90_SUIVI_DEVELOPPEMENT_MOTEUR.md` avant de faire de l'un ou l'autre une règle de gestion.
 
 **Ce que le moteur fait.** Seuls les créneaux du salarié absent que son absence recouvre sont
 rendus au solveur. Tout le reste du planning transmis est épinglé — aucune affectation existante
@@ -508,10 +597,10 @@ acquis, et il **classe** les manières de couvrir le besoin.
 | Ce qui est figé | l'intégralité du planning transmis |
 | Ce qui est restitué | un **classement** de solutions, pas un planning optimisé |
 
-Par rapport aux scénarios voisins : **SC-02** part d'une absence identifiée et d'une liste de
-remplaçants imposée, quand SC-06 part d'un besoin nu et évalue tout le monde ; **SC-03** réaffecte
-un sous-ensemble de créneaux, quand SC-06 n'en réaffecte aucun ; **SC-05** compare deux salariés
-désignés, quand SC-06 les découvre.
+Par rapport aux scénarios voisins : **SC-02** part d'une absence identifiée et **réaffecte
+réellement** ce qu'elle libère, quand SC-06 part d'un besoin nu et se contente de classer ;
+**SC-03** réaffecte un sous-ensemble de créneaux, quand SC-06 n'en réaffecte aucun ; **SC-05**
+compare deux salariés désignés, quand SC-06 les découvre.
 
 #### Principe structurant — énumération, pas optimisation
 
