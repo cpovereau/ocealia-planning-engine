@@ -137,6 +137,23 @@ Deux conséquences d'architecture, à tenir dès le premier lot qui les introdui
 pour les nuits consécutives). **Ne pas créer une seconde échelle qui la contredise** : soit les
 coefficients d'équité s'y adossent, soit l'écart est documenté et voulu.
 
+> **Confrontation faite au lot L3** — détail dans `92_CALIBRATION_PENIBILITE.md` §4.
+>
+> L'échelle qui compte n'est pas celle des forfaits cités ci-dessus mais celle de `ScoreWeights`,
+> **à la minute** : en `EXPLOITATION`, nuit 3, dimanche 4, férié 5. Elle classe donc la nuit comme
+> la **moins** coûteuse — l'inverse de l'ordre de pénibilité du métier.
+>
+> Les deux tiennent ensemble, mais pour des raisons opposées : le score lit la dominance comme « la
+> situation la plus favorable au salarié » (`40_STRATEGIE_DE_SCORING.md` §4.1.1) et y prend la
+> catégorie la moins chère ; l'équité y prend la pénibilité la plus lourde. L'accord n'est donc
+> **pas une propriété mais une coïncidence entretenue** — réordonner la liste pour servir l'une
+> casserait l'autre en silence. Depuis L1 les deux partagent la même implémentation, ce qui rend le
+> couplage réel. `CoherenceEchelleTest` verrouille les deux moitiés de la condition.
+>
+> **S'adosser est impossible** : adopter 3 : 4 : 5 donnerait à la nuit le coefficient le plus
+> faible. L'écart est donc assumé — ⚠️ **et reste à confirmer par le métier** : sur un même
+> planning, le moteur pénalisera le moins la nuit tout en la mesurant comme la plus lourde.
+
 ### 4.3 Tranché — l'historique vient de l'horizon transmis
 
 > Le moteur **ne fabrique pas d'historique**. Il ne connaît que ce qu'on lui transmet.
@@ -300,7 +317,7 @@ Ordonné par dépendance. Chaque lot est livrable seul et testable seul.
 | **L0** ✅ | Le RHD devient inviolable : HARD, sur toutes activités, RH/RHD distingués | **Indépendant de l'équité et immédiatement actionnable.** Corrige un manque réel (§2.3), et la donnée existe déjà |
 | **L1** ✅ | Heures pondérées : coefficients paramétrables, mesure individuelle | L'unité, sans laquelle rien n'est comparable. Aucune comparaison encore |
 | **L2** ✅ | Écart signé au contrat + parts de pénibilité, restitution, fenêtre observée | La mesure comparative. **Descriptive, sans décision** |
-| **L3** | Harnais de simulation et calibration des coefficients | Ne peut venir qu'après L1 et L2 : on calibre sur des mesures qui existent |
+| **L3** ✅ | Harnais de simulation et calibration des coefficients | Ne peut venir qu'après L1 et L2 : on calibre sur des mesures qui existent |
 | **L4** | Les trois critères de §4.7 câblés dans la sélection SC-02 et SC-06 | Premier effet visible sur une décision. Deux critères sur trois sont déjà mesurés |
 | **L5** | Contrainte SOFT d'équité | Pèse l'écart au score. Séparé de L2 pour être évalué seul |
 | **L6** | SC-05 — arbitrage entre deux salariés | Le scénario que tout ceci débloque |
@@ -343,3 +360,22 @@ sur le terrain — à garder en tête au moment de peser la contrainte SOFT du l
 
 Par construction (§4.2), ils sortiront de L3. Ce sont les seules valeurs du chantier qui ne
 peuvent pas être décidées sur le papier.
+
+> **Précision apportée par L3.** L'instrument est livré ; les valeurs ne le sont pas, et ne
+> pouvaient pas l'être. Le harnais convertit « combien vaut une heure de nuit ? » — question à
+> laquelle personne ne sait répondre — en « sur ce planning, l'ordre entre ces deux personnes change
+> à 1,375 : lequel vous paraît le plus sollicité ? ». La valeur se déduit d'arbitrages réels au lieu
+> de les précéder.
+>
+> **Ce qui manque n'est donc plus un outil mais une matière** : les jeux du dépôt sont des cas de
+> démonstration — deux ou trois créneaux, un ou deux salariés — et le rapport les déclare muets. La
+> calibration commence quand des exports WinDev réels sont versés. Marche à suivre :
+> `92_CALIBRATION_PENIBILITE.md` §2.
+
+### 9.5 Ce que L3 a fermé au passage
+
+Le harnais évalue toutes les échelles à partir d'une **seule résolution** : la répartition d'une
+minute entre catégories est une propriété du planning, pas du choix des coefficients. Cette licence
+tient tant que les coefficients ne participent pas au score — **elle expire au lot L5**, où la
+contrainte SOFT d'équité les y fera entrer. `HarnaisDeCalibrationTest` garde l'hypothèse et
+échouera ce jour-là, ce qui vaut mieux que de s'en souvenir.

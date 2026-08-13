@@ -293,10 +293,10 @@ La définition fonctionnelle de chaque domaine est dans `40_WORKMETRICS.md`.
 | ------------------------------------ | ----- | --------------------------------------------------- | ------------------ | -------------------- |
 | Mesures temporelles (nuit/dim/férié) | ✅    | TimeBreakdownCalculator + PenibilitesLegalesMinutes | tests existants    | 40_WORKMETRICS §2    |
 | WorkMetrics de restitution           | ⏳    | WorkMetricsCalculator                               | scénarios          | 40_WORKMETRICS §4-5  |
-| Dominance                            | ✅    | ScoreUtils                                          | ScoreDominanceTest | 40_WORKMETRICS §2    |
+| Dominance                            | ✅    | RepartitionPenibilites (partagée score / équité)    | ScoreDominanceTest | 40_WORKMETRICS §2    |
 | Séquences (contraintes)              | ✅    | ReposHebdomadaireMin/Glissant                       | tests contraintes  | 40_REGLES_COMBINATOIRES |
 | Séquences (WorkMetrics observées)    | ✅    | WorkMetricsCalculator                               | scénario 1         | 40_WORKMETRICS §5.1  |
-| Équité (WorkMetrics) — V3-C          | ❌    | –                                                   | –                  | 40_WORKMETRICS §5.2  |
+| Équité (WorkMetrics) — lots L1 à L3  | ✅    | EcartAuContrat + WorkMetricsCalculator (2ᵉ passe)   | HeuresPondereesTest, EcartAuContratTest, equite/calibration | 40_WORKMETRICS §5.2, 92_CALIBRATION_PENIBILITE |
 | Référentiel contractuel — V4         | ❌    | –                                                   | –                  | 40_WORKMETRICS §5.3  |
 | Dettes & coûts abstraits — V5        | ❌    | –                                                   | –                  | 40_WORKMETRICS §5.4  |
 
@@ -492,6 +492,7 @@ soit explicitement hors moteur (§ Analyse métier aval).
 | **9** | SC-04 et SC-05 — deux scénarios annoncés, jamais écrits | cadrage — aucun n'a de contrat d'entrée. **SC-02 est sorti de ce rang** : cadré le 11/08, lots S0 à S4 livrés, inscrit au contrat série 50 le 13/08 | Métier |
 | **10** | Contraintes personnelles : lieux, activités, préférences, annualisation | échanges avec la Production | Production |
 | **12** | Fermer les blocs restés délibérément tolérants aux champs inconnus | arbitrage — changement de comportement visible par l'appelant | Métier + WinDev |
+| **13** | Auditer et **garder** `50_ScenarioContract.schema.json` comme `SchemaPublie` garde le schéma de sortie | correctif — rien ne confronte les requêtes au schéma publié, et il a dérivé | Moteur |
 
 ~~**Rang 11** — blocs annoncés stricts qui ignorent en silence.~~ ✅ **Traité le 2026-08-13.**
 
@@ -505,19 +506,30 @@ correctif.
 Le cas le plus tentant est `Sc03ScenarioParametersDTO`, symétrique de celui de SC-02 qui a motivé
 le rang 11 : un intégrateur qui envoie à SC-03 un paramètre inexistant reçoit encore un 200.
 
+**Rang 13, ouvert au lot L3 de l'équité.** `50_ScenarioContract.schema.json` porte
+`additionalProperties: false` et ne déclarait ni `requestId` ni `metadata` — que l'OpenAPI exige
+depuis l'origine : **le schéma publié rejetait toute requête valide**. Les trois champs manquants
+sont déclarés, mais le fond reste : rien ne confronte les requêtes au schéma d'entrée, quand
+`SchemaPublie` garde celui de sortie depuis le lot S8.4. C'est ce qui a laissé la dérive
+s'installer, et elle recommencera.
+
+Ce rang croise le 12 sur un point précis : six jeux d'essai portent un `_description` à la racine,
+que l'enveloppe tolère et que le schéma refuse. Trancher l'un éclaire l'autre.
+
 Deux chantiers plus anciens restent ouverts **sans dépendre d'un arbitrage** : les WorkMetrics
 d'équité et l'explicabilité pédagogique du score (§ 1️⃣). Réalisables à tout moment ; l'équité est
 de surcroît un prérequis de SC-05.
 
 📄 **L'équité est cadrée** — arbitrages métier rendus le 13/08/2026, découpage en sept lots L0 à
-L6 : `92_CADRAGE_WORKMETRICS_EQUITE.md`. Le lot **L0 est immédiatement actionnable** et ne porte
-pas sur l'équité : il rend le **RHD inviolable**. Le cadrage a mis au jour que travailler le repos
-dominical de quelqu'un est aujourd'hui pénalisé en SOFT, sans distinguer RH de RHD, et **coûte
-zéro** dès que l'activité ne porte pas `genereDetteRepos`.
+L6 : `92_CADRAGE_WORKMETRICS_EQUITE.md`. **L0 à L3 sont livrés le même jour** : RHD inviolable,
+heure pondérée, écart signé au contrat, et le harnais de calibration.
 
-⚠️ Ce cadrage **corrige `40_WORKMETRICS.md` §5.2** : `ecartChargeAvecMoyenne` compare à la moyenne
-du groupe, quand l'arbitrage retient le **contrat de chacun**. À reprendre au lot qui livre la
-mesure.
+Ce qui manque pour aller plus loin n'est plus un outil mais **des plannings réels** : les
+coefficients de pénibilité ne se décrètent pas, et les jeux d'essai du dépôt sont muets sur eux.
+Marche à suivre : `92_CALIBRATION_PENIBILITE.md` §2.
+
+✅ Ce cadrage **corrigeait `40_WORKMETRICS.md` §5.2** — `ecartChargeAvecMoyenne` comparait à la
+moyenne du groupe, quand l'arbitrage retient le **contrat de chacun**. Corrigé au lot L3.
 
 La **stabilisation du contrat d'entrée**, qui figurait ici comme jalon, est close : phases 1 à 10C
 terminées, voir `92_SUIVI_STABILISATION_CONTRAT_ENTREE.md`.
@@ -798,8 +810,12 @@ Ordonné par **dépendance**, pas par valeur métier. Les rangs renvoient au bac
 2. **Rang 8** — trancher les champs sans effet. Indépendant du reste, et il retire du contrat des
    promesses que personne ne tient. SC-02 en a rendu un plus visible : `capaciteCible` ne borne pas
    le volume qu'on gare sur un poste virtuel.
-3. **Équité, lots L3 à L6** — la calibration des coefficients, puis leur effet sur la sélection,
-   puis SC-05. **L0 à L2 sont livrés** : voir `92_CADRAGE_WORKMETRICS_EQUITE.md` §8.
+3. **Équité, lots L4 à L6** — l'effet des critères sur la sélection, la contrainte SOFT, puis
+   SC-05. **L0 à L3 sont livrés** : voir `92_CADRAGE_WORKMETRICS_EQUITE.md` §8. L3 a livré
+   l'instrument de calibration ; ce qui manque désormais n'est plus un outil mais **des plannings
+   réels** à lui donner — `92_CALIBRATION_PENIBILITE.md` §2.
+4. **Rang 13** — garder le schéma d'entrée comme le schéma de sortie l'est. Correctif pur, sans
+   arbitrage.
 5. **Rang 10** — dès que la Production a rendu ses arbitrages.
 6. **SC-04** — le dernier, conditionné à un historique des compteurs qui n'existe pas.
 
@@ -1684,6 +1700,80 @@ SC-06, et mérite son propre lot.
 Les **quatre scénarios exposés voyagent maintenant par les deux canaux**. Le document d'échange
 fichier n'en connaissait que deux — SC-06 n'y avait jamais été inscrit à son lot S6 ; c'est réparé.
 
+### Équité — lot L3 : l'instrument de calibration, et l'échelle que le moteur portait déjà (2026-08-13)
+
+707 tests, 0 échec. Le lot livre **de quoi calibrer**, et non des coefficients — c'est la même
+distinction que fait l'arbitrage §4.2 du cadrage : *ils se calibrent, ils ne se décrètent pas*.
+
+#### La question déplacée
+
+Personne ne sait répondre à « combien vaut une heure de nuit ». Le harnais ne le demande pas : il
+dit **sur ce planning, l'ordre entre ces deux personnes change à 1,375**, et cette question-là, un
+responsable d'exploitation sait la trancher. La valeur se déduit d'arbitrages réels au lieu de les
+précéder.
+
+Les bascules sont **calculées, pas cherchées**. À répartition fixée, l'écart au contrat est affine
+en chaque coefficient : deux personnes forment deux droites, leur intersection est une valeur
+exacte. Balayer une grille aurait dit « quelque part entre 1 et 2 » — ce dont personne ne peut
+décider. Deux droites parallèles ne se croisent jamais, et c'est une réponse au même titre : ce
+coefficient-là ne départage pas ces deux-là, quelle que soit sa valeur.
+
+#### Le harnais n'invente pas sa propre mesure
+
+Un harnais qui pondère à sa façon calibre quelque chose que le moteur ne calcule pas, **et le
+résultat en a exactement la même allure**. Pondérer se dit donc à un seul endroit
+(`RepartitionPenibilites.minutesPondereesPar`), que le moteur et le harnais appellent tous deux ; et
+le harnais lit la **réponse publiée** plutôt que le calcul interne, ce qui vérifie au passage que ce
+que le moteur publie suffit à calibrer.
+
+Une seule résolution évalue toutes les échelles : la répartition d'une minute est une propriété du
+planning, pas du choix des coefficients. ⚠️ **Cette licence expire au lot L5** — un test la garde et
+échouera ce jour-là.
+
+#### L'échelle que le score portait déjà, et qui classe la nuit en dernier
+
+Le cadrage §4.2 demandait de ne pas créer une seconde échelle contredisant la première.
+Confrontation faite : elle n'est pas dans les forfaits à 5 000 mais dans `ScoreWeights`, **à la
+minute** — en `EXPLOITATION`, nuit 3, dimanche 4, férié 5. **La nuit y est la moins chère**,
+l'inverse de l'ordre de pénibilité du métier.
+
+Les deux tiennent ensemble pour des raisons opposées : le score lit la dominance comme « la
+situation la plus favorable au salarié » et y prend la catégorie la moins chère ; l'équité y prend
+la pénibilité la plus lourde. **L'accord est une coïncidence entretenue, pas une propriété** —
+réordonner la liste pour servir l'une casserait l'autre en silence, et depuis L1 les deux partagent
+la même implémentation. `CoherenceEchelleTest` verrouille les deux moitiés.
+
+⚠️ **À confirmer par le métier** : s'adosser à 3 : 4 : 5 est impossible sans donner à la nuit le
+coefficient le plus faible. L'écart est donc assumé — sur un même planning, le moteur pénalisera le
+moins la nuit tout en la mesurant comme la plus lourde.
+
+#### Une condition que toute calibration doit respecter
+
+**Les coefficients décroissent le long de l'ordre de dominance.** Avec `dimanche = 1,2` et
+`ferie = 2,0`, une minute travaillée un dimanche férié est attribuée à DIMANCHE et pèse 1,2 quand
+la même minute un férié ordinaire pèse 2,0 : cumuler deux pénibilités **allège** l'heure. Le moteur
+ne refuse pas — l'échelle décrit quelque chose, elle se contredit seulement elle-même — il lève
+`COEFFICIENTS_PENIBILITE_INCOHERENTS` en nommant le couple fautif.
+
+#### Deux défauts trouvés en chemin, dans le schéma d'entrée
+
+`50_ScenarioContract.schema.json` porte `additionalProperties: false` et ne déclarait ni
+`requestId` ni `metadata` — que l'OpenAPI exige pourtant depuis l'origine. **Le schéma publié
+rejetait donc toute requête valide.** Découvert en cherchant pourquoi `coefficientsPenibilite`,
+inscrit à l'OpenAPI au lot L1, n'y figurait pas non plus. Les trois sont déclarés.
+
+Rien ne confronte les requêtes à ce schéma — c'est ce qui a laissé la dérive s'installer, quand
+`SchemaPublie` garde le schéma de sortie depuis S8.4. **Ouvert au rang 13.** Le reliquat connu :
+six jeux d'essai portent un `_description` à la racine, que l'enveloppe tolère (rang 12) et que le
+schéma refuse — les deux arbitrages se tiennent.
+
+#### Ce que le dépôt ne peut pas calibrer
+
+Le rapport traverse les jeux d'essai et les déclare **muets** : deux ou trois créneaux, un ou deux
+salariés, construits pour éprouver une règle précise. Un cas muet n'est pas un cas neutre — il ne
+dit rien des coefficients, il ne dit pas qu'ils sont indifférents. La calibration commence quand des
+exports réels sont versés : `92_CALIBRATION_PENIBILITE.md` §2.
+
 ### Équité — lots L0 à L2 : le RHD inviolable, puis l'unité de comparaison (2026-08-13)
 
 689 tests, 0 échec. Trois lots livrés d'affilée : une règle forte, une unité, une mesure.
@@ -1735,9 +1825,8 @@ S8.4, autre bloc. La confrontation couvre désormais `workMetrics`.
 
 #### Reste du chantier
 
-L3 (harnais de simulation et calibration des coefficients), L4 (les trois critères de sélection
-dans SC-02 et SC-06), L5 (contrainte SOFT), L6 (SC-05). Voir
-`92_CADRAGE_WORKMETRICS_EQUITE.md` §8.
+L4 (les trois critères de sélection dans SC-02 et SC-06), L5 (contrainte SOFT), L6 (SC-05). **L3
+est livré** — voir l'entrée du même jour, plus haut. `92_CADRAGE_WORKMETRICS_EQUITE.md` §8.
 
 ### Rang 11 — le contrat refuse enfin ce qu'il annonçait refuser (2026-08-13)
 

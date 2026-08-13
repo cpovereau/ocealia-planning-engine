@@ -68,6 +68,19 @@ public final class DominancePenibilites implements Serializable {
         }
     }
 
+    /**
+     * L'ordre appliqué faute d'ordre transmis : {@code NUIT > DIMANCHE > FERIE}.
+     *
+     * <p>Aucun scénario ne transmet cet ordre à ce jour ; c'est donc celui de toutes les demandes.
+     * Il vivait en double — ici en commentaire, dans {@code PlanningContext} en dur — et le lot L3
+     * en a eu besoin ailleurs pour vérifier qu'une échelle de coefficients ne le contredit pas
+     * (voir {@link CoefficientsPenibilite#inversionsSelon(DominancePenibilites)}).</p>
+     */
+    public static DominancePenibilites parDefaut() {
+        return new DominancePenibilites(
+                List.of(PenibiliteType.NUIT, PenibiliteType.DIMANCHE, PenibiliteType.FERIE));
+    }
+
     public List<PenibiliteType> getOrdreDominance() {
         return ordreDominance;
     }

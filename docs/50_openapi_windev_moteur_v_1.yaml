@@ -704,6 +704,17 @@ components:
         Une valeur négative est **refusée** (`422 BUSINESS_ERROR`) : une pénibilité ne s'allège
         pas. Une valeur inférieure à 1 reste acceptée — c'est un choix d'échelle, pas une
         incohérence.
+
+        ⚠️ **[Équité L3] Les coefficients doivent décroître le long de l'ordre de dominance.**
+        Une minute cumulant deux pénibilités est attribuée à la dominante ; si celle-ci pèse moins
+        que la catégorie qu'elle absorbe, cumuler **allège** l'heure au lieu de l'alourdir. Avec
+        `dimanche = 1.2` et `ferie = 2.0`, une minute travaillée un dimanche férié pèse 1.2 quand
+        la même minute un férié ordinaire pèse 2.0. Le moteur ne refuse pas — l'échelle décrit
+        quelque chose, elle se contredit seulement elle-même — il lève
+        `COEFFICIENTS_PENIBILITE_INCOHERENTS` (`WARNING`) en nommant le couple fautif.
+
+        Ces valeurs se calibrent sur des plannings réels, elles ne se choisissent pas sur le
+        papier : protocole dans `92_CALIBRATION_PENIBILITE.md`.
       properties:
         nuit:
           type: number

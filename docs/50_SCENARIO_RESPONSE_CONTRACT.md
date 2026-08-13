@@ -233,6 +233,15 @@ C'est cette grandeur, et non `heuresTravaillees`, qui rend deux personnes compar
 brutes et **se recouvrent** : une nuit du dimanche figure dans les deux. Elles décrivent une
 exposition ; `heuresPonderees` mesure une charge.
 
+> **[Équité L3] Les coefficients transmis doivent décroître le long de l'ordre de dominance**
+> `NUIT > DIMANCHE > FERIE`. Sinon, une minute cumulant deux pénibilités — un dimanche férié, par
+> exemple — est attribuée à la dominante et pèse **moins** qu'une minute qui n'en porte qu'une :
+> cumuler devient un avantage. Le moteur ne refuse pas cette échelle, il lève
+> `COEFFICIENTS_PENIBILITE_INCOHERENTS` et produit la mesure.
+>
+> Ces valeurs ne se décrètent pas : le protocole pour les établir sur des plannings réels est
+> `92_CALIBRATION_PENIBILITE.md`.
+
 ### 3.2 ter Les mesures rapportées au contrat
 
 > Inscrites au contrat au **lot L2 du chantier équité**.
@@ -343,6 +352,14 @@ de l'appelant — ne partait que dans les journaux du serveur.
 | `AUCUN_CRENEAU_A_RESOUDRE` | `ERROR` | Aucun créneau n'a survécu aux partitions : la résolution porte sur un problème vide — sans `date` |
 | `AUCUNE_RESSOURCE_DANS_DATASET` | `ERROR` | Ni salarié ni poste virtuel : tous les créneaux reviendront non affectés, quelle que soit la demande — sans `date` |
 | `RESSOURCE_SANS_ID` | `WARNING` | Une ressource du dataset n'a pas d'identifiant : son comportement solveur n'est pas garanti et elle n'est pas retrouvable dans la réponse — sans `date` |
+
+#### Codes du chantier équité — lots L0 à L3
+
+| Code | Sévérité | Signification |
+|------|----------|---------------|
+| `REPOS_DOMINICAL_TRAVAILLE` | `WARNING` | Le planning transmis fait déjà travailler un salarié un jour de repos dominical **déclaré**. Le créneau étant figé, le solveur ne peut pas le défaire : le moteur le signale plutôt que d'imputer au score une situation qu'il n'a pas créée |
+| `COEFFICIENTS_PENIBILITE_SANS_EFFET` | `INFO` | Un bloc `coefficientsPenibilite` est transmis, mais aucun coefficient ne pondère quoi que ce soit. **L'absence complète du bloc ne déclenche rien** — c'est le cas de toutes les demandes tant que les coefficients ne sont pas calibrés — sans `date` |
+| `COEFFICIENTS_PENIBILITE_INCOHERENTS` | `WARNING` | L'échelle transmise contredit l'ordre de dominance : la catégorie retenue pour une minute cumulant deux pénibilités pèse moins qu'une de celles qu'elle absorbe, si bien que **cumuler allège l'heure au lieu de l'alourdir**. Le message nomme le couple fautif. La mesure est produite malgré tout — voir `92_CALIBRATION_PENIBILITE.md` §3 — sans `date` |
 
 **Partage des rôles avec `ignoredCreneaux`.** Une alerte porte sur la configuration ou sur le
 dataset pris dans son ensemble ; le détail créneau par créneau vit dans

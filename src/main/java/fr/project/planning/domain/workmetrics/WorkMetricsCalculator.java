@@ -137,20 +137,14 @@ public class WorkMetricsCalculator {
                 CoefficientsPenibilite coefficients =
                         solution.getPlanningContext().getCoefficientsPenibilite();
 
-                long nuitDominante = repartition.minutes(PenibiliteType.NUIT);
-                long dimancheDominante = repartition.minutes(PenibiliteType.DIMANCHE);
-                long ferieDominante = repartition.minutes(PenibiliteType.FERIE);
-                long ordinaires = repartition.minutesOrdinaires();
-
                 wm.addPenibilites(
-                        Math.toIntExact(nuitDominante),
-                        Math.toIntExact(dimancheDominante),
-                        Math.toIntExact(ferieDominante),
-                        Math.toIntExact(ordinaires),
-                        nuitDominante * coefficients.pour(PenibiliteType.NUIT)
-                                + dimancheDominante * coefficients.pour(PenibiliteType.DIMANCHE)
-                                + ferieDominante * coefficients.pour(PenibiliteType.FERIE)
-                                + ordinaires * CoefficientsPenibilite.ORDINAIRE);
+                        Math.toIntExact(repartition.minutes(PenibiliteType.NUIT)),
+                        Math.toIntExact(repartition.minutes(PenibiliteType.DIMANCHE)),
+                        Math.toIntExact(repartition.minutes(PenibiliteType.FERIE)),
+                        Math.toIntExact(repartition.minutesOrdinaires()),
+                        // [Équité L3] Pondérer se dit à un seul endroit : le harnais de calibration
+                        // rejoue cette mesure-là, pas une réécriture qui lui ressemble.
+                        repartition.minutesPondereesPar(coefficients));
             }
 
             /*

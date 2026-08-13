@@ -426,8 +426,7 @@ Ces métriques sont calculées **ressource par ressource** à partir des crénea
 Certaines métriques nécessitent une **comparaison entre ressources**.
 
 Exemples :
-- ecartChargeAvecMoyenne
-- ecartNuitsAvecMoyenne
+- `ecartContratPourcent` — l'écart signé au contrat, voir §5.2
 
 Ces métriques ne peuvent être calculées qu'après avoir calculé les métriques individuelles de toutes les ressources.
 
@@ -447,22 +446,38 @@ Cette séparation garantit :
 
 ---
 
-### 5.2 Répartition et équité (V3-C – après stabilisation scoring)
+### 5.2 Répartition et équité — livrée aux lots L1 et L2 du chantier équité
 
 Ces métriques permettent une lecture **comparative**, sans décision.
 
-| Champ                       | Type    | Description                                                      |
-| --------------------------- | ------- | ---------------------------------------------------------------- |
-| `ecartChargeAvecMoyenne`    | Decimal | Écart absolu entre la charge du salarié et la moyenne collective |
-| `ecartNuitsAvecMoyenne`     | Integer | Écart du nombre de nuits travaillées par rapport à la moyenne    |
+> ⚠️ **Ce paragraphe annonçait un écart à la moyenne du groupe. L'arbitrage métier du 13/08/2026
+> l'a écarté** : la référence est le **contrat de chacun**. Comparer à la moyenne collective en
+> heures brutes mettrait un salarié à 50 % perpétuellement « sous la moyenne », et le moteur
+> passerait son temps à vouloir le charger. `ecartChargeAvecMoyenne` et `ecartNuitsAvecMoyenne`
+> **ne seront pas écrits** ; ils sont remplacés par les champs ci-dessous.
+> Voir `92_CADRAGE_WORKMETRICS_EQUITE.md` §4.1 et §5.2.
 
-**Pré-requis :**
-- WorkMetrics V1 et V2 stabilisées
-- stratégie de scoring (`ScoreWeights`) en place
+| Champ | Type | Description |
+| --- | --- | --- |
+| `heuresPonderees` | Decimal | Charge ramenée à l'unité de l'heure ordinaire, chaque minute pondérée par le coefficient de **sa seule** catégorie de pénibilité — celle que la dominance retient |
+| `ecartContratPourcent` | Decimal | Écart **signé** au volume contractuel attendu sur la fenêtre. Négatif : en dessous, ce qui doit rendre la personne **préférable** |
+| `partNuits`, `partDimanches`, `partFeries` | Decimal | Part de chaque pénibilité rapportée à ce même volume — un mi-temps doit une part proportionnée à son contrat |
+| `joursObserves` | Integer | Jours de l'horizon déclaré : le dénominateur, restitué pour que l'appelant sache sur quoi le moteur a jugé |
 
-**Objectif :**
-- préparation des contraintes SOFT d’équité
-- aide à la lecture RH ultérieure
+Ces mesures sont produites dans la **seconde phase d'agrégation** décrite au §5.1.5 : rapporter une
+charge au contrat suppose que tout ait été compté. Elles valent `null` sans volume contractuel
+déclaré — un poste virtuel est dans ce cas par nature.
+
+**L'unité, et ce qu'elle suppose.** *On ne juge l'équité qu'à pénibilité équivalente* : huit heures
+un mardi et huit heures un dimanche n'entrent pas dans la même addition sans coefficient. Ces
+coefficients sont **transmis, jamais écrits en dur**, et se calibrent sur des plannings réels —
+`92_CALIBRATION_PENIBILITE.md`. Absents, `heuresPonderees` vaut exactement `heuresTravaillees`.
+
+**Mesurer n'est pas sanctionner.** Ces champs décrivent une répartition ; ils ne statuent pas
+qu'elle est mauvaise. La pénalisation est une contrainte SOFT distincte, livrée séparément
+(lot L5).
+
+**Restitution :** `50_SCENARIO_RESPONSE_CONTRACT.md` §3.2 bis et §3.2 ter.
 
 ---
 

@@ -1,5 +1,6 @@
 package fr.project.planning.time;
 
+import fr.project.planning.domain.contexte.CoefficientsPenibilite;
 import fr.project.planning.domain.contexte.DominancePenibilites;
 import fr.project.planning.scoring.PenibiliteType;
 
@@ -46,6 +47,43 @@ public final class RepartitionPenibilites {
     /** Minutes ne relevant d'aucune pénibilité. */
     public long minutesOrdinaires() {
         return minutesOrdinaires;
+    }
+
+    /**
+     * [Équité L3] Les minutes ramenées à l'unité commune de l'heure ordinaire.
+     *
+     * <p>Une seule implémentation de « pondérer », parce que deux consommateurs en ont besoin : le
+     * moteur, qui mesure, et le harnais de calibration, qui rejoue la même mesure sous d'autres
+     * coefficients. Si le harnais recalculait de son côté, il calibrerait quelque chose que le
+     * moteur ne calcule pas — et personne ne le verrait.</p>
+     *
+     * <p>Fractionnaire par nature : un coefficient de 1,5 sur 47 minutes ne tombe pas juste. La
+     * mesure sert à comparer, pas à facturer.</p>
+     */
+    public double minutesPondereesPar(CoefficientsPenibilite coefficients) {
+        double ponderees = minutesOrdinaires * CoefficientsPenibilite.ORDINAIRE;
+        for (PenibiliteType type : PenibiliteType.values()) {
+            ponderees += minutes(type) * coefficients.pour(type);
+        }
+        return ponderees;
+    }
+
+    /**
+     * [Équité L3] Une répartition dont la dominance est <strong>déjà tranchée</strong>.
+     *
+     * <p>Le harnais de calibration part des volumes que le moteur a restitués, catégorie par
+     * catégorie : la dominance y a été appliquée une fois pour toutes, et la rejouer n'aurait aucun
+     * sens. Rejouer la <em>pondération</em>, en revanche, est tout l'objet de la calibration.</p>
+     */
+    public static RepartitionPenibilites deMinutesDejaReparties(
+            long minutesNuit, long minutesDimanche, long minutesFerie, long minutesOrdinaires) {
+
+        Map<PenibiliteType, Long> minutes = new EnumMap<>(PenibiliteType.class);
+        minutes.put(PenibiliteType.NUIT, Math.max(0, minutesNuit));
+        minutes.put(PenibiliteType.DIMANCHE, Math.max(0, minutesDimanche));
+        minutes.put(PenibiliteType.FERIE, Math.max(0, minutesFerie));
+
+        return new RepartitionPenibilites(minutes, Math.max(0, minutesOrdinaires));
     }
 
     /** Répartit un découpage temporel selon l'ordre de dominance donné. */

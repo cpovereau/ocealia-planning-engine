@@ -29,9 +29,15 @@ public class WorkMetricsByRessourceDTO {
      * personnes comparables : on ne juge l'équité qu'à pénibilité équivalente.</p>
      *
      * <p>⚠️ <strong>Sans coefficients transmis, elle vaut exactement {@code heuresTravaillees}</strong> :
-     * le moteur n'invente pas d'échelle, il applique le neutre et le signale par une alerte
-     * {@code COEFFICIENTS_PENIBILITE_PAR_DEFAUT}. Deux valeurs identiques ne veulent donc pas dire
-     * « aucune pénibilité », mais « aucune pondération demandée ».</p>
+     * le moteur n'invente pas d'échelle, il applique le neutre — <strong>en silence</strong>, parce
+     * que c'est le cas de toutes les demandes tant que les coefficients ne sont pas calibrés. Deux
+     * valeurs identiques ne veulent donc pas dire « aucune pénibilité », mais « aucune pondération
+     * demandée ». Un bloc <em>transmis</em> qui ne pondère rien lève, lui,
+     * {@code COEFFICIENTS_PENIBILITE_SANS_EFFET}.</p>
+     *
+     * <p>[Équité L3] Les coefficients transmis doivent décroître le long de l'ordre de dominance ;
+     * une échelle qui le contredit lève {@code COEFFICIENTS_PENIBILITE_INCOHERENTS}. Ils se
+     * calibrent sur des plannings réels — voir {@code 92_CALIBRATION_PENIBILITE.md}.</p>
      */
     private double heuresPonderees;
 

@@ -1,6 +1,7 @@
 package fr.project.planning.scenarios.mapper;
 
 import fr.project.planning.domain.contexte.CoefficientsPenibilite;
+import fr.project.planning.domain.contexte.DominancePenibilites;
 import fr.project.planning.scenarios.alerte.AlertCode;
 import fr.project.planning.scenarios.alerte.AlertSeverity;
 import fr.project.planning.scenarios.alerte.CollecteurAlertes;
@@ -19,8 +20,12 @@ import fr.project.planning.scenarios.dto.PlanningContextDTO;
  * {@code heuresPonderees} vaut alors exactement {@code heuresTravaillees}, et le contrat le dit.</p>
  *
  * <p>Il parle en revanche quand l'appelant a <strong>transmis un bloc qui ne pondère rien</strong> :
- * là, quelqu'un a cru configurer quelque chose. C'est rare, c'est actionnable, et c'est le seul cas
- * où le silence tromperait.</p>
+ * là, quelqu'un a cru configurer quelque chose. C'est rare, c'est actionnable, et le silence y
+ * tromperait.</p>
+ *
+ * <p>Et il parle, depuis le lot L3, quand l'échelle transmise <strong>contredit l'ordre de
+ * dominance</strong> — une minute qui cumule deux pénibilités y pèserait moins qu'une minute qui
+ * n'en porte qu'une. Voir {@code 92_CALIBRATION_PENIBILITE.md} pour la condition et sa raison.</p>
  */
 public final class CoefficientsPenibiliteMapper {
 
@@ -54,6 +59,35 @@ public final class CoefficientsPenibiliteMapper {
                             + "équivalente.");
         }
 
+        signalerInversions(coefficients, scenario, alertes);
+
         return coefficients;
+    }
+
+    /**
+     * [Équité L3] Une échelle qui contredit la dominance rend le cumul de pénibilités avantageux.
+     *
+     * <p>L'ordre de dominance n'est transmis par aucun scénario : celui du contexte est donc
+     * toujours l'ordre par défaut, et c'est lui que la vérification confronte aux coefficients.</p>
+     */
+    private static void signalerInversions(CoefficientsPenibilite coefficients, String scenario,
+                                           CollecteurAlertes alertes) {
+        if (alertes == null) {
+            return;
+        }
+
+        for (CoefficientsPenibilite.Inversion inversion
+                : coefficients.inversionsSelon(DominancePenibilites.parDefaut())) {
+
+            alertes.signaler(AlertCode.COEFFICIENTS_PENIBILITE_INCOHERENTS, AlertSeverity.WARNING,
+                    "[" + scenario + "] Une minute cumulant " + inversion.dominante() + " et "
+                            + inversion.absorbee() + " est attribuée à " + inversion.dominante()
+                            + " par l'ordre de dominance, qui pèse " + inversion.coefficientDominante()
+                            + " quand " + inversion.absorbee() + " pèse "
+                            + inversion.coefficientAbsorbee() + " : cumuler les deux pénibilités "
+                            + "allège l'heure au lieu de l'alourdir. Les coefficients doivent "
+                            + "décroître le long de l'ordre de dominance — sinon c'est l'ordre "
+                            + "qu'il faut revoir.");
+        }
     }
 }

@@ -4,9 +4,6 @@ import java.io.Serializable;
 import java.time.LocalDate;
 import java.util.Objects;
 
-import fr.project.planning.scoring.PenibiliteType;
-import java.util.List;
-
 import fr.project.planning.scoring.StrategieScoring;
 
 /**
@@ -169,9 +166,10 @@ private static Penalites defaultPenalites() {
 }
 
 private static DominancePenibilites defaultDominancePenibilites() {
-    return new DominancePenibilites(
-            List.of(PenibiliteType.NUIT, PenibiliteType.DIMANCHE, PenibiliteType.FERIE) // Ordre de dominance par défaut
-    );
+    // [Équité L3] L'ordre par défaut vit désormais dans DominancePenibilites : le lot en a besoin
+    // ailleurs — vérifier qu'une échelle de coefficients ne le contredit pas — et deux littéraux
+    // du même ordre auraient fini par diverger.
+    return DominancePenibilites.parDefaut();
 }
 
 private static OptionsExplicabilite defaultOptionsExplicabilite() {

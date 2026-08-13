@@ -6,6 +6,8 @@
   "description": "Contrat JSON d'alimentation du moteur de planification. Document en cours d’alignement avec les contrats JSON stabilisés. La source de vérité actuelle est constituée par les schémas JSON par scénario. RANG 11 — le moteur REFUSE tout champ qu'il ne connaît pas : réponse 400 UNKNOWN_FIELD portant le chemin JSON complet du champ fautif et la liste des noms acceptés à cet endroit, sur les deux canaux HTTP et FileAdapter. Deux exceptions nommées : les quatre champs de créneau marqués OBSOLÈTE ci-dessous, encore acceptés et ignorés le temps de la migration ; et quelques blocs restés délibérément tolérants (enveloppe de requête, dataSet, salaries, postesVirtuels, paramètres SC-03), qui ne prétendent pas le contraire.",
   "type": "object",
   "required": [
+    "requestId",
+    "metadata",
     "scenarioType",
     "planningContext",
     "scenarioParameters",
@@ -13,6 +15,22 @@
   ],
   "additionalProperties": false,
   "properties": {
+    "requestId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Identifiant de la demande, repris tel quel dans la réponse. Déclaré obligatoire par 50_openapi_windev_moteur_v_1.yaml depuis l'origine et absent de ce schéma jusqu'au lot L3 du chantier équité : fermé sur additionalProperties, ce schéma rejetait donc TOUTE requête valide. Constaté en cherchant pourquoi coefficientsPenibilite n'y figurait pas non plus."
+    },
+    "metadata": {
+      "type": "object",
+      "required": ["clientId", "timestamp"],
+      "additionalProperties": true,
+      "description": "Provenance de la demande. Bloc délibérément tolérant, comme l'enveloppe de requête.",
+      "properties": {
+        "clientId": { "type": "string", "minLength": 1 },
+        "timestamp": { "type": "string", "description": "Horodatage de la demande, ISO-8601." },
+        "source": { "type": "string", "description": "Système émetteur, par exemple WINDEV." }
+      }
+    },
     "scenarioType": {
       "type": "string",
       "enum": ["SC-01", "SC-02", "SC-03", "SC-04", "SC-05", "SC-06"],
@@ -23,6 +41,16 @@
       "required": ["horizon", "strategieScoring"],
       "additionalProperties": false,
       "properties": {
+        "coefficientsPenibilite": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "[Équité L1] Ce que vaut une heure selon quand elle est travaillée, en heures ordinaires — l'heure ordinaire vaut 1 et ne se transmet pas. Facultatif : absent, heuresPonderees vaut heuresTravaillees, et le moteur se tait plutôt que d'inventer une échelle. Un bloc transmis qui ne pondère rien lève COEFFICIENTS_PENIBILITE_SANS_EFFET. [Équité L3] Les coefficients doivent DÉCROÎTRE le long de l'ordre de dominance NUIT > DIMANCHE > FERIE : une minute cumulant deux pénibilités est attribuée à la dominante, et si celle-ci pèse moins, cumuler allège l'heure au lieu de l'alourdir. Une échelle qui contredit cet ordre lève COEFFICIENTS_PENIBILITE_INCOHERENTS (WARNING) sans être refusée. Une valeur négative est refusée (422). Ces valeurs se calibrent sur des plannings réels : voir 92_CALIBRATION_PENIBILITE.md.",
+          "properties": {
+            "nuit": { "type": "number", "minimum": 0, "description": "Ce que vaut une heure de nuit." },
+            "dimanche": { "type": "number", "minimum": 0, "description": "Ce que vaut une heure de dimanche non nocturne." },
+            "ferie": { "type": "number", "minimum": 0, "description": "Ce que vaut une heure de jour férié ni nocturne ni dominicale." }
+          }
+        },
         "regulatoryParameters": {
           "type": "object",
           "additionalProperties": false,

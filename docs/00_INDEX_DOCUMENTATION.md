@@ -369,6 +369,7 @@ un état passé et ne font pas autorité sur le code actuel ; ils le disent en t
 | `92_CADRAGE_SCENARIO_SC-06.md`                    | Cadrage SC-06 — désignation de la ressource la plus à même de couvrir un besoin : intention, arbitrages tranchés, contrats d’entrée/sortie, découpage en lots S1→S7 |
 | `92_CADRAGE_SOCLE_REGLEMENTAIRE.md`               | Socle réglementaire — lots S7 (contraintes dormantes) puis S8 (cadre réglementaire au contrat, calculs faux, restitution des constats). Journal des écarts de score, lot par lot |
 | `92_CADRAGE_WORKMETRICS_EQUITE.md`                | Cadrage des WorkMetrics d’équité — arbitrages tranchés (l’heure pondérée comme unité, comparaison au contrat et non à la moyenne, écart signé, RHD inviolable), découpage en lots L0→L6, prérequis de SC-05 |
+| `92_CALIBRATION_PENIBILITE.md`                    | Protocole de calibration des coefficients de pénibilité (lot L3) — le harnais de simulation, les points de bascule, la condition de cohérence avec la dominance, et la confrontation à l’échelle que le score portait déjà |
 | `92_CADRAGE_STABILISATION_SC-01.md`               | Cadrage du chantier de stabilisation SC-01 |
 | `92_CADRAGE_STABILISATION_CONTRAT_ENTREE_TEMP.md` | Cadrage du chantier de stabilisation du contrat d’entrée cible |
 

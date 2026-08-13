@@ -152,5 +152,20 @@ public enum AlertCode {
      *
      * <p>{@code INFO} et non {@code WARNING} : c'est une configuration valide, pas une anomalie.</p>
      */
-    COEFFICIENTS_PENIBILITE_SANS_EFFET
+    COEFFICIENTS_PENIBILITE_SANS_EFFET,
+
+    /**
+     * L'échelle de coefficients contredit l'ordre de dominance (lot L3 du chantier équité).
+     *
+     * <p>Deux règles se rencontrent, et elles ne viennent pas du même endroit : la dominance décide
+     * à quelle catégorie appartient une minute qui en cumule plusieurs, les coefficients décident ce
+     * que cette catégorie pèse. Quand la catégorie retenue pèse moins qu'une de celles qu'elle
+     * absorbe, une minute qui cumule deux pénibilités pèse <em>moins</em> qu'une minute qui n'en
+     * porte qu'une : <strong>le cumul devient un avantage</strong>.</p>
+     *
+     * <p>{@code WARNING} et non un refus : l'échelle décrit quelque chose, elle se contredit
+     * seulement elle-même. Le moteur produit la mesure et dit ce qu'elle vaut — c'est à l'appelant
+     * de trancher entre changer ses coefficients et changer son ordre de dominance.</p>
+     */
+    COEFFICIENTS_PENIBILITE_INCOHERENTS
 }
