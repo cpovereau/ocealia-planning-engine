@@ -318,11 +318,10 @@ Assurer la continuité de service **en perturbant le moins possible l’existant
 * niveaux de surcharge par salarié ;
 * volume de besoin résiduel (poste virtuel).
 
-#### État d'implémentation — lots S1 et S2 livrés le 2026-08-11
+#### État d'implémentation — lots S1 à S3 livrés le 2026-08-11
 
 `POST /scenarios/sc02/solve` est exposé. ⚠️ **Le contrat ci-dessous n'est pas complet** : il
-grandira aux lots S2 (découpage) et S3 (seuils de surcharge), et son inscription définitive à
-l'OpenAPI et aux schémas JSON est le lot S4. Voir `92_CADRAGE_SCENARIO_SC-02.md` §8.
+grandira encore au lot S4, qui porte son inscription définitive à l'OpenAPI et aux schémas JSON. Voir `92_CADRAGE_SCENARIO_SC-02.md` §8.
 
 **Ce que le lot S1 accepte** — et rien d'autre, délibérément : un champ que personne ne lit est
 pire qu'un champ absent.
@@ -331,6 +330,8 @@ pire qu'un champ absent.
 |---|:---:|---|
 | `scenarioParameters.salarieAbsentId` | ✅ | Désigne le salarié dont l'absence motive le scénario. Il ne sert **pas** à la contrainte : l'absence elle-même est portée par `dataSet.indisponibilites`, déjà tenu par une contrainte HARD. Il sert à savoir de quelle absence tirer les conséquences |
 | `scenarioParameters.posteVirtuelAutorise` | ○ | Défaut `false`. Le poste virtuel ne s'invite jamais de lui-même |
+| `scenarioParameters.surchargeMaxHeuresJour` | ○ | Charge journalière au-delà de laquelle un remplaçant est jugé en surcharge, en heures décimales |
+| `scenarioParameters.surchargeMaxHeuresSemaine` | ○ | Idem sur la semaine calendaire lundi → dimanche |
 
 Le bloc `scenarioParameters` est **strict** : un paramètre d'un lot à venir produit une erreur
 explicite, jamais un silence.
@@ -359,10 +360,24 @@ repris en entier par une seule personne **garde son identifiant inchangé**, com
 jamais été découpé : c'est le cas courant. Le découpage est signalé par une alerte
 `CRENEAUX_DECOUPES` de sévérité `INFO`.
 
+**Seuils de surcharge (lot S3).** Ce sont des bornes de **confort**, propres à la demande, à ne pas
+confondre avec les bornes réglementaires individuelles du salarié qui gardent leur rôle. Leur
+dépassement est **pesé dans le score et signalé** par une alerte
+`SURCHARGE_ACCEPTABLE_DEPASSEE` (WARNING), **jamais éliminatoire** : le moteur préfère confier un
+remplacement en surcharge plutôt que de laisser des heures à pourvoir. Une borne absente n'est pas
+une borne à zéro — sans seuil déclaré, aucun dépassement n'est possible de ce côté.
+
 **Ce que le moteur restitue** : un bloc `remplacement`, propre à SC-02 et absent des autres
 scénarios — `salarieAbsentId`, `creneauxLiberes` (créneaux d'origine, que le découpage ne gonfle
-pas), `creneauxRepris` (repris **en entier**), `heuresAPourvoir`, et le `details[]` du sort de
-chaque morceau restitué, y compris ceux que personne n'a repris.
+pas), `creneauxRepris` (repris **en entier**), `heuresAPourvoir`, le `details[]` du sort de chaque
+morceau restitué, y compris ceux que personne n'a repris, et `surchargeParRessource[]`.
+
+Ce dernier porte, **par remplaçant et par jour repris**, la charge `heuresJour` et la charge
+`heuresSemaine` en `avant / apres / delta`, avec le `plafond` déclaré et un drapeau `depassement` —
+mêmes structures que les `impacts[]` de SC-06. « Avant » est la situation qu'on aurait eue sans
+remplacement, c'est-à-dire le planning épinglé du salarié ; le delta est donc exactement ce que
+l'absence lui a coûté. Les mesures sont rendues **même sans seuil déclaré** : elles informent, et
+le `plafond` vaut alors `null`.
 
 ⚠️ **Limite connue de ce lot** : le moteur n'oppose pas encore `activitesCompatibles` à une
 affectation — aucune contrainte ne lit ce champ (rang 10 du backlog). Un salarié peut donc se voir

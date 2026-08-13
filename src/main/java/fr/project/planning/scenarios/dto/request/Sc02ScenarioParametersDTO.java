@@ -38,6 +38,28 @@ public class Sc02ScenarioParametersDTO {
      */
     private Boolean posteVirtuelAutorise;
 
+    /**
+     * Charge journalière au-delà de laquelle l'encadrement estime un remplaçant en surcharge,
+     * en heures décimales (lot S3).
+     *
+     * <p>Borne de <strong>confort</strong>, propre à cette demande — à ne pas confondre avec les
+     * bornes réglementaires individuelles du salarié, qui gardent leur rôle. Son dépassement est
+     * pesé et signalé, <strong>jamais éliminatoire</strong> : le moteur ne refuse pas, il rend
+     * visible ce qu'il en coûte.</p>
+     *
+     * <p>Absent ou {@code null} : aucun seuil journalier, donc aucun dépassement de ce côté. Une
+     * borne absente n'est pas une borne à zéro.</p>
+     */
+    private Double surchargeMaxHeuresJour;
+
+    /**
+     * Même chose sur la semaine calendaire lundi → dimanche (lot S3).
+     *
+     * <p>Les deux seuils sont indépendants : une longue journée dans une semaine creuse ne
+     * franchit que le premier, une semaine chargée faite de journées ordinaires que le second.</p>
+     */
+    private Double surchargeMaxHeuresSemaine;
+
     public String getSalarieAbsentId() {
         return salarieAbsentId;
     }
@@ -52,6 +74,22 @@ public class Sc02ScenarioParametersDTO {
 
     public void setPosteVirtuelAutorise(Boolean posteVirtuelAutorise) {
         this.posteVirtuelAutorise = posteVirtuelAutorise;
+    }
+
+    public Double getSurchargeMaxHeuresJour() {
+        return surchargeMaxHeuresJour;
+    }
+
+    public void setSurchargeMaxHeuresJour(Double surchargeMaxHeuresJour) {
+        this.surchargeMaxHeuresJour = surchargeMaxHeuresJour;
+    }
+
+    public Double getSurchargeMaxHeuresSemaine() {
+        return surchargeMaxHeuresSemaine;
+    }
+
+    public void setSurchargeMaxHeuresSemaine(Double surchargeMaxHeuresSemaine) {
+        this.surchargeMaxHeuresSemaine = surchargeMaxHeuresSemaine;
     }
 
     /** Lecture décidée du drapeau : un vide ne suppose jamais que la chose est possible. */

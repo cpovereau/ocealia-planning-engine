@@ -113,5 +113,13 @@ public enum AlertCode {
      * réponse peut alors contenir <strong>plus de créneaux que la demande</strong>, et que
      * l'appelant doit le savoir sans avoir à le déduire.</p>
      */
-    CRENEAUX_DECOUPES
+    CRENEAUX_DECOUPES,
+
+    /**
+     * Un remplaçant dépasse le seuil de surcharge que la demande avait déclaré (lot S3).
+     *
+     * <p>Signalée, jamais éliminatoire : une borne de confort n'est pas une borne de légalité. Le
+     * moteur pèse le dépassement dans le score et le dit ; l'arbitrage reste à l'encadrement.</p>
+     */
+    SURCHARGE_ACCEPTABLE_DEPASSEE
 }

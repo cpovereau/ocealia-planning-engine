@@ -1,6 +1,7 @@
 package fr.project.planning.api;
 
 import fr.project.planning.domain.contexte.PlanningContext;
+import fr.project.planning.domain.contexte.SeuilsSurcharge;
 import fr.project.planning.domain.reglementaire.RegulatoryParameters;
 import fr.project.planning.domain.repos.ReposHebdomadaire;
 import fr.project.planning.domain.ressource.Indisponibilite;
@@ -27,6 +28,14 @@ public final class PlanningRequest {
 
     /** Lot S7.9b : calendrier de repos hebdomadaire, un fait par salarié et par jour concerné. */
     private final List<ReposHebdomadaire> reposHebdomadaires;
+
+    /**
+     * Lot S3 de SC-02 : seuils de surcharge acceptables, propres à la demande.
+     *
+     * <p>{@code null} pour tout scénario qui n'en déclare pas — c'est-à-dire tous sauf SC-02
+     * aujourd'hui. Aucune contrainte ne s'en saisit alors.</p>
+     */
+    private final SeuilsSurcharge seuilsSurcharge;
 
     /** Constructeur Phase 1/2 — sans indisponibilités (rétrocompatibilité). */
     public PlanningRequest(
@@ -63,6 +72,22 @@ public final class PlanningRequest {
             List<Indisponibilite> indisponibilites,
             List<ReposHebdomadaire> reposHebdomadaires
     ) {
+        this(planningContext, regulatoryParameters, referentielComptabiliteActivite, ressources,
+                creneaux, indisponibilites, reposHebdomadaires, null);
+    }
+
+    /** Constructeur lot S3 de SC-02 — avec les seuils de surcharge de la demande. */
+    public PlanningRequest(
+            PlanningContext planningContext,
+            RegulatoryParameters regulatoryParameters,
+            ReferentielComptabiliteActivite referentielComptabiliteActivite,
+            List<Ressource> ressources,
+            List<Creneau> creneaux,
+            List<Indisponibilite> indisponibilites,
+            List<ReposHebdomadaire> reposHebdomadaires,
+            SeuilsSurcharge seuilsSurcharge
+    ) {
+        this.seuilsSurcharge = seuilsSurcharge;
         this.planningContext = Objects.requireNonNull(planningContext);
         this.regulatoryParameters = Objects.requireNonNull(regulatoryParameters);
         this.referentielComptabiliteActivite = Objects.requireNonNull(referentielComptabiliteActivite);
@@ -79,4 +104,5 @@ public final class PlanningRequest {
     public List<Creneau> creneaux() { return creneaux; }
     public List<Indisponibilite> indisponibilites() { return indisponibilites; }
     public List<ReposHebdomadaire> reposHebdomadaires() { return reposHebdomadaires; }
+    public SeuilsSurcharge seuilsSurcharge() { return seuilsSurcharge; }
 }

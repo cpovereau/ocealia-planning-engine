@@ -127,9 +127,20 @@ La surcharge s'exprime :
 * en **heures / jour** lorsqu'elle porte sur une journée,
 * en **heures / semaine** lorsqu'elle touche également la semaine.
 
-Les deux grandeurs existent déjà et sont calculées : `ImpactMesureDTO` porte `heuresJour` et
-`heuresSemaine` en avant / après / delta, avec le plafond individuel du salarié et un drapeau
-`depassement`. SC-02 les réemploie sans les redéfinir (§7).
+Les deux grandeurs existent déjà et sont calculées : `ImpactMesureDTO` porte avant / après / delta,
+un plafond et un drapeau `depassement`. SC-02 le réemploie sans le redéfinir (§7).
+
+⚠️ **Précision apportée à la livraison du lot S3** : le `plafond` restitué ici est le **seuil
+déclaré par la demande**, pas le plafond individuel du salarié comme dans SC-06. Ce sont deux
+notions distinctes — une borne de confort propre à cette situation, et une borne réglementaire
+propre à la personne — et les mélanger dans un même champ aurait rendu le chiffre illisible. Les
+bornes individuelles gardent leurs propres contraintes et leurs propres lignes au `scoreBreakdown`.
+
+**Calibration de la pénalité, découverte à la livraison.** Ne pas couvrir un créneau coûte 2 000
+points forfaitaires. Une pénalité de surcharge trop lourde rendrait donc l'abandon *moins cher* que
+la couverture, et le seuil de confort se comporterait en interdit — l'inverse exact de l'arbitrage.
+Retenu : 5 points la minute, soit 300 points l'heure de dépassement. Il faut plus de six heures
+d'excédent pour égaler un créneau laissé à pourvoir.
 
 ### 4.6 Tranché — poste virtuel et heures à pourvoir sont deux notions distinctes
 
@@ -307,7 +318,7 @@ Ordonné par dépendance. Chaque lot est livrable seul et testable seul.
 | **S0** ✅ | Correctif : `IndisponibiliteSalarie` et le passage de minuit | Prérequis. La contrainte compare `creneau.getDate()` aux bornes de l'absence : un créneau du 3 mars 22:00 → 06:00 échappe à une absence du 4 mars. Bâtir SC-02 sur cette règle sans la réparer serait bâtir sur du sable. **Livré le 2026-08-11** — le défaut avait un second lecteur, le filtre d'éligibilité de SC-06 |
 | **S1** ✅ | Squelette SC-02 **sans découpage** : endpoint, contrat d'entrée, épinglage, reprise entière ou « à pourvoir » | Livrable et déjà utile seul. Couvre le cas majoritaire — un remplaçant prend la journée. **Livré le 2026-08-11**, précédé de l'extraction de la préparation dataset commune à SC-02 et SC-03 |
 | **S2** ✅ | Découpage aux frontières de disponibilité, recombinaison à la restitution, seuil des 30 minutes sur le bloc confié, contrainte SOFT de cohésion | Le cœur technique (§5). Isolé pour être évalué seul, y compris son effet sur le score. **Livré le 2026-08-11** |
-| **S3** | Surcharge : seuils, alerte, niveaux restitués | Réemploi de `ImpactMesureDTO` ; aucune mesure nouvelle à écrire |
+| **S3** ✅ | Surcharge : seuils, alerte, niveaux restitués | Réemploi de `ImpactMesureDTO` ; aucune mesure nouvelle à écrire. **Livré le 2026-08-11** |
 | **S4** | Restitution complète avant / après + inscription au contrat série 50 (OpenAPI, schémas JSON) | Une seule migration de contrat pour WinDev, à la fin, plutôt que quatre |
 | **S5** | Canal FileAdapter (`scenarioType: SC-02`) | Symétrie avec SC-06 lot S6 : les deux canaux doivent produire le même résultat, vérifié par test |
 

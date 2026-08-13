@@ -1,0 +1,110 @@
+{
+  "requestId": "REQ-SC02-SURCHARGE-001",
+  "metadata": {
+    "clientId": "WINDEV",
+    "timestamp": "2026-05-10T09:00:00",
+    "source": "TEST"
+  },
+  "scenarioType": "SC-02",
+  "planningContext": {
+    "horizon": {
+      "dateDebut": "2026-05-11",
+      "dateFin": "2026-05-17"
+    },
+    "strategieScoring": "ANALYSE_RH"
+  },
+  "scenarioParameters": {
+    "salarieAbsentId": "SAL-MARIE",
+    "surchargeMaxHeuresJour": 8.0,
+    "surchargeMaxHeuresSemaine": 34.0
+  },
+  "dataSet": {
+    "referentiels": {
+      "activites": [
+        {
+          "codeActiviteId": "ACT-SOIN",
+          "libelle": "Soins infirmiers",
+          "compteDansCharge": true,
+          "genereDetteRepos": false,
+          "estServiceCritique": true
+        }
+      ]
+    },
+    "ressources": {
+      "salaries": [
+        {
+          "id": "SAL-MARIE",
+          "statut": "CDI",
+          "contrat": { "heuresHebdomadairesHabituelles": 35.0 },
+          "contraintesReglementaires": { "reposQuotidienMinimum": 11.0 },
+          "travailleJourFerie": true
+        },
+        {
+          "id": "SAL-PAUL",
+          "statut": "CDI",
+          "contrat": { "heuresHebdomadairesHabituelles": 35.0 },
+          "contraintesReglementaires": { "reposQuotidienMinimum": 11.0 },
+          "travailleJourFerie": true
+        }
+      ],
+      "postesVirtuels": []
+    },
+    "creneaux": [
+      {
+        "id": "BESOIN-MARDI-SOIR",
+        "date": "2026-05-12",
+        "heureDebut": "17:00",
+        "heureFin": "21:00",
+        "lieu": "HOPITAL-NORD",
+        "codeActiviteId": "ACT-SOIN",
+        "ressourceAffecteeId": "SAL-MARIE"
+      },
+      {
+        "id": "PLN-PAUL-LUN",
+        "date": "2026-05-11",
+        "heureDebut": "08:00",
+        "heureFin": "16:00",
+        "lieu": "HOPITAL-NORD",
+        "codeActiviteId": "ACT-SOIN",
+        "ressourceAffecteeId": "SAL-PAUL"
+      },
+      {
+        "id": "PLN-PAUL-MAR",
+        "date": "2026-05-12",
+        "heureDebut": "09:00",
+        "heureFin": "16:00",
+        "lieu": "HOPITAL-NORD",
+        "codeActiviteId": "ACT-SOIN",
+        "ressourceAffecteeId": "SAL-PAUL"
+      },
+      {
+        "id": "PLN-PAUL-MER",
+        "date": "2026-05-13",
+        "heureDebut": "08:00",
+        "heureFin": "16:00",
+        "lieu": "HOPITAL-NORD",
+        "codeActiviteId": "ACT-SOIN",
+        "ressourceAffecteeId": "SAL-PAUL"
+      },
+      {
+        "id": "PLN-PAUL-JEU",
+        "date": "2026-05-14",
+        "heureDebut": "08:00",
+        "heureFin": "16:00",
+        "lieu": "HOPITAL-NORD",
+        "codeActiviteId": "ACT-SOIN",
+        "ressourceAffecteeId": "SAL-PAUL"
+      }
+    ],
+    "indisponibilites": {
+      "items": [
+        {
+          "ressourceId": "SAL-MARIE",
+          "dateDebut": "2026-05-12",
+          "dateFin": "2026-05-12",
+          "motif": "ARRET_MALADIE"
+        }
+      ]
+    }
+  }
+}

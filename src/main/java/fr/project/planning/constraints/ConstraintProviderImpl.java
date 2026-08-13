@@ -7,6 +7,7 @@ import fr.project.planning.constraints.metier.CreneauNonAffecte;
 import fr.project.planning.constraints.metier.BlocConfieTropCourt;
 import fr.project.planning.constraints.metier.CohesionCreneauOrigine;
 import fr.project.planning.constraints.metier.IndisponibiliteSalarie;
+import fr.project.planning.constraints.metier.SurchargeAcceptable;
 import fr.project.planning.constraints.metier.JourFerieRefuse;
 import org.optaplanner.core.api.score.stream.Constraint;
 import org.optaplanner.core.api.score.stream.ConstraintFactory;
@@ -95,6 +96,8 @@ public class ConstraintProviderImpl implements ConstraintProvider {
             AffectationPosteVirtuel.affectationPosteVirtuel(factory),
             NuitSalarieNonNuit.nuitSalarieNonNuit(factory),
             CohesionCreneauOrigine.cohesionCreneauOrigine(factory),
+            SurchargeAcceptable.surchargeJournaliere(factory),
+            SurchargeAcceptable.surchargeHebdomadaire(factory),
             PenibilitesLegalesMinutes.penaliser(factory),
             DetteReposSurReposHebdomadaire.penaliser(factory),
 

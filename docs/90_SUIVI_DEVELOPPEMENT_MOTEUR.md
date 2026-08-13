@@ -1487,3 +1487,60 @@ non couverts coûte donc trois fois, là où il coûtait une fois entier. La dir
 sont bien des heures non couvertes — mais l'ampleur dépend du découpage. Sans conséquence
 aujourd'hui : SC-02 est un scénario neuf, aucun score de référence n'est comparé d'une version à
 l'autre. À reconsidérer si le scoring de SC-02 devient un critère de décision.
+
+### SC-02 — lot S3 : ce que le remplacement coûte à celui qui l'assure (2026-08-11)
+
+646 tests, 0 échec (641 avant). **Aucun autre scénario n'est touché** : les deux contraintes
+ajoutées ne se déclenchent qu'en présence d'un `SeuilsSurcharge` au problème, que SC-02 est seul à
+y placer.
+
+#### Deux grandeurs, parce que l'encadrement ne juge pas les deux de la même manière
+
+La surcharge s'exprime **en heures par jour** quand elle porte sur une journée, **en heures par
+semaine** quand la semaine est également touchée. Une longue journée dans une semaine creuse n'est
+pas une semaine chargée faite de journées ordinaires. Les deux seuils sont donc indépendants, et
+chacun a sa contrainte.
+
+Le total mesuré porte sur **tout ce que le salarié travaille** — son planning existant compris — et
+non sur le seul remplacement : c'est bien sa charge du jour que le seuil borne, pas ce qu'on vient
+d'y ajouter.
+
+#### La difficulté était la calibration, pas la mesure
+
+Un seuil de confort doit peser sans interdire. Or ne pas couvrir un créneau coûte **2 000 points
+forfaitaires**. Une pénalité de surcharge à 50 points la minute — le niveau des bornes de confort
+existantes — aurait rendu l'abandon *moins cher* que la couverture dès trois quarts d'heure de
+dépassement : le seuil se serait comporté en interdit, l'inverse exact de l'arbitrage rendu.
+
+Retenu : **5 points la minute**, soit 300 points l'heure. Il faut plus de six heures d'excédent
+pour égaler un créneau laissé à pourvoir. Le seuil départage donc deux remplaçants possibles sans
+jamais dissuader de remplacer. Le jeu d'essai vérifie précisément cela : Paul dépasse les deux
+seuils et reprend le créneau quand même.
+
+#### Le plafond restitué n'est pas celui de SC-06
+
+`ImpactMesureDTO` est réemployé tel quel, mais son champ `plafond` porte ici le **seuil déclaré par
+la demande**, là où SC-06 y met le plafond individuel du salarié. Ce sont deux notions distinctes —
+une borne de confort propre à la situation, une borne réglementaire propre à la personne — et les
+mélanger aurait rendu le chiffre illisible. Les bornes individuelles gardent leurs contraintes et
+leurs lignes au `scoreBreakdown`.
+
+Les mesures sont rendues **même sans seuil déclaré** : elles informent, et le `plafond` vaut alors
+`null`. Une borne absente n'est pas une borne à zéro.
+
+#### « Avant » veut dire : la situation qu'on aurait eue sans remplacement
+
+C'est le planning **épinglé** du salarié, celui que SC-02 n'a pas touché. « Après » est l'état
+résolu. Le delta est donc exactement ce que l'absence a coûté à ce remplaçant, et rien d'autre.
+
+#### Ce que les tests prouvent
+
+Le `scoreBreakdown` est vérifié au point près — 900 pour les trois heures de dépassement
+journalier, 300 pour l'heure hebdomadaire. Sans cela, rien ne prouverait que la contrainte existe :
+la mesure et l'alerte sont produites par la restitution, qui ne consulte pas le solveur. Un test
+qui vérifie la réponse sans vérifier le score ne teste que la moitié du lot.
+
+#### Reste du chantier
+
+S4 (restitution avant / après complète et inscription au contrat série 50, OpenAPI et schémas JSON)
+et S5 (canal FileAdapter). Voir `92_CADRAGE_SCENARIO_SC-02.md` §8.

@@ -58,6 +58,9 @@ public class PlanningService {
                 request.indisponibilites()
         );
         problem.setReposHebdomadaires(request.reposHebdomadaires());
+        if (request.seuilsSurcharge() != null && !request.seuilsSurcharge().estVide()) {
+            problem.setSeuilsSurcharge(java.util.List.of(request.seuilsSurcharge()));
+        }
 
         PlanningProblem solved = solverLauncher.solve(problem);
 

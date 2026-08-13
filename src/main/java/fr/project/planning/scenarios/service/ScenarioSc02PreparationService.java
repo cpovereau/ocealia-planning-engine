@@ -1,6 +1,7 @@
 package fr.project.planning.scenarios.service;
 
 import fr.project.planning.api.PlanningRequest;
+import fr.project.planning.domain.contexte.SeuilsSurcharge;
 import fr.project.planning.domain.creneau.Creneau;
 import fr.project.planning.domain.ressource.Indisponibilite;
 import fr.project.planning.domain.ressource.PosteVirtuel;
@@ -128,9 +129,15 @@ public class ScenarioSc02PreparationService {
                 salarieAbsentId, alertes);
 
         // 5. Le poste virtuel ne s'invite jamais de lui-même.
-        PlanningRequest problemeSoumis = request.getScenarioParameters().estPosteVirtuelAutorise()
+        PlanningRequest apresPostesVirtuels = request.getScenarioParameters().estPosteVirtuelAutorise()
                 ? apresDecoupage
                 : sansPostesVirtuels(apresDecoupage, alertes);
+
+        // 6. [S3] Seuils de surcharge acceptables, propres à cette demande.
+        SeuilsSurcharge seuils = new SeuilsSurcharge(
+                request.getScenarioParameters().getSurchargeMaxHeuresJour(),
+                request.getScenarioParameters().getSurchargeMaxHeuresSemaine());
+        PlanningRequest problemeSoumis = avecLesSeuils(apresPostesVirtuels, seuils);
 
         List<ScenarioAlertDTO> toutesLesAlertes = new ArrayList<>(base.alerts());
         toutesLesAlertes.addAll(alertes.versDto());
@@ -188,6 +195,19 @@ public class ScenarioSc02PreparationService {
                 apres,
                 requete.indisponibilites(),
                 requete.reposHebdomadaires());
+    }
+
+    /** Rattache les seuils de surcharge au problème, sans rien changer d'autre. */
+    private static PlanningRequest avecLesSeuils(PlanningRequest requete, SeuilsSurcharge seuils) {
+        return new PlanningRequest(
+                requete.planningContext(),
+                requete.regulatoryParameters(),
+                requete.referentielComptabiliteActivite(),
+                requete.ressources(),
+                requete.creneaux(),
+                requete.indisponibilites(),
+                requete.reposHebdomadaires(),
+                seuils.estVide() ? null : seuils);
     }
 
     /** Le créneau tombe-t-il, ne serait-ce qu'en partie, dans l'une des absences déclarées ? */

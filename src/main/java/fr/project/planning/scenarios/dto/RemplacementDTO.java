@@ -21,15 +21,20 @@ import java.util.List;
  * @param details                  le sort de chaque morceau restitué, y compris ceux que personne
  *                                 n'a repris. Un créneau couvert en deux fois y apparaît deux fois,
  *                                 chaque entrée portant alors son {@code creneauOrigineId}
+ * @param surchargeParRessource    ce que le remplacement change à la charge de ceux qui l'assurent,
+ *                                 jour par jour (lot S3). Vide quand personne n'a rien repris
  */
 public record RemplacementDTO(
         String salarieAbsentId,
         int creneauxLiberes,
         int creneauxRepris,
         double heuresAPourvoir,
-        List<CreneauRemplaceDTO> details) {
+        List<CreneauRemplaceDTO> details,
+        List<SurchargeDTO> surchargeParRessource) {
 
     public RemplacementDTO {
         details = details == null ? List.of() : List.copyOf(details);
+        surchargeParRessource = surchargeParRessource == null
+                ? List.of() : List.copyOf(surchargeParRessource);
     }
 }

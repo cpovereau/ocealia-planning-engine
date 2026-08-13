@@ -1,6 +1,7 @@
 package fr.project.planning.solution;
 
 import fr.project.planning.domain.contexte.PlanningContext;
+import fr.project.planning.domain.contexte.SeuilsSurcharge;
 import fr.project.planning.domain.creneau.Creneau;
 import fr.project.planning.domain.repos.ReposHebdomadaire;
 import fr.project.planning.domain.ressource.Indisponibilite;
@@ -108,6 +109,16 @@ public class PlanningProblem {
     private List<ReposHebdomadaire> reposHebdomadaires = List.of();
 
     /**
+     * Seuils de surcharge acceptables, propres à la demande (lot S3 de SC-02).
+     *
+     * <p>Collection plutôt que fait unique, pour être <strong>vide</strong> chez les scénarios
+     * qui n'en déclarent pas : la contrainte ne se déclenche alors jamais, sans avoir à tester
+     * un fait nul.</p>
+     */
+    @ProblemFactCollectionProperty
+    private List<SeuilsSurcharge> seuilsSurcharge = List.of();
+
+    /**
      * Créneaux à affecter.
      */
     @PlanningEntityCollectionProperty
@@ -213,6 +224,14 @@ public class PlanningProblem {
 
     public void setReposHebdomadaires(List<ReposHebdomadaire> reposHebdomadaires) {
         this.reposHebdomadaires = reposHebdomadaires != null ? reposHebdomadaires : List.of();
+    }
+
+    public List<SeuilsSurcharge> getSeuilsSurcharge() {
+        return seuilsSurcharge;
+    }
+
+    public void setSeuilsSurcharge(List<SeuilsSurcharge> seuilsSurcharge) {
+        this.seuilsSurcharge = seuilsSurcharge != null ? seuilsSurcharge : List.of();
     }
 
     public HardSoftScore getScore() {

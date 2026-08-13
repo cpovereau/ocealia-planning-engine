@@ -34,6 +34,17 @@ public enum PenaliteKey {
      */
     METIER_SOFT_FRAGMENTATION_CRENEAU_ORIGINE(ScoreBreakdownUnit.OCCURRENCE),
 
+    /**
+     * Lot S3 de SC-02 — charge journalière au-delà du seuil de surcharge déclaré par la demande.
+     *
+     * <p>Borne de <strong>confort</strong>, propre au scénario, à ne pas confondre avec
+     * {@link #LEGAL_HARD_DUREE_MAX_PAR_JOUR} qui est individuelle et réglementaire.</p>
+     */
+    METIER_SOFT_SURCHARGE_JOUR(ScoreBreakdownUnit.MINUTE_PONDEREE),
+
+    /** Lot S3 de SC-02 — charge hebdomadaire au-delà du seuil déclaré par la demande. */
+    METIER_SOFT_SURCHARGE_SEMAINE(ScoreBreakdownUnit.MINUTE_PONDEREE),
+
     // =========================
     // Contraintes légales (SOFT)
     // =========================

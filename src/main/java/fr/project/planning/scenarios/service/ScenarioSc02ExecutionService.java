@@ -17,6 +17,8 @@ import fr.project.planning.scenarios.dto.RemplacementDTO;
 import fr.project.planning.scenarios.dto.Sc02ScenarioRequestDTO;
 import fr.project.planning.scenarios.dto.ScenarioAlertDTO;
 import fr.project.planning.scenarios.dto.ScenarioResponseDTO;
+import fr.project.planning.scenarios.dto.SurchargeDTO;
+import fr.project.planning.scenarios.mapper.Sc02SurchargeFactory;
 import fr.project.planning.scenarios.mapper.ScenarioResponseMapper;
 import fr.project.planning.scenarios.mapper.ScoreBreakdownFactory;
 import org.slf4j.Logger;
@@ -103,18 +105,41 @@ public class ScenarioSc02ExecutionService {
      */
     private static List<ScenarioAlertDTO> alertesCompletes(PreparedSc02Scenario prepared,
                                                            RemplacementDTO remplacement) {
-        if (remplacement.heuresAPourvoir() <= 0) {
-            return prepared.alerts();
+        CollecteurAlertes apresResolution = new CollecteurAlertes("SC-02");
+
+        if (remplacement.heuresAPourvoir() > 0) {
+            apresResolution.signaler(AlertCode.HEURES_RESTANT_A_POURVOIR, AlertSeverity.WARNING,
+                    remplacement.heuresAPourvoir() + " h de l'absence de '"
+                            + prepared.salarieAbsentId() + "' n'ont trouvé aucun salarié : "
+                            + (remplacement.creneauxLiberes() - remplacement.creneauxRepris())
+                            + " créneau(x) sur " + remplacement.creneauxLiberes()
+                            + ". Le détail est dans remplacement.details.");
         }
 
-        CollecteurAlertes apresResolution = new CollecteurAlertes("SC-02");
-        apresResolution.signaler(AlertCode.HEURES_RESTANT_A_POURVOIR, AlertSeverity.WARNING,
-                remplacement.heuresAPourvoir() + " h de l'absence de '"
-                        + prepared.salarieAbsentId() + "' n'ont trouvé aucun salarié : "
-                        + (remplacement.creneauxLiberes() - remplacement.creneauxRepris())
-                        + " créneau(x) sur " + remplacement.creneauxLiberes()
-                        + ". Le détail est dans remplacement.details.");
+        // [S3] Un dépassement de seuil n'interdit rien — il se dit. Le taire reviendrait à
+        //      faire porter à quelqu'un une charge que l'encadrement avait bornée.
+        for (SurchargeDTO surcharge : remplacement.surchargeParRessource()) {
+            if (surcharge.heuresJour().isDepassement()) {
+                apresResolution.signaler(AlertCode.SURCHARGE_ACCEPTABLE_DEPASSEE,
+                        AlertSeverity.WARNING, surcharge.date(),
+                        "'" + surcharge.ressourceId() + "' passe à "
+                                + surcharge.heuresJour().getApres() + " h ce jour-là, au-delà du "
+                                + "seuil de " + surcharge.heuresJour().getPlafond() + " h déclaré "
+                                + "par la demande.");
+            }
+            if (surcharge.heuresSemaine().isDepassement()) {
+                apresResolution.signaler(AlertCode.SURCHARGE_ACCEPTABLE_DEPASSEE,
+                        AlertSeverity.WARNING, surcharge.date(),
+                        "'" + surcharge.ressourceId() + "' passe à "
+                                + surcharge.heuresSemaine().getApres() + " h sur la semaine, "
+                                + "au-delà du seuil de " + surcharge.heuresSemaine().getPlafond()
+                                + " h déclaré par la demande.");
+            }
+        }
 
+        if (apresResolution.estVide()) {
+            return prepared.alerts();
+        }
         List<ScenarioAlertDTO> completes = new ArrayList<>(prepared.alerts());
         completes.addAll(apresResolution.versDto());
         return completes;
@@ -161,7 +186,12 @@ public class ScenarioSc02ExecutionService {
                 prepared.creneauxLiberes().size(),
                 besoinsCouvertsEnEntier.size(),
                 enHeures(minutesAPourvoir),
-                details);
+                details,
+                Sc02SurchargeFactory.build(
+                        creneauxResolus,
+                        prepared.creneauxLiberes(),
+                        prepared.planningRequest().seuilsSurcharge(),
+                        prepared.planningRequest().referentielComptabiliteActivite()));
     }
 
     private static NatureCouverture natureDe(Ressource ressource) {
