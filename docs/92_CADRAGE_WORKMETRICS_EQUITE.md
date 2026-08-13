@@ -203,6 +203,27 @@ favoriserait mécaniquement un rappel sur repos — l'inverse du critère 1 et d
 Le critère porte donc sur l'**amplitude après affectation**, et ne départage que des personnes
 **déjà en poste ce jour-là**.
 
+### 4.8 Tranché — l'équité ne déplace aucune borne, et l'annualisation n'en exempte pas
+
+> **`contraintesReglementaires.heuresMaximumParSemaine` borne la semaine — annualisation ou pas.**
+> C'est le cadre général, et il ne relève pas de ce chantier.
+
+La frontière est nette, et il faut la tenir :
+
+| | Cadre général | Équité |
+|---|---|---|
+| Question | jusqu'où a-t-on le droit d'aller ? | qui a été le plus sollicité ? |
+| Référence | `contraintesReglementaires` — **prescriptif** | `contrat.heuresHebdomadairesHabituelles` — **descriptif** |
+| Nature | borne, opposable | comparaison, informative |
+| Statut | **livré**, inchangé par ce chantier | à écrire |
+
+**Vérifié à la date de ce cadrage** : `estAnnualise` n'est lu par **aucune contrainte**. Aucun
+salarié n'échappe donc au plafond hebdomadaire, ce qui est le comportement voulu. C'est écrit ici
+pour qu'une future prise en compte de l'annualisation ne se traduise pas par une exemption : elle
+n'en est pas une.
+
+Ce que l'annualisation change relève uniquement de la **référence de comparaison** — voir §9.2.
+
 ---
 
 ## 5. Ce que les arbitrages imposent au modèle
@@ -228,6 +249,10 @@ L'invariant du projet vaut ici plus qu'ailleurs : la métrique **décrit** une r
 statue pas qu'elle est mauvaise. La pénalisation est une contrainte **SOFT** distincte, livrée
 séparément (L5) — au même titre que le seuil de surcharge de SC-02, et pour la même raison :
 l'encadrement dit à partir de quand un écart gêne.
+
+Et **aucune borne du cadre général ne bouge** (§4.8). Un écart d'équité favorable n'autorise
+jamais à dépasser un plafond réglementaire ; l'inverse non plus — un salarié au plafond n'est pas
+« servi », il est empêché.
 
 ---
 
@@ -291,15 +316,23 @@ Ordonné par dépendance. Chaque lot est livrable seul et testable seul.
 J-7 / J+7 a été donné **comme exemple**, pas comme règle. À fixer avec WinDev, et probablement à
 exprimer comme un minimum plutôt qu'une valeur.
 
-### 9.2 L'annualisation
+### 9.2 L'annualisation — la période d'agrégation, et elle seule
 
-`estAnnualise` est au contrat. Pour un salarié annualisé, un dépassement **hebdomadaire** en % ne
-veut pas dire grand-chose, et l'appliquer tel quel le pénaliserait à tort. La mesure de
-remplacement suppose une référence annuelle que le moteur ne reçoit pas aujourd'hui.
+Le plafond légal, lui, est tranché : il s'applique sans exception (§4.8). Ce qui reste ouvert est
+plus étroit.
 
-**Décision par défaut, sauf avis contraire** : l'écart au contrat est calculé pour tous, et les
-salariés annualisés sont **signalés** dans la restitution plutôt que jugés différemment. Le moteur
-rend visible ce qu'il ne sait pas trancher.
+Pour un salarié annualisé, `heuresHebdomadairesHabituelles` décrit une **moyenne**, pas une cible
+hebdomadaire. Une semaine au-dessus n'est pas une anomalie — c'est l'objet même de
+l'annualisation. Lire un écart hebdomadaire comme une inéquité le pénaliserait pour avoir travaillé
+comme son contrat le prévoit.
+
+**Décision par défaut, sauf avis contraire** : la mesure ne change pas, seule sa **période
+d'agrégation** change. L'écart au contrat d'un salarié annualisé se lit sur **toute la fenêtre
+transmise** (§4.3), jamais semaine par semaine. Une fenêtre trop courte ne permet pas de le juger,
+et le moteur doit alors le **signaler** plutôt que de produire un chiffre qui ne veut rien dire.
+
+Reste hors de portée : une vraie référence annuelle, que le moteur ne reçoit pas et qui relève du
+même manque que l'historique de SC-04.
 
 ### 9.3 Le volontariat
 
