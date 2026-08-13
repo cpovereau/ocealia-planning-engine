@@ -143,6 +143,17 @@ public enum PenaliteKey {
      */
     METIER_HARD_REPOS_DOMINICAL(ScoreBreakdownUnit.OCCURRENCE),
 
+    /**
+     * [SC-05 A0] Créneau remis en jeu par un arbitrage, confié hors des ressources autorisées.
+     *
+     * <p>Une occurrence par créneau. Le créneau garde toujours une issue — rester à pourvoir — de
+     * sorte que cette contrainte HARD ne rend jamais le problème insoluble.</p>
+     *
+     * <p>Inactive tant qu'aucun périmètre d'arbitrage n'est transmis, ce qui est le cas de tous les
+     * scénarios livrés à ce jour.</p>
+     */
+    METIER_HARD_RESSOURCE_NON_AUTORISEE(ScoreBreakdownUnit.OCCURRENCE),
+
     // =========================
     // Contraintes légales (HARD)
     // =========================

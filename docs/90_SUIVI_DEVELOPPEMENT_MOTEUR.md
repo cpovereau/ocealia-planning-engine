@@ -816,11 +816,11 @@ Ordonné par **dépendance**, pas par valeur métier. Les rangs renvoient au bac
 2. **Rang 8** — trancher les champs sans effet. Indépendant du reste, et il retire du contrat des
    promesses que personne ne tient. SC-02 en a rendu un plus visible : `capaciteCible` ne borne pas
    le volume qu'on gare sur un poste virtuel.
-3. **SC-05, lots A0 à A4** — le chantier équité est clos (L0 à L5 livrés), et SC-05 est cadré,
-   arbitré, actionnable : `92_CADRAGE_SCENARIO_SC-05.md` §8. Commencer par **A0**, la contrainte
-   HARD, qui ne dépend d'aucun scénario et se teste seule. Ce qui manque par ailleurs n'est plus un
-   outil mais **des plannings réels** à donner au harnais de calibration —
-   `92_CALIBRATION_PENIBILITE.md` §2.
+3. **SC-05, lots A1 à A4** — le chantier équité est clos (L0 à L5 livrés) et **A0 est livré le
+   2026-08-14** : la contrainte HARD borne l'affectation à un ensemble de ressources autorisées.
+   Suite : **A1**, le squelette, décalque de SC-02 S1 — `92_CADRAGE_SCENARIO_SC-05.md` §8. Ce qui
+   manque par ailleurs n'est plus un outil mais **des plannings réels** à donner au harnais de
+   calibration — `92_CALIBRATION_PENIBILITE.md` §2.
 4. **Rang 13** — garder le schéma d'entrée comme le schéma de sortie l'est. Correctif pur, sans
    arbitrage.
 5. **Rang 10** — dès que la Production a rendu ses arbitrages.
@@ -1706,6 +1706,60 @@ SC-06, et mérite son propre lot.
 
 Les **quatre scénarios exposés voyagent maintenant par les deux canaux**. Le document d'échange
 fichier n'en connaissait que deux — SC-06 n'y avait jamais été inscrit à son lot S6 ; c'est réparé.
+
+### SC-05 — lot A0 : la brique qui manquait, bornée à un ensemble (2026-08-14)
+
+752 tests, 0 échec (+11). Le moteur sait enfin dire **« ce créneau ne peut revenir qu'à ces
+personnes-là »**. C'était la seule brique manquante du cadrage §4 : le domaine de la variable de
+décision est global, toute ressource du dataset est candidate pour tout créneau, et rien ne
+permettait de le restreindre.
+
+Deux classes, une clé, un enregistrement : `PerimetreArbitre` (fait d'entrée) et
+`AffectationHorsRessourcesAutorisees` (contrainte HARD). Le fait suit `SeuilsSurcharge` — collection
+**vide** partout ailleurs, donc contrainte inerte pour les quatre scénarios livrés, sans avoir à
+tester un fait nul.
+
+#### Un ensemble, et le test qui l'atteste
+
+L'arbitrage sur N (§5.5) interdisait d'écrire la contrainte sur un couple. Elle ne sait pas combien
+de ressources sont autorisées : elle demande `perimetre.autorise(id)`. Un test lui donne un ensemble
+de **trois** et vérifie qu'il se comporte exactement comme un ensemble de deux — c'est ce qui
+empêchera un `if (deux)` de s'y glisser plus tard.
+
+#### Trois pièges, dont deux auraient été silencieux
+
+**La jointure porte sur le besoin, pas sur le créneau.** L'appelant désigne le périmètre avec les
+identifiants qu'il a transmis. Si la préparation découpe un créneau — ce que SC-02 S2 fait déjà —
+les segments reçoivent des identifiants fabriqués et gardent celui de leur origine
+(`getIdBesoin()`). Joindre sur `getId()` ferait échapper **tous** les segments à l'arbitrage,
+c'est-à-dire ne borner plus rien, sans qu'aucun point HARD ne le signale. Vérifié par mutation : le
+test tombe.
+
+**Le reste du planning reste libre.** SC-05 exige le planning complet de la période, sans quoi les
+bornes hebdomadaires sont invérifiables (§6). Borner au-delà du périmètre rendrait donc fautif tout
+ce que l'appelant est obligé de transmettre.
+
+**L'épinglé n'est pas jugé — et c'est ce qui rend l'arbitrage §5.2 tenable.** Le créneau du
+périmètre tenu par un tiers sera épinglé et signalé au lot A1. Si la contrainte le jugeait, ce
+serait un point HARD que le solveur ne peut pas défaire : « épingler et signaler » deviendrait
+« épingler et rendre insoluble ». **A0 avant A1 n'était pas un ordre arbitraire.**
+
+#### Le problème reste soluble
+
+Comme `BlocConfieTropCourt` et `ReposDominicalInviolable`, la contrainte ne juge que les
+affectations à un **salarié réel**. Rester à pourvoir ou passer sur un poste virtuel demeure
+possible — l'invariant du moteur, *il ne refuse pas, il rend visible l'impossible*.
+
+`PerimetreArbitre` refuse en revanche à la construction un périmètre sans créneau ou sans personne :
+un ensemble autorisé vide interdirait à quiconque de tenir les créneaux, et l'appelant lirait le
+résultat comme une impossibilité métier au lieu d'une demande mal formée. Même traitement que la
+tolérance négative du lot L5.
+
+#### Reste du chantier
+
+A1 (endpoint, préparation, périmètre, alerte du tiers), A2 (bloc `arbitrage`), A3 (inéquité
+résiduelle et moins mauvaise répartition), A4 (contrat série 50 + FileAdapter).
+`92_CADRAGE_SCENARIO_SC-05.md` §8.
 
 ### Équité — lot L6 : SC-05 est cadré, et il s'arrête là où le métier doit trancher (2026-08-13)
 

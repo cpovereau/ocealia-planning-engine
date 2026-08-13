@@ -2,7 +2,7 @@
 
 > **Statut** : cadrage d'analyse, 2026-08-13, produit au lot **L6** du chantier équité.
 > Les arbitrages de la §5 sont **tranchés** (métier, 2026-08-13). Le découpage de la §8 est
-> **actionnable**.
+> **actionnable**, et le lot **A0 est livré** (2026-08-14).
 >
 > Ce document ne modifie ni `50_SCENARIO_CONTRACT.md`, ni le code : l'inscription de SC-05 au
 > contrat fonctionnel est portée par le lot **A4**.
@@ -68,9 +68,9 @@ celle que les paliers de SC-06 classeraient en dernier.
 
 ---
 
-## 4. Ce que SC-05 exige du moteur, et qui n'existe pas
+## 4. Ce que SC-05 exige du moteur — ✅ livré au lot A0 (2026-08-14)
 
-Une seule brique manque, et elle est structurante.
+Une seule brique manquait, et elle était structurante.
 
 > **Restreindre l'affectation d'un créneau à deux ressources désignées.**
 
@@ -93,6 +93,23 @@ la seule forme sûre.**
 ⚠️ **Elle porte sur un ensemble de ressources autorisées, pas sur un couple** (§5.5) : à deux,
 l'ensemble a deux éléments. C'est ce qui fera de l'ouverture à N un élargissement du contrat et non
 une réécriture du moteur.
+
+### 4.1 Ce que le lot A0 a livré
+
+`PerimetreArbitre` — fait d'entrée portant les créneaux remis en jeu et l'ensemble des ressources
+autorisées — et `AffectationHorsRessourcesAutorisees`, contrainte HARD. Collection **vide** partout
+ailleurs, donc contrainte inerte pour les quatre scénarios livrés.
+
+Trois règles fixées par le lot, qui commandent la suite :
+
+| Règle | Pourquoi |
+|---|---|
+| Seul un **salarié réel** est jugé | rester à pourvoir ou passer sur un poste virtuel demeure possible : le problème reste soluble |
+| Un créneau **épinglé** n'est pas jugé | c'est ce qui rend l'arbitrage §5.2 tenable — sinon « épingler et signaler » deviendrait « épingler et rendre insoluble » |
+| La jointure porte sur le **besoin**, pas sur le créneau | un créneau découpé garde l'identifiant de son origine ; joindre sur celui du créneau ferait échapper tous les segments, en silence |
+
+⚠️ **Pour le lot A1** : le périmètre se transmet donc en identifiants du `dataSet`, et le découpage
+éventuel n'a pas à s'en soucier.
 
 ---
 
@@ -233,7 +250,7 @@ Ordonné par dépendance. **Actionnable** depuis les arbitrages du 2026-08-13.
 
 | Lot | Objet | Pourquoi à ce rang |
 |---|---|---|
-| **A0** | Contrainte HARD « affectation bornée aux ressources autorisées » | La brique manquante (§4). Testable seule, sans scénario. Écrite sur un **ensemble**, pas sur un couple (§5.5) |
+| ~~**A0**~~ | ~~Contrainte HARD « affectation bornée aux ressources autorisées »~~ | ✅ **Livré le 2026-08-14** — `PerimetreArbitre` (fait) + `AffectationHorsRessourcesAutorisees` (HARD), écrits sur un **ensemble** (§5.5). Inerte tant qu'aucun périmètre n'est transmis |
 | **A1** | Endpoint, préparation, périmètre épinglé / libéré, alerte du créneau tenu par un tiers (§5.2) | Le squelette. Décalque de SC-02 S1 |
 | **A2** | Bloc `arbitrage` — avant / après par salarié | La réponse à « qu'est-ce qui a bougé » |
 | **A3** | Alerte d'inéquité résiduelle, et restitution de la moins mauvaise répartition (§5.6) | Ce que la tolérance ne parvient pas à résorber |

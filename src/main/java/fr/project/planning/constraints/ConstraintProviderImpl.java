@@ -2,6 +2,7 @@ package fr.project.planning.constraints;
 
 import fr.project.planning.constraints.legales.DureeMaximaleLegaleParSalarie;
 import fr.project.planning.constraints.physiques.LimitePhysique;
+import fr.project.planning.constraints.metier.AffectationHorsRessourcesAutorisees;
 import fr.project.planning.constraints.metier.AffectationPosteVirtuel;
 import fr.project.planning.constraints.metier.CreneauNonAffecte;
 import fr.project.planning.constraints.metier.EquiteChargeAuContrat;
@@ -90,6 +91,10 @@ public class ConstraintProviderImpl implements ConstraintProvider {
             IndisponibiliteSalarie.indisponibiliteSalarie(factory),
             BlocConfieTropCourt.blocConfieTropCourt(factory),
             ReposDominicalInviolable.reposDominicalInviolable(factory),
+
+            // [SC-05 A0] Borne l'affectation d'un créneau arbitré aux ressources autorisées.
+            // Inactive tant qu'aucun périmètre d'arbitrage n'est transmis.
+            AffectationHorsRessourcesAutorisees.affectationHorsRessourcesAutorisees(factory),
 
             /* =========================
                Contraintes métier (SOFT)

@@ -1,5 +1,6 @@
 package fr.project.planning.solution;
 
+import fr.project.planning.domain.contexte.PerimetreArbitre;
 import fr.project.planning.domain.contexte.PlanningContext;
 import fr.project.planning.domain.contexte.SeuilsSurcharge;
 import fr.project.planning.domain.creneau.Creneau;
@@ -119,6 +120,18 @@ public class PlanningProblem {
     private List<SeuilsSurcharge> seuilsSurcharge = List.of();
 
     /**
+     * Périmètres remis en jeu par un arbitrage, et ressources entre lesquelles arbitrer (lot A0
+     * de SC-05).
+     *
+     * <p>Collection, et pour la même raison que {@link #seuilsSurcharge} : <strong>vide</strong>
+     * chez tous les scénarios qui ne demandent aucun arbitrage, la contrainte
+     * {@code AffectationHorsRessourcesAutorisees} ne se déclenche alors jamais, sans avoir à tester
+     * un fait nul.</p>
+     */
+    @ProblemFactCollectionProperty
+    private List<PerimetreArbitre> perimetresArbitres = List.of();
+
+    /**
      * Créneaux à affecter.
      */
     @PlanningEntityCollectionProperty
@@ -232,6 +245,14 @@ public class PlanningProblem {
 
     public void setSeuilsSurcharge(List<SeuilsSurcharge> seuilsSurcharge) {
         this.seuilsSurcharge = seuilsSurcharge != null ? seuilsSurcharge : List.of();
+    }
+
+    public List<PerimetreArbitre> getPerimetresArbitres() {
+        return perimetresArbitres;
+    }
+
+    public void setPerimetresArbitres(List<PerimetreArbitre> perimetresArbitres) {
+        this.perimetresArbitres = perimetresArbitres != null ? perimetresArbitres : List.of();
     }
 
     public HardSoftScore getScore() {
