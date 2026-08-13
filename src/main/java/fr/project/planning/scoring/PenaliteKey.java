@@ -104,6 +104,16 @@ public enum PenaliteKey {
      */
     METIER_HARD_BLOC_CONFIE_TROP_COURT(ScoreBreakdownUnit.OCCURRENCE),
 
+    /**
+     * [Équité L0] Travail confié à un salarié le jour de son repos hebdomadaire dominical.
+     *
+     * <p>Interdiction, et non pondération : la loi impose un délai de prévenance rarement
+     * compatible avec une réorganisation d'urgence. Ne juge que les décisions du solveur —
+     * l'existant épinglé est signalé, pas pesé. Le RH ordinaire reste SOFT, sous
+     * {@link #METIER_SOFT_DETTE_REPOS_SUR_REPOS_HEBDOMADAIRE}.</p>
+     */
+    METIER_HARD_REPOS_DOMINICAL(ScoreBreakdownUnit.OCCURRENCE),
+
     // =========================
     // Contraintes légales (HARD)
     // =========================

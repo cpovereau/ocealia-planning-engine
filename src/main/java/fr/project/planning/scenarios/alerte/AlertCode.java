@@ -121,5 +121,19 @@ public enum AlertCode {
      * <p>Signalée, jamais éliminatoire : une borne de confort n'est pas une borne de légalité. Le
      * moteur pèse le dépassement dans le score et le dit ; l'arbitrage reste à l'encadrement.</p>
      */
-    SURCHARGE_ACCEPTABLE_DEPASSEE
+    SURCHARGE_ACCEPTABLE_DEPASSEE,
+
+    /**
+     * Le planning transmis fait déjà travailler un salarié le jour de son repos dominical
+     * (lot L0 du chantier équité).
+     *
+     * <p>Le moteur <strong>interdit</strong> de créer cette situation, mais il n'a pas défait
+     * celle-ci : le créneau est épinglé, c'est un fait d'entrée. Le pénaliser rendrait le problème
+     * insoluble pour une faute que le solveur n'a pas commise.</p>
+     *
+     * <p>Il ne la tait pas pour autant. L'appelant doit savoir que sa demande contient ce que le
+     * moteur refuserait de produire — sans quoi il lirait un score parfait sur un planning qui ne
+     * l'est pas.</p>
+     */
+    REPOS_DOMINICAL_TRAVAILLE
 }

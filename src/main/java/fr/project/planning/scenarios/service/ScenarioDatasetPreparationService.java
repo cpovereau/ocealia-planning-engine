@@ -12,6 +12,7 @@ import fr.project.planning.domain.contexte.ObjectifResolution;
 import fr.project.planning.domain.contexte.PlanningContext;
 import fr.project.planning.domain.contexte.ResolutionType;
 import fr.project.planning.domain.creneau.Creneau;
+import fr.project.planning.domain.creneau.QualificationJour;
 import fr.project.planning.domain.metier.ReferentielComptabiliteActivite;
 import fr.project.planning.domain.reglementaire.CalendrierJoursFeries;
 import fr.project.planning.domain.reglementaire.RegulatoryParameters;
@@ -38,6 +39,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -327,6 +329,10 @@ public class ScenarioDatasetPreparationService {
         ReposPrepares repos = preparerRepos(scenario, marqueursRepos, referentiel, ressources,
                 planningContext.getHorizonTemporel(), creneauxSignales);
 
+        // 7 ter. [Équité L0] Ce que le planning transmis contient déjà et que le moteur
+        //        refuserait de produire.
+        signalerReposDominicalDejaTravaille(creneaux, repos.calendrier(), alertes);
+
         // 8. Planning Request
         PlanningRequest planningRequest = new PlanningRequest(
                 planningContext,
@@ -468,6 +474,49 @@ public class ScenarioDatasetPreparationService {
                 + "calendrier pour {} salarié(s)", marqueurs.size(), calendrier.size(), salarieIds.size());
 
         return new ReposPrepares(marqueurs, calendrier);
+    }
+
+    /**
+     * Signale le travail déjà posé sur un repos dominical par le planning transmis (équité L0).
+     *
+     * <p>Seuls les créneaux <strong>épinglés</strong> sont concernés : ce sont les seuls que le
+     * solveur ne peut pas défaire, et donc les seuls dont la violation ne lui est pas imputable.
+     * {@code ReposDominicalInviolable} interdit de <em>créer</em> la situation ; cette alerte dit
+     * qu'elle <em>existe déjà</em>.</p>
+     *
+     * <p>Sans objet pour les scénarios qui n'épinglent rien — SC-01 et SC-03 n'ont pas de planning
+     * existant à préserver, donc rien à constater.</p>
+     */
+    private static void signalerReposDominicalDejaTravaille(List<Creneau> creneaux,
+                                                            List<ReposHebdomadaire> calendrier,
+                                                            CollecteurAlertes alertes) {
+        Set<String> dominicaux = new LinkedHashSet<>();
+        for (ReposHebdomadaire repos : calendrier) {
+            // Déclaré seulement — le repli fait de tout dimanche un RHD, et signaler chaque
+            // dimanche travaillé du planning transmis noierait le constat sous le bruit.
+            if (repos.getNature() == QualificationJour.RHD && repos.estDeclare()) {
+                dominicaux.add(repos.getSalarieId() + "@" + repos.getDate());
+            }
+        }
+        if (dominicaux.isEmpty()) {
+            return;
+        }
+
+        for (Creneau creneau : creneaux) {
+            if (!creneau.isFige()
+                    || !(creneau.getRessourceAffectee() instanceof SalarieReel salarie)
+                    || Boolean.TRUE.equals(creneau.getEstSegmentDePause())) {
+                continue;
+            }
+            if (dominicaux.contains(salarie.getId() + "@" + creneau.getDate())) {
+                alertes.signaler(AlertCode.REPOS_DOMINICAL_TRAVAILLE, AlertSeverity.WARNING,
+                        creneau.getDate(),
+                        "Le planning transmis fait travailler '" + salarie.getId() + "' le jour de "
+                                + "son repos dominical (créneau '" + creneau.getId() + "'). Le "
+                                + "moteur n'a pas défait cet existant — il est épinglé — mais il "
+                                + "refuse d'en créer de semblable.");
+            }
+        }
     }
 
     /**

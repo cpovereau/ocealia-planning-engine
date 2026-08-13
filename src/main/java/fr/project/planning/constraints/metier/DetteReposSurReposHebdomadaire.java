@@ -2,6 +2,7 @@ package fr.project.planning.constraints.metier;
 
 import fr.project.planning.domain.contexte.PlanningContext;
 import fr.project.planning.domain.creneau.Creneau;
+import fr.project.planning.domain.creneau.QualificationJour;
 import fr.project.planning.domain.metier.ComptabiliteActivite;
 import fr.project.planning.domain.metier.ReferentielComptabiliteActivite;
 import fr.project.planning.domain.repos.ReposHebdomadaire;
@@ -35,6 +36,15 @@ import org.optaplanner.core.api.score.stream.Joiners;
  * <p>Le calendrier est construit à la préparation, à partir des créneaux porteurs du code
  * activité de repos déclaré par l'appelant, complétés semaine par semaine par le repli
  * samedi/dimanche. Voir {@code domain/repos/CalendrierReposHebdomadaire}.</p>
+ *
+ * <h3>[Équité L0] Elle ne juge plus que le RH</h3>
+ * <p>Elle traitait indifféremment le repos hebdomadaire ordinaire et le <strong>repos
+ * dominical</strong>, alors que le fait porte la distinction. Le RHD relève désormais d'une
+ * interdiction — {@link ReposDominicalInviolable}, HARD — et il est retiré d'ici : le même fait
+ * n'a pas à être compté deux fois, et une pénalité SOFT sur ce qui est déjà interdit ne dirait
+ * rien de plus.</p>
+ *
+ * <p>Le partage se lit en une ligne : <strong>RHD interdit, RH pesé.</strong></p>
  */
 public class DetteReposSurReposHebdomadaire {
 
@@ -73,7 +83,12 @@ public class DetteReposSurReposHebdomadaire {
                         ReposHebdomadaire::getDate),
                 Joiners.equal((creneau, context, referentiel) ->
                                 creneau.getRessourceAffectee().getId(),
-                        ReposHebdomadaire::getSalarieId)
+                        ReposHebdomadaire::getSalarieId),
+                // [Équité L0] Un RHD DÉCLARÉ est interdit par ReposDominicalInviolable, donc pas
+                // pesé ici. Un dimanche seulement déduit du repli n'est pas interdit : il reste
+                // sous cette pénalité, seule règle qui le juge.
+                Joiners.filtering((creneau, context, referentiel, repos) ->
+                        repos.getNature() == QualificationJour.RH || !repos.estDeclare())
             )
 
             // 5) Pénalité SOFT

@@ -29,6 +29,7 @@ import fr.project.planning.constraints.legales.ReposQuotidienMinimum;
 
 import fr.project.planning.constraints.metier.DetteReposSurReposHebdomadaire;
 import fr.project.planning.constraints.metier.NuitSalarieNonNuit;
+import fr.project.planning.constraints.metier.ReposDominicalInviolable;
 
 /**
  * ConstraintProviderImpl
@@ -87,6 +88,7 @@ public class ConstraintProviderImpl implements ConstraintProvider {
             JourFerieRefuse.jourFerieRefuse(factory),
             IndisponibiliteSalarie.indisponibiliteSalarie(factory),
             BlocConfieTropCourt.blocConfieTropCourt(factory),
+            ReposDominicalInviolable.reposDominicalInviolable(factory),
 
             /* =========================
                Contraintes métier (SOFT)

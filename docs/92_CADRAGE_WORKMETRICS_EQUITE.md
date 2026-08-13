@@ -305,8 +305,6 @@ Ordonné par dépendance. Chaque lot est livrable seul et testable seul.
 | **L5** | Contrainte SOFT d'équité | Pèse l'écart au score. Séparé de L2 pour être évalué seul |
 | **L6** | SC-05 — arbitrage entre deux salariés | Le scénario que tout ceci débloque |
 
-**L0 est immédiatement actionnable** : aucun arbitrage en attente, aucune dépendance.
-
 ---
 
 ## 9. Points ouverts
