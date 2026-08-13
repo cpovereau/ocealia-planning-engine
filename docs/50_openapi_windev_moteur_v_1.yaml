@@ -25,6 +25,26 @@ info:
     Ce qu'ils font du dataset les sépare : SC-03 décide de tout, **SC-02 épingle l'existant** et ne
     décide que des créneaux de l'absent, SC-06 épingle tout et ne fait que classer.
 
+    ## Un champ inconnu est refusé (rang 11)
+
+    Le contrat d'entrée **refuse tout champ qu'il ne connaît pas**, sur les deux canaux — HTTP et
+    FileAdapter. La réponse porte `UNKNOWN_FIELD`, le **chemin JSON complet** du champ fautif et la
+    liste des noms acceptés à cet endroit.
+
+    Cette règle était annoncée depuis longtemps sans être appliquée : retirer un
+    `@JsonIgnoreProperties` d'un DTO ne rend rien strict, Spring Boot désactivant
+    `FAIL_ON_UNKNOWN_PROPERTIES`. Un appelant en avance sur le moteur recevait donc un `200` et
+    repartait convaincu d'avoir été entendu.
+
+    **Deux exceptions, nommées et volontaires :**
+
+    - les quatre champs de créneau marqués obsolètes — `priorite`, `type`, `isReposHebdo`,
+      `axesOrganisationnels` — restent **acceptés et ignorés** le temps de la migration. Ce ne sont
+      pas des inconnus, ce sont des retraités déclarés ; le jour où le contrat les retire vraiment,
+      ils basculent en refus ;
+    - quelques blocs restent délibérément tolérants — l'enveloppe de requête, `dataSet`, les
+      salariés, les postes virtuels et les paramètres SC-03. Ils ne prétendent pas le contraire.
+
     ## Champs obligatoires de traçabilité (depuis Phase 4.1)
 
     Toute requête doit inclure `requestId` (String non vide) et `metadata`
@@ -311,7 +331,7 @@ paths:
 
             À ne pas confondre avec les 400 : `salarieAbsentId` manquant est rejeté par la
             validation (`INVALID_REQUEST`), et un paramètre inconnu dans `scenarioParameters` —
-            bloc **strict** — par la désérialisation (`MALFORMED_JSON`).
+            bloc **strict** — par la désérialisation (`UNKNOWN_FIELD`).
           content:
             application/json:
               schema:
@@ -505,8 +525,10 @@ components:
   responses:
     BadRequest:
       description: |
-        Requête invalide — structure, typage ou champ obligatoire manquant.
-        Codes possibles : `INVALID_REQUEST` (Bean Validation), `MALFORMED_JSON` (JSON non parseable).
+        Requête invalide — structure, typage, champ obligatoire manquant ou champ inconnu.
+
+        Codes possibles : `INVALID_REQUEST` (Bean Validation), `UNKNOWN_FIELD` (champ absent du
+        contrat), `MALFORMED_JSON` (JSON non parseable).
       content:
         application/json:
           schema:
@@ -523,6 +545,19 @@ components:
                       message: requestId est obligatoire
                     - field: metadata.clientId
                       message: metadata.clientId est obligatoire
+            unknownField:
+              summary: Champ absent du contrat d'entrée
+              value:
+                error:
+                  code: UNKNOWN_FIELD
+                  message: "Champ inconnu du contrat d'entrée : 'dataSet.creneaux[1].couleur'"
+                  details:
+                    - field: dataSet.creneaux[1].couleur
+                      message: >-
+                        Champ non reconnu. Champs acceptés à ce niveau : activite, blocJourId,
+                        codeActiviteId, date, estSegmentDePause, groupeBesoinId, heureDebut,
+                        heureFin, id, isJourFerie, lieu, ordreDansBloc, posteComptable,
+                        ressourceAffecteeId, segmentNuit
             malformedJson:
               summary: JSON non parseable
               value:
@@ -1354,16 +1389,12 @@ components:
       description: |
         Paramètres du scénario SC-02. Correspond à `Sc02ScenarioParametersDTO`.
 
-        **Bloc strict** : tout champ inconnu est rejeté — `400 MALFORMED_JSON`, avec un message
-        nommant le paramètre en cause — jamais ignoré en silence. Un paramètre transporté que
-        personne n'exploite est pire qu'un paramètre absent : l'appelant le renseigne et croit
-        l'avoir dit. Ce bloc n'expose donc que ce que le moteur honore aujourd'hui ; les paramètres
-        prévus au cadrage (`remplacantsAutorises`, `decoupageAutorise`) arriveront avec les lots qui
-        les mettent en œuvre, et sont refusés d'ici là.
-
-        ⚠️ **Ce bloc est le seul du contrat à être réellement strict.** Ailleurs, un champ inconnu
-        est encore silencieusement ignoré — l'alignement est un chantier ouvert, voir
-        `90_SUIVI_DEVELOPPEMENT_MOTEUR.md`.
+        **Bloc strict** : tout champ inconnu est rejeté — `400 UNKNOWN_FIELD`, avec le chemin du
+        paramètre en cause — jamais ignoré en silence. Un paramètre transporté que personne
+        n'exploite est pire qu'un paramètre absent : l'appelant le renseigne et croit l'avoir dit.
+        Ce bloc n'expose donc que ce que le moteur honore aujourd'hui ; les paramètres prévus au
+        cadrage (`remplacantsAutorises`, `decoupageAutorise`) arriveront avec les lots qui les
+        mettent en œuvre, et sont **refusés d'ici là**.
       properties:
         salarieAbsentId:
           type: string
@@ -2423,8 +2454,13 @@ components:
           type: string
           description: |
             Code machine de l'erreur.
-            Valeurs V1 : INVALID_REQUEST (400), MALFORMED_JSON (400),
+            Valeurs V1 : INVALID_REQUEST (400), UNKNOWN_FIELD (400), MALFORMED_JSON (400),
             BUSINESS_ERROR (422), INTERNAL_ERROR (500).
+
+            `UNKNOWN_FIELD` distingue un champ absent du contrat d'un JSON mal formé : la syntaxe
+            est parfaite, c'est le contrat qui ne connaît pas ce nom. `details[0].field` porte le
+            **chemin JSON complet** — `dataSet.creneaux[1].couleur` — et son `message` la liste des
+            noms acceptés à cet endroit.
         message:
           type: string
         details:

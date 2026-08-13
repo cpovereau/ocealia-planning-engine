@@ -340,14 +340,10 @@ décision de moteur.
 
 #### Paramètres spécifiques
 
-Le bloc `scenarioParameters` est **strict** : un champ inconnu produit une erreur explicite qui le
-nomme, jamais un silence. Il n'expose que ce que le moteur honore — un paramètre que personne ne
-lit est pire qu'un paramètre absent, puisque l'appelant le renseigne et croit l'avoir dit.
-
-> ⚠️ **C'est le seul bloc du contrat à l'être réellement.** Ailleurs, un champ inconnu est encore
-> ignoré en silence : l'absence de `@JsonIgnoreProperties` ne suffit pas, Spring Boot désactivant
-> `FAIL_ON_UNKNOWN_PROPERTIES`. Constaté et corrigé pour SC-02 au lot S5 ; l'alignement des autres
-> blocs est inscrit au backlog de `90_SUIVI_DEVELOPPEMENT_MOTEUR.md`.
+Le bloc `scenarioParameters` est **strict** : un champ inconnu produit une erreur `UNKNOWN_FIELD`
+qui donne son chemin, jamais un silence. Il n'expose que ce que le moteur honore — un paramètre que
+personne ne lit est pire qu'un paramètre absent, puisque l'appelant le renseigne et croit l'avoir
+dit. C'est la règle générale du contrat d'entrée, voir `50_SCENARIO_TECHNICAL_CONTRACT.md` §3.
 
 | Champ | Obligatoire | Rôle |
 |---|:---:|---|

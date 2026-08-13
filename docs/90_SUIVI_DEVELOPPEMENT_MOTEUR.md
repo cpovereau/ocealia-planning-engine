@@ -491,15 +491,19 @@ soit explicitement hors moteur (§ Analyse métier aval).
 | **8** | Champs au contrat sans effet : `capaciteCible`, structuration des besoins | arbitrage — activer ou retirer — **non traitable avant le 25/08/2026** | Métier + moteur |
 | **9** | SC-04 et SC-05 — deux scénarios annoncés, jamais écrits | cadrage — aucun n'a de contrat d'entrée. **SC-02 est sorti de ce rang** : cadré le 11/08, lots S0 à S4 livrés, inscrit au contrat série 50 le 13/08 | Métier |
 | **10** | Contraintes personnelles : lieux, activités, préférences, annualisation | échanges avec la Production | Production |
-| **11** | Blocs annoncés stricts qui ignorent en silence | technique — aucun arbitrage, mais changement de comportement pour SC-01, SC-03 et SC-06 | moteur |
+| **12** | Fermer les blocs restés délibérément tolérants aux champs inconnus | arbitrage — changement de comportement visible par l'appelant | Métier + WinDev |
 
-**Rang 11, découvert au lot S5 de SC-02.** Retirer `@JsonIgnoreProperties` d'un DTO **ne le rend
-pas strict** : Spring Boot désactive `FAIL_ON_UNKNOWN_PROPERTIES`, et le champ inconnu reste ignoré
-en silence. Les phases 10B et 10C ont conclu au « contrat strict » sur cette base, et
-`50_SCENARIO_TECHNICAL_CONTRACT.md` §3 l'annonce comme une règle générale. Seul
-`Sc02ScenarioParametersDTO` refuse réellement à ce jour, par un `@JsonAnySetter` qui nomme le
-paramètre en cause. Un contrat qui promet un refus qu'il ne prononce pas est pire qu'un contrat
-tolérant assumé : l'appelant repart avec une réponse 200 et la conviction d'avoir été entendu.
+~~**Rang 11** — blocs annoncés stricts qui ignorent en silence.~~ ✅ **Traité le 2026-08-13.**
+
+**Rang 12, ce qu'il reste du 11.** Six blocs déclarent ouvertement `ignoreUnknown = true` et
+laissent donc encore passer un champ inconnu : l'enveloppe de requête des quatre scénarios,
+`dataSet`, `salaries[]`, `postesVirtuels[]` et les paramètres SC-03. **Ils ne mentent pas** — c'est
+ce qui les distinguait du rang 11 — mais ils gardent une zone de silence. Les fermer demande de
+nommer ce que chacun tolère, et se voit immédiatement côté appelant : c'est un arbitrage, pas un
+correctif.
+
+Le cas le plus tentant est `Sc03ScenarioParametersDTO`, symétrique de celui de SC-02 qui a motivé
+le rang 11 : un intégrateur qui envoie à SC-03 un paramètre inexistant reçoit encore un 200.
 
 Deux chantiers plus anciens restent ouverts **sans dépendre d'un arbitrage** : les WorkMetrics
 d'équité (§ 2️⃣ — écart à la moyenne, dispersion de charge) et l'explicabilité pédagogique du score
@@ -776,9 +780,11 @@ Voir :
 Ordonné par **dépendance**, pas par valeur métier. Les rangs renvoient au backlog du § C.
 
 > **SC-02 est clos** (six lots, 2026-08-11 → 2026-08-13) et sort de cette liste.
+> **Rang 11** traité le 2026-08-13 ; ce qu'il en reste est devenu le rang 12, qui demande un
+> arbitrage.
 
-1. **Rang 11** — les blocs annoncés stricts qui ignorent en silence. Aucun arbitrage à demander, et
-   c'est du contrat déjà publié qui ne dit pas la vérité.
+1. **Rang 12** — fermer les blocs restés tolérants. À poser à l'appelant : c'est visible côté
+   WinDev.
 2. **Rang 8** — trancher les champs sans effet. Indépendant du reste, et il retire du contrat des
    promesses que personne ne tient. SC-02 en a rendu un plus visible : `capaciteCible` ne borne pas
    le volume qu'on gare sur un poste virtuel.
@@ -1667,3 +1673,63 @@ SC-06, et mérite son propre lot.
 
 Les **quatre scénarios exposés voyagent maintenant par les deux canaux**. Le document d'échange
 fichier n'en connaissait que deux — SC-06 n'y avait jamais été inscrit à son lot S6 ; c'est réparé.
+
+### Rang 11 — le contrat refuse enfin ce qu'il annonçait refuser (2026-08-13)
+
+661 tests, 0 échec. **Un champ inconnu est désormais rejeté**, sur les deux canaux, avec le chemin
+JSON complet du champ fautif et la liste des noms acceptés à cet endroit.
+
+#### La correction tient en une ligne, le reste est ce qu'elle révèle
+
+```properties
+spring.jackson.deserialization.fail-on-unknown-properties=true
+```
+
+Les phases 10B et 10C avaient conclu au « contrat strict » en retirant des `@JsonIgnoreProperties`.
+Le retrait ne rend rien strict : Spring Boot désactive `FAIL_ON_UNKNOWN_PROPERTIES`, et les blocs
+continuaient d'ignorer en silence.
+
+**Le test qui prétendait le prouver construisait son propre `ObjectMapper`.** Jackson est strict par
+défaut : `StrictDeserializationPhase10CTest` passait donc sur un moteur imaginaire pendant que
+l'application, elle, ignorait tout. C'est la leçon la plus réutilisable du lot — *un test de
+configuration qui fabrique sa propre configuration ne teste rien*. Le remplaçant,
+`ChampInconnuRefuseTest`, injecte le mapper de l'application et vérifie surtout par aller-retour
+HTTP réel. Discrimination contrôlée : la propriété remise à `false`, trois cas tombent, dont celui
+du canal fichier.
+
+#### Une contradiction que personne ne pouvait voir
+
+Le même test affirmait que `priorite`, `type` et `axesOrganisationnels` étaient **refusés** ; le
+schéma publié affirme qu'ils sont « encore accepté et silencieusement ignoré ; ne plus émettre ».
+Les deux ont coexisté des mois parce que chacun décrivait un moteur différent — celui du test, et
+le vrai.
+
+Le schéma a raison, et pas seulement parce qu'il est publié : **cinq jeux d'essai du projet
+émettent encore ces champs**. Les refuser aujourd'hui casserait une migration en cours. Ils sont
+donc déclarés nommément sur `CreneauInputDTO` — ce ne sont pas des inconnus, ce sont des
+retraités — et basculeront en refus le jour où le contrat les retirera vraiment.
+
+#### Refuser ne suffit pas, il faut dire quoi
+
+Un champ inconnu n'est pas un JSON mal formé : la syntaxe est parfaite, c'est le contrat qui ne
+connaît pas ce nom. Un `MALFORMED_JSON` enverrait l'appelant chercher une erreur de syntaxe
+inexistante. D'où un code propre, `UNKNOWN_FIELD`, et deux informations qui font la différence
+entre un diagnostic et une devinette :
+
+* le **chemin complet** — `dataSet.creneaux[1].couleur` — parce que dans une requête de
+  quatre-vingts créneaux, savoir *lequel* est tout le sujet ;
+* la **liste des noms acceptés** à cet endroit, qui répond à « alors quoi ? ».
+
+#### Effets de bord, tous instructifs
+
+* Six jeux d'essai portaient des `_commentaire` imbriqués dans des blocs stricts. Retirés : une
+  donnée de test n'a pas à violer le contrat qu'elle sert à valider. Les `_description` à la racine
+  survivent, l'enveloppe de requête restant tolérante.
+* Le `@JsonAnySetter` posé au lot S5 sur les paramètres SC-02 est **retiré** : la règle générale le
+  couvre, et une exception bien intentionnée vaut moins qu'une règle qui vaut partout.
+
+#### Ce qui reste, et pourquoi ce n'est pas le même problème
+
+Six blocs déclarent ouvertement `ignoreUnknown = true`. **Ils ne mentent pas** — c'est toute la
+différence avec ce que ce rang corrigeait. Les fermer se voit côté appelant : devenu **rang 12**,
+il demande un arbitrage.

@@ -27,7 +27,6 @@
           "estServiceCritique": true
         },
         {
-          "_commentaire": "ACT-TECH est dans le référentiel (activiteInconnue = 0) mais aucune ressource ne le déclare.",
           "codeActiviteId": "ACT-TECH",
           "libelle": "Technique",
           "compteDansCharge": true,
@@ -50,7 +49,6 @@
         "type": "GENERE"
       },
       {
-        "_commentaire": "Créneau avec ACT-TECH — non couvert par aucune ressource du dataset.",
         "id": "CRE-AR-02",
         "date": "2026-05-13",
         "heureDebut": "08:00",

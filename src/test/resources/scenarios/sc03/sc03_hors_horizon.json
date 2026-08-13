@@ -42,7 +42,6 @@
         "type": "GENERE"
       },
       {
-        "_commentaire": "Créneau hors horizon — date postérieure à dateFin.",
         "id": "CRE-HH-01",
         "date": "2026-05-25",
         "heureDebut": "08:00",

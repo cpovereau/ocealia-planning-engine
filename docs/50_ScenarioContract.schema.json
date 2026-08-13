@@ -3,7 +3,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://example.org/schema/scenario-contract.schema.json",
   "title": "ScenarioContract",
-  "description": "Contrat JSON d'alimentation du moteur de planification. Document en cours d’alignement avec les contrats JSON stabilisés. La source de vérité actuelle est constituée par les schémas JSON par scénario.",
+  "description": "Contrat JSON d'alimentation du moteur de planification. Document en cours d’alignement avec les contrats JSON stabilisés. La source de vérité actuelle est constituée par les schémas JSON par scénario. RANG 11 — le moteur REFUSE tout champ qu'il ne connaît pas : réponse 400 UNKNOWN_FIELD portant le chemin JSON complet du champ fautif et la liste des noms acceptés à cet endroit, sur les deux canaux HTTP et FileAdapter. Deux exceptions nommées : les quatre champs de créneau marqués OBSOLÈTE ci-dessous, encore acceptés et ignorés le temps de la migration ; et quelques blocs restés délibérément tolérants (enveloppe de requête, dataSet, salaries, postesVirtuels, paramètres SC-03), qui ne prétendent pas le contraire.",
   "type": "object",
   "required": [
     "scenarioType",

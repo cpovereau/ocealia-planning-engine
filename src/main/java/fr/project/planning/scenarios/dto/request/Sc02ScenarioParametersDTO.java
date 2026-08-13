@@ -1,6 +1,5 @@
 package fr.project.planning.scenarios.dto.request;
 
-import com.fasterxml.jackson.annotation.JsonAnySetter;
 import jakarta.validation.constraints.NotBlank;
 
 /**
@@ -13,17 +12,18 @@ import jakarta.validation.constraints.NotBlank;
  * et croit l'avoir dit. Ils arriveront avec les lots qui les mettent en œuvre. Voir
  * {@code 92_CADRAGE_SCENARIO_SC-02.md} §6.2 et §8.</p>
  *
- * <h3>[S5] Le bloc est strict — et il l'est vraiment</h3>
+ * <h3>Le bloc est strict — et il l'est vraiment depuis le rang 11</h3>
  * <p>Il était annoncé strict au motif qu'il ne portait <em>pas</em> de
  * {@code @JsonIgnoreProperties}. C'était faux : Spring Boot désactive
  * {@code FAIL_ON_UNKNOWN_PROPERTIES}, si bien qu'un paramètre inconnu était <strong>silencieusement
- * ignoré</strong>. Le contrat promettait donc un refus que le moteur ne prononçait pas — le pire
- * cas exactement, puisqu'un appelant qui envoie {@code remplacantsAutorises} en repartait avec une
- * réponse 200 et la conviction d'avoir été entendu.</p>
+ * ignoré</strong>. Un appelant qui envoyait {@code remplacantsAutorises} — paramètre annoncé par le
+ * cadrage, honoré par personne — repartait avec une réponse 200 et la conviction d'avoir été
+ * entendu.</p>
  *
- * <p>Le refus est désormais explicite et local à ce bloc, et il nomme le paramètre en cause. Les
- * autres DTO du contrat gardent le comportement tolérant : les aligner est un chantier à part,
- * inscrit au backlog.</p>
+ * <p>Constaté au lot S5, d'abord réparé ici seul, puis <strong>généralisé au rang 11</strong> :
+ * le refus vient maintenant de la configuration du contrat d'entrée, commune à tous les blocs. Ce
+ * bloc n'a donc plus rien de particulier, ce qui est le but — une règle générale vaut mieux qu'une
+ * exception bien intentionnée.</p>
  */
 public class Sc02ScenarioParametersDTO {
 
@@ -106,20 +106,4 @@ public class Sc02ScenarioParametersDTO {
         return Boolean.TRUE.equals(posteVirtuelAutorise);
     }
 
-    /**
-     * Refuse tout paramètre que ce lot n'honore pas, en le nommant.
-     *
-     * <p>C'est ce qu'on veut pendant un déploiement par étapes : un appelant en avance sur le
-     * moteur doit l'apprendre de la réponse, pas le déduire d'un résultat qui ne tient pas compte
-     * de ce qu'il a demandé. Les deux canaux — HTTP et FileAdapter — s'appuient sur la même
-     * désérialisation et refusent donc pareil.</p>
-     */
-    @JsonAnySetter
-    void refuserParametreInconnu(String nom, Object valeur) {
-        throw new IllegalArgumentException(
-                "[SC-02] paramètre inconnu dans scenarioParameters : '" + nom + "'. Le bloc est "
-                        + "strict — seuls salarieAbsentId, posteVirtuelAutorise, "
-                        + "surchargeMaxHeuresJour et surchargeMaxHeuresSemaine sont honorés. "
-                        + "Voir 50_SCENARIO_CONTRACT.md, section SC-02.");
-    }
 }

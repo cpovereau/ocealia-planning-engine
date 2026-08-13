@@ -2,6 +2,7 @@ package fr.project.planning.scenarios.dto.input;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import fr.project.planning.domain.creneau.CodeActivite;
 
@@ -11,16 +12,32 @@ import java.time.LocalTime;
 /**
  * CreneauInputDTO — DTO de transport pour un créneau entrant (WinDev → moteur).
  *
- * Distinct de CreneauPlanningDTO qui est un DTO de sortie (réponse API).
+ * <p>Distinct de {@code CreneauPlanningDTO}, qui est un DTO de sortie.</p>
  *
- * Phase 5 : groupeBesoinId, blocJourId, ordreDansBloc, estSegmentDePause exploités.
+ * <p>Phase 5 : {@code groupeBesoinId}, {@code blocJourId}, {@code ordreDansBloc},
+ * {@code estSegmentDePause} exploités.</p>
  *
- * [Phase 10C] @JsonIgnoreProperties retiré — contrat strict.
- * Champs IGNORÉS supprimés : axesOrganisationnels, priorite, type.
- * Champ ⚠️ DÉPRÉCIÉ conservé : activite (fallback codeActiviteId).
+ * <p>Champ ⚠️ <strong>déprécié conservé</strong> : {@code activite}, repli si
+ * {@code codeActiviteId} est absent.</p>
  *
- * Créneau traversant minuit : date = jour de début, heureFin < heureDebut.
+ * <p>Créneau traversant minuit : {@code date} = jour de début, {@code heureFin < heureDebut}.</p>
+ *
+ * <h3>[Rang 11] Les quatre noms tolérés le sont nommément</h3>
+ * <p>La phase 10C avait retiré le {@code @JsonIgnoreProperties} de cette classe en concluant à un
+ * « contrat strict ». Le retrait ne rendait rien strict — Spring Boot désactive
+ * {@code FAIL_ON_UNKNOWN_PROPERTIES} — mais il a supprimé la seule trace, dans le code, des quatre
+ * champs que le contrat publié <strong>promet d'accepter et d'ignorer</strong> :
+ * {@code priorite}, {@code type}, {@code isReposHebdo} et {@code axesOrganisationnels}. Voir
+ * {@code 50_ScenarioContract.schema.json}, où les quatre sont marqués « encore accepté et
+ * silencieusement ignoré ; ne plus émettre ».</p>
+ *
+ * <p>Maintenant que le contrat refuse réellement l'inconnu, ces quatre noms doivent être
+ * <strong>déclarés</strong> : ce ne sont pas des inconnus, ce sont des retraités. Un intégrateur
+ * qui n'a pas fini sa migration n'a pas à voir sa requête refusée pour un champ que le contrat lui
+ * dit d'ignorer — il continuera de le lire, sans effet, jusqu'à ce que le contrat le retire
+ * vraiment.</p>
  */
+@JsonIgnoreProperties({"priorite", "type", "isReposHebdo", "axesOrganisationnels"})
 public class CreneauInputDTO {
 
     private String id;

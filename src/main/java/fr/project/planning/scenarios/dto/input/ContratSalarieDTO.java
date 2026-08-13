@@ -17,8 +17,12 @@ package fr.project.planning.scenarios.dto.input;
  *       Les déplacer serait une rupture de contrat pour SC-03 sans contrepartie.</li>
  * </ul>
  *
- * <p>Contrat strict : aucun {@code @JsonIgnoreProperties}, conformément au durcissement
- * Phase 10B. Un champ inconnu dans ce bloc est une erreur, pas un oubli toléré.</p>
+ * <p>Contrat strict : un champ inconnu dans ce bloc est une erreur, pas un oubli toléré.</p>
+ *
+ * <p>⚠️ [Rang 11] Cette strictness était annoncée depuis la phase 10B au motif que la classe ne
+ * portait « aucun {@code @JsonIgnoreProperties} ». Le motif était faux — Spring Boot désactive
+ * {@code FAIL_ON_UNKNOWN_PROPERTIES} — et le bloc ignorait en silence. Elle est effective depuis
+ * que le contrat d'entrée l'active, dans {@code application.properties}.</p>
  *
  * <p>Lot S2 : transport et mapping uniquement. Aucune contrainte ne lit ce bloc.
  * Voir {@code 92_CADRAGE_SCENARIO_SC-06.md} §4.6.</p>

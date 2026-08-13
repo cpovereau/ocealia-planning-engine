@@ -58,15 +58,27 @@ ex : POST /scenarios/sc01/solve
 
 📌 **Tout champ obligatoire manquant est rejeté**
 
-📌 **Tout champ inconnu doit être rejeté** — c'est la règle du contrat, et elle n'est **pas encore
-tenue partout**. Constaté au lot S5 de SC-02 : l'absence de `@JsonIgnoreProperties` sur un DTO ne
-suffit pas à le rendre strict, Spring Boot désactivant `FAIL_ON_UNKNOWN_PROPERTIES`. Plusieurs
-blocs annoncés stricts ignoraient donc en silence. Seul `scenarioParameters` de SC-02 refuse
-réellement à ce jour ; l'alignement des autres est inscrit au backlog de
-`90_SUIVI_DEVELOPPEMENT_MOTEUR.md`.
+📌 **Tout champ inconnu est rejeté** — `400 UNKNOWN_FIELD`, avec le **chemin JSON complet** du champ
+fautif et la liste des noms acceptés à cet endroit. La règle vaut sur les deux canaux, HTTP et
+FileAdapter, qui partagent la même désérialisation.
+
+### La règle n'a pas toujours été tenue
+
+Elle était annoncée depuis la phase 10B au motif que certains DTO ne portaient plus de
+`@JsonIgnoreProperties`. Ce motif était faux : Spring Boot désactive
+`FAIL_ON_UNKNOWN_PROPERTIES`, et retirer l'annotation ne rend donc rien strict. Constaté au lot S5
+de SC-02, généralisé au **rang 11** — la strictness est désormais portée par la configuration du
+contrat d'entrée, et non par la présence ou l'absence d'une annotation.
 
 ⚠️ Un contrat qui promet un refus qu'il ne prononce pas est pire qu'un contrat tolérant assumé :
 l'appelant en repart avec une réponse 200 et la conviction d'avoir été entendu.
+
+### Deux exceptions, nommées et volontaires
+
+| Exception | Pourquoi |
+|---|---|
+| `priorite`, `type`, `isReposHebdo`, `axesOrganisationnels` sur un créneau | Le schéma publié les déclare « encore accepté et silencieusement ignoré ; ne plus émettre ». Ce ne sont pas des inconnus, ce sont des **retraités déclarés** : refuser une requête pour un champ que le contrat dit d'ignorer casserait une migration en cours |
+| L'enveloppe de requête, `dataSet`, les salariés, les postes virtuels, les paramètres SC-03 | Ces blocs restent tolérants. Ils **ne prétendent pas le contraire** — c'est ce qui les distingue du défaut ci-dessus. Les fermer serait un changement de comportement pour SC-01, SC-03 et SC-06, à décider avec l'appelant |
 
 ---
 

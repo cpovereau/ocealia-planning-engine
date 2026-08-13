@@ -43,7 +43,6 @@
         "type": "GENERE"
       },
       {
-        "_commentaire": "Repos sans ressourceAffecteeId — impossible de savoir de qui c'est le repos.",
         "id": "REPOS-ORPHELIN",
         "date": "2026-05-16",
         "heureDebut": "00:00",
@@ -52,7 +51,6 @@
         "type": "GENERE"
       },
       {
-        "_commentaire": "Repos rattaché à un salarié absent du dataset.",
         "id": "REPOS-INCONNU",
         "date": "2026-05-17",
         "heureDebut": "00:00",
