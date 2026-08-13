@@ -329,7 +329,7 @@ Ordonné par dépendance. Chaque lot est livrable seul et testable seul.
 | **L3** ✅ | Harnais de simulation et calibration des coefficients | Ne peut venir qu'après L1 et L2 : on calibre sur des mesures qui existent |
 | **L4** ✅ | Les trois critères de §4.7 câblés dans la sélection **SC-06** | Premier effet visible sur une décision. Deux critères sur trois sont déjà mesurés |
 | **L5** ✅ | Contrainte SOFT d'équité — **et c'est par elle que SC-02 est servi** | Pèse l'écart au score. Séparé de L2 pour être évalué seul |
-| **L6** ⏸ | SC-05 — arbitrage entre deux salariés | Le scénario que tout ceci débloque. **Cadré, pas réalisable en l'état** — voir §8.2 |
+| **L6** ✅ | SC-05 — arbitrage entre deux salariés | Le scénario que tout ceci débloque. **Cadré et arbitré le 13/08** ; sa réalisation est un chantier propre, A0→A4 — voir §8.2 |
 
 ### 8.1 Correction apportée par L4 — SC-02 n'a pas de sélection à câbler
 
@@ -379,9 +379,14 @@ portées par des paramètres livrés, et la troisième bloquée au rang 10 —, 
 d'`autoriserDesequilibre` par la tolérance de L5, la limite à deux salariés, et la réponse quand
 aucune répartition n'est acceptable.
 
-> Les décider à la place du métier reviendrait à publier à WinDev un contrat que personne n'a
-> validé. Le cadrage propose, il ne tranche pas — comme celui de SC-02 le 11/08 et celui de SC-06
-> le 10/08, tous deux réalisés **après** arbitrage.
+✅ **Les six arbitrages ont été rendus le jour même** (métier, 2026-08-13). Deux portent une
+condition de retour : l'enum `objectif` revient **au rang 10**, avec la seule valeur qui ne se
+déduise pas d'un paramètre ; et l'ouverture à **N salariés** est attendue à brève échéance, ce qui
+contraint le lot A0 dès maintenant — la contrainte HARD porte sur un **ensemble** de ressources
+autorisées, jamais sur un couple.
+
+**Le chantier équité est clos.** SC-05 n'en est plus un lot : c'est un chantier propre, découpé
+A0→A4 dans `92_CADRAGE_SCENARIO_SC-05.md` §8, et actionnable.
 
 ---
 

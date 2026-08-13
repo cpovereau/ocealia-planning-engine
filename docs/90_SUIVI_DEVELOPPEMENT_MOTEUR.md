@@ -489,7 +489,7 @@ soit explicitement hors moteur (§ Analyse métier aval).
 | Rang | Sujet | Nature du blocage | Qui tranche |
 |---|---|---|---|
 | **8** | Champs au contrat sans effet : `capaciteCible`, structuration des besoins | arbitrage — activer ou retirer — **non traitable avant le 25/08/2026** | Métier + moteur |
-| **9** | SC-04 et SC-05 — deux scénarios annoncés, jamais écrits | cadrage — aucun n'a de contrat d'entrée. **SC-02 est sorti de ce rang** : cadré le 11/08, lots S0 à S4 livrés, inscrit au contrat série 50 le 13/08 | Métier |
+| **9** | SC-04 — un scénario annoncé, jamais écrit | cadrage — il n'a pas de contrat d'entrée et dépend d'un historique des compteurs qui n'existe pas. **SC-02 en est sorti** (cadré le 11/08, livré le 13/08) et **SC-05 aussi** : cadré et arbitré le 13/08, découpage A0→A4 actionnable | Métier |
 | **10** | Contraintes personnelles : lieux, activités, préférences, annualisation | échanges avec la Production | Production |
 | **12** | Fermer les blocs restés délibérément tolérants aux champs inconnus | arbitrage — changement de comportement visible par l'appelant | Métier + WinDev |
 | **13** | Auditer et **garder** `50_ScenarioContract.schema.json` comme `SchemaPublie` garde le schéma de sortie | correctif — rien ne confronte les requêtes au schéma publié, et il a dérivé | Moteur |
@@ -580,16 +580,17 @@ qui change la nature du problème posé au solveur et demande sa propre évaluat
 
 ---
 
-## Rang 9 — les trois scénarios annoncés et jamais écrits
+## Rang 9 — le dernier scénario annoncé et jamais écrit
 
-`50_SCENARIO_CONTRACT.md` décrit six scénarios. Trois existent (SC-01, SC-03, SC-06), trois n'ont
-qu'une intention métier : **aucun n'a de contrat d'entrée, d'endpoint, ni de jeu d'essai**.
+`50_SCENARIO_CONTRACT.md` décrit six scénarios. **Quatre existent** (SC-01, SC-02, SC-03, SC-06),
+**SC-05 est cadré et arbitré**, et **SC-04 seul reste sans contrat d'entrée, sans endpoint et sans
+jeu d'essai**.
 
 | Scénario | Intention | Ce qui existe déjà | Ce qui manque |
 |---|---|---|---|
 | ~~**SC-02** — remplacement d'un absent~~ | ~~assurer la continuité en perturbant le moins possible l'existant~~ | ✅ **Clos le 2026-08-13** — six lots S0 à S5, inscrit au contrat série 50, accessible par les deux canaux | — |
 | **SC-04** — optimisation globale d'un planning existant | améliorer sans reconstruire | figement, WorkMetrics | historique des compteurs, degrés de liberté, indicateurs comparatifs |
-| **SC-05** — arbitrage entre deux salariés | répartir équitablement un périmètre commun | ✅ **WorkMetrics d'équité livrées** (lots L1 à L5), planning figé, seuils comparatifs | **six arbitrages métier** et une contrainte HARD « affectation bornée au couple » — cadré le 13/08 : `92_CADRAGE_SCENARIO_SC-05.md` |
+| ~~**SC-05** — arbitrage entre deux salariés~~ | ~~répartir équitablement un périmètre commun~~ | ✅ **Cadré et arbitré le 2026-08-13** — WorkMetrics d'équité livrées (lots L1 à L5), six arbitrages rendus, découpage A0→A4 actionnable : `92_CADRAGE_SCENARIO_SC-05.md` | la réalisation, cinq à six lots |
 
 `92_CADRAGE_DONNEES_AMONT_SCENARIOS.md` §7 le résume : trois familles de données apparaissent dès
 SC-02 et ne disparaissent plus — le **planning existant**, le **contrat salarié** et le **seuil de
@@ -597,10 +598,13 @@ surcharge**. Les trois sont désormais câblées : le planning existant est épi
 l'était par SC-06, et le seuil de surcharge a ses deux contraintes depuis le lot S3. Le contrat
 salarié reste **transporté sans qu'aucune contrainte ne le lise**.
 
-SC-04 dépend d'un historique de compteurs qui n'existe pas. **SC-05 ne dépend plus de rien de
-technique** : les WorkMetrics d'équité qui le bloquaient sont livrées (lots L1 à L5), et son cadrage
-est écrit. Ce qui l'attend désormais est un **arbitrage métier** — six questions, dont aucune ne se
-déduit du code : `92_CADRAGE_SCENARIO_SC-05.md` §5.
+**SC-05 sort de ce rang.** Les WorkMetrics d'équité qui le bloquaient sont livrées (lots L1 à L5),
+son cadrage est écrit et ses six arbitrages sont rendus — deux avec une condition de retour au
+rang 10. Il ne lui manque que sa réalisation, découpée en cinq lots :
+`92_CADRAGE_SCENARIO_SC-05.md` §8.
+
+**SC-04 reste seul**, et pour une raison qui ne se lève pas dans ce chantier : il dépend d'un
+historique de compteurs que le moteur ne reçoit pas.
 
 📄 **SC-02 est cadré et livré à 5/6** — arbitrages métier rendus le 11/08/2026, découpage en six
 lots S0 à S5, **S0 à S4 livrés**, S5 (canal FileAdapter) restant :
@@ -812,10 +816,9 @@ Ordonné par **dépendance**, pas par valeur métier. Les rangs renvoient au bac
 2. **Rang 8** — trancher les champs sans effet. Indépendant du reste, et il retire du contrat des
    promesses que personne ne tient. SC-02 en a rendu un plus visible : `capaciteCible` ne borne pas
    le volume qu'on gare sur un poste virtuel.
-3. **Équité, lot L6** — SC-05. **L0 à L5 sont livrés** : voir `92_CADRAGE_WORKMETRICS_EQUITE.md`
-   §8. ⚠️ **L6 n'est pas actionnable en l'état** : SC-05 est un scénario complet sans contrat
-   d'entrée, et ses arbitrages relèvent du métier — cadrage prêt dans
-   `92_CADRAGE_SCENARIO_SC-05.md`, arbitrages à rendre. Ce qui manque par ailleurs n'est plus un
+3. **SC-05, lots A0 à A4** — le chantier équité est clos (L0 à L5 livrés), et SC-05 est cadré,
+   arbitré, actionnable : `92_CADRAGE_SCENARIO_SC-05.md` §8. Commencer par **A0**, la contrainte
+   HARD, qui ne dépend d'aucun scénario et se teste seule. Ce qui manque par ailleurs n'est plus un
    outil mais **des plannings réels** à donner au harnais de calibration —
    `92_CALIBRATION_PENIBILITE.md` §2.
 4. **Rang 13** — garder le schéma d'entrée comme le schéma de sortie l'est. Correctif pur, sans
@@ -1734,6 +1737,30 @@ zéro.
 
 Les décider à la place du métier reviendrait à publier à WinDev un contrat que personne n'a validé.
 SC-02 et SC-06 ont été cadrés puis réalisés **après** arbitrage ; SC-05 suit le même chemin.
+
+#### ✅ Arbitrages rendus le jour même — SC-05 devient actionnable
+
+Les six sont tranchés, et **deux portent une condition de retour** que le cadrage inscrit noir sur
+blanc : ce qui disparaît du contrat aujourd'hui est attendu demain, et une suppression sans date de
+retour se relit six mois plus tard comme un abandon.
+
+| Question | Décision | Ce qu'elle porte en plus |
+|---|---|---|
+| Périmètre commun | **transmis**, jamais déduit | à porter au dossier de livraison WinDev |
+| Créneau tenu par un tiers | **épinglé et signalé** | une alerte dédiée, lot A1 |
+| Enum `objectif` | **supprimé** | 🔁 revient **au rang 10**, avec une seule valeur — celle qui ne se déduit pas |
+| `autoriserDesequilibre` | **remplacé par la tolérance** | ne revient pas : la tolérance dit mieux ce qu'il disait mal |
+| Deux salariés ou N | **deux** | 🔁 N **à brève échéance** — contraint A0 dès maintenant |
+| Aucune répartition acceptable | **la moins mauvaise, avec ses motifs** | jamais une erreur, comme SC-06 §4.5 |
+
+**La décision qui a le plus d'effet sur le code est celle sur N.** Elle interdit d'écrire A0 sur un
+couple : la contrainte HARD porte sur un **ensemble de ressources autorisées**, dont la taille se
+trouve valoir deux. Passer à N devient alors un élargissement du contrat d'entrée —
+`salarieAId` / `salarieBId` et la restitution comparative — et non une réécriture du moteur. Écrite
+sur un couple, elle aurait été à refaire.
+
+Le rang 10 est désormais attendu **deux fois** par SC-05 : pour les préférences, et pour le retour
+de l'enum qu'elles conditionnent. À traiter ensemble.
 
 ### Équité — lot L5 : la première règle qui compare deux personnes (2026-08-13)
 

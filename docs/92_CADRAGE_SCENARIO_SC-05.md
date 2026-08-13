@@ -1,12 +1,11 @@
 # 92 — Cadrage : SC-05, arbitrage de répartition entre deux salariés
 
 > **Statut** : cadrage d'analyse, 2026-08-13, produit au lot **L6** du chantier équité.
+> Les arbitrages de la §5 sont **tranchés** (métier, 2026-08-13). Le découpage de la §8 est
+> **actionnable**.
 >
-> ⚠️ **Les arbitrages de la §5 ne sont PAS tranchés.** Ce sont des propositions, chacune assortie
-> de ce qu'elle implique. SC-05 est le dernier scénario annoncé sans contrat d'entrée : le
-> construire suppose de décider ce qu'il fait, et cela ne se déduit d'aucun code.
->
-> Ce document ne modifie ni `50_SCENARIO_CONTRACT.md`, ni le code.
+> Ce document ne modifie ni `50_SCENARIO_CONTRACT.md`, ni le code : l'inscription de SC-05 au
+> contrat fonctionnel est portée par le lot **A4**.
 
 ---
 
@@ -80,53 +79,54 @@ pour tout créneau. Rien, aujourd'hui, ne permet de dire « ce créneau ne peut 
 B ». SC-02 s'en passe parce qu'il libère et laisse le solveur choisir librement ; SC-05 ne le peut
 pas — son objet même est un arbitrage **borné à deux personnes**.
 
-Deux formes possibles, à trancher (§5.5) :
+Deux formes possibles :
 
 | Forme | Ce qu'elle donne | Ce qu'elle coûte |
 |---|---|---|
-| **Contrainte HARD** — un créneau du périmètre affecté hors du couple est interdit | simple, homogène avec le reste du moteur | le solveur explore des affectations qu'il devra rejeter |
+| **Contrainte HARD** — un créneau du périmètre affecté hors des ressources autorisées est interdit | simple, homogène avec le reste du moteur | le solveur explore des affectations qu'il devra rejeter |
 | **Périmètre réduit** — ne transmettre que A et B comme ressources | aucune contrainte nouvelle | le reste du planning devient invisible, et les bornes hebdomadaires avec lui |
 
 La seconde est trompeuse : sans le planning des autres, le moteur ne voit plus les créneaux qui
 bornent A et B, et déclarerait conforme une répartition qui ne l'est pas. **La contrainte HARD est
 la seule forme sûre.**
 
+⚠️ **Elle porte sur un ensemble de ressources autorisées, pas sur un couple** (§5.5) : à deux,
+l'ensemble a deux éléments. C'est ce qui fera de l'ouverture à N un élargissement du contrat et non
+une réécriture du moteur.
+
 ---
 
-## 5. Arbitrages à rendre
+## 5. Arbitrages tranchés
 
-Chacun est une question au métier. Les recommandations sont celles du moteur, pas des décisions.
+Rendus par le métier le 2026-08-13. Deux d'entre eux portent une **condition de retour** — ce qui
+disparaît du contrat aujourd'hui est attendu demain, et c'est écrit ici pour que la suppression ne
+se lise pas comme un abandon.
 
-### 5.1 ⚠️ À trancher — qu'est-ce que le « périmètre commun » ?
+### 5.1 Tranché — le périmètre commun est transmis, jamais déduit
 
-C'est la question qui commande le contrat d'entrée.
+> L'appelant liste les créneaux à arbitrer : `scenarioParameters.creneauxArbitres[]`.
 
-| Option | Description | Conséquence |
-|---|---|---|
-| **A — transmis** | l'appelant liste les créneaux à arbitrer | explicite, sans surprise ; WinDev doit savoir les désigner |
-| **B — déduit** | tous les créneaux de la période que A et B peuvent tous deux servir | aucun travail côté appelant ; le moteur décide d'un périmètre que personne n'a validé |
+**Le moteur ne fabrique pas le périmètre d'un arbitrage.** Un périmètre déduit trop large
+déplacerait des créneaux que personne ne voulait bouger ; trop étroit, il rendrait l'arbitrage sans
+effet — et dans les deux cas l'appelant ne verrait pas pourquoi.
 
-> **Recommandation : A.** Le moteur ne fabrique pas le périmètre d'un arbitrage. Un périmètre
-> déduit trop large déplacerait des créneaux que personne ne voulait bouger ; trop étroit, il
-> rendrait l'arbitrage sans effet — et dans les deux cas l'appelant ne verrait pas pourquoi.
+Conséquence pour WinDev : désigner le périmètre est de sa responsabilité, et à porter au dossier de
+livraison au même titre que la semaine pleine de SC-06.
 
-### 5.2 ⚠️ À trancher — que fait-on d'un créneau du périmètre affecté à un tiers ?
+### 5.2 Tranché — un créneau tenu par un tiers est épinglé et signalé
 
-Le cas se produit dès que l'appelant désigne un périmètre par le lieu ou l'activité.
+> Ni refus, ni reprise : l'arbitrage porte sur ce qui reste, et l'appelant apprend ce qui a été
+> écarté.
 
-| Option | Conséquence |
-|---|---|
-| **Refuser la demande** | net, mais bloquant sur un détail |
-| **Épingler le créneau et le signaler** | l'arbitrage porte sur ce qui reste, et l'appelant sait quoi |
-| **Le rendre au couple** | le moteur retire du travail à un tiers qui n'a rien demandé |
+Cohérent avec toute la doctrine du moteur — *l'existant ne se réécrit pas*, et un constat vaut
+mieux qu'un refus. Le tiers n'a rien demandé ; on ne lui retire pas son travail pour équilibrer
+deux autres personnes.
 
-> **Recommandation : épingler et signaler.** Cohérent avec toute la doctrine du moteur — *l'existant
-> ne se réécrit pas*, et un constat vaut mieux qu'un refus.
+Demande une alerte dédiée, portant les identifiants des créneaux écartés (lot **A1**).
 
-### 5.3 ⚠️ À trancher — l'objectif d'arbitrage est-il encore nécessaire ?
+### 5.3 Tranché — `objectif` est supprimé, et son retour est conditionné
 
-Le contrat historique annonce `objectif: EQUITE_CHARGE | MINIMISATION_SURCHARGE | PREFERENCES`.
-Depuis, chacun de ces trois objectifs a trouvé son paramètre :
+> L'objectif se déduit de ce que l'appelant transmet.
 
 | Objectif annoncé | Ce qui l'exprime aujourd'hui | État |
 |---|---|---|
@@ -134,41 +134,55 @@ Depuis, chacun de ces trois objectifs a trouvé son paramètre :
 | minimisation de surcharge | `scenarioParameters.surchargeMaxHeuresJour` / `...Semaine` | ✅ livré au lot S3 de SC-02 |
 | respect des préférences | — | ❌ **rang 10 du backlog**, en attente de la Production |
 
-> **Recommandation : supprimer `objectif`.** L'objectif se déduit de ce que l'appelant transmet, et
-> un enum qui double des paramètres existants finit par les contredire. Les préférences ne sont pas
-> transmissibles aujourd'hui : les annoncer dans un enum promettrait ce que le moteur ne peut pas
-> tenir.
+Un enum qui double des paramètres existants finit par les contredire, et annoncer `PREFERENCES`
+promettrait ce que le moteur ne peut pas tenir.
 
-### 5.4 ⚠️ À trancher — `autoriserDesequilibre` est-il autre chose que la tolérance de L5 ?
+> 🔁 **Condition de retour, décidée avec la suppression.** L'enum est attendu de nouveau **quand le
+> rang 10 livrera les préférences** — c'est-à-dire quand un objectif cessera d'être déductible des
+> paramètres transmis. Il reviendra alors avec **une seule valeur qui ne se déduit pas**, et non
+> les trois d'origine : les deux autres resteront portées par leurs paramètres.
+>
+> Ce n'est donc pas un abandon, c'est un ajournement. À reprendre au rang 10, pas avant.
 
-Le contrat historique annonce un booléen `autoriserDesequilibre`. Le lot L5 a livré
-`planningContext.equite.ecartTolerePourcent`, qui dit **de combien** on accepte de déséquilibrer.
+### 5.4 Tranché — `autoriserDesequilibre` est remplacé par la tolérance
 
-> **Recommandation : le remplacer par la tolérance.** Un booléen ne dit pas jusqu'où ; et « équité
-> stricte » se transmet déjà — c'est une tolérance à 0.
+> `planningContext.equite.ecartTolerePourcent` dit **de combien** on accepte de déséquilibrer ; un
+> booléen ne disait pas jusqu'où.
 
-### 5.5 ⚠️ À trancher — deux salariés, ou N ?
+« Équité stricte » se transmet déjà : c'est une tolérance à `0`. Aucun champ nouveau, un champ de
+moins.
 
-L'intention dit « deux ». Rien dans la mécanique proposée ne l'exige : une contrainte HARD sur un
-couple s'écrit aussi bien sur un ensemble.
+### 5.5 Tranché — deux salariés, et la généralisation à N reste ouverte
 
-> **Recommandation : deux, et l'écrire comme tel.** Un arbitrage à deux se justifie ligne à ligne
-> devant les intéressés ; à cinq, il redevient une optimisation, ce que SC-03 fait déjà. Ouvrir à N
-> serait facile plus tard ; refermer, non.
+> `salarieAId` et `salarieBId`. Un arbitrage à deux se justifie ligne à ligne devant les
+> intéressés ; à cinq, il redevient une optimisation de groupe — ce que SC-03 fait déjà.
 
-### 5.6 ⚠️ À trancher — que rend-on quand aucune répartition n'est acceptable ?
+> 🔁 **Condition de retour, décidée avec la limite.** L'ouverture à **N est attendue à brève
+> échéance**. Elle contraint donc la réalisation dès maintenant :
+>
+> * la contrainte HARD du lot **A0** porte sur un **ensemble de ressources autorisées**, pas sur un
+>   couple. À deux, l'ensemble a deux éléments ; passer à N n'y change rien ;
+> * ce qui reste propre au « deux », et qu'il faudra rouvrir, est le **contrat d'entrée** —
+>   `salarieAId` / `salarieBId` — et la **restitution comparative A / B** ;
+> * aucun `if (deux)` dans le calcul. La limite est une règle de contrat, pas une hypothèse de
+>   calcul.
+>
+> Écrite ainsi, la généralisation est un **élargissement du contrat**, pas une réécriture du
+> moteur.
 
-Invariant du moteur : *il ne refuse pas, il rend visible l'impossible*. Appliqué ici, cela signifie
-rendre la **moins mauvaise** répartition, avec les motifs qui la disqualifient — jamais une erreur.
+### 5.6 Tranché — sans répartition acceptable, la moins mauvaise est rendue
 
-> **Recommandation : cohérence avec SC-06 §4.5** — les solutions non conformes sont restituées,
-> jamais masquées.
+> Jamais une erreur. La répartition est restituée avec les motifs qui la disqualifient.
+
+Invariant du projet : *le moteur ne refuse pas, il rend visible l'impossible*. Même traitement
+qu'en SC-06 §4.5, où les solutions non conformes sont restituées et jamais masquées — l'appelant
+voit l'impasse au lieu de la deviner.
 
 ---
 
-## 6. Contrat d'entrée proposé
+## 6. Contrat d'entrée
 
-Sous réserve des arbitrages ci-dessus.
+Conforme aux arbitrages de la §5.
 
 ```json
 "scenarioParameters": {
@@ -187,6 +201,10 @@ Sous réserve des arbitrages ci-dessus.
 
 **Aucun champ nouveau hors `scenarioParameters`.** Le planning existant, les contrats, les
 indisponibilités, le cadre réglementaire : tout est déjà au contrat et déjà lu.
+
+**Deux champs annoncés de longue date disparaissent** : `objectif` (§5.3) et
+`autoriserDesequilibre` (§5.4). Le premier reviendra avec les préférences du rang 10, et avec une
+seule valeur ; le second ne reviendra pas — la tolérance dit mieux ce qu'il disait mal.
 
 ⚠️ Comme SC-06, SC-05 exige que **le planning complet de la période soit transmis pour A et pour
 B** — sans quoi les bornes hebdomadaires sont invérifiables et le moteur déclarerait conforme une
@@ -209,16 +227,16 @@ bougé, et pour qui*. Sa forme se décalque de `RemplacementDTO`.
 
 ---
 
-## 8. Découpage proposé
+## 8. Découpage
 
-Ordonné par dépendance. **Aucun lot n'est actionnable avant les arbitrages de la §5.**
+Ordonné par dépendance. **Actionnable** depuis les arbitrages du 2026-08-13.
 
 | Lot | Objet | Pourquoi à ce rang |
 |---|---|---|
-| **A0** | Contrainte HARD « affectation bornée au couple » | La brique manquante (§4). Testable seule, sans scénario |
-| **A1** | Endpoint, préparation, périmètre épinglé / libéré | Le squelette. Décalque de SC-02 S1 |
+| **A0** | Contrainte HARD « affectation bornée aux ressources autorisées » | La brique manquante (§4). Testable seule, sans scénario. Écrite sur un **ensemble**, pas sur un couple (§5.5) |
+| **A1** | Endpoint, préparation, périmètre épinglé / libéré, alerte du créneau tenu par un tiers (§5.2) | Le squelette. Décalque de SC-02 S1 |
 | **A2** | Bloc `arbitrage` — avant / après par salarié | La réponse à « qu'est-ce qui a bougé » |
-| **A3** | Alerte d'inéquité résiduelle | Ce que la tolérance ne parvient pas à résorber |
+| **A3** | Alerte d'inéquité résiduelle, et restitution de la moins mauvaise répartition (§5.6) | Ce que la tolérance ne parvient pas à résorber |
 | **A4** | Inscription au contrat série 50 + canal FileAdapter | Comme SC-02 S4 et S5 |
 
 Ordre de grandeur : celui de SC-02, soit **cinq à six lots**.
@@ -234,12 +252,15 @@ le signale — il ne refuse pas — mais faut-il qu'il le **cherche** ? La répo
 relatif de l'équité et de la surcharge, et relève du même protocole de calibration que les
 coefficients : `92_CALIBRATION_PENIBILITE.md`.
 
-### 9.2 Le volontariat, encore
+### 9.2 Le volontariat, encore — et c'est le même rendez-vous que §5.3
 
 Deux salariés désignés, c'est le cas où les préférences comptent le plus — et le moteur ne les
 connaît pas avant le **rang 10**. Une répartition parfaitement équitable et contraire au souhait
 des deux intéressés est la façon habituelle dont ce type d'arbitrage se fait rejeter sur le
 terrain. À garder en tête au moment d'écrire A3.
+
+Le rang 10 est donc attendu **deux fois** par SC-05 : pour les préférences elles-mêmes, et pour le
+retour de l'enum `objectif` qu'elles conditionnent. Les traiter ensemble, pas l'un après l'autre.
 
 ### 9.3 L'historique
 
