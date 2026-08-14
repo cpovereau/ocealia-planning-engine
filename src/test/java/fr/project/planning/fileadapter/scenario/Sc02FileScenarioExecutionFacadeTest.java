@@ -126,9 +126,11 @@ class Sc02FileScenarioExecutionFacadeTest {
     }
 
     @Test
-    @DisplayName("Les quatre scénarios exposés sont routables par fichier")
-    void lesQuatreScenariosSontRoutablesParFichier() throws Exception {
-        for (String type : new String[]{"SC-01", "SC-02", "SC-03", "SC-06"}) {
+    @DisplayName("Les cinq scénarios exposés sont routables par fichier")
+    void lesCinqScenariosSontRoutablesParFichier() throws Exception {
+        // [A4] SC-05 rejoint les quatre autres. Le dispatcher enregistre automatiquement tout bean
+        // implémentant FileScenarioExecutionFacade : ce test vérifie qu'aucun n'a été oublié.
+        for (String type : new String[]{"SC-01", "SC-02", "SC-03", "SC-05", "SC-06"}) {
             JsonNode payload = objectMapper.readTree("{\"scenarioType\": \"" + type + "\"}");
 
             // La façade est atteinte : elle échoue sur le contenu, pas sur le routage.

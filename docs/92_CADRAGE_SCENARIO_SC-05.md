@@ -1,9 +1,12 @@
 # 92 — Cadrage : SC-05, arbitrage de répartition entre deux salariés
 
 > **Statut** : cadrage d'analyse, 2026-08-13, produit au lot **L6** du chantier équité.
-> Les arbitrages de la §5 sont **tranchés** (métier, 2026-08-13). Les lots **A0 à A3 sont livrés**
-> (2026-08-14) ; il ne reste que **A4**, l'inscription au contrat. ⚠️ Ce que A4 doit
-> impérativement porter est en §8.1.
+> Les arbitrages de la §5 sont **tranchés** (métier, 2026-08-13). **SC-05 est clos le 2026-08-14** :
+> les cinq lots A0 à A4 sont livrés, et le scénario est inscrit au contrat série 50, accessible par
+> les deux canaux.
+>
+> Ce qui lui reste ne lui appartient pas : le **rang 10** — contraintes personnelles et
+> préférences — que le moteur entier attend, et qui rouvrira §5.3 et §9.1 (voir §9.2).
 >
 > Ce document ne modifie ni `50_SCENARIO_CONTRACT.md`, ni le code : l'inscription de SC-05 au
 > contrat fonctionnel est portée par le lot **A4**.
@@ -261,25 +264,42 @@ Ordonné par dépendance. **Actionnable** depuis les arbitrages du 2026-08-13.
 | ~~**A1**~~ | ~~Endpoint, préparation, périmètre épinglé / libéré, alerte du créneau tenu par un tiers (§5.2)~~ | ✅ **Livré le 2026-08-14** — `POST /scenarios/sc05/solve`, décalque de SC-02 S1. Trois alertes : tiers, salarié introuvable, créneau du périmètre introuvable. ⚠️ Non inscrit au contrat série 50 ni à l'OpenAPI — c'est le lot **A4** |
 | ~~**A2**~~ | ~~Bloc `arbitrage` — avant / après par salarié~~ | ✅ **Livré le 2026-08-14** — `ArbitrageDTO`, décalque de `RemplacementDTO`. Écart au contrat avant / après, mesuré par le même calculateur |
 | ~~**A3**~~ | ~~Alerte d'inéquité résiduelle, et restitution de la moins mauvaise répartition (§5.6)~~ | ✅ **Livré le 2026-08-14** — `arbitrage.acceptable` + `arbitrage.motifs` (`MotifArbitrage`), alerte `INEQUITE_RESIDUELLE` nominative. A3 rapporte, il ne change pas ce que le solveur cherche — et §9.1, depuis close, n'avait de toute façon pas d'objet |
-| **A4** | Inscription au contrat série 50 + canal FileAdapter | Comme SC-02 S4 et S5 |
+| ~~**A4**~~ | ~~Inscription au contrat série 50 + canal FileAdapter~~ | ✅ **Livré le 2026-08-14** — voir §8.1 |
 
-### 8.1 Ce que le lot A4 devra impérativement porter
+### 8.1 Ce que le lot A4 a inscrit — ✅ tout est publié
 
-Les lots A1 et A2 ont livré une route et un bloc de réponse **que le contrat publié ne connaît
-pas**. Rien n'est cassé aujourd'hui — aucun client n'appelle SC-05 — mais A4 ne peut pas se réduire
-à un paragraphe de documentation :
+Les lots A1 et A2 avaient livré une route et un bloc de réponse **que le contrat publié ne
+connaissait pas**. Rien n'était cassé — aucun client n'appelait SC-05 — mais l'écart était réel et
+daté. Il est refermé :
 
-| À inscrire | Où | Pourquoi c'est bloquant |
+| Inscrit | Où | Ce que cela évitait |
 |---|---|---|
-| `POST /scenarios/sc05/solve` | `50_openapi_windev_moteur_v_1.yaml` | la route existe et n'est annoncée nulle part |
-| bloc `arbitrage` — y compris `acceptable`, `motifs`, `parSalarie`, `details` | `50_ScenarioResponse.schema.json` | le schéma porte `additionalProperties: false` : **un client qui valide rejetterait la réponse** |
-| les quatre codes d'alerte de SC-05 et les quatre `MotifArbitrage` | `50_SCENARIO_RESPONSE_CONTRACT.md` | l'appelant filtre sur la sévérité, mais doit pouvoir lire les codes |
-| SC-05 et son contrat d'entrée | `50_SCENARIO_CONTRACT.md` §3.5 | l'intention y est décrite depuis l'origine, le contrat réel non |
-| `scenarioType: SC-05` | canal FileAdapter | comme SC-02 S5 |
+| ✅ `POST /scenarios/sc05/solve` | `50_openapi_windev_moteur_v_1.yaml` | une route qui existe et que rien n'annonce |
+| ✅ bloc `arbitrage` et ses trois sous-définitions | `50_ScenarioResponse.schema.json` | le schéma porte `additionalProperties: false` : **un client qui valide aurait rejeté la réponse** |
+| ✅ les quatre codes d'alerte et les quatre `MotifArbitrage` | `50_SCENARIO_RESPONSE_CONTRACT.md` §8 | l'appelant filtre sur la sévérité, mais doit pouvoir lire les codes |
+| ✅ SC-05 et son contrat d'entrée réel | `50_SCENARIO_CONTRACT.md` §3.5 | une intention décrite depuis l'origine, et un contrat qui ne lui ressemblait plus |
+| ✅ `scenarioType: SC-05` | canal FileAdapter | comme SC-02 S5 |
+| ✅ pointeur SC-05 | `50_ScenarioContract.schema.json` | un `scenarioType` énuméré sans indication de ce qu'il attend |
 
-C'est exactement la classe de défaut que le rang 13 a relevée sur le schéma d'entrée : un schéma
-publié qui a dérivé de ce que le moteur produit. La différence est qu'ici l'écart est **connu et
-daté** au lieu d'être découvert deux ans plus tard.
+C'était exactement la classe de défaut que le rang 13 a relevée sur le schéma d'entrée : un schéma
+publié qui dérive de ce que le moteur produit. **Un test le rend désormais impossible pour SC-05** —
+`arbitrageProduit_correspondAuSchemaPublie` confronte le bloc produit à la définition publiée, sur
+trois situations distinctes. Vérifié par mutation : un champ ajouté au code et pas au schéma le fait
+tomber.
+
+### 8.2 Ce que la §3.5 annonçait et qui n'a pas été publié
+
+Le contrat annonçait SC-05 depuis l'origine, dans des termes que les arbitrages ont revus. Rien n'a
+été retiré sans raison :
+
+| Annoncé | Devenu |
+|---|---|
+| `objectif` (trois valeurs) | **supprimé** — il se déduit des paramètres transmis (§5.3). Revient au rang 10, avec une seule valeur |
+| `autorisation de déséquilibre contrôlé` | **remplacé** par `ecartTolerePourcent` (§5.4) |
+| `période concernée` | porté par `planningContext.horizon`, déjà au contrat |
+| `lieux et activités communs` | **subsumé** : le périmètre se transmet en identifiants de créneaux, qui portent déjà lieu et activité |
+| `seuils comparatifs` | `planningContext.equite.ecartTolerePourcent` |
+| `historique de charge des deux salariés` | ❌ **non reçu** — inscrit au contrat comme limite explicite (§9.3), et non passé sous silence |
 
 Ordre de grandeur : celui de SC-02, soit **cinq à six lots**.
 

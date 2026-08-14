@@ -41,9 +41,218 @@
     "remplacement": {
       "$ref": "#/$defs/Remplacement",
       "description": "Propre à SC-02 : les conséquences de l'absence. Même règle que candidats — la clé est ABSENTE partout ailleurs."
+    },
+    "arbitrage": {
+      "$ref": "#/$defs/Arbitrage",
+      "description": "Propre à SC-05 : ce que l'arbitrage a déplacé, et pour qui. Même règle que candidats et remplacement — la clé est ABSENTE partout ailleurs."
     }
   },
   "$defs": {
+    "Arbitrage": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "[SC-05] Ce que l'arbitrage a déplacé, et ce qu'il en coûte à chacun. Le bloc planning ne restitue que l'APRÈS ; SC-05 rend une répartition qui doit se justifier ligne à ligne devant les intéressés, et une justification sans terme de comparaison n'en est pas une. Les compteurs découpent le périmètre selon CE QUI EST ARRIVÉ à chaque créneau ; un créneau resté chez son titulaire n'entre dans aucun des trois, et c'est le cas le plus fréquent.",
+      "required": [
+        "ressourcesArbitrees",
+        "creneauxArbitres",
+        "creneauxDeplaces",
+        "creneauxEpinglesSurUnTiers",
+        "creneauxNonCouverts",
+        "acceptable",
+        "motifs",
+        "parSalarie",
+        "details"
+      ],
+      "properties": {
+        "ressourcesArbitrees": {
+          "type": "array",
+          "description": "Salariés entre lesquels l'arbitrage a porté, DANS L'ORDRE OÙ L'APPELANT LES A NOMMÉS — salarieAId puis salarieBId. Un ENSEMBLE, de taille deux aujourd'hui : le « deux » ne vit que dans le contrat d'entrée, le moteur ne sait pas combien ils sont. L'ouverture à N élargira ce tableau sans rien changer au calcul.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "creneauxArbitres": {
+          "type": "integer",
+          "description": "Créneaux du périmètre EFFECTIVEMENT soumis au solveur. Peut être inférieur à la taille de scenarioParameters.creneauxArbitres lorsque celui-ci nomme des créneaux absents du dataSet ou écartés avant résolution — une alerte CRENEAU_ARBITRE_INTROUVABLE le dit alors, et les nomme."
+        },
+        "creneauxDeplaces": {
+          "type": "integer",
+          "description": "Ceux qui ont changé de main."
+        },
+        "creneauxEpinglesSurUnTiers": {
+          "type": "integer",
+          "description": "Ceux qui n'ont pas pu bouger parce qu'une personne étrangère à l'arbitrage les tient. CE N'EST PAS UN ÉCHEC : on ne retire pas son travail à quelqu'un qui n'a rien demandé. L'alerte CRENEAU_ARBITRE_TENU_PAR_UN_TIERS les nomme."
+        },
+        "creneauxNonCouverts": {
+          "type": "integer",
+          "description": "Ceux que personne ne tient au bout du compte. Le moteur ne refuse pas — il rend visible ce qu'il n'a pas su couvrir."
+        },
+        "acceptable": {
+          "type": "boolean",
+          "description": "false dès qu'un motif éliminatoire est levé. La répartition est RENDUE QUAND MÊME : c'est la moins mauvaise, et jamais une erreur. ATTENTION — true signifie « acceptable au regard de ce que le moteur sait », et il ne connaît pas les préférences des intéressés : l'absence de motif ne vaut pas accord des deux salariés."
+        },
+        "motifs": {
+          "type": "array",
+          "description": "Ce qui disqualifie la répartition, ou la décrit. Tableau VIDE — et non clé absente — quand rien n'est à signaler.",
+          "items": {
+            "$ref": "#/$defs/MotifArbitrage"
+          }
+        },
+        "parSalarie": {
+          "type": "array",
+          "description": "L'avant et l'après de chaque salarié arbitré, dans l'ordre de ressourcesArbitrees.",
+          "items": {
+            "$ref": "#/$defs/MouvementSalarie"
+          }
+        },
+        "details": {
+          "type": "array",
+          "description": "Le sort de chaque créneau du périmètre, trié par date puis heure de début. Y COMPRIS ceux que l'arbitrage n'a pas déplacés : un arbitrage qui n'a rien changé est une information, pas un silence.",
+          "items": {
+            "$ref": "#/$defs/CreneauArbitre"
+          }
+        }
+      }
+    },
+    "MouvementSalarie": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "[SC-05] Ce que l'arbitrage a changé pour l'un des salariés arbitrés. Deux lectures qui ne se déduisent pas l'une de l'autre : les compteurs disent combien d'objets ont changé de main, les heures et l'écart disent ce qui a réellement été déplacé — reprendre huit heures et en céder une fait « un repris, un cédé » et n'a rien d'un échange équilibré.",
+      "required": [
+        "ressourceId",
+        "creneauxRepris",
+        "creneauxCedes",
+        "heuresAvant",
+        "heuresApres"
+      ],
+      "properties": {
+        "ressourceId": {
+          "type": "string"
+        },
+        "creneauxRepris": {
+          "type": "integer",
+          "description": "Créneaux du périmètre qu'il tient au bout de l'arbitrage et qu'il ne tenait pas avant."
+        },
+        "creneauxCedes": {
+          "type": "integer",
+          "description": "Créneaux du périmètre qu'il tenait et qu'il ne tient plus."
+        },
+        "heuresAvant": {
+          "type": "number",
+          "description": "Heures travaillées sur l'horizon AVANT arbitrage, en heures décimales — heures brutes, même unité que workMetrics.byRessource."
+        },
+        "heuresApres": {
+          "type": "number",
+          "description": "Les mêmes APRÈS arbitrage."
+        },
+        "ecartContratAvantPourcent": {
+          "type": "number",
+          "description": "Écart SIGNÉ à son contrat avant arbitrage, en points de pourcentage. C'est la seule des deux grandeurs qui soit COMPARABLE ENTRE DEUX PERSONNES : deux salariés à 32 h ne sont pas dans la même situation si l'un est à 35 h de contrat et l'autre à 24 h. CLÉ OMISE lorsque le contrat ne déclare aucun volume hebdomadaire — une borne absente n'est pas une borne à zéro."
+        },
+        "ecartContratApresPourcent": {
+          "type": "number",
+          "description": "Le même écart APRÈS arbitrage. C'est la comparaison des deux qui dit si l'arbitrage a rapproché ou éloigné. Les deux sont mesurés PAR LE MÊME CALCUL : deux mesures obtenues autrement se compareraient mal, et une différence de méthode se lirait comme un mouvement."
+        }
+      }
+    },
+    "CreneauArbitre": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "[SC-05] Le sort d'un créneau du périmètre : à qui il était, à qui il est. Contrairement à CreneauRemplace, où ressourceAvantId désigne toujours le même absent, chaque créneau a ici son propre titulaire d'avant — et c'est précisément ce que l'arbitrage déplace.",
+      "required": [
+        "creneauId",
+        "date",
+        "heureDebut",
+        "heureFin",
+        "dureeMinutes",
+        "nature",
+        "deplace",
+        "tenuParUnTiers"
+      ],
+      "properties": {
+        "creneauId": {
+          "type": "string"
+        },
+        "creneauOrigineId": {
+          "type": "string",
+          "description": "Créneau dont celui-ci est un morceau. CLÉ OMISE pour un créneau qui n'a pas été découpé."
+        },
+        "date": {
+          "type": "string",
+          "format": "date",
+          "description": "Jour de DÉBUT du créneau. Un créneau traversant minuit n'est rattaché qu'à celui-là."
+        },
+        "heureDebut": {
+          "type": "string"
+        },
+        "heureFin": {
+          "type": "string",
+          "description": "Le lendemain si elle n'est pas postérieure au début."
+        },
+        "dureeMinutes": {
+          "type": "integer",
+          "description": "Durée telle que portée par le créneau, jamais recalculée."
+        },
+        "ressourceAvantId": {
+          "type": "string",
+          "description": "Qui tenait le créneau dans le planning transmis. CLÉ OMISE si personne ne le tenait — un besoin nu est aussi du travail à répartir."
+        },
+        "ressourceApresId": {
+          "type": "string",
+          "description": "Qui le tient au bout de l'arbitrage. CLÉ OMISE si personne."
+        },
+        "nature": {
+          "type": "string",
+          "enum": [
+            "SALARIE",
+            "POSTE_VIRTUEL",
+            "NON_COUVERT"
+          ],
+          "description": "Ce qui couvre le créneau au bout du compte."
+        },
+        "deplace": {
+          "type": "boolean",
+          "description": "Le créneau a changé de main. Restitué plutôt que déduit de la comparaison des deux identifiants, ce qui obligerait l'appelant à traiter lui-même le cas du créneau qui n'était à personne."
+        },
+        "tenuParUnTiers": {
+          "type": "boolean",
+          "description": "Le créneau est resté épinglé parce qu'une personne étrangère à l'arbitrage le tient. Il n'a donc PAS PU bouger, et ce n'est pas un échec de l'arbitrage."
+        }
+      }
+    },
+    "MotifArbitrage": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "[SC-05] Une raison attachée à la répartition rendue. Même forme que MotifCandidat et que Alert — code, severite, message — afin que le client applique partout la même règle de lecture : IL FILTRE SUR LA SÉVÉRITÉ, PAS SUR LE CODE. Un motif éliminatoire entraîne acceptable = false ; la répartition reste restituée.",
+      "required": [
+        "code",
+        "severite",
+        "message"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "enum": [
+            "REPARTITION_NON_CONFORME",
+            "CRENEAU_ARBITRE_PERDU",
+            "INEQUITE_RESIDUELLE",
+            "ARBITRAGE_SANS_EFFET"
+          ],
+          "description": "REPARTITION_NON_CONFORME (ERROR, éliminatoire) — la répartition viole au moins une contrainte impérative, le détail est au scoreBreakdown. CRENEAU_ARBITRE_PERDU (ERROR, éliminatoire) — un créneau que quelqu'un assurait ne trouve plus personne ; à distinguer d'un créneau qui n'était déjà à personne, lequel n'a rien perdu. INEQUITE_RESIDUELLE (WARNING, éliminatoire) — l'écart au contrat reste au-delà de la tolérance déclarée ; le périmètre remis en jeu ne contenait pas de quoi y ramener tout le monde, et l'élargir est une décision d'encadrement. ARBITRAGE_SANS_EFFET (INFO, NON éliminatoire) — aucun créneau n'a changé de main."
+        },
+        "severite": {
+          "type": "string",
+          "enum": [
+            "INFO",
+            "WARNING",
+            "ERROR"
+          ]
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
     "Remplacement": {
       "type": "object",
       "additionalProperties": false,

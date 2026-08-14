@@ -489,7 +489,7 @@ soit explicitement hors moteur (§ Analyse métier aval).
 | Rang | Sujet | Nature du blocage | Qui tranche |
 |---|---|---|---|
 | **8** | Champs au contrat sans effet : `capaciteCible`, structuration des besoins | arbitrage — activer ou retirer — **non traitable avant le 25/08/2026** | Métier + moteur |
-| **9** | SC-04 — un scénario annoncé, jamais écrit | cadrage — il n'a pas de contrat d'entrée et dépend d'un historique des compteurs qui n'existe pas. **SC-02 en est sorti** (cadré le 11/08, livré le 13/08) et **SC-05 aussi** : cadré et arbitré le 13/08, découpage A0→A4 actionnable | Métier |
+| **9** | SC-04 — un scénario annoncé, jamais écrit | cadrage — il n'a pas de contrat d'entrée et dépend d'un historique des compteurs qui n'existe pas. **SC-02 en est sorti** (cadré le 11/08, clos le 13/08) et **SC-05 aussi** : cadré et arbitré le 13/08, clos le 14/08. **SC-04 y reste seul** | Métier |
 | **10** | Contraintes personnelles : lieux, activités, préférences, annualisation | échanges avec la Production | Production |
 | **12** | Fermer les blocs restés délibérément tolérants aux champs inconnus | arbitrage — changement de comportement visible par l'appelant | Métier + WinDev |
 | **13** | Auditer et **garder** `50_ScenarioContract.schema.json` comme `SchemaPublie` garde le schéma de sortie | correctif — rien ne confronte les requêtes au schéma publié, et il a dérivé | Moteur |
@@ -582,15 +582,14 @@ qui change la nature du problème posé au solveur et demande sa propre évaluat
 
 ## Rang 9 — le dernier scénario annoncé et jamais écrit
 
-`50_SCENARIO_CONTRACT.md` décrit six scénarios. **Quatre existent** (SC-01, SC-02, SC-03, SC-06),
-**SC-05 est cadré et arbitré**, et **SC-04 seul reste sans contrat d'entrée, sans endpoint et sans
-jeu d'essai**.
+`50_SCENARIO_CONTRACT.md` décrit six scénarios. **Cinq existent** (SC-01, SC-02, SC-03, SC-05,
+SC-06), et **SC-04 seul reste sans contrat d'entrée, sans endpoint et sans jeu d'essai**.
 
 | Scénario | Intention | Ce qui existe déjà | Ce qui manque |
 |---|---|---|---|
 | ~~**SC-02** — remplacement d'un absent~~ | ~~assurer la continuité en perturbant le moins possible l'existant~~ | ✅ **Clos le 2026-08-13** — six lots S0 à S5, inscrit au contrat série 50, accessible par les deux canaux | — |
 | **SC-04** — optimisation globale d'un planning existant | améliorer sans reconstruire | figement, WorkMetrics | historique des compteurs, degrés de liberté, indicateurs comparatifs |
-| ~~**SC-05** — arbitrage entre deux salariés~~ | ~~répartir équitablement un périmètre commun~~ | ✅ **Cadré et arbitré le 2026-08-13** — WorkMetrics d'équité livrées (lots L1 à L5), six arbitrages rendus, découpage A0→A4 actionnable : `92_CADRAGE_SCENARIO_SC-05.md` | la réalisation, cinq à six lots |
+| ~~**SC-05** — arbitrage entre deux salariés~~ | ~~répartir équitablement un périmètre commun~~ | ✅ **Clos le 2026-08-14** — cinq lots A0 à A4, inscrit au contrat série 50, accessible par les deux canaux : `92_CADRAGE_SCENARIO_SC-05.md` | — |
 
 `92_CADRAGE_DONNEES_AMONT_SCENARIOS.md` §7 le résume : trois familles de données apparaissent dès
 SC-02 et ne disparaissent plus — le **planning existant**, le **contrat salarié** et le **seuil de
@@ -598,17 +597,18 @@ surcharge**. Les trois sont désormais câblées : le planning existant est épi
 l'était par SC-06, et le seuil de surcharge a ses deux contraintes depuis le lot S3. Le contrat
 salarié reste **transporté sans qu'aucune contrainte ne le lise**.
 
-**SC-05 sort de ce rang.** Les WorkMetrics d'équité qui le bloquaient sont livrées (lots L1 à L5),
-son cadrage est écrit et ses six arbitrages sont rendus — deux avec une condition de retour au
-rang 10. Il ne lui manque que sa réalisation, découpée en cinq lots :
-`92_CADRAGE_SCENARIO_SC-05.md` §8.
+**SC-05 est sorti de ce rang, et il est clos.** Les WorkMetrics d'équité qui le bloquaient ont été
+livrées (lots L1 à L5), son cadrage a été écrit et ses six arbitrages rendus le 13/08 — deux avec
+une condition de retour au rang 10 — puis les cinq lots A0 à A4 réalisés le 14/08. Il est inscrit au
+contrat série 50 et accessible par les deux canaux.
 
 **SC-04 reste seul**, et pour une raison qui ne se lève pas dans ce chantier : il dépend d'un
-historique de compteurs que le moteur ne reçoit pas.
+historique de compteurs que le moteur ne reçoit pas. C'est le **même manque** que celui que SC-05
+inscrit comme limite explicite : un déséquilibre installé depuis trois mois n'est visible dans
+aucune fenêtre transmise.
 
-📄 **SC-02 est cadré et livré à 5/6** — arbitrages métier rendus le 11/08/2026, découpage en six
-lots S0 à S5, **S0 à S4 livrés**, S5 (canal FileAdapter) restant :
-`92_CADRAGE_SCENARIO_SC-02.md`.
+📄 **SC-02 est clos** — six lots S0 à S5, `92_CADRAGE_SCENARIO_SC-02.md`.
+📄 **SC-05 est clos** — cinq lots A0 à A4, `92_CADRAGE_SCENARIO_SC-05.md`.
 
 ---
 
@@ -816,15 +816,9 @@ Ordonné par **dépendance**, pas par valeur métier. Les rangs renvoient au bac
 2. **Rang 8** — trancher les champs sans effet. Indépendant du reste, et il retire du contrat des
    promesses que personne ne tient. SC-02 en a rendu un plus visible : `capaciteCible` ne borne pas
    le volume qu'on gare sur un poste virtuel.
-3. **SC-05, lot A4** — le chantier équité est clos (L0 à L5 livrés) et **A0 à A3 sont livrés le
-   2026-08-14** : la contrainte HARD borne l'affectation à un ensemble de ressources autorisées,
-   `POST /scenarios/sc05/solve` répond, le bloc `arbitrage` dit ce qui a bougé, et la moins
-   mauvaise répartition est rendue avec les motifs qui la disqualifient. ⚠️ **Il ne reste que
-   l'inscription au contrat**, et elle est bloquante : SC-05 n'est ni à `50_SCENARIO_CONTRACT.md`,
-   ni à l'OpenAPI, et le bloc `arbitrage` n'est pas au schéma de réponse publié — lequel porte
-   `additionalProperties: false`. Liste complète en §8.1 de `92_CADRAGE_SCENARIO_SC-05.md`. Ce qui
-   manque par ailleurs n'est plus un outil mais **des plannings réels** à donner au harnais de
-   calibration — `92_CALIBRATION_PENIBILITE.md` §2.
+3. ~~**SC-05**~~ — **clos le 2026-08-14**, cinq lots A0 à A4, inscrit au contrat série 50 et
+   accessible par les deux canaux. Ce qui manque encore au moteur n'est plus un outil mais **des
+   plannings réels** à donner au harnais de calibration — `92_CALIBRATION_PENIBILITE.md` §2.
 4. **Rang 13** — garder le schéma d'entrée comme le schéma de sortie l'est. Correctif pur, sans
    arbitrage.
 5. **Rang 10** — dès que la Production a rendu ses arbitrages.
@@ -1710,6 +1704,47 @@ SC-06, et mérite son propre lot.
 
 Les **quatre scénarios exposés voyagent maintenant par les deux canaux**. Le document d'échange
 fichier n'en connaissait que deux — SC-06 n'y avait jamais été inscrit à son lot S6 ; c'est réparé.
+
+### SC-05 — lot A4 : inscrit au contrat, et le garde qui manquait (2026-08-14)
+
+784 tests, 0 échec (+6). **SC-05 est clos** : les cinq lots A0 à A4 sont livrés, le scénario est
+inscrit au contrat série 50 et accessible par les deux canaux.
+
+#### Ce que A4 refermait
+
+A1 et A2 avaient livré **une route et un bloc de réponse que le contrat publié ne connaissait
+pas**. Rien n'était cassé — personne n'appelait SC-05 — mais `50_ScenarioResponse.schema.json` porte
+`additionalProperties: false` : un client qui valide aurait rejeté la réponse. Six inscriptions, du
+schéma de réponse à l'OpenAPI en passant par le canal fichier.
+
+#### Le garde vaut mieux que l'inscription
+
+Inscrire ne suffit pas : c'est exactement ce que le rang 13 a constaté sur le schéma d'entrée, qui
+avait dérivé sans que rien ne le voie. `arbitrageProduit_correspondAuSchemaPublie` confronte
+désormais le bloc produit à la définition publiée, **sur trois situations distinctes** — l'arbitrage
+nominal, celui que l'inéquité disqualifie, celui qui ne déplace rien — parce que les clés
+facultatives n'apparaissent pas dans toutes.
+
+Vérifié par mutation : un champ ajouté au DTO et pas au schéma fait tomber le test. C'est la seule
+partie du lot qui ait une valeur durable.
+
+#### Ce que le §3.5 annonçait, et ce qui en reste
+
+Le contrat décrivait SC-05 depuis l'origine, dans des termes que les arbitrages ont revus. La
+réécriture ne se contente pas de retirer : elle dit ce qu'est devenu chaque promesse.
+`objectif` et `autoriserDesequilibre` sont supprimés et documentés comme tels ; « période
+concernée », « lieux et activités communs » et « seuils comparatifs » sont **subsumés** par des
+champs existants ; et l'**historique de charge**, annoncé et jamais reçu, est inscrit comme une
+limite explicite plutôt que passé sous silence.
+
+Le contrat porte aussi, noir sur blanc, que `acceptable: true` signifie « au regard de ce que le
+moteur sait » — et qu'il ne sait rien des préférences ni des contraintes personnelles des deux
+intéressés. Sans cette phrase, un intégrateur lirait l'absence de motif comme un accord.
+
+#### SC-05 est clos
+
+Cinq lots en une journée, après un cadrage et six arbitrages rendus la veille. Ce qui lui reste ne
+lui appartient pas : le **rang 10**, que le moteur entier attend.
 
 ### SC-05 — §9.1 close : une question posée par analogie, sans cas qui la justifie (2026-08-14)
 

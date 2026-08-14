@@ -15,7 +15,8 @@ Pour la description de la requête champ par champ, voir `50_INTERFACE_WINDEV_MO
 ## Principe de conception
 
 La réponse du moteur est structurée en blocs fonctionnels indépendants — cinq communs à tous les
-scénarios, et un bloc propre à chacun des deux scénarios qui produisent autre chose qu'un planning.
+scénarios, et un bloc propre à chacun des trois scénarios qui ont quelque chose à dire au-delà du
+planning produit.
 
 | Bloc              | Rôle                                                                   |
 | ----------------- | ---------------------------------------------------------------------- |
@@ -26,6 +27,7 @@ scénarios, et un bloc propre à chacun des deux scénarios qui produisent autre
 | `diagnostics`     | Fournit des informations techniques utiles pour l'analyse et le debug  |
 | `candidats`       | **SC-06 uniquement** — classe les manières de couvrir un besoin        |
 | `remplacement`    | **SC-02 uniquement** — dit ce que l'absence a coûté — voir §7          |
+| `arbitrage`       | **SC-05 uniquement** — dit ce que l'arbitrage a déplacé — voir §8      |
 
 Cette séparation garantit que :
 - le moteur reste un moteur d'optimisation,
@@ -45,6 +47,7 @@ Cette séparation garantit que :
 | `diagnostics`     | objet  | Oui              | Alertes et diagnostics d'affectation             |
 | `candidats`       | tableau| **SC-06 seul**   | Solutions classées — **clé absente ailleurs**, voir §6 |
 | `remplacement`    | objet  | **SC-02 seul**   | Conséquences de l'absence — **clé absente ailleurs**, voir §7 |
+| `arbitrage`       | objet  | **SC-05 seul**   | Ce que l'arbitrage a déplacé — **clé absente ailleurs**, voir §8 |
 
 ---
 
@@ -360,6 +363,15 @@ de l'appelant — ne partait que dans les journaux du serveur.
 | `REPOS_DOMINICAL_TRAVAILLE` | `WARNING` | Le planning transmis fait déjà travailler un salarié un jour de repos dominical **déclaré**. Le créneau étant figé, le solveur ne peut pas le défaire : le moteur le signale plutôt que d'imputer au score une situation qu'il n'a pas créée |
 | `COEFFICIENTS_PENIBILITE_SANS_EFFET` | `INFO` | Un bloc `coefficientsPenibilite` est transmis, mais aucun coefficient ne pondère quoi que ce soit. **L'absence complète du bloc ne déclenche rien** — c'est le cas de toutes les demandes tant que les coefficients ne sont pas calibrés — sans `date` |
 | `COEFFICIENTS_PENIBILITE_INCOHERENTS` | `WARNING` | L'échelle transmise contredit l'ordre de dominance : la catégorie retenue pour une minute cumulant deux pénibilités pèse moins qu'une de celles qu'elle absorbe, si bien que **cumuler allège l'heure au lieu de l'alourdir**. Le message nomme le couple fautif. La mesure est produite malgré tout — voir `92_CALIBRATION_PENIBILITE.md` §3 — sans `date` |
+
+#### Codes de SC-05 — lots A1 et A3
+
+| Code | Sévérité | Signification |
+|------|----------|---------------|
+| `CRENEAU_ARBITRE_TENU_PAR_UN_TIERS` | `WARNING` | Un ou plusieurs créneaux du périmètre sont tenus par quelqu'un qui n'est pas de l'arbitrage. Ils sont **épinglés** — on ne retire pas son travail à un tiers pour équilibrer deux autres personnes — et l'arbitrage porte sur ce qui reste. Le message les nomme |
+| `SALARIE_ARBITRE_INTROUVABLE` | `ERROR` | Un salarié désigné par `salarieAId` ou `salarieBId` n'est pas dans le dataset. Le scénario s'exécute — il ne refuse pas — mais l'arbitrage se fait entre moins de personnes que demandé |
+| `CRENEAU_ARBITRE_INTROUVABLE` | `WARNING` | Le périmètre nomme des créneaux absents du dataset, ou écartés avant le solveur. L'arbitrage porte sur les autres, et `arbitrage.creneauxArbitres` compte le périmètre effectivement soumis. Le message nomme les manquants |
+| `INEQUITE_RESIDUELLE` | `WARNING` | L'écart au contrat d'un salarié arbitré reste au-delà de la tolérance déclarée. **Une alerte par salarié concerné**, nominative. Le périmètre remis en jeu ne contenait pas de quoi l'y ramener : ce n'est pas un défaut du moteur, et l'élargir est une décision d'encadrement. **Impossible sans `ecartTolerePourcent`** — une borne absente n'est pas une borne à zéro |
 
 **Partage des rôles avec `ignoredCreneaux`.** Une alerte porte sur la configuration ou sur le
 dataset pris dans son ensemble ; le détail créneau par créneau vit dans
@@ -883,6 +895,166 @@ Lecture : l'absence de Marie a libéré seize heures. Paul reprend le mercredi e
 coupé à 09:00, heure à laquelle Sophie prend son propre service — elle n'en couvre donc que la
 première heure, et sept heures restent à pourvoir. Le créneau du mercredi, repris en entier par une
 seule personne, **garde son identifiant** ; celui du mardi ressort en deux morceaux.
+
+---
+
+## 8. `arbitrage` — Ce que l'arbitrage a déplacé (SC-05 uniquement)
+
+> Inscrit au contrat au **lot A4 de SC-05**. Cadrage complet : `92_CADRAGE_SCENARIO_SC-05.md`.
+
+Ce bloc est **propre à SC-05**. Comme `candidats` et `remplacement`, la clé est **absente** — et non
+vide — partout ailleurs : une réponse ne doit pas gagner un bloc vide qui laisserait croire à une
+capacité inexistante.
+
+> **En SC-05, `planning` porte le planning ajusté complet**, comme en SC-02. Mais il ne restitue que
+> l'**après**. C'est `arbitrage.parSalarie` qui donne l'avant, et **la comparaison des deux est ce
+> qui rend la répartition justifiable ligne à ligne devant les intéressés**.
+
+### 8.1 Structure
+
+| Champ | Type | Description |
+|---|---|---|
+| `ressourcesArbitrees[]` | tableau | Les salariés entre lesquels l'arbitrage a porté, **dans l'ordre où l'appelant les a nommés** |
+| `creneauxArbitres` | entier | Créneaux du périmètre **effectivement soumis** au solveur |
+| `creneauxDeplaces` | entier | Ceux qui ont changé de main |
+| `creneauxEpinglesSurUnTiers` | entier | Ceux qu'une personne étrangère à l'arbitrage tient — voir §8.3 |
+| `creneauxNonCouverts` | entier | Ceux que personne ne tient au bout du compte |
+| `acceptable` | booléen | `false` dès qu'un motif éliminatoire est levé — voir §8.4 |
+| `motifs[]` | tableau | Ce qui disqualifie la répartition, ou la décrit — voir §8.4 |
+| `parSalarie[]` | tableau | L'avant et l'après de chaque salarié arbitré — voir §8.2 |
+| `details[]` | tableau | Le sort de chaque créneau du périmètre — voir §8.3 |
+
+⚠️ **Les compteurs ne se recomposent pas comme ceux de SC-02.** Ils découpent le périmètre selon
+**ce qui est arrivé** à chaque créneau, et un créneau resté chez son titulaire n'entre dans aucun
+des trois — c'est le cas le plus fréquent, et le moins intéressant.
+
+⚠️ `creneauxArbitres` peut être **inférieur** à la taille de `scenarioParameters.creneauxArbitres`
+lorsque le périmètre nomme des créneaux absents du dataset ou écartés avant résolution. Une alerte
+`CRENEAU_ARBITRE_INTROUVABLE` les nomme alors.
+
+### 8.2 `parSalarie[]` — l'avant et l'après
+
+| Champ | Type | Description |
+|---|---|---|
+| `ressourceId` | string | Le salarié |
+| `creneauxRepris` | entier | Créneaux du périmètre qu'il tient au bout de l'arbitrage et qu'il ne tenait pas avant |
+| `creneauxCedes` | entier | Créneaux du périmètre qu'il tenait et qu'il ne tient plus |
+| `heuresAvant` | number | Heures travaillées sur l'horizon **avant** arbitrage — heures brutes, même unité que `workMetrics` |
+| `heuresApres` | number | Les mêmes **après** |
+| `ecartContratAvantPourcent` | number | Écart **signé** à son contrat avant arbitrage. **Clé omise** sans volume hebdomadaire déclaré |
+| `ecartContratApresPourcent` | number | Le même **après**. C'est la comparaison des deux qui dit si l'arbitrage a rapproché ou éloigné |
+
+**Deux lectures, qui ne se déduisent pas l'une de l'autre.** Les compteurs disent combien d'objets
+ont changé de main ; les heures et l'écart disent ce qui a réellement été déplacé. Reprendre huit
+heures et en céder une fait « un repris, un cédé », et n'a rien d'un échange équilibré.
+
+**Pourquoi l'écart au contrat, et pas seulement les heures.** C'est la seule des deux grandeurs
+**comparable entre deux personnes** : deux salariés qui travaillent tous deux 32 h ne sont pas dans
+la même situation si l'un est à 35 h de contrat et l'autre à 24 h.
+
+> 👉 L'avant et l'après sont mesurés **par le même calcul**. Deux mesures obtenues autrement se
+> compareraient mal, et une différence de méthode se lirait comme un mouvement.
+
+### 8.3 `details[]` — le sort de chaque créneau du périmètre
+
+| Champ | Type | Description |
+|---|---|---|
+| `creneauId` | string | Restitué tel que reçu |
+| `creneauOrigineId` | string | Créneau dont celui-ci est un morceau. **Clé omise** s'il n'a pas été découpé |
+| `date`, `heureDebut`, `heureFin` | — | Jour de **début**, heures au format `HH:mm` |
+| `dureeMinutes` | entier | Telle que portée par le créneau, jamais recalculée |
+| `ressourceAvantId` | string | Qui le tenait dans le planning transmis. **Clé omise** si personne |
+| `ressourceApresId` | string | Qui le tient au bout de l'arbitrage. **Clé omise** si personne |
+| `nature` | enum | `SALARIE`, `POSTE_VIRTUEL` ou `NON_COUVERT` |
+| `deplace` | booléen | Le créneau a changé de main |
+| `tenuParUnTiers` | booléen | Il est resté épinglé parce qu'un tiers le tient |
+
+Un créneau du périmètre figure ici **quel que soit son sort**, y compris s'il n'a pas bougé : un
+arbitrage qui n'a rien changé est une information, pas un silence.
+
+`deplace` est **restitué plutôt que déduit** de la comparaison des deux identifiants, ce qui
+obligerait l'appelant à traiter lui-même le cas du créneau qui n'était à personne.
+
+> **`tenuParUnTiers` n'est pas un échec.** Un créneau du périmètre tenu par quelqu'un d'étranger à
+> l'arbitrage est épinglé, jamais repris : le tiers n'a rien demandé, et on ne lui retire pas son
+> travail pour équilibrer deux autres personnes. Il ne pouvait donc **pas** bouger.
+
+### 8.4 `acceptable` et `motifs[]` — la moins mauvaise, et ce qui la disqualifie
+
+> Sans répartition acceptable, la **moins mauvaise** est rendue. **Jamais une erreur.**
+
+Même traitement qu'en SC-06 §6.5 : les solutions non conformes sont restituées et jamais masquées —
+l'appelant voit l'impasse au lieu de la deviner. Sans les motifs, cette restitution serait
+malhonnête : il recevrait une répartition inacceptable présentée comme un résultat ordinaire.
+
+| Code | Sévérité | Éliminatoire | Signification |
+|---|---|:---:|---|
+| `REPARTITION_NON_CONFORME` | `ERROR` | ✅ | Au moins une contrainte impérative est violée ; le détail est dans `solverResult.scoreBreakdown` |
+| `CRENEAU_ARBITRE_PERDU` | `ERROR` | ✅ | Un créneau que quelqu'un assurait ne trouve plus personne. **À distinguer** d'un créneau qui n'était déjà à personne : celui-là n'a rien perdu |
+| `INEQUITE_RESIDUELLE` | `WARNING` | ✅ | L'écart au contrat reste au-delà de la tolérance déclarée. Le périmètre ne contenait pas de quoi y ramener tout le monde ; l'élargir est une décision d'encadrement |
+| `ARBITRAGE_SANS_EFFET` | `INFO` | ❌ | Aucun créneau n'a changé de main : la répartition transmise n'a pas pu être améliorée |
+
+Un motif porte `code`, `severite` et `message` — **même forme que `alerts[]` et que les motifs de
+SC-06**, afin que le client applique partout la même règle de lecture : **il filtre sur la
+sévérité, pas sur le code.**
+
+`motifs` est un tableau **vide** — et non une clé absente — quand rien n'est à signaler.
+
+> ⚠️ **`acceptable: true` veut dire « au regard de ce que le moteur sait ».** Il ne connaît ni les
+> **préférences** des deux intéressés, ni leurs **contraintes personnelles** — indisponibilité
+> récurrente, incompatibilité entre personnes, activités réellement pratiquées. Deux salariés
+> désignés est pourtant le cas où elles comptent le plus : une répartition parfaitement équitable et
+> contraire au souhait des deux est la façon habituelle dont ce type d'arbitrage se fait rejeter sur
+> le terrain. **L'absence de motif ne vaut pas accord des intéressés.**
+
+### 8.5 Exemple
+
+```json
+"arbitrage": {
+  "ressourcesArbitrees": ["SAL-A", "SAL-B"],
+  "creneauxArbitres": 2,
+  "creneauxDeplaces": 1,
+  "creneauxEpinglesSurUnTiers": 1,
+  "creneauxNonCouverts": 0,
+  "acceptable": true,
+  "motifs": [],
+  "parSalarie": [
+    {
+      "ressourceId": "SAL-A",
+      "creneauxRepris": 0, "creneauxCedes": 1,
+      "heuresAvant": 40.0, "heuresApres": 32.0,
+      "ecartContratAvantPourcent": 14.29, "ecartContratApresPourcent": -8.57
+    },
+    {
+      "ressourceId": "SAL-B",
+      "creneauxRepris": 1, "creneauxCedes": 0,
+      "heuresAvant": 24.0, "heuresApres": 32.0,
+      "ecartContratAvantPourcent": -31.43, "ecartContratApresPourcent": -8.57
+    }
+  ],
+  "details": [
+    {
+      "creneauId": "PLN-ARB-V",
+      "date": "2026-05-15", "heureDebut": "08:00", "heureFin": "16:00",
+      "dureeMinutes": 480,
+      "ressourceAvantId": "SAL-A", "ressourceApresId": "SAL-B",
+      "nature": "SALARIE", "deplace": true, "tenuParUnTiers": false
+    },
+    {
+      "creneauId": "PLN-ARB-TIERS",
+      "date": "2026-05-16", "heureDebut": "08:00", "heureFin": "12:00",
+      "dureeMinutes": 240,
+      "ressourceAvantId": "SAL-TIERS", "ressourceApresId": "SAL-TIERS",
+      "nature": "SALARIE", "deplace": false, "tenuParUnTiers": true
+    }
+  ]
+}
+```
+
+Lecture : SAL-A était à 40 h pour un contrat de 35 h, SAL-B à 24 h. Le vendredi passe de l'un à
+l'autre, et les voilà tous deux à 32 h — de +14,29 % et −31,43 %, **ils se retrouvent au même
+−8,57 %**. Le samedi appartient à un tiers : l'appelant l'avait mis au périmètre, il est resté où il
+était, et une alerte le lui dit.
 
 ---
 

@@ -532,53 +532,108 @@ Améliorer un planning réel **sans le reconstruire entièrement**.
 
 ---
 
-### 🟣 SC-05 — Arbitrage de répartition horaire / lieu entre deux salariés
+### 🟣 SC-05 — Arbitrage de répartition entre deux salariés
+
+> Inscrit au contrat le 2026-08-14, lot A4. Cadrage complet : `92_CADRAGE_SCENARIO_SC-05.md`.
+> Arbitrages métier rendus le 2026-08-13, réalisation en cinq lots A0 à A4.
+> Schémas normatifs : `Sc05ScenarioRequest` et `Arbitrage` dans
+> `50_openapi_windev_moteur_v_1.yaml`, bloc de sortie détaillé dans
+> `50_SCENARIO_RESPONSE_CONTRACT.md` §8.
+>
+> **Deux canaux, un seul comportement** : `POST /scenarios/sc05/solve` et le **FileAdapter**
+> (`scenarioType: SC-05`). Ils entrent dans le même service au même point ; un test compare leurs
+> deux réponses entières.
 
 #### 🎯 Intention métier
 
-Arbitrer une **répartition équitable ou optimale** entre deux salariés concurrents
-pour un même périmètre de travail.
+Deux salariés se partagent un même périmètre de travail. **Comment le répartir équitablement, et
+que coûte l'arbitrage à chacun ?**
 
-👉 Ce scénario **ne crée pas de nouveaux besoins** :
-il arbitre **l’affectation relative**.
+Le moteur **ne crée aucun besoin** : il redistribue ce qui existe.
 
-#### Cas d’usage typiques
+#### Principe structurant — réaffecter, pas classer
 
-* deux salariés sur un même site ;
-* rééquilibrage de charge ;
-* conflit de préférences ;
-* arbitrage équité vs compétence.
+> SC-05 rend **une répartition**, pas un podium.
+
+C'est l'inverse de SC-06, qui énumère et classe sans rien réaffecter. Ici le solveur **résout**, et
+c'est donc **par le score** que l'équité l'atteint — exactement comme SC-02.
+
+La parenté est d'ailleurs avec SC-02 : même mécanique — libérer, épingler le reste, laisser le
+solveur décider — mais un déclencheur différent. SC-02 réagit à une absence, SC-05 à un déséquilibre.
+
+#### Ce qui borne l'arbitrage
+
+Une contrainte HARD **interdit qu'un créneau du périmètre revienne hors des ressources
+autorisées**. C'est la seule forme sûre : réduire le dataset aux deux salariés se passerait de toute
+contrainte, mais le moteur ne verrait plus les créneaux qui les bornent et déclarerait conforme une
+répartition qui ne l'est pas.
+
+👉 Cette contrainte porte sur un **ensemble** de ressources autorisées, pas sur un couple. À deux,
+l'ensemble a deux éléments ; l'ouverture à N sera un élargissement du contrat d'entrée, pas une
+réécriture du moteur.
 
 #### Paramètres spécifiques
 
-* salarié A ;
-* salarié B ;
-* période concernée ;
-* lieux et activités communs ;
-* objectif principal :
+| Champ | Obligatoire | Rôle |
+|---|:---:|---|
+| `scenarioParameters.salarieAId` | ✅ | premier des deux salariés, **distinct** du second |
+| `scenarioParameters.salarieBId` | ✅ | second des deux salariés |
+| `scenarioParameters.creneauxArbitres[]` | ✅ | le périmètre — identifiants de créneaux du `dataSet` |
+| `planningContext.equite.ecartTolerePourcent` | ○ | au-delà de quel écart il y a inéquité — **existait déjà** |
+| `planningContext.coefficientsPenibilite` | ○ | l'échelle de pénibilité — **existait déjà** |
 
-  * équité de charge ;
-  * minimisation de surcharge ;
-  * respect de préférences ;
-* autorisation de déséquilibre contrôlé.
+**Aucun champ nouveau hors `scenarioParameters`.** Le planning existant, les contrats, les
+indisponibilités et le cadre réglementaire étaient déjà au contrat et déjà lus.
+
+⚠️ **Deux champs annoncés de longue date n'existent pas**, et c'est délibéré :
+
+* **`objectif`** — il se *déduit* de ce que l'appelant transmet : l'équité de charge par
+  `ecartTolerePourcent`, la minimisation de surcharge par les seuils de SC-02. Un enum qui double
+  des paramètres existants finit par les contredire. Il reviendra quand le moteur connaîtra les
+  **préférences**, et avec la seule valeur qui ne se déduira pas d'un paramètre ;
+* **`autoriserDesequilibre`** — remplacé par `ecartTolerePourcent`, qui dit *de combien* là où un
+  booléen ne disait pas jusqu'où. « Équité stricte » se transmet comme une tolérance à `0`.
 
 #### Données clés transmises
 
-* créneaux communs ou concurrents ;
-* historique de charge des deux salariés ;
-* seuils comparatifs.
+* le **planning complet de la période** pour les deux salariés — sans lui les bornes hebdomadaires
+  sont invérifiables, exigence identique à celle de SC-06 ;
+* `referentiels.activites`, pour que la charge se calcule.
+
+⚠️ **L'historique de charge n'est pas reçu.** SC-05 arbitre sur la fenêtre transmise : un
+déséquilibre installé depuis trois mois ne s'y voit pas. C'est le même manque que celui qui bloque
+SC-04. **Plus la fenêtre transmise est large, plus l'arbitrage a de sens.**
+
+#### Ce qui est décidé, et ce qui ne l'est pas
+
+| Créneau | Sort |
+|---|---|
+| du périmètre, tenu par A ou B | **remis en jeu** — c'est l'objet de l'arbitrage |
+| du périmètre, tenu par un **tiers** | **épinglé et signalé** — le tiers n'a rien demandé, on ne lui retire pas son travail pour équilibrer deux autres personnes |
+| du périmètre, sur un **poste virtuel** | **remis en jeu** — un poste virtuel n'est le travail de personne |
+| **hors** du périmètre | **épinglé**, y compris les autres créneaux de A et de B |
 
 #### Restitution attendue
 
-* répartition proposée ;
-* indicateurs comparatifs A / B ;
-* justification des arbitrages ;
-* alertes d’inéquité résiduelle.
+* `planning` — la répartition proposée, créneau par créneau ;
+* `workMetrics.byRessource` — les indicateurs comparatifs A / B ;
+* `solverResult.scoreBreakdown` — la justification, ligne par ligne ;
+* **`arbitrage`** — ce qui a changé pour chacun : créneaux repris et cédés, écart au contrat
+  **avant / après**, et le sort de chaque créneau du périmètre ;
+* `diagnostics.alerts` — dont `INEQUITE_RESIDUELLE` quand la tolérance reste dépassée.
 
-📌 **Point important**
-Ce scénario **ne nécessite aucune nouvelle variable de décision** :
-il exploite les mêmes affectations que les autres scénarios,
-mais avec une **lecture comparative ciblée**.
+📌 **Il n'y a jamais d'erreur.** Sans répartition acceptable, la **moins mauvaise** est rendue,
+accompagnée des motifs qui la disqualifient (`arbitrage.acceptable`, `arbitrage.motifs`). Même
+traitement qu'en SC-06 : l'appelant voit l'impasse au lieu de la deviner.
+
+⚠️ **`acceptable: true` veut dire « au regard de ce que le moteur sait ».** Il ne connaît pas les
+**préférences ni les contraintes personnelles** des deux intéressés — indisponibilité récurrente,
+incompatibilité entre personnes, activités réellement pratiquées. Deux salariés désignés est
+pourtant le cas où elles comptent le plus. L'absence de motif ne vaut donc **pas** accord des deux
+salariés.
+
+📌 **Aucune nouvelle variable de décision** : SC-05 exploite les mêmes affectations que les autres
+scénarios, avec une lecture comparative ciblée.
 
 ---
 

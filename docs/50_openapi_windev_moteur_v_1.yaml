@@ -412,6 +412,143 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
+  # ─────────────────────────────────────────────────────────────────────────
+  # SC-05 — ARBITRAGE D'UN PÉRIMÈTRE COMMUN ENTRE DEUX SALARIÉS
+  # ─────────────────────────────────────────────────────────────────────────
+  /scenarios/sc05/solve:
+    post:
+      tags: [Scenarios-Dataset]
+      summary: Arbitrer un périmètre commun entre deux salariés (SC-05)
+      description: |
+        **Mode arbitrage** : deux salariés se partagent un même périmètre de travail. Le moteur le
+        **redistribue** entre eux — il ne crée aucun besoin, il réaffecte ce qui existe.
+
+        **SC-05 rend une répartition, pas un podium.** À la différence de SC-06 qui classe des
+        possibilités, le solveur résout : c'est le **score** qui arbitre, et l'équité l'atteint par
+        la contrainte de tolérance, exactement comme pour SC-02.
+
+        **Le périmètre est transmis, jamais déduit.** L'appelant liste les créneaux à arbitrer dans
+        `scenarioParameters.creneauxArbitres`. Un périmètre déduit trop large déplacerait des
+        créneaux que personne ne voulait bouger ; trop étroit, il rendrait l'arbitrage sans effet —
+        et dans les deux cas l'appelant ne verrait pas pourquoi. **Désigner le périmètre est de la
+        responsabilité de l'appelant.**
+
+        **Un créneau du périmètre tenu par un tiers est épinglé, jamais repris.** Le tiers n'a rien
+        demandé ; on ne lui retire pas son travail pour équilibrer deux autres personnes. Une alerte
+        `CRENEAU_ARBITRE_TENU_PAR_UN_TIERS` le nomme, et l'arbitrage porte sur ce qui reste.
+
+        **Hors du périmètre, rien ne bouge** — y compris les autres créneaux des deux salariés
+        arbitrés. Le planning complet est exigé pour que les bornes hebdomadaires soient
+        vérifiables, pas pour être remanié.
+
+        **Il n'y a jamais d'erreur.** Quand aucune répartition n'est acceptable, la **moins
+        mauvaise** est rendue, accompagnée des motifs qui la disqualifient — `arbitrage.acceptable`
+        et `arbitrage.motifs`. Le moteur ne refuse pas, il rend visible l'impossible.
+
+        ⚠️ **Comme SC-06, SC-05 exige le planning complet de la période pour les deux salariés.**
+        Sans lui, les bornes hebdomadaires sont invérifiables et le moteur déclarerait conforme une
+        répartition qui ne l'est pas.
+
+        Route réelle : `POST /scenarios/sc05/solve`
+        Controller : `ScenarioController.solveSc05()`
+        DTO d'entrée : `Sc05ScenarioRequestDTO` + `Sc05ScenarioParametersDTO`
+        DTO de sortie : `ScenarioResponseDTO`, enrichi du bloc `arbitrage`
+
+        Également accessible par le **FileAdapter** (`scenarioType: SC-05`). Les deux canaux entrent
+        dans le même service au même point, et un test compare leurs deux réponses entières.
+      operationId: solveSc05
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Sc05ScenarioRequest'
+            examples:
+              sc05_minimal:
+                summary: Un créneau à arbitrer entre deux salariés inégalement chargés
+                value:
+                  requestId: REQ-20260514-SC05-001
+                  metadata:
+                    clientId: CLIENT-WINDEV
+                    timestamp: '2026-05-11T09:00:00Z'
+                    source: WINDEV
+                  scenarioType: SC-05
+                  planningContext:
+                    strategieScoring: ANALYSE_RH
+                    horizon:
+                      dateDebut: '2026-05-11'
+                      dateFin: '2026-05-17'
+                    equite:
+                      ecartTolerePourcent: 10.0
+                  scenarioParameters:
+                    salarieAId: SAL-A
+                    salarieBId: SAL-B
+                    creneauxArbitres: [PLN-ARB-V]
+                  dataSet:
+                    referentiels:
+                      activites:
+                        - codeActiviteId: ACT-SOIN
+                          compteDansCharge: true
+                          genereDetteRepos: false
+                          estServiceCritique: true
+                    ressources:
+                      salaries:
+                        - id: SAL-A
+                          activitesCompatibles: [ACT-SOIN]
+                          contrat:
+                            heuresHebdomadairesHabituelles: 35.0
+                        - id: SAL-B
+                          activitesCompatibles: [ACT-SOIN]
+                          contrat:
+                            heuresHebdomadairesHabituelles: 35.0
+                    creneaux:
+                      - id: PLN-A-LUN
+                        date: '2026-05-11'
+                        heureDebut: '08:00'
+                        heureFin: '16:00'
+                        codeActiviteId: ACT-SOIN
+                        lieu: HOPITAL-NORD
+                        ressourceAffecteeId: SAL-A
+                      - id: PLN-ARB-V
+                        date: '2026-05-15'
+                        heureDebut: '08:00'
+                        heureFin: '16:00'
+                        codeActiviteId: ACT-SOIN
+                        lieu: HOPITAL-NORD
+                        ressourceAffecteeId: SAL-A
+      responses:
+        '200':
+          description: |
+            La répartition proposée, et ce qu'elle change pour chacun. Le bloc `arbitrage` porte le
+            sort de chaque créneau du périmètre et l'écart au contrat **avant / après** de chaque
+            salarié arbitré — c'est la comparaison des deux qui justifie l'arbitrage devant les
+            intéressés.
+
+            Une répartition **disqualifiée est rendue quand même**, avec ses motifs : c'est la moins
+            mauvaise, et jamais une erreur. Une inéquité que le périmètre ne permettait pas de
+            résorber est de surcroît signalée par une alerte `INEQUITE_RESIDUELLE` nominative.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScenarioResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          description: |
+            Requête bien formée mais incohérente (`BUSINESS_ERROR`). Cas les plus fréquents :
+            `salarieAId` et `salarieBId` désignant **le même salarié** — arbitrer quelqu'un avec
+            lui-même n'a pas d'objet —, créneau du `dataSet` portant un `ressourceAffecteeId`
+            introuvable, `scenarioType` autre que `SC-05`, `dataSet` absent.
+
+            À ne pas confondre avec les 400 : `salarieAId`, `salarieBId` ou `creneauxArbitres`
+            manquants ou vides sont rejetés par la validation (`INVALID_REQUEST`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
   /scenarios/sc06/solve:
     post:
       tags: [Scenarios-Dataset]
@@ -1591,6 +1728,129 @@ components:
       required: [requestId, metadata, scenarioType, planningContext, scenarioParameters, dataSet]
 
     # ──────────────────────────────────────────────
+    # REQUÊTE — SC-05
+    # ──────────────────────────────────────────────
+
+    Sc05ScenarioParameters:
+      type: object
+      additionalProperties: false
+      description: |
+        Paramètres du scénario SC-05. Correspond à `Sc05ScenarioParametersDTO`.
+
+        **Bloc strict** : tout champ inconnu est rejeté — `400 UNKNOWN_FIELD` — jamais ignoré en
+        silence.
+
+        **Deux champs annoncés de longue date n'existent pas**, et c'est délibéré :
+
+        - `objectif` — il se **déduit** de ce que l'appelant transmet. L'équité de charge est dite
+          par `planningContext.equite.ecartTolerePourcent`, la minimisation de surcharge par les
+          seuils de SC-02. Un enum qui double des paramètres existants finit par les contredire.
+          Il reviendra **quand le moteur connaîtra les préférences**, avec la seule valeur qui ne se
+          déduira pas d'un paramètre ;
+        - `autoriserDesequilibre` — remplacé par `ecartTolerePourcent`, qui dit **de combien** là où
+          un booléen ne disait pas jusqu'où. « Équité stricte » se transmet comme une tolérance
+          à `0`.
+
+        **Aucun champ nouveau hors de ce bloc** : le planning existant, les contrats, les
+        indisponibilités, le cadre réglementaire, la tolérance d'équité et l'échelle de pénibilité
+        étaient déjà au contrat et déjà lus.
+      properties:
+        salarieAId:
+          type: string
+          minLength: 1
+          description: |
+            Premier des deux salariés entre lesquels arbitrer. **Obligatoire.**
+
+            Doit être **distinct** de `salarieBId` : arbitrer quelqu'un avec lui-même n'a pas
+            d'objet, et le moteur y répondrait par une répartition inchangée que l'appelant lirait
+            comme un refus silencieux. Deux identifiants identiques → `422`.
+
+            Un salarié absent du `dataSet` n'interrompt pas le scénario : il est signalé par une
+            alerte `SALARIE_ARBITRE_INTROUVABLE`, et l'arbitrage se fait sans lui.
+        salarieBId:
+          type: string
+          minLength: 1
+          description: |
+            Second des deux salariés. **Obligatoire**, et distinct du premier.
+
+            👉 Le moteur, lui, raisonne sur un **ensemble** de ressources autorisées et ne sait pas
+            combien elles sont. La limite à deux est une règle de **ce bloc**, pas une hypothèse de
+            calcul : l'ouverture à N élargira le contrat d'entrée sans réécrire le moteur.
+        creneauxArbitres:
+          type: array
+          minItems: 1
+          items:
+            type: string
+          description: |
+            Identifiants des créneaux du `dataSet` remis en jeu. **Obligatoire et non vide.**
+
+            Le périmètre est **transmis, jamais déduit**. Les identifiants sont ceux que l'appelant
+            a lui-même transmis dans `dataSet.creneaux`.
+
+            Un identifiant que le problème ne contient pas — absent du `dataSet`, ou écarté avant
+            résolution pour activité inconnue ou date hors horizon — est signalé par une alerte
+            `CRENEAU_ARBITRE_INTROUVABLE` qui le nomme. L'arbitrage porte alors sur les autres, et
+            `arbitrage.creneauxArbitres` compte le périmètre **effectivement** soumis.
+      required: [salarieAId, salarieBId, creneauxArbitres]
+
+    Sc05ScenarioRequest:
+      type: object
+      description: |
+        Corps de requête pour SC-05 — arbitrage d'un périmètre commun entre deux salariés.
+        Correspond à `Sc05ScenarioRequestDTO`.
+
+        **Ce que le `dataSet` doit porter** :
+
+        - `creneaux` — le **planning complet de la période** pour les deux salariés, chaque créneau
+          servi portant son `ressourceAffecteeId`. C'est de là que sortent à la fois le périmètre à
+          arbitrer et l'existant à préserver ;
+        - `referentiels.activites` — nécessaire pour que la charge se calcule (`compteDansCharge`).
+
+        **Ce qui est décidé, et ce qui ne l'est pas.** Seuls les créneaux **du périmètre** tenus par
+        l'un des deux salariés portent une décision. Ceux du périmètre tenus par un tiers sont
+        épinglés et signalés ; tout le reste du planning est épinglé sans commentaire.
+
+        👉 Un créneau du périmètre porté par un **poste virtuel** est remis en jeu : un poste virtuel
+        n'est le travail de personne, et l'épingler rendrait sans effet un créneau que l'appelant a
+        désigné.
+
+        👉 `planningContext.equite.ecartTolerePourcent` n'est pas obligatoire, mais **sans lui le
+        moteur ne juge aucun écart inéquitable** : la contrainte d'équité reste inerte, et aucune
+        alerte `INEQUITE_RESIDUELLE` ne peut être levée. Une borne absente n'est pas une borne à
+        zéro.
+
+        ⚠️ **Limite connue, commune à tous les scénarios qui résolvent** : `activitesCompatibles`
+        n'est lu par aucune contrainte. Un salarié peut donc se voir confier un créneau dont il ne
+        pratique pas l'activité. Les contraintes personnelles — indisponibilité récurrente,
+        incompatibilité entre personnes, activités autorisées — ne sont pas encore au périmètre du
+        moteur.
+      properties:
+        requestId:
+          type: string
+          description: Identifiant unique de la requête pour la traçabilité (obligatoire)
+        metadata:
+          $ref: '#/components/schemas/Metadata'
+        scenarioType:
+          type: string
+          const: SC-05
+        planningContext:
+          $ref: '#/components/schemas/PlanningContext'
+        scenarioParameters:
+          $ref: '#/components/schemas/Sc05ScenarioParameters'
+        dataSet:
+          allOf:
+            - $ref: '#/components/schemas/DataSet'
+            - type: object
+              required: [ressources, creneaux]
+              properties:
+                creneaux:
+                  type: array
+                  minItems: 1
+                  items:
+                    $ref: '#/components/schemas/CreneauInput'
+      required: [requestId, metadata, scenarioType, planningContext, scenarioParameters, dataSet]
+
+    # ──────────────────────────────────────────────
     # REQUÊTE — SC-06
     # ──────────────────────────────────────────────
 
@@ -2476,6 +2736,239 @@ components:
           $ref: '#/components/schemas/ImpactMesure'
       required: [ressourceId, date, heuresJour, heuresSemaine]
 
+    # ──────────────────────────────────────────────
+    # RÉPONSE — bloc arbitrage (SC-05)
+    # ──────────────────────────────────────────────
+
+    MotifArbitrage:
+      type: object
+      description: |
+        [SC-05] Une raison attachée à la répartition rendue.
+
+        Même forme que `MotifCandidat` et que `Alert` — `code`, `severite`, `message` — afin que le
+        client applique partout la même règle de lecture : **il filtre sur la sévérité, pas sur le
+        code.**
+
+        Un motif éliminatoire entraîne `arbitrage.acceptable = false`. **La répartition reste
+        restituée** : le moteur ne refuse pas, il rend visible l'impossible.
+      properties:
+        code:
+          type: string
+          enum:
+            - REPARTITION_NON_CONFORME
+            - CRENEAU_ARBITRE_PERDU
+            - INEQUITE_RESIDUELLE
+            - ARBITRAGE_SANS_EFFET
+          description: |
+            - `REPARTITION_NON_CONFORME` (ERROR, **éliminatoire**) — au moins une contrainte
+              impérative est violée ; le détail est dans `solverResult.scoreBreakdown` ;
+            - `CRENEAU_ARBITRE_PERDU` (ERROR, **éliminatoire**) — un créneau que quelqu'un assurait
+              ne trouve plus personne. À distinguer d'un créneau qui n'était **déjà** à personne :
+              celui-là n'a rien perdu ;
+            - `INEQUITE_RESIDUELLE` (WARNING, **éliminatoire**) — l'écart au contrat reste au-delà
+              de la tolérance déclarée. Le périmètre remis en jeu ne contenait pas de quoi y ramener
+              tout le monde : ce n'est pas un défaut du moteur, et l'élargir est une décision
+              d'encadrement ;
+            - `ARBITRAGE_SANS_EFFET` (INFO, **non éliminatoire**) — aucun créneau n'a changé de
+              main. La répartition transmise n'a pas pu être améliorée.
+        severite:
+          type: string
+          enum: [INFO, WARNING, ERROR]
+        message:
+          type: string
+      required: [code, severite, message]
+
+    MouvementSalarie:
+      type: object
+      description: |
+        [SC-05] Ce que l'arbitrage a changé pour l'un des salariés arbitrés.
+
+        **Deux lectures, qui ne se déduisent pas l'une de l'autre.** Les compteurs disent combien
+        d'objets ont changé de main ; les heures et l'écart disent ce qui a réellement été déplacé.
+        Reprendre huit heures et en céder une fait « un repris, un cédé », et n'a rien d'un échange
+        équilibré.
+
+        **L'écart au contrat est la seule des deux grandeurs comparable entre deux personnes** :
+        deux salariés à 32 h ne sont pas dans la même situation si l'un est à 35 h de contrat et
+        l'autre à 24 h.
+      properties:
+        ressourceId:
+          type: string
+        creneauxRepris:
+          type: integer
+          description: Créneaux du périmètre qu'il tient au bout de l'arbitrage et qu'il ne tenait pas avant.
+        creneauxCedes:
+          type: integer
+          description: Créneaux du périmètre qu'il tenait et qu'il ne tient plus.
+        heuresAvant:
+          type: number
+          format: double
+          description: |
+            Heures travaillées sur l'horizon **avant** arbitrage, en heures décimales — heures
+            brutes, même unité que `workMetrics.byRessource`.
+        heuresApres:
+          type: number
+          format: double
+          description: Les mêmes **après** arbitrage.
+        ecartContratAvantPourcent:
+          type: number
+          format: double
+          description: |
+            Écart **signé** à son contrat avant arbitrage, en points de pourcentage.
+
+            Clé **omise** lorsque le contrat ne déclare aucun volume hebdomadaire : rien n'est alors
+            comparable, et le moteur préfère ne rien dire plutôt que de supposer.
+        ecartContratApresPourcent:
+          type: number
+          format: double
+          description: |
+            Le même écart **après** arbitrage. C'est la comparaison des deux qui dit si l'arbitrage
+            a rapproché ou éloigné.
+
+            👉 Les deux sont mesurés **par le même calcul**. Deux mesures obtenues autrement se
+            compareraient mal, et une différence de méthode se lirait comme un mouvement.
+      required: [ressourceId, creneauxRepris, creneauxCedes, heuresAvant, heuresApres]
+
+    CreneauArbitre:
+      type: object
+      description: |
+        [SC-05] Le sort d'un créneau du périmètre : à qui il était, à qui il est.
+
+        Contrairement à `CreneauRemplace`, où `ressourceAvantId` désigne toujours le même absent,
+        chaque créneau a ici **son propre titulaire d'avant** — et c'est précisément ce que
+        l'arbitrage déplace.
+
+        Un créneau du périmètre figure ici **quel que soit son sort** : déplacé, inchangé, épinglé
+        sur un tiers, ou resté à pourvoir. Un arbitrage qui n'a rien changé est une information, pas
+        un silence.
+      properties:
+        creneauId:
+          type: string
+        creneauOrigineId:
+          type: string
+          description: |
+            Créneau dont celui-ci est un morceau. Clé **omise** pour un créneau qui n'a pas été
+            découpé.
+        date:
+          type: string
+          format: date
+          description: Jour de **début** du créneau. Un créneau traversant minuit n'est rattaché qu'à celui-là.
+        heureDebut:
+          type: string
+        heureFin:
+          type: string
+          description: Le lendemain si elle n'est pas postérieure au début.
+        dureeMinutes:
+          type: integer
+          description: Durée telle que portée par le créneau, jamais recalculée.
+        ressourceAvantId:
+          type: string
+          description: |
+            Qui tenait le créneau dans le planning transmis. Clé **omise** si personne ne le tenait —
+            un besoin nu est aussi du travail à répartir.
+        ressourceApresId:
+          type: string
+          description: Qui le tient au bout de l'arbitrage. Clé **omise** si personne.
+        nature:
+          type: string
+          enum: [SALARIE, POSTE_VIRTUEL, NON_COUVERT]
+          description: Ce qui couvre le créneau au bout du compte.
+        deplace:
+          type: boolean
+          description: |
+            Le créneau a changé de main. Restitué plutôt que déduit de la comparaison des deux
+            identifiants, ce qui obligerait l'appelant à traiter lui-même le cas du créneau qui
+            n'était à personne.
+        tenuParUnTiers:
+          type: boolean
+          description: |
+            Le créneau est resté épinglé parce qu'une personne **étrangère à l'arbitrage** le tient.
+            Il n'a donc **pas pu** bouger, et ce n'est pas un échec de l'arbitrage.
+      required:
+        [creneauId, date, heureDebut, heureFin, dureeMinutes, nature, deplace, tenuParUnTiers]
+
+    Arbitrage:
+      type: object
+      description: |
+        [SC-05] Ce que l'arbitrage a déplacé, et ce qu'il en coûte à chacun.
+
+        Le bloc `planning` ne restitue que l'**après**. SC-05 rend une répartition qui doit se
+        justifier **ligne à ligne devant les intéressés**, et une justification sans terme de
+        comparaison n'en est pas une.
+
+        **Les compteurs ne se recomposent pas comme ceux de SC-02.** Ils découpent le périmètre
+        selon **ce qui est arrivé** à chaque créneau, et un créneau resté chez son titulaire n'entre
+        dans aucun des trois — c'est le cas le plus fréquent, et le moins intéressant.
+      properties:
+        ressourcesArbitrees:
+          type: array
+          items:
+            type: string
+          description: |
+            Salariés entre lesquels l'arbitrage a porté, **dans l'ordre où l'appelant les a
+            nommés** — `salarieAId` puis `salarieBId`.
+
+            👉 Un **ensemble**, de taille deux aujourd'hui : le moteur ne sait pas combien ils sont.
+            L'ouverture à N élargira ce tableau sans rien changer au calcul.
+        creneauxArbitres:
+          type: integer
+          description: |
+            Créneaux du périmètre **effectivement soumis** au solveur. Peut être inférieur à la
+            taille de `scenarioParameters.creneauxArbitres` — une alerte
+            `CRENEAU_ARBITRE_INTROUVABLE` nomme alors les manquants.
+        creneauxDeplaces:
+          type: integer
+          description: Ceux qui ont changé de main.
+        creneauxEpinglesSurUnTiers:
+          type: integer
+          description: |
+            Ceux qui n'ont pas pu bouger parce qu'une personne étrangère à l'arbitrage les tient.
+            **Ce n'est pas un échec** : on ne retire pas son travail à quelqu'un qui n'a rien
+            demandé. L'alerte `CRENEAU_ARBITRE_TENU_PAR_UN_TIERS` les nomme.
+        creneauxNonCouverts:
+          type: integer
+          description: |
+            Ceux que personne ne tient au bout du compte. Le moteur ne refuse pas — il rend visible
+            ce qu'il n'a pas su couvrir.
+        acceptable:
+          type: boolean
+          description: |
+            `false` dès qu'un motif éliminatoire est levé. **La répartition est rendue quand
+            même** : c'est la moins mauvaise, et jamais une erreur.
+
+            ⚠️ `true` signifie « acceptable **au regard de ce que le moteur sait** ». Il ne connaît
+            pas les préférences des intéressés, ni leurs contraintes personnelles : l'absence de
+            motif ne vaut pas accord des deux salariés.
+        motifs:
+          type: array
+          items:
+            $ref: '#/components/schemas/MotifArbitrage'
+          description: |
+            Ce qui disqualifie la répartition, ou la décrit. Tableau **vide** — et non clé absente —
+            quand rien n'est à signaler.
+        parSalarie:
+          type: array
+          items:
+            $ref: '#/components/schemas/MouvementSalarie'
+          description: L'avant et l'après de chaque salarié arbitré, dans l'ordre de `ressourcesArbitrees`.
+        details:
+          type: array
+          items:
+            $ref: '#/components/schemas/CreneauArbitre'
+          description: |
+            Le sort de chaque créneau du périmètre, trié par date puis heure de début. **Y compris**
+            ceux que l'arbitrage n'a pas déplacés.
+      required:
+        - ressourcesArbitrees
+        - creneauxArbitres
+        - creneauxDeplaces
+        - creneauxEpinglesSurUnTiers
+        - creneauxNonCouverts
+        - acceptable
+        - motifs
+        - parSalarie
+        - details
+
     Remplacement:
       type: object
       description: |
@@ -2568,14 +3061,14 @@ components:
     ScenarioResponse:
       type: object
       description: |
-        Corps de réponse HTTP 200 pour SC-01, SC-02, SC-03 et SC-06.
+        Corps de réponse HTTP 200 pour SC-01, SC-02, SC-03, SC-05 et SC-06.
         Correspond directement à `ScenarioResponseDTO` — pas d'enveloppe transport.
         L'enveloppe `{requestId, status, response}` est propre au FileAdapter
         et ne s'applique pas à ce contrat API.
       properties:
         scenarioType:
           type: string
-          description: Valeur reflétée depuis la requête (SC-01, SC-02, SC-03 ou SC-06)
+          description: Valeur reflétée depuis la requête (SC-01, SC-02, SC-03, SC-05 ou SC-06)
         solverResult:
           $ref: '#/components/schemas/SolverResult'
         planning:
@@ -2614,6 +3107,18 @@ components:
             En SC-02, `planning` porte le **planning ajusté complet** — l'existant épinglé comme les
             créneaux réaffectés — et non les seuls créneaux touchés. C'est l'inverse de SC-06, qui
             n'émet que les créneaux du besoin.
+        arbitrage:
+          allOf:
+            - $ref: '#/components/schemas/Arbitrage'
+          description: |
+            **Propre à SC-05.** Ce que l'arbitrage a déplacé, et ce qu'il en coûte à chacun.
+
+            Même règle que `candidats` et `remplacement` — la clé est **absente**, et non vide, pour
+            tous les autres scénarios.
+
+            Comme en SC-02, `planning` porte le **planning ajusté complet**. Mais il ne restitue que
+            l'**après** : c'est `arbitrage.parSalarie` qui donne l'avant, et la comparaison des deux
+            est ce qui rend la répartition justifiable ligne à ligne devant les intéressés.
       required: [scenarioType, solverResult, planning, workMetrics, solutionSummary, diagnostics]
 
     # ──────────────────────────────────────────────

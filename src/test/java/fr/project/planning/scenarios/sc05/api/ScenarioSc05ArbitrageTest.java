@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import fr.project.planning.docs.SchemaPublie;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,6 +16,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -370,6 +372,34 @@ class ScenarioSc05ArbitrageTest {
         assertNotNull(motif(arbitrage, "INEQUITE_RESIDUELLE"));
         assertTrue(!arbitrage.get("acceptable").asBoolean(),
                 "Un motif INFO ne disqualifie pas ; le motif d'inéquité, si.");
+    }
+
+    // =========================================================
+    // Le contrat publié — lot A4
+    // =========================================================
+
+    @Test
+    @DisplayName("Le bloc arbitrage n'a ni champ non déclaré ni champ requis manquant")
+    void arbitrageProduit_correspondAuSchemaPublie() throws Exception {
+        // 50_ScenarioResponse.schema.json est publié aux intégrateurs et porte
+        // additionalProperties: false. Un champ ajouté ici et pas là-bas fait rejeter la réponse
+        // chez un client qui la valide. C'est le garde qui manquait aux lots A1 à A3 : le bloc
+        // existait dans le code et pas au schéma, et rien ne comparait les deux.
+        SchemaPublie schema = SchemaPublie.charger();
+
+        List<String> ecarts = new ArrayList<>();
+        // Trois situations, parce que les clés facultatives n'apparaissent pas dans toutes :
+        // l'arbitrage nominal, celui que l'inéquité disqualifie, et celui qui ne déplace rien.
+        ecarts.addAll(schema.confronter(solve(avecTolerance(10.0)).get("arbitrage"),
+                "Arbitrage", "tolérance tenue → arbitrage"));
+        ecarts.addAll(schema.confronter(solve(avecTolerance(2.0)).get("arbitrage"),
+                "Arbitrage", "inéquité résiduelle → arbitrage"));
+        ecarts.addAll(schema.confronter(solve(perimetreReduitAuTiers(lire())).get("arbitrage"),
+                "Arbitrage", "arbitrage sans effet → arbitrage"));
+
+        assertTrue(ecarts.isEmpty(),
+                "Le schéma publié et la réponse produite divergent :\n  - "
+                        + String.join("\n  - ", ecarts));
     }
 
     // =========================================================
