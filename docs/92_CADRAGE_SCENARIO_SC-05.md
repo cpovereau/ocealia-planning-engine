@@ -310,6 +310,12 @@ question posait n'a pas d'objet.
 Ce qui reste franchissable est **légal** — bornes individuelles, HARD ou SOFT — et cela ne relève
 pas de §9.1 : le partage y est déjà fait, HARD interdit et SOFT pèse.
 
+La raison de fond est plus large que SC-05, et elle vaut pour **tous les scénarios** : le moteur ne
+porte aujourd'hui **aucune contrainte personnelle** — indisponibilité récurrente, incompatibilité
+entre deux personnes, activité qu'un salarié n'assure pas. Ce n'est pas un oubli, c'est un périmètre
+que le projet n'a pas encore ouvert (rang 10, en attente de la Production). Une « situation
+conforme » n'a donc, pour l'instant, presque rien qu'un arbitrage puisse dégrader.
+
 > 🔁 **Condition de retour.** La question redevient légitime **quand le rang 10 livrera les
 > contraintes personnelles** — indisponibilités récurrentes, incompatibilités entre personnes,
 > activités autorisées. Une répartition « conforme » aura alors un contenu que l'arbitrage pourra
@@ -321,19 +327,16 @@ A3 **rapporte** — il dit ce qui disqualifie la répartition — sans toucher �
 **cherche**, qui reste commandé par le score du lot L5. Aucun poids nouveau n'a été inventé. Même
 si la question avait eu un objet, elle serait restée entière.
 
-#### ⚠️ Un manque que ce constat met au jour, et qui touche SC-05 directement
+#### Une observation à ranger au niveau du projet, pas de SC-05
 
-`activitesCompatibles` est **transmis au contrat et lu par aucune contrainte**. Les seuls lecteurs
-sont un diagnostic pré-solveur (`auMoinsUneRessourceCompatible`), l'énumération de SC-06, les
-mappers et le domaine — rien dans `constraints/`.
+Constaté en vérifiant ce qui précède : `activitesCompatibles` est transmis au contrat et **lu par
+aucune contrainte** — les seuls lecteurs sont un diagnostic pré-solveur, l'énumération de SC-06, les
+mappers et le domaine ; rien dans `constraints/`. SC-06 s'en accommode en filtrant ses candidats
+avant de classer ; les scénarios qui **résolvent** n'ont rien qui l'applique.
 
-SC-06 s'en sort : il **filtre** ses candidats avant de classer. SC-05 **résout**, comme SC-02 et
-SC-03, et peut donc confier un créneau à quelqu'un qui ne déclare pas l'activité correspondante.
-
-Le défaut est **antérieur à ce chantier et partagé** par trois scénarios ; il est déjà au backlog,
-rang 10 — *lieux, **activités**, préférences, annualisation*. SC-05 le rend seulement plus visible :
-arbitrer entre **deux personnes nommées** est exactement la situation où le résultat se relit ligne
-à ligne.
+**Cela ne concerne pas SC-05 en propre** et n'est pas une découverte de ce chantier : c'est une
+facette du rang 10, au même titre que les lieux et les préférences. Noté ici seulement parce que
+c'est le chemin par lequel §9.1 a été refermée.
 
 ### 9.2 Le volontariat, encore — et c'est le même rendez-vous que §5.3
 

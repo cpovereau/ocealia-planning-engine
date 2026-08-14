@@ -1727,17 +1727,19 @@ Je l'avais écrite **par analogie avec SC-02, sans vérifier que le paramètre q
 était transmis**. C'est le genre de point ouvert qui survit des mois faute qu'on regarde ce que le
 scénario reçoit réellement.
 
-#### Le constat met au jour un manque, et il est plus gênant que la question qu'il clôt
+#### La raison de fond est de niveau projet, et elle vaut pour tous les scénarios
 
-`activitesCompatibles` est **transmis au contrat et lu par aucune contrainte**. Les seuls lecteurs
-sont un diagnostic pré-solveur, l'énumération SC-06, les mappers et le domaine — **rien dans
-`constraints/`**.
+Le moteur ne porte aujourd'hui **aucune contrainte personnelle** — indisponibilité récurrente,
+incompatibilité entre deux personnes, activité qu'un salarié n'assure pas. **Ce n'est pas un oubli,
+c'est un périmètre que le projet n'a pas encore ouvert** : rang 10, en attente de la Production. Une
+« situation conforme » n'a donc, pour l'instant, presque rien qu'un arbitrage puisse dégrader — et
+c'est vrai de SC-02 et SC-03 autant que de SC-05.
 
-SC-06 s'en sort : il *filtre* ses candidats avant de classer. **SC-05 résout**, comme SC-02 et
-SC-03, et peut donc confier un créneau à quelqu'un qui ne déclare pas l'activité correspondante.
-Antérieur à ce chantier, partagé par trois scénarios, déjà au backlog au rang 10 — *lieux,
-**activités**, préférences, annualisation*. SC-05 le rend seulement plus visible : arbitrer entre
-deux personnes nommées est la situation où le résultat se relit ligne à ligne.
+Constaté au passage, et sans rapport avec ce chantier : `activitesCompatibles` est transmis au
+contrat et **lu par aucune contrainte**. Les seuls lecteurs sont un diagnostic pré-solveur,
+l'énumération SC-06, les mappers et le domaine — rien dans `constraints/`. SC-06 s'en accommode en
+filtrant ses candidats avant de classer ; les scénarios qui résolvent n'ont rien qui l'applique.
+C'est une facette du rang 10, au même titre que les lieux et les préférences.
 
 #### Le rang 10 est désormais attendu trois fois par SC-05
 
@@ -1746,7 +1748,8 @@ Les préférences elles-mêmes (§9.2), le retour de l'enum `objectif` (§5.3), 
 personnelles connues. À traiter ensemble : trois ouvertures successives du contrat pour un seul
 apport.
 
-Après A4, c'est le seul rendez-vous qui reste à SC-05.
+Après A4, c'est le seul rendez-vous qui reste à SC-05 — et ce n'est pas un rendez-vous qui lui est
+propre : le rang 10 est attendu par le moteur entier.
 
 ### SC-05 — lot A3 : la moins mauvaise, et les motifs qui la disqualifient (2026-08-14)
 
