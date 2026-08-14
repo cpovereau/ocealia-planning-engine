@@ -260,7 +260,7 @@ Ordonné par dépendance. **Actionnable** depuis les arbitrages du 2026-08-13.
 | ~~**A0**~~ | ~~Contrainte HARD « affectation bornée aux ressources autorisées »~~ | ✅ **Livré le 2026-08-14** — `PerimetreArbitre` (fait) + `AffectationHorsRessourcesAutorisees` (HARD), écrits sur un **ensemble** (§5.5). Inerte tant qu'aucun périmètre n'est transmis |
 | ~~**A1**~~ | ~~Endpoint, préparation, périmètre épinglé / libéré, alerte du créneau tenu par un tiers (§5.2)~~ | ✅ **Livré le 2026-08-14** — `POST /scenarios/sc05/solve`, décalque de SC-02 S1. Trois alertes : tiers, salarié introuvable, créneau du périmètre introuvable. ⚠️ Non inscrit au contrat série 50 ni à l'OpenAPI — c'est le lot **A4** |
 | ~~**A2**~~ | ~~Bloc `arbitrage` — avant / après par salarié~~ | ✅ **Livré le 2026-08-14** — `ArbitrageDTO`, décalque de `RemplacementDTO`. Écart au contrat avant / après, mesuré par le même calculateur |
-| ~~**A3**~~ | ~~Alerte d'inéquité résiduelle, et restitution de la moins mauvaise répartition (§5.6)~~ | ✅ **Livré le 2026-08-14** — `arbitrage.acceptable` + `arbitrage.motifs` (`MotifArbitrage`), alerte `INEQUITE_RESIDUELLE` nominative. La §9.1 n'a pas eu à être tranchée : A3 rapporte, il ne change pas ce que le solveur cherche |
+| ~~**A3**~~ | ~~Alerte d'inéquité résiduelle, et restitution de la moins mauvaise répartition (§5.6)~~ | ✅ **Livré le 2026-08-14** — `arbitrage.acceptable` + `arbitrage.motifs` (`MotifArbitrage`), alerte `INEQUITE_RESIDUELLE` nominative. A3 rapporte, il ne change pas ce que le solveur cherche — et §9.1, depuis close, n'avait de toute façon pas d'objet |
 | **A4** | Inscription au contrat série 50 + canal FileAdapter | Comme SC-02 S4 et S5 |
 
 ### 8.1 Ce que le lot A4 devra impérativement porter
@@ -287,18 +287,53 @@ Ordre de grandeur : celui de SC-02, soit **cinq à six lots**.
 
 ## 9. Points ouverts
 
-### 9.1 L'arbitrage doit-il pouvoir dégrader une situation conforme ? — toujours ouvert
+> **État au 2026-08-14** : §9.1 est **close** (sans objet), §9.2 et §9.3 restent ouvertes et ne se
+> lèvent pas dans ce chantier. Les deux attendent des données que le moteur ne reçoit pas.
 
-Rééquilibrer deux salariés peut faire franchir une borne de confort à celui qui reçoit. Le moteur
-le signale — il ne refuse pas — mais faut-il qu'il le **cherche** ? La réponse tient dans le poids
-relatif de l'équité et de la surcharge, et relève du même protocole de calibration que les
-coefficients : `92_CALIBRATION_PENIBILITE.md`.
+### 9.1 ~~L'arbitrage doit-il pouvoir dégrader une situation conforme ?~~ — ✅ clos, sans objet
 
-> **Le lot A3 n'a pas eu à trancher ce point, et c'est vérifiable.** A3 *rapporte* — il dit ce qui
-> disqualifie la répartition — sans toucher à ce que le solveur *cherche*, qui reste commandé par le
-> score. Aucun poids nouveau n'a donc été inventé, et la question reste entière pour la calibration.
-> C'est la même retenue qu'au lot L5 : peser une mesure dont l'échelle reste à établir reviendrait à
-> deviner deux fois.
+**Tranché le 2026-08-14 : la question n'a pas de cas qui la justifie.** Elle est close, non parce
+qu'on y répond, mais parce que le moteur ne connaît aujourd'hui **rien qui puisse être dégradé** au
+sens où elle l'entendait.
+
+La formulation d'origine renvoyait au « poids relatif de l'équité et de la surcharge ». Vérification
+faite, **SC-05 ne transmet aucun seuil de surcharge** : `SeuilsSurcharge` n'existe que dans SC-02
+(`Sc02ScenarioParametersDTO`, `ScenarioSc02PreparationService`, `Sc02SurchargeFactory`), et
+`surchargeMaxHeuresJour` / `...Semaine` ne figurent pas au contrat d'entrée de SC-05 (§6). La
+contrainte `SurchargeAcceptable` ne se déclenche donc jamais pour lui, et le rapport de poids que la
+question posait n'a pas d'objet.
+
+> ⚠️ **La question avait été écrite par analogie avec SC-02, sans vérifier que le paramètre qui crée
+> la tension y était transmis.** C'est le genre de point ouvert qui survit des mois faute qu'on
+> regarde ce que le scénario reçoit réellement.
+
+Ce qui reste franchissable est **légal** — bornes individuelles, HARD ou SOFT — et cela ne relève
+pas de §9.1 : le partage y est déjà fait, HARD interdit et SOFT pèse.
+
+> 🔁 **Condition de retour.** La question redevient légitime **quand le rang 10 livrera les
+> contraintes personnelles** — indisponibilités récurrentes, incompatibilités entre personnes,
+> activités autorisées. Une répartition « conforme » aura alors un contenu que l'arbitrage pourra
+> effectivement dégrader, et il faudra dire s'il a le droit de le chercher. Pas avant.
+
+#### Ce que le lot A3 a évité de trancher, et c'est vérifiable
+
+A3 **rapporte** — il dit ce qui disqualifie la répartition — sans toucher à ce que le solveur
+**cherche**, qui reste commandé par le score du lot L5. Aucun poids nouveau n'a été inventé. Même
+si la question avait eu un objet, elle serait restée entière.
+
+#### ⚠️ Un manque que ce constat met au jour, et qui touche SC-05 directement
+
+`activitesCompatibles` est **transmis au contrat et lu par aucune contrainte**. Les seuls lecteurs
+sont un diagnostic pré-solveur (`auMoinsUneRessourceCompatible`), l'énumération de SC-06, les
+mappers et le domaine — rien dans `constraints/`.
+
+SC-06 s'en sort : il **filtre** ses candidats avant de classer. SC-05 **résout**, comme SC-02 et
+SC-03, et peut donc confier un créneau à quelqu'un qui ne déclare pas l'activité correspondante.
+
+Le défaut est **antérieur à ce chantier et partagé** par trois scénarios ; il est déjà au backlog,
+rang 10 — *lieux, **activités**, préférences, annualisation*. SC-05 le rend seulement plus visible :
+arbitrer entre **deux personnes nommées** est exactement la situation où le résultat se relit ligne
+à ligne.
 
 ### 9.2 Le volontariat, encore — et c'est le même rendez-vous que §5.3
 
@@ -307,8 +342,17 @@ connaît pas avant le **rang 10**. Une répartition parfaitement équitable et c
 des deux intéressés est la façon habituelle dont ce type d'arbitrage se fait rejeter sur le
 terrain. À garder en tête au moment d'écrire A3.
 
-Le rang 10 est donc attendu **deux fois** par SC-05 : pour les préférences elles-mêmes, et pour le
-retour de l'enum `objectif` qu'elles conditionnent. Les traiter ensemble, pas l'un après l'autre.
+Le rang 10 est donc attendu **trois fois** par SC-05, et c'est le seul rendez-vous qui lui reste
+après A4 :
+
+| Ce qui l'attend | Pourquoi |
+|---|---|
+| les **préférences** elles-mêmes | deux salariés désignés est le cas où elles comptent le plus (§9.2) |
+| le retour de l'enum **`objectif`** | avec une seule valeur, celle qui ne se déduit pas d'un paramètre (§5.3) |
+| la réouverture de **§9.1** | une répartition « conforme » n'aura de contenu dégradable qu'une fois les contraintes personnelles connues |
+
+À traiter **ensemble**, pas l'un après l'autre : trois ouvertures successives du contrat pour un
+seul apport.
 
 ### 9.3 L'historique
 

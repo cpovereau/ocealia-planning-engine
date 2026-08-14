@@ -1711,6 +1711,43 @@ SC-06, et mérite son propre lot.
 Les **quatre scénarios exposés voyagent maintenant par les deux canaux**. Le document d'échange
 fichier n'en connaissait que deux — SC-06 n'y avait jamais été inscrit à son lot S6 ; c'est réparé.
 
+### SC-05 — §9.1 close : une question posée par analogie, sans cas qui la justifie (2026-08-14)
+
+Arbitrage métier : *l'arbitrage doit-il pouvoir dégrader une situation conforme ?* n'a **pas de cas
+qui la justifie**. Close — non parce qu'on y répond, mais parce que le moteur ne connaît rien qui
+puisse être dégradé au sens où elle l'entendait.
+
+**Ce que la vérification a montré.** La question renvoyait au « poids relatif de l'équité et de la
+surcharge ». Or `SeuilsSurcharge` n'existe que dans SC-02 — trois fichiers, tous SC-02 — et
+`surchargeMaxHeuresJour` ne figure pas au contrat d'entrée de SC-05. **La contrainte
+`SurchargeAcceptable` ne se déclenche donc jamais pour SC-05**, et le rapport de poids que la
+question posait n'a pas d'objet.
+
+Je l'avais écrite **par analogie avec SC-02, sans vérifier que le paramètre qui crée la tension y
+était transmis**. C'est le genre de point ouvert qui survit des mois faute qu'on regarde ce que le
+scénario reçoit réellement.
+
+#### Le constat met au jour un manque, et il est plus gênant que la question qu'il clôt
+
+`activitesCompatibles` est **transmis au contrat et lu par aucune contrainte**. Les seuls lecteurs
+sont un diagnostic pré-solveur, l'énumération SC-06, les mappers et le domaine — **rien dans
+`constraints/`**.
+
+SC-06 s'en sort : il *filtre* ses candidats avant de classer. **SC-05 résout**, comme SC-02 et
+SC-03, et peut donc confier un créneau à quelqu'un qui ne déclare pas l'activité correspondante.
+Antérieur à ce chantier, partagé par trois scénarios, déjà au backlog au rang 10 — *lieux,
+**activités**, préférences, annualisation*. SC-05 le rend seulement plus visible : arbitrer entre
+deux personnes nommées est la situation où le résultat se relit ligne à ligne.
+
+#### Le rang 10 est désormais attendu trois fois par SC-05
+
+Les préférences elles-mêmes (§9.2), le retour de l'enum `objectif` (§5.3), et la **réouverture de
+§9.1** — une répartition « conforme » n'aura de contenu dégradable qu'une fois les contraintes
+personnelles connues. À traiter ensemble : trois ouvertures successives du contrat pour un seul
+apport.
+
+Après A4, c'est le seul rendez-vous qui reste à SC-05.
+
 ### SC-05 — lot A3 : la moins mauvaise, et les motifs qui la disqualifient (2026-08-14)
 
 778 tests, 0 échec (+6). L'arbitrage rendu porte désormais son propre jugement :
