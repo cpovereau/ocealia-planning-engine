@@ -490,7 +490,7 @@ soit explicitement hors moteur (§ Analyse métier aval).
 |---|---|---|---|
 | **8** | Champs au contrat sans effet : `capaciteCible`, structuration des besoins | arbitrage — activer ou retirer — **non traitable avant le 25/08/2026** | Métier + moteur |
 | **9** | SC-04 — un scénario annoncé, jamais écrit | cadrage — il n'a pas de contrat d'entrée et dépend d'un historique des compteurs qui n'existe pas. **SC-02 en est sorti** (cadré le 11/08, clos le 13/08) et **SC-05 aussi** : cadré et arbitré le 13/08, clos le 14/08. **SC-04 y reste seul** | Métier |
-| **10** | Contraintes personnelles : lieux, activités, préférences, annualisation | échanges avec la Production | Production |
+| **10** | Contraintes personnelles : lieux, activités, préférences, annualisation | ⚠️ **deux moitiés distinctes** — les **préférences** et l'annualisation attendent la Production ; **`activitesCompatibles` et `sitesAutorises` sont déjà transmis et lus par aucune contrainte**, et n'attendent rien | Production / Moteur |
 | **12** | Fermer les blocs restés délibérément tolérants aux champs inconnus | arbitrage — changement de comportement visible par l'appelant | Métier + WinDev |
 | **13** | Auditer et **garder** `50_ScenarioContract.schema.json` comme `SchemaPublie` garde le schéma de sortie | correctif — rien ne confronte les requêtes au schéma publié, et il a dérivé | Moteur |
 
@@ -516,13 +516,20 @@ s'installer, et elle recommencera.
 Ce rang croise le 12 sur un point précis : six jeux d'essai portent un `_description` à la racine,
 que l'enveloppe tolère et que le schéma refuse. Trancher l'un éclaire l'autre.
 
-Deux chantiers plus anciens restent ouverts **sans dépendre d'un arbitrage** : les WorkMetrics
-d'équité et l'explicabilité pédagogique du score (§ 1️⃣). Réalisables à tout moment ; l'équité est
-de surcroît un prérequis de SC-05.
+✅ **Le chantier équité est clos** — sept lots L0 à L6, `92_CADRAGE_WORKMETRICS_EQUITE.md`. Il a
+débloqué SC-05, lui-même clos le 14/08.
 
-📄 **L'équité est cadrée** — arbitrages métier rendus le 13/08/2026, découpage en sept lots L0 à
-L6 : `92_CADRAGE_WORKMETRICS_EQUITE.md`. **L0 à L3 sont livrés le même jour** : RHD inviolable,
-heure pondérée, écart signé au contrat, et le harnais de calibration.
+Un chantier plus ancien reste ouvert **sans dépendre d'un arbitrage** : l'explicabilité pédagogique
+du score (§ 1️⃣). Réalisable à tout moment.
+
+> ⚠️ **Une part du rang 10 n'attend rien ni personne.** Ce rang mélange deux choses de nature très
+> différente : des données que **le moteur ne reçoit pas** — les préférences, l'annualisation — et
+> des données qu'il **reçoit déjà et n'utilise pas**. `activitesCompatibles` et `sitesAutorises`
+> sont transmis au contrat, mappés dans le domaine, et **lus par aucune contrainte** : les seuls
+> lecteurs sont l'énumération de SC-06, les mappers et le domaine. SC-06 s'en accommode en filtrant
+> ses candidats ; **tous les scénarios qui résolvent peuvent confier un créneau à quelqu'un qui ne
+> pratique pas l'activité, ou qui n'est pas autorisé sur le site.** Cette moitié-là ne dépend
+> d'aucun échange avec la Production.
 
 Ce qui manque pour aller plus loin n'est plus un outil mais **des plannings réels** : les
 coefficients de pénibilité ne se décrètent pas, et les jeux d'essai du dépôt sont muets sur eux.
