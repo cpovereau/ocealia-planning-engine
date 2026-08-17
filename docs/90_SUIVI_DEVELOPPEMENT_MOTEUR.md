@@ -493,6 +493,7 @@ soit explicitement hors moteur (§ Analyse métier aval).
 | **10** | Contraintes personnelles : lieux, activités, préférences, annualisation | ⚠️ **deux moitiés distinctes** — les **préférences** et l'annualisation attendent la Production ; **`activitesCompatibles` et `sitesAutorises` sont déjà transmis et lus par aucune contrainte**, et n'attendent rien | Production / Moteur |
 | **12** | Fermer les blocs restés délibérément tolérants aux champs inconnus | arbitrage — changement de comportement visible par l'appelant | Métier + WinDev |
 | **13** | Auditer et **garder** `50_ScenarioContract.schema.json` comme `SchemaPublie` garde le schéma de sortie | correctif — rien ne confronte les requêtes au schéma publié, et il a dérivé | Moteur |
+| **14** | L'absence est **tenue par la contrainte et ignorée par la mesure** : `joursObserves` et `minutesAttendues` portent sur l'horizon entier, identiques pour tous | correctif — un salarié revenant de congé est lu « sous son contrat », donc préférable. Le moteur ne place aucun créneau dans l'absence, mais il la **rattrape** de part et d'autre | Moteur |
 
 ~~**Rang 11** — blocs annoncés stricts qui ignorent en silence.~~ ✅ **Traité le 2026-08-13.**
 
@@ -515,6 +516,47 @@ s'installer, et elle recommencera.
 
 Ce rang croise le 12 sur un point précis : six jeux d'essai portent un `_description` à la racine,
 que l'enveloppe tolère et que le schéma refuse. Trancher l'un éclaire l'autre.
+
+**Rang 14, ouvert le 2026-08-17, au cadrage de SC-04.** Le moteur traite l'absence correctement
+d'un côté et faussement de l'autre.
+
+*Ce qui tient.* `indisponibilites` est au contrat d'entrée, et le schéma le désigne comme source
+unique : « C'est ce bloc, et lui seul, qui décrit l'ABSENCE de SC-02. » Il est lu par la contrainte
+HARD `METIER_HARD_INDISPONIBILITE`, posée sur le **modèle général** et non dans SC-02. Aucun créneau
+ne tombe jamais dans un congé, quel que soit le scénario.
+
+*Ce qui ne tient pas.* `WorkMetricsCalculator` calcule `joursObserves` **une fois, pour tout le
+monde**, depuis le seul horizon — `EcartAuContrat.joursObserves(horizon)` — et `minutesAttendues`
+proratise le contrat sur cette même largeur. Une absence n'est donc pas lue comme une absence : elle
+est lue comme **du temps disponible non travaillé**. Le projet tient qu'« un vide ne suppose jamais
+que la chose est possible » ; la contrainte l'honore, la mesure lit le vide comme une disponibilité.
+
+*Portée.* La même source alimente trois décisions, ce que `EquiteChargeAuContrat` revendique
+explicitement — « le score, la réponse et le rang disent la même chose, ou l'un contredirait
+l'autre » :
+
+| Consommateur | Effet de l'absence non déduite |
+|---|---|
+| `EquiteChargeAuContrat.pointsExcedentaires` | contrainte SOFT — le solveur préfère qui paraît sous son contrat |
+| `Sc06CandidatEnumerationService` | classement des candidats trié sur `ecartContratPourcent` |
+| `ScenarioSc05ExecutionService` | l'arbitrage SC-05, publié avant/après |
+
+Ce n'est donc pas un chiffre d'affichage : **c'est une décision**. Sur une semaine l'effet est du
+bruit ; sur un trimestre il devient systématique. SC-04 ne le crée pas — il le rend inévitable, et
+c'est à son cadrage qu'il a été vu.
+
+*Direction de correction.* Une source, trois consommateurs : déduire les jours d'indisponibilité
+recouvrant l'horizon dans `joursObserves` et `minutesAttendues` corrige les trois d'un seul endroit.
+Le point délicat n'est pas le calcul mais son **accès** : le calculateur reçoit le `PlanningProblem`
+et lit `getIndisponibilites()` directement, quand `EquiteChargeAuContrat` est un flux de contraintes
+qui ne les a pas sous la main. Le précédent à suivre est `ReposHebdomadaire` — un fait de problème
+préparé en amont, lisible par la contrainte comme par la mesure.
+
+*Une conséquence à assumer.* `joursObserves` est publié avec une sémantique explicite — « jours de
+l'horizon déclaré », identique pour tous. Le rendre propre à chacun change ce que lit WinDev, sur
+tous les scénarios. **Arbitré le 2026-08-17 : c'est un défaut à corriger, pas un arbitrage à
+rendre** — on n'optimise pas un planning en annulant les congés. La série 50 suit le correctif ;
+elle ne le conditionne pas.
 
 ✅ **Le chantier équité est clos** — sept lots L0 à L6, `92_CADRAGE_WORKMETRICS_EQUITE.md`. Il a
 débloqué SC-05, lui-même clos le 14/08.
