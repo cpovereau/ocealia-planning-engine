@@ -270,10 +270,26 @@ pareil.
 
 > **`joursObserves` n'est pas `periodeDebut` / `periodeFin`.** L'horizon dit sur quelle fenêtre le
 > moteur a jugé ; ces deux dates disent ce que les données couvraient. Le contrat hebdomadaire est
-> proratisé sur l'horizon — c'est aussi ce qui traite l'**annualisation** sans cas particulier :
+> proratisé sur cette durée — c'est aussi ce qui traite l'**annualisation** sans cas particulier :
 > lue sur toute la fenêtre, la mesure ne pénalise pas un salarié annualisé pour une semaine
 > au-dessus de sa moyenne, qui est l'objet même de l'annualisation. **Plus la fenêtre est large,
 > plus le chiffre a de sens** — c'est la raison de la règle de transmission J-7 / J+7.
+
+> ⚠️ **`joursObserves` est propre à chaque salarié : les indisponibilités déclarées en sont
+> déduites.** Un salarié absent une semaine sur deux en observe 7 quand ses collègues en observent
+> 14. Sans cette déduction, l'absence se lirait comme du **temps disponible non travaillé** : le
+> salarié revenant de congé apparaîtrait sous son contrat, donc préférable, et le moteur lui
+> rattraperait son absence de part et d'autre. Le moteur ne place aucun créneau dans un congé — la
+> contrainte HARD y veille — mais **on n'optimise pas un planning en annulant les congés**, et
+> compenser une absence est une manière de l'annuler.
+>
+> Seule l'indisponibilité **déclarée** est déduite : un jour sans créneau n'est pas une absence,
+> c'est précisément ce que l'équité doit voir. Un poste virtuel, qui ne porte pas de contrat, garde
+> la largeur brute de la fenêtre.
+>
+> Conséquence à traiter côté appelant : un salarié absent **toute** la fenêtre a
+> `joursObserves: 0` et `ecartContratPourcent: null`. Il n'est pas à −100 %, il est **hors de
+> comparaison**.
 
 > **`null` sans volume contractuel déclaré.** Rien n'est alors comparable, et une valeur inventée
 > serait pire qu'une absence de valeur. Un poste virtuel est dans ce cas par nature : il ne porte

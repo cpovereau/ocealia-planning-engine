@@ -851,7 +851,7 @@
         },
         "joursObserves": {
           "type": "integer",
-          "description": "[Équité L2] Jours de l'HORIZON DÉCLARÉ — le dénominateur de ecartContratPourcent, qui rapporte le contrat hebdomadaire à cette durée. À ne pas confondre avec periodeDebut/periodeFin, qui bornent les créneaux effectivement reçus : l'horizon dit sur quelle fenêtre le moteur a jugé, ces deux dates disent ce que les données couvraient. Plus la fenêtre est large, plus l'écart au contrat a de sens."
+          "description": "[Équité L2] Jours de l'HORIZON DÉCLARÉ OÙ CE SALARIÉ ÉTAIT DISPONIBLE — le dénominateur de ecartContratPourcent, qui rapporte le contrat hebdomadaire à cette durée. PROPRE À CHAQUE SALARIÉ : les indisponibilités déclarées en sont déduites. Un salarié absent une semaine sur deux en observe 7 quand ses collègues en observent 14. Sans cette déduction l'absence se lirait comme du temps disponible non travaillé, et le salarié revenant de congé apparaîtrait sous son contrat, donc préférable. Un poste virtuel, sans contrat, garde la largeur brute de la fenêtre. Vaut 0 pour un salarié absent toute la fenêtre, et ecartContratPourcent est alors null : il n'est pas à -100 %, il est hors de comparaison. À ne pas confondre avec periodeDebut/periodeFin, qui bornent les créneaux effectivement reçus : l'horizon dit sur quelle fenêtre le moteur a jugé, ces deux dates disent ce que les données couvraient. Plus la fenêtre est large, plus l'écart au contrat a de sens."
         },
         "ecartContratPourcent": {
           "type": [

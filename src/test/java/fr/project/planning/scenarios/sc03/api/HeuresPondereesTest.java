@@ -114,16 +114,38 @@ class HeuresPondereesTest {
     @DisplayName("L'écart au contrat est restitué, signé, avec la fenêtre qui lui sert de référence")
     void ecartAuContrat_estRestitueAvecSaFenetre() throws Exception {
         // [Équité L2] La mesure comparative : ce que chacun fait rapporté à ce qu'il doit.
-        JsonNode reponse = solve(lire());
-        JsonNode horizon = lire().get("planningContext").get("horizon");
-        long joursAttendus = java.time.temporal.ChronoUnit.DAYS.between(
+        JsonNode requete = lire();
+        JsonNode reponse = solve(requete);
+        JsonNode horizon = requete.get("planningContext").get("horizon");
+        long joursDeLHorizon = java.time.temporal.ChronoUnit.DAYS.between(
                 java.time.LocalDate.parse(horizon.get("dateDebut").asText()),
                 java.time.LocalDate.parse(horizon.get("dateFin").asText())) + 1;
 
+        /*
+         * [Rang 14] Le dénominateur n'est pas l'horizon nu : c'est l'horizon moins les
+         * indisponibilités déclarées de CHACUN. Le jeu d'essai pose un CONGE_POSE d'un seul jour,
+         * sur SAL-2001 et lui seul — il en observe donc un de moins que les autres. Sans cette
+         * déduction il paraîtrait sous son contrat, donc préférable, et le moteur lui rattraperait
+         * son congé de part et d'autre.
+         */
+        JsonNode indisponibilites = requete.path("dataSet").path("indisponibilites").path("items");
+        assertEquals(1, indisponibilites.size(),
+                "Ce test suppose une indisponibilité unique dans le jeu d'essai : s'il en gagne "
+                        + "une, l'attendu ci-dessous cesse d'être juste.");
+        String salarieEnConge = indisponibilites.get(0).get("ressourceId").asText();
+        assertEquals(indisponibilites.get(0).get("dateDebut").asText(),
+                indisponibilites.get(0).get("dateFin").asText(),
+                "Ce test suppose une absence d'un seul jour.");
+
         boolean auMoinsUnEcart = false;
         for (JsonNode metrique : reponse.get("workMetrics").get("byRessource")) {
+            long joursAttendus = salarieEnConge.equals(metrique.get("resourceId").asText())
+                    ? joursDeLHorizon - 1
+                    : joursDeLHorizon;
+
             assertEquals(joursAttendus, metrique.get("joursObserves").asLong(),
-                    "Le dénominateur est l'horizon déclaré, et l'appelant doit pouvoir le vérifier.");
+                    "Le dénominateur est l'horizon déclaré où CE salarié était disponible, et "
+                            + "l'appelant doit pouvoir le vérifier.");
 
             if (!metrique.get("ecartContratPourcent").isNull()) {
                 auMoinsUnEcart = true;

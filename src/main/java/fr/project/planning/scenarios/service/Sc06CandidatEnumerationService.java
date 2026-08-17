@@ -3,6 +3,7 @@ package fr.project.planning.scenarios.service;
 import fr.project.planning.domain.creneau.Creneau;
 import fr.project.planning.domain.ressource.Indisponibilite;
 import fr.project.planning.domain.workmetrics.EcartAuContrat;
+import fr.project.planning.domain.workmetrics.JoursDisponibles;
 import fr.project.planning.domain.ressource.PosteVirtuel;
 import fr.project.planning.domain.ressource.Ressource;
 import fr.project.planning.domain.ressource.RessourceNonAffectee;
@@ -516,8 +517,16 @@ public class Sc06CandidatEnumerationService {
         Double pire = null;
 
         for (SalarieReel salarie : mobilises(affectations)) {
+            /*
+             * [Rang 14] Le contrat est proratisé sur les jours où CE salarié était disponible,
+             * absences déduites. Sur l'horizon entier, un candidat revenant de congé paraîtrait
+             * sous son contrat et remonterait dans le classement — l'équité le désignerait pour
+             * rattraper son propre congé.
+             */
             Double attendues = EcartAuContrat.minutesAttendues(salarie.getContrat(),
-                    prepared.problem().getPlanningContext().getHorizonTemporel());
+                    JoursDisponibles.pour(salarie.getId(),
+                            prepared.problem().getPlanningContext().getHorizonTemporel(),
+                            prepared.problem().getIndisponibilites()));
 
             // Même mesure que celle restituée dans impacts[] : le classement et la réponse ne
             // peuvent pas diverger, ils passent par les mêmes primitives.

@@ -274,19 +274,30 @@ public class WorkMetricsCalculator {
          * rapportée au contrat suppose que tout ait été compté. Le poste virtuel en est exclu —
          * il ne porte pas de contrat, et n'a donc rien à quoi être comparé.
          */
-        int joursObserves = (int) EcartAuContrat.joursObserves(horizon);
-
         for (Map.Entry<Ressource, WorkMetrics> entry : result.entrySet()) {
             WorkMetrics wm = entry.getValue();
 
-            // La fenêtre est celle du problème : elle vaut pour tout le monde, y compris un poste
-            // virtuel dont rien n'est comparable. Elle dit sur quoi le moteur a jugé.
+            /*
+             * [Rang 14] La fenêtre est celle du problème, mais les jours observés sont ceux de
+             * CHACUN : l'horizon dit sur quoi le moteur a jugé, les indisponibilités déclarées
+             * disent quand la personne pouvait travailler. Compter l'absence comme du temps
+             * disponible ferait lire un retour de congé comme une sous-charge, et le moteur
+             * rattraperait le congé au lieu de le respecter.
+             *
+             * Un poste virtuel ne porte pas de contrat : rien n'est comparable pour lui, et il
+             * garde la largeur brute de la fenêtre — elle ne dit alors que ce qui a été vu.
+             */
+            long joursDisponibles = entry.getKey() instanceof SalarieReel
+                    ? JoursDisponibles.pour(entry.getKey().getId(), horizon,
+                            solution.getIndisponibilites())
+                    : EcartAuContrat.joursObserves(horizon);
+
             Double attendues = entry.getKey() instanceof SalarieReel salarie
-                    ? EcartAuContrat.minutesAttendues(salarie.getContrat(), horizon)
+                    ? EcartAuContrat.minutesAttendues(salarie.getContrat(), joursDisponibles)
                     : null;
 
             wm.setMesuresContractuelles(
-                    joursObserves,
+                    (int) joursDisponibles,
                     EcartAuContrat.ecartPourcent(wm.getMinutesPonderees(), attendues),
                     EcartAuContrat.pourcentageDuContrat(wm.getMinutesNuitDominante(), attendues),
                     EcartAuContrat.pourcentageDuContrat(wm.getMinutesDimancheDominante(), attendues),

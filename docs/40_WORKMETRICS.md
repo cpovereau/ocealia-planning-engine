@@ -462,11 +462,27 @@ Ces métriques permettent une lecture **comparative**, sans décision.
 | `heuresPonderees` | Decimal | Charge ramenée à l'unité de l'heure ordinaire, chaque minute pondérée par le coefficient de **sa seule** catégorie de pénibilité — celle que la dominance retient |
 | `ecartContratPourcent` | Decimal | Écart **signé** au volume contractuel attendu sur la fenêtre. Négatif : en dessous, ce qui doit rendre la personne **préférable** |
 | `partNuits`, `partDimanches`, `partFeries` | Decimal | Part de chaque pénibilité rapportée à ce même volume — un mi-temps doit une part proportionnée à son contrat |
-| `joursObserves` | Integer | Jours de l'horizon déclaré : le dénominateur, restitué pour que l'appelant sache sur quoi le moteur a jugé |
+| `joursObserves` | Integer | Jours de l'horizon déclaré **où ce salarié était disponible** : le dénominateur, restitué pour que l'appelant sache sur quoi le moteur a jugé |
 
 Ces mesures sont produites dans la **seconde phase d'agrégation** décrite au §5.1.5 : rapporter une
 charge au contrat suppose que tout ait été compté. Elles valent `null` sans volume contractuel
 déclaré — un poste virtuel est dans ce cas par nature.
+
+> ⚠️ **Le dénominateur est propre à chacun — les absences en sont déduites (rang 14).** Le moteur ne
+> place aucun créneau dans un congé : la contrainte HARD `METIER_HARD_INDISPONIBILITE` y veille
+> depuis l'origine. Mais proratiser le contrat sur l'horizon **entier** ferait lire l'absence comme
+> du *temps disponible non travaillé* : le salarié revenant de congé apparaîtrait sous son contrat,
+> donc préférable, et le moteur lui rattraperait son absence de part et d'autre. **On n'optimise pas
+> un planning en annulant les congés**, et compenser une absence est une manière de l'annuler.
+>
+> Seule l'indisponibilité **déclarée** est déduite — le bloc `indisponibilites`, source unique de
+> l'absence au contrat d'entrée. Un jour sans créneau n'est pas une absence : c'est précisément ce
+> que l'équité doit voir. Les périodes qui se chevauchent ne comptent qu'une fois, et une absence
+> débordant l'horizon n'est déduite que sur sa partie visible.
+>
+> Un salarié absent **toute** la fenêtre a `joursObserves: 0` et `ecartContratPourcent: null` : il
+> n'est pas à −100 %, il est **hors de comparaison**. La même primitive alimente la mesure restituée
+> et le classement de SC-06 — le score, la réponse et le rang disent la même chose.
 
 **L'unité, et ce qu'elle suppose.** *On ne juge l'équité qu'à pénibilité équivalente* : huit heures
 un mardi et huit heures un dimanche n'entrent pas dans la même addition sans coefficient. Ces

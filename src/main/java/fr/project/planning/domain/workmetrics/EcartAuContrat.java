@@ -23,9 +23,15 @@ import java.time.temporal.ChronoUnit;
  * de surcharger : il ne rééquilibrerait jamais, et l'équité ne se produirait pas — elle serait
  * seulement moins violée.</p>
  *
- * <h3>La référence est proratisée sur la fenêtre observée</h3>
+ * <h3>La référence est proratisée sur la fenêtre observée, absences déduites</h3>
  * <p>Le contrat s'exprime par semaine, la mesure porte sur ce que l'appelant a transmis. La
- * référence vaut donc {@code heuresHebdomadaires × jours observés / 7}.</p>
+ * référence vaut donc {@code heuresHebdomadaires × jours disponibles / 7}.</p>
+ *
+ * <p><strong>Jours disponibles, et non jours de la fenêtre</strong> — rang 14. Proratiser sur
+ * l'horizon entier ferait lire une absence déclarée comme du temps disponible non travaillé : le
+ * salarié revenant de congé paraîtrait sous son contrat, donc préférable, et le moteur lui
+ * rattraperait son absence de part et d'autre. Le congé est un fait, pas un déficit. Voir
+ * {@link JoursDisponibles}.</p>
  *
  * <p>C'est aussi ce qui traite l'annualisation sans cas particulier : pour un salarié annualisé,
  * {@code heuresHebdomadairesHabituelles} décrit une <strong>moyenne</strong>, et une semaine
@@ -39,23 +45,44 @@ public final class EcartAuContrat {
     }
 
     /**
-     * Volume contractuel attendu sur la fenêtre, en minutes.
+     * Volume contractuel attendu sur la fenêtre entière, en minutes — <strong>sans déduire les
+     * absences</strong>.
+     *
+     * <p>⚠️ Ne convient qu'à un salarié dont on sait qu'il était disponible tout du long, ou à un
+     * calcul qui ne compare personne. Toute mesure d'équité doit passer par la surcharge à
+     * {@code joursDisponibles} : voir {@link JoursDisponibles} et le rang 14.</p>
      *
      * @return {@code null} si le contrat ne déclare pas de volume hebdomadaire — auquel cas rien
      *         n'est comparable, et le moteur préfère ne rien dire plutôt que de supposer
      */
     public static Double minutesAttendues(ContratSalarie contrat, HorizonTemporel horizon) {
-        if (contrat == null || contrat.getHeuresHebdomadairesHabituelles() == null
-                || horizon == null || horizon.getDateDebut() == null
-                || horizon.getDateFin() == null) {
+        if (horizon == null || horizon.getDateDebut() == null || horizon.getDateFin() == null) {
+            return null;
+        }
+        return minutesAttendues(contrat, joursObserves(horizon));
+    }
+
+    /**
+     * Volume contractuel attendu sur les seuls jours où le salarié était disponible, en minutes.
+     *
+     * <p>C'est la forme à employer dès qu'on compare deux personnes. Proratiser sur l'horizon
+     * entier ferait lire une absence comme du temps disponible non travaillé, et le moteur
+     * rattraperait le congé au lieu de le respecter.</p>
+     *
+     * @param joursDisponibles jours de la fenêtre hors indisponibilité, de {@link JoursDisponibles}
+     * @return {@code null} si le contrat ne déclare pas de volume hebdomadaire, ou si
+     *         {@code joursDisponibles} est nul — un salarié absent toute la fenêtre n'est pas à
+     *         −100 % de son contrat, il est <strong>hors de comparaison</strong>
+     */
+    public static Double minutesAttendues(ContratSalarie contrat, long joursDisponibles) {
+        if (contrat == null || contrat.getHeuresHebdomadairesHabituelles() == null) {
             return null;
         }
         double heuresHebdo = contrat.getHeuresHebdomadairesHabituelles();
-        if (heuresHebdo <= 0) {
+        if (heuresHebdo <= 0 || joursDisponibles <= 0) {
             return null;
         }
-        long jours = joursObserves(horizon);
-        return heuresHebdo * 60.0 * jours / 7.0;
+        return heuresHebdo * 60.0 * joursDisponibles / 7.0;
     }
 
     /**

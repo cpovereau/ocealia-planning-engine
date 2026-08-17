@@ -3,7 +3,9 @@ package fr.project.planning.equite.calibration;
 import com.fasterxml.jackson.databind.JsonNode;
 import fr.project.planning.domain.contexte.HorizonTemporel;
 import fr.project.planning.domain.ressource.ContratSalarie;
+import fr.project.planning.domain.ressource.Indisponibilite;
 import fr.project.planning.domain.workmetrics.EcartAuContrat;
+import fr.project.planning.domain.workmetrics.JoursDisponibles;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -73,6 +75,26 @@ public final class LectureCasDeCalibration {
                 LocalDate.parse(horizonJson.get("dateDebut").asText()),
                 LocalDate.parse(horizonJson.get("dateFin").asText()));
 
+        /*
+         * [Rang 14] Les indisponibilités déclarées sont déduites, comme le moteur les déduit.
+         * Sans cela le harnais proratiserait sur l'horizon entier quand le moteur proratise sur
+         * les jours disponibles, et l'écart se lirait comme une divergence de pondération — la
+         * calibration porterait alors sur une mesure que le moteur ne produit pas.
+         */
+        List<Indisponibilite> indisponibilites = new ArrayList<>();
+        for (JsonNode item : requete.path("dataSet").path("indisponibilites").path("items")) {
+            JsonNode debut = item.path("dateDebut");
+            JsonNode fin = item.path("dateFin");
+            if (debut.isMissingNode() || fin.isMissingNode()) {
+                continue;
+            }
+            indisponibilites.add(new Indisponibilite(
+                    item.path("ressourceId").asText(null),
+                    LocalDate.parse(debut.asText()),
+                    LocalDate.parse(fin.asText()),
+                    item.path("motif").asText(null)));
+        }
+
         Map<String, Double> attendues = new HashMap<>();
         JsonNode salaries = requete.path("dataSet").path("ressources").path("salaries");
 
@@ -82,8 +104,9 @@ public final class LectureCasDeCalibration {
                     ? null
                     : new ContratSalarie(null, heures.asDouble(), null, null);
 
-            attendues.put(salarie.get("id").asText(),
-                    EcartAuContrat.minutesAttendues(contrat, horizon));
+            String id = salarie.get("id").asText();
+            attendues.put(id, EcartAuContrat.minutesAttendues(contrat,
+                    JoursDisponibles.pour(id, horizon, indisponibilites)));
         }
         return attendues;
     }
