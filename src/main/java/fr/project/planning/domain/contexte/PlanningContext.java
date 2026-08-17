@@ -110,6 +110,26 @@ public final class PlanningContext implements Serializable {
         this.optionsExplicabilite = Objects.requireNonNull(optionsExplicabilite);
     }
 
+    /**
+     * Le même contexte, vu à travers une fenêtre plus étroite (lot O1 de SC-04).
+     *
+     * <p>Tout est repris à l'identique — coefficients de pénibilité, tolérance d'équité, seuils,
+     * stratégie — et <strong>seul l'horizon change</strong>. C'est ce qui permet de mesurer une
+     * semaine ou un mois avec le calculateur de production plutôt qu'avec une seconde
+     * implémentation : deux implémentations de la même règle finissent par diverger, et une
+     * divergence de méthode se lirait comme un mouvement du planning.</p>
+     *
+     * <p>Voir l'arbitrage §5.1 de {@code 92_CADRAGE_SCENARIO_SC-04.md} : <em>on ne compare pas des
+     * torchons et des serviettes</em>.</p>
+     */
+    public PlanningContext surHorizon(HorizonTemporel autreHorizon) {
+        return new PlanningContext(
+                objectif, strategieScoring, resolutionType, hypotheseHistorique,
+                Objects.requireNonNull(autreHorizon), strategieCouverture, seuilsDeTolerance,
+                penalites, dominancePenibilites, optionsExplicabilite,
+                coefficientsPenibilite, toleranceEquite);
+    }
+
     public ObjectifResolution getObjectif() {
         return objectif;
     }

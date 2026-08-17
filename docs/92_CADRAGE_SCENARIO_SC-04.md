@@ -92,12 +92,36 @@ Trois conséquences, et elles réorientent tout le chantier :
 | Le planning existant sur toute sa largeur | ✅ au contrat depuis le lot L8 (2026-08-10) |
 | Épingler une partie du planning | ✅ `@PlanningPin`, livré au lot S1 de SC-06 — mais **le moteur décide seul** de ce qui est épinglé (SC-02, SC-05) ; l'appelant ne le désigne pas |
 | Ne pas lire une absence comme une sous-charge | ✅ **livré le 2026-08-17, rang 14** |
-| **WorkMetrics agrégés semaine / mois / période, avant et après** | ❌ **n'existe pas** — c'est le chantier |
-| Un score qui juge l'équité sur cette période | ⚠️ `EquiteChargeAuContrat` ignore encore les indisponibilités (rang 14, second volet) |
+| WorkMetrics agrégés semaine / mois / période | ✅ **livré le 2026-08-17, lot O1** — côté domaine |
+| Ces agrégats **restitués**, avant et après | ❌ lot O2 |
+| Un score qui juge l'équité sur cette période | ✅ **livré le 2026-08-17, lot O0** |
 
 `WorkMetricsByRessourceDTO` porte **un seul agrégat par ressource**, borné par `periodeDebut` /
-`periodeFin`. Aucun découpage hebdomadaire ni mensuel. C'est là, et nulle part ailleurs, que se
-situe le travail de SC-04.
+`periodeFin`. C'était là, et nulle part ailleurs, que se situait le travail de SC-04.
+
+### 4.2 Ce que le lot O1 a livré
+
+`DecoupageTemporel` découpe l'horizon en semaines ISO — le lundi ouvre, comme partout ailleurs dans
+le moteur — puis en mois calendaires, puis en lui-même. Les bords sont **tronqués, jamais étendus**,
+et la tranche se déclare alors `partielle()` pour que ses volumes bruts ne se comparent pas à ceux
+d'une semaine pleine.
+
+`WorkMetricsParTranche` mesure chaque tranche en **rejouant le calculateur de production** sur une
+vue du problème dont seul l'horizon est rétréci — `PlanningContext.surHorizon(...)`. Écrire un
+agrégateur qui aurait additionné les créneaux lui-même était plus court et faux : la pondération par
+la pénibilité, la dominance, le filtre `compteDansCharge` et la déduction des absences offrent
+**quatre** occasions de diverger, et une divergence de méthode se lirait comme un mouvement du
+planning. C'est §5.1 appliqué.
+
+Tout suit la fenêtre, y compris ce qui s'en déduit : les jours disponibles d'une semaine où le
+salarié a posé deux jours valent cinq, et son écart au contrat s'y proratise. **Une semaine de congé
+complet ne le montre pas à −100 %** — elle ne le compare à rien.
+
+> ⚠️ **Ce qui ne se lit pas tranche par tranche.** Les volumes se somment ; les **séries** non.
+> `maxJoursConsecutifsObservees` et `maxNuitsConsecutivesObservees` sont observés *à l'intérieur* de
+> la tranche : sept jours consécutifs à cheval sur deux semaines s'y lisent 4 puis 3. Seule la
+> tranche `PERIODE` porte la série réelle, et c'est elle qu'il faut lire pour juger d'un
+> enchaînement. Un test pin ce comportement pour qu'il ne se prenne jamais pour un défaut.
 
 ### 4.1 Pourquoi le rang 14 est sorti de ce cadrage
 
@@ -210,7 +234,7 @@ SC-05 (`MotifArbitrage`) offrent le modèle de la lecture : le moteur ne refuse 
 | Lot | Contenu | Dépend de |
 |---|---|---|
 | ~~**O0**~~ | ~~Aligner `EquiteChargeAuContrat` sur les jours disponibles~~ ✅ **livré le 2026-08-17** | — |
-| **O1** | Agrégation `WorkMetrics` par semaine / mois / période, côté domaine | O0 |
+| ~~**O1**~~ | ~~Agrégation `WorkMetrics` par semaine / mois / période, côté domaine~~ ✅ **livré le 2026-08-17** | O0 |
 | **O2** | Restitution des séries agrégées, avant/après, au contrat de sortie | O1, §5.3 |
 | **O3** | Degré de liberté : `datePivot` et figement dérivé | §5.5 tranché |
 | **O4** | Endpoint, jeux d'essai, canal fichier, inscription série 50 | O2, O3 |

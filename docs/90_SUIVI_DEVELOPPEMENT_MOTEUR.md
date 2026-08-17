@@ -654,7 +654,7 @@ SC-06), et **SC-04 seul reste sans contrat d'entrée, sans endpoint et sans jeu 
 | Scénario | Intention | Ce qui existe déjà | Ce qui manque |
 |---|---|---|---|
 | ~~**SC-02** — remplacement d'un absent~~ | ~~assurer la continuité en perturbant le moins possible l'existant~~ | ✅ **Clos le 2026-08-13** — six lots S0 à S5, inscrit au contrat série 50, accessible par les deux canaux | — |
-| **SC-04** — optimisation globale d'un planning existant | juger une période, pas une semaine | figement, WorkMetrics, absences déduites (rang 14) | **l'agrégation semaine / mois / période** — cadré le 2026-08-17, `92_CADRAGE_SCENARIO_SC-04.md` |
+| **SC-04** — optimisation globale d'un planning existant | juger une période, pas une semaine | figement, WorkMetrics, absences déduites, **agrégation semaine / mois / période** (lots O0 et O1, 2026-08-17) | la **restitution** de ces séries avant/après (O2), et le degré de liberté (O3, arbitrage §5.5) |
 | ~~**SC-05** — arbitrage entre deux salariés~~ | ~~répartir équitablement un périmètre commun~~ | ✅ **Clos le 2026-08-14** — cinq lots A0 à A4, inscrit au contrat série 50, accessible par les deux canaux : `92_CADRAGE_SCENARIO_SC-05.md` | — |
 
 `92_CADRAGE_DONNEES_AMONT_SCENARIOS.md` §7 le résume : trois familles de données apparaissent dès
@@ -895,10 +895,11 @@ Ordonné par **dépendance**, pas par valeur métier. Les rangs renvoient au bac
 4. **Rang 13** — garder le schéma d'entrée comme le schéma de sortie l'est. Correctif pur, sans
    arbitrage.
 5. **Rang 10** — dès que la Production a rendu ses arbitrages.
-6. **SC-04** — cadré le 2026-08-17, `92_CADRAGE_SCENARIO_SC-04.md`. Ses deux premiers lots, O0 et
-   O1, **ne dépendent d'aucun arbitrage** : aligner la contrainte d'équité sur les jours
-   disponibles, puis agréger les WorkMetrics par semaine, par mois et sur la période. Les deux
-   arbitrages qui restent — degré de liberté, pondération — ne les conditionnent pas.
+6. **SC-04** — cadré le 2026-08-17, `92_CADRAGE_SCENARIO_SC-04.md`. **Lots O0 et O1 livrés le
+   jour même** : la contrainte d'équité est alignée sur les jours disponibles, et les WorkMetrics
+   s'agrègent par semaine, par mois et sur la période — côté domaine. Restent **O2** (restituer ces
+   séries avant/après), **O3** (degré de liberté, §5.5 à trancher) et **O4** (endpoint, jeux
+   d'essai, canal fichier, série 50). Seul O3 attend un arbitrage.
 
 L'explicabilité pédagogique du score (§ 1️⃣) et le nettoyage technique OptaPlanner restent
 souhaitables mais ne conditionnent rien : ils s'intercalent où ils veulent.
