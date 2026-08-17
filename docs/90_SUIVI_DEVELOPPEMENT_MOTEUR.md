@@ -489,7 +489,7 @@ soit explicitement hors moteur (§ Analyse métier aval).
 | Rang | Sujet | Nature du blocage | Qui tranche |
 |---|---|---|---|
 | **8** | Champs au contrat sans effet : `capaciteCible`, structuration des besoins | arbitrage — activer ou retirer — **non traitable avant le 25/08/2026** | Métier + moteur |
-| **9** | SC-04 — un scénario annoncé, jamais écrit | cadrage — il n'a pas de contrat d'entrée et dépend d'un historique des compteurs qui n'existe pas. **SC-02 en est sorti** (cadré le 11/08, clos le 13/08) et **SC-05 aussi** : cadré et arbitré le 13/08, clos le 14/08. **SC-04 y reste seul** | Métier |
+| **9** | SC-04 — un scénario annoncé, jamais écrit | ⚠️ **cadré le 2026-08-17** — `92_CADRAGE_SCENARIO_SC-04.md`. Il ne dépendait pas d'un historique à recevoir : la profondeur est celle de la période demandée, et l'historique se **recalcule**. Ce qui manque est une **agrégation semaine / mois / période** que le moteur ne produit pas — donc du travail moteur, pas une donnée à obtenir. Deux arbitrages restent au Métier : le degré de liberté et la pondération des règles | Moteur / Métier |
 | **10** | Contraintes personnelles : lieux, activités, préférences, annualisation | arbitrage — **le Produit décide de la stratégie** sur les préférences, `activitesCompatibles` et `sitesAutorises` ; l'annualisation attend la Production. Que ces champs soient **transmis, mappés et lus par aucune contrainte** est un constat technique, pas un feu vert | Produit / Production |
 | **12** | Fermer les blocs restés délibérément tolérants aux champs inconnus | arbitrage — changement de comportement visible par l'appelant | Métier + WinDev |
 | **13** | Auditer et **garder** `50_ScenarioContract.schema.json` comme `SchemaPublie` garde le schéma de sortie | correctif — rien ne confronte les requêtes au schéma publié, et il a dérivé | Moteur |
@@ -646,7 +646,7 @@ SC-06), et **SC-04 seul reste sans contrat d'entrée, sans endpoint et sans jeu 
 | Scénario | Intention | Ce qui existe déjà | Ce qui manque |
 |---|---|---|---|
 | ~~**SC-02** — remplacement d'un absent~~ | ~~assurer la continuité en perturbant le moins possible l'existant~~ | ✅ **Clos le 2026-08-13** — six lots S0 à S5, inscrit au contrat série 50, accessible par les deux canaux | — |
-| **SC-04** — optimisation globale d'un planning existant | améliorer sans reconstruire | figement, WorkMetrics | historique des compteurs, degrés de liberté, indicateurs comparatifs |
+| **SC-04** — optimisation globale d'un planning existant | juger une période, pas une semaine | figement, WorkMetrics, absences déduites (rang 14) | **l'agrégation semaine / mois / période** — cadré le 2026-08-17, `92_CADRAGE_SCENARIO_SC-04.md` |
 | ~~**SC-05** — arbitrage entre deux salariés~~ | ~~répartir équitablement un périmètre commun~~ | ✅ **Clos le 2026-08-14** — cinq lots A0 à A4, inscrit au contrat série 50, accessible par les deux canaux : `92_CADRAGE_SCENARIO_SC-05.md` | — |
 
 `92_CADRAGE_DONNEES_AMONT_SCENARIOS.md` §7 le résume : trois familles de données apparaissent dès
@@ -660,13 +660,20 @@ livrées (lots L1 à L5), son cadrage a été écrit et ses six arbitrages rendu
 une condition de retour au rang 10 — puis les cinq lots A0 à A4 réalisés le 14/08. Il est inscrit au
 contrat série 50 et accessible par les deux canaux.
 
-**SC-04 reste seul**, et pour une raison qui ne se lève pas dans ce chantier : il dépend d'un
-historique de compteurs que le moteur ne reçoit pas. C'est le **même manque** que celui que SC-05
-inscrit comme limite explicite : un déséquilibre installé depuis trois mois n'est visible dans
-aucune fenêtre transmise.
+**SC-04 reste seul**, mais plus pour la raison qu'on lui prêtait. On tenait qu'il dépendait d'un
+historique de compteurs que le moteur ne reçoit pas — le **même manque** que SC-05 inscrit comme
+limite explicite. **Le cadrage du 2026-08-17 a renversé cette lecture** : la profondeur est celle de
+la période demandée, et l'historique se **recalcule** depuis les créneaux transmis au lieu de se
+recevoir. Aucun bloc d'entrée n'est donc attendu de WinDev.
+
+Ce qui manque est ailleurs, et c'est du travail moteur : `WorkMetricsByRessourceDTO` ne produit
+**qu'un seul agrégat par ressource** sur tout l'horizon, quand SC-04 demande des séries par semaine,
+par mois et sur la période, en deux états. Deux arbitrages restent au Métier — le degré de liberté
+et la pondération des règles — mais ni l'un ni l'autre ne bloque les deux premiers lots.
 
 📄 **SC-02 est clos** — six lots S0 à S5, `92_CADRAGE_SCENARIO_SC-02.md`.
 📄 **SC-05 est clos** — cinq lots A0 à A4, `92_CADRAGE_SCENARIO_SC-05.md`.
+📄 **SC-04 est cadré** — découpage O0 à O4, `92_CADRAGE_SCENARIO_SC-04.md`.
 
 ---
 
@@ -880,7 +887,10 @@ Ordonné par **dépendance**, pas par valeur métier. Les rangs renvoient au bac
 4. **Rang 13** — garder le schéma d'entrée comme le schéma de sortie l'est. Correctif pur, sans
    arbitrage.
 5. **Rang 10** — dès que la Production a rendu ses arbitrages.
-6. **SC-04** — le dernier, conditionné à un historique des compteurs qui n'existe pas.
+6. **SC-04** — cadré le 2026-08-17, `92_CADRAGE_SCENARIO_SC-04.md`. Ses deux premiers lots, O0 et
+   O1, **ne dépendent d'aucun arbitrage** : aligner la contrainte d'équité sur les jours
+   disponibles, puis agréger les WorkMetrics par semaine, par mois et sur la période. Les deux
+   arbitrages qui restent — degré de liberté, pondération — ne les conditionnent pas.
 
 L'explicabilité pédagogique du score (§ 1️⃣) et le nettoyage technique OptaPlanner restent
 souhaitables mais ne conditionnent rien : ils s'intercalent où ils veulent.

@@ -329,7 +329,7 @@ primaires brutes d'un côté et `BES-` de l'autre, aucune collision n'est possib
 | Jours fériés (cadre global) | ⚠️ partiel | ✅ | ✅ | ✅ | ✅ |
 | Planning existant / affectations | — | ✅ | partiel | ✅ | ✅ |
 | Créneaux figés vs ajustables | — | ✅ | ○ | ✅ | ○ |
-| Historique des compteurs | — | ○ | — | ✅ | ✅ |
+| ~~Historique des compteurs~~ | — | — | — | ⚠️ voir ci-dessous | ⚠️ voir ci-dessous |
 | Seuil de surcharge acceptable | — | ✅ | ○ | ✅ | ✅ |
 | Objectif d'arbitrage | — | — | — | ○ | ✅ |
 
@@ -338,6 +338,18 @@ primaires brutes d'un côté et `BES-` de l'autre, aucune collision n'est possib
 **Lecture** : trois familles apparaissent dès SC-02 et ne disparaissent plus — le **planning
 existant**, le **contrat salarié** et le **seuil de surcharge**. Ce sont elles qui font basculer
 le moteur du mode « je génère » vers le mode « j'ajuste sans casser ». Aucune n'est au contrat.
+
+> ⚠️ **L'« historique des compteurs » n'est pas une donnée amont — arbitré le 2026-08-17.** Cette
+> ligne portait un ✅ pour SC-04 et SC-05, et faisait tenir SC-04 pour bloqué sur une donnée que
+> WinDev ne fournissait pas. **La profondeur est celle de la période demandée**, avec un regroupement
+> à la semaine, au mois et sur la période : le moteur ne lit aucun compteur tenu ailleurs, il
+> **recalcule** depuis les créneaux transmis. Rien n'est conservé entre deux appels, donc rien n'est
+> à recevoir ni à remettre à zéro. Le levier est l'élargissement de la fenêtre — *plus elle est
+> large, plus la mesure a de sens*, `92_CADRAGE_WORKMETRICS_EQUITE.md` §4.3.
+>
+> Ce qui manque à SC-04 est en conséquence **du travail moteur** : l'agrégation par semaine, par
+> mois et sur la période, que `WorkMetricsByRessourceDTO` ne produit pas. Voir
+> `92_CADRAGE_SCENARIO_SC-04.md` §3.
 
 ---
 
