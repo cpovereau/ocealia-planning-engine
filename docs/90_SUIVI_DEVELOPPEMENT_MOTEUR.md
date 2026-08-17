@@ -490,7 +490,7 @@ soit explicitement hors moteur (§ Analyse métier aval).
 |---|---|---|---|
 | **8** | Champs au contrat sans effet : `capaciteCible`, structuration des besoins | arbitrage — activer ou retirer — **non traitable avant le 25/08/2026** | Métier + moteur |
 | **9** | SC-04 — un scénario annoncé, jamais écrit | cadrage — il n'a pas de contrat d'entrée et dépend d'un historique des compteurs qui n'existe pas. **SC-02 en est sorti** (cadré le 11/08, clos le 13/08) et **SC-05 aussi** : cadré et arbitré le 13/08, clos le 14/08. **SC-04 y reste seul** | Métier |
-| **10** | Contraintes personnelles : lieux, activités, préférences, annualisation | ⚠️ **deux moitiés distinctes** — les **préférences** et l'annualisation attendent la Production ; **`activitesCompatibles` et `sitesAutorises` sont déjà transmis et lus par aucune contrainte**, et n'attendent rien | Production / Moteur |
+| **10** | Contraintes personnelles : lieux, activités, préférences, annualisation | arbitrage — **le Produit décide de la stratégie** sur les préférences, `activitesCompatibles` et `sitesAutorises` ; l'annualisation attend la Production. Que ces champs soient **transmis, mappés et lus par aucune contrainte** est un constat technique, pas un feu vert | Produit / Production |
 | **12** | Fermer les blocs restés délibérément tolérants aux champs inconnus | arbitrage — changement de comportement visible par l'appelant | Métier + WinDev |
 | **13** | Auditer et **garder** `50_ScenarioContract.schema.json` comme `SchemaPublie` garde le schéma de sortie | correctif — rien ne confronte les requêtes au schéma publié, et il a dérivé | Moteur |
 | **14** | L'absence est **tenue par la contrainte et ignorée par la mesure** : `joursObserves` et `minutesAttendues` portent sur l'horizon entier, identiques pour tous | correctif — un salarié revenant de congé est lu « sous son contrat », donc préférable. Le moteur ne place aucun créneau dans l'absence, mais il la **rattrape** de part et d'autre | Moteur |
@@ -564,14 +564,23 @@ débloqué SC-05, lui-même clos le 14/08.
 Un chantier plus ancien reste ouvert **sans dépendre d'un arbitrage** : l'explicabilité pédagogique
 du score (§ 1️⃣). Réalisable à tout moment.
 
-> ⚠️ **Une part du rang 10 n'attend rien ni personne.** Ce rang mélange deux choses de nature très
-> différente : des données que **le moteur ne reçoit pas** — les préférences, l'annualisation — et
-> des données qu'il **reçoit déjà et n'utilise pas**. `activitesCompatibles` et `sitesAutorises`
-> sont transmis au contrat, mappés dans le domaine, et **lus par aucune contrainte** : les seuls
-> lecteurs sont l'énumération de SC-06, les mappers et le domaine. SC-06 s'en accommode en filtrant
-> ses candidats ; **tous les scénarios qui résolvent peuvent confier un créneau à quelqu'un qui ne
-> pratique pas l'activité, ou qui n'est pas autorisé sur le site.** Cette moitié-là ne dépend
-> d'aucun échange avec la Production.
+> ⚠️ **Rang 10 — le constat technique ne se confond pas avec l'arbitrage.** Ce rang mélange des
+> données que le moteur **ne reçoit pas** — les préférences, l'annualisation — et des données qu'il
+> **reçoit déjà et n'utilise pas**. `activitesCompatibles` et `sitesAutorises` sont transmis au
+> contrat, mappés dans le domaine, et **lus par aucune contrainte** : les seuls lecteurs sont
+> l'énumération de SC-06, les mappers et le domaine. SC-06 s'en accommode en filtrant ses
+> candidats ; **tous les scénarios qui résolvent peuvent confier un créneau à quelqu'un qui ne
+> pratique pas l'activité, ou qui n'est pas autorisé sur le site.**
+>
+> **Ce constat ne vaut pas feu vert.** Le service **Produit** décide de la stratégie sur les
+> préférences individuelles, les activités compatibles et les sites autorisés. Qu'un champ figure au
+> contrat d'entrée n'y change rien : il y a été mis pour ne pas oublier qu'il pourrait servir, ce
+> qui ne dit rien de l'intention de s'en servir. C'est la famille du rang 8 — transmise ne veut pas
+> dire arbitrée.
+>
+> *Corrigé le 2026-08-17.* Ce paragraphe concluait que cette moitié « ne dépend d'aucun échange » et
+> « n'attend rien ni personne » : le constat technique était juste, la conclusion sur qui bloque ne
+> l'était pas.
 
 Ce qui manque pour aller plus loin n'est plus un outil mais **des plannings réels** : les
 coefficients de pénibilité ne se décrètent pas, et les jeux d'essai du dépôt sont muets sur eux.
