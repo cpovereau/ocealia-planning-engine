@@ -1,8 +1,8 @@
 # 92 — Cadrage : SC-04, optimisation globale d'un planning existant
 
 > **Statut** : cadrage d'analyse, 2026-08-17, produit à l'ouverture du **rang 9**.
-> Quatre arbitrages sont **tranchés** (métier, 2026-08-17) et figurent en §5.1 à §5.4. Deux restent
-> ouverts, §5.5 et §5.6.
+> **Les six arbitrages de la §5 sont tranchés** (métier, 2026-08-17). Plus aucun ne bloque SC-04 :
+> ce qui reste est du travail moteur. Les lots **O0 et O1 sont livrés** le jour même.
 >
 > Ce cadrage a déjà produit un correctif hors de son périmètre : le **rang 14**, livré le
 > 2026-08-17, parce qu'on ne peut pas optimiser une période large en lisant les congés comme du
@@ -169,23 +169,26 @@ Deux exigences distinctes en découlent, et une seule était satisfaite :
 
 Compenser une absence de part et d'autre est une manière de l'annuler : le refus vaut pour les deux.
 
-### 5.5 Ouvert — qui désigne le degré de liberté ?
+### 5.5 Tranché — une date pivot, et la liste explicite dans un second temps
 
 Tous les scénarios livrés décident **pour l'appelant** de ce qui est épinglé. SC-04 est le premier
-où ce choix pourrait revenir à l'appelant, et c'est lui qui décide si le résultat est exploitable ou
-un remaniement que personne ne voulait.
+où ce choix lui revient, et c'est lui qui décide si le résultat est exploitable ou un remaniement
+que personne ne voulait.
 
-Deux formes possibles :
-
-| Forme | Ce qu'elle coûte |
+| Forme | Sort |
 |---|---|
-| **Date pivot** — avant = figé, après = ajustable | déductible, un seul champ, cohérent avec une période qui couvre du passé et du futur |
-| **Liste explicite** de créneaux ajustables | plus expressif, mais reporte sur l'appelant une décision qu'il n'a pas forcément les moyens de prendre |
+| **Date pivot** — avant = figé, après = ajustable | ✅ **retenue** (métier, 2026-08-17) |
+| **Liste explicite** de créneaux ajustables | reportée — *« ajustable dans un second temps »* |
 
-**Recommandation** : la date pivot, si SC-04 sert bien à *corriger la suite au vu du passé*. Le
-moteur sait déjà épingler créneau par créneau ; seule la règle qui désigne manque.
+SC-04 sert donc à **corriger la suite au vu du passé** : un seul champ, déductible, cohérent avec
+une période qui couvre du passé et du futur. Le moteur sait déjà épingler créneau par créneau
+depuis le lot S1 de SC-06 ; seule la règle qui désigne manquait.
 
-### 5.6 Ouvert — la pondération des règles, annoncée au contrat
+La liste explicite n'est pas écartée, elle est **différée**. Elle reste compatible : elle
+s'ajouterait à côté de la date pivot, pas à sa place, et un appelant qui ne la transmet pas
+retomberait sur le pivot.
+
+### 5.6 Tranché — la pondération des règles est reportée, les poids restent fixes
 
 Le contrat annonce « priorités d'optimisation ; pondération des règles ». Ce serait le premier
 scénario où l'appelant règle la fonction de score — `strategieScoring` est aujourd'hui un enum à
@@ -195,22 +198,27 @@ poids fixes.
 une mesure dont l'échelle n'est pas calibrée*. Les coefficients de pénibilité ne le sont pas —
 `92_CALIBRATION_PENIBILITE.md`.
 
-**Recommandation** : reporter. À poids fixes, SC-04 reste SC-04 — la pondération est un artefact du
-titre « optimisation globale », pas l'élément propre du scénario. La trancher n'est pas un
-préalable à le livrer.
+**Reporté (métier, 2026-08-17) : les poids restent fixes.** À poids fixes, SC-04 reste SC-04 — la
+pondération est un artefact du titre « optimisation globale », pas l'élément propre du scénario.
+Elle ne conditionne donc pas sa livraison.
+
+⚠️ **Conséquence sur le contrat d'entrée.** `50_SCENARIO_CONTRACT.md` §3.4 annonce ces « priorités
+d'optimisation » aux paramètres de SC-04. À l'inscription (lot O4), soit elles sont retirées de
+l'annonce, soit elles y figurent comme différées — mais **elles ne peuvent pas rester annoncées
+sans effet** : ce serait le rang 8 recommencé, un champ au contrat que rien ne lit.
 
 ---
 
 ## 6. Contrat d'entrée proposé
 
-Aucun champ nouveau n'est nécessaire hors du degré de liberté (§5.5) :
+Un seul champ nouveau, le degré de liberté (§5.5) :
 
 | Champ | Origine |
 |---|---|
 | `planningContext.horizon` | existant — c'est lui qui porte la profondeur |
 | `dataSet` complet, planning existant inclus | existant |
 | `dataSet.indisponibilites` | existant — désormais déduit de la mesure |
-| `scenarioParameters.datePivot` *(proposé)* | nouveau, §5.5 |
+| `scenarioParameters.datePivot` | **nouveau** — seul champ à créer. Avant : figé. À partir de : ajustable. §5.5 |
 
 `scenarioType: "SC-04"` figure déjà à l'énumération de `50_ScenarioContract.schema.json`.
 
@@ -236,10 +244,12 @@ SC-05 (`MotifArbitrage`) offrent le modèle de la lecture : le moteur ne refuse 
 | ~~**O0**~~ | ~~Aligner `EquiteChargeAuContrat` sur les jours disponibles~~ ✅ **livré le 2026-08-17** | — |
 | ~~**O1**~~ | ~~Agrégation `WorkMetrics` par semaine / mois / période, côté domaine~~ ✅ **livré le 2026-08-17** | O0 |
 | **O2** | Restitution des séries agrégées, avant/après, au contrat de sortie | O1, §5.3 |
-| **O3** | Degré de liberté : `datePivot` et figement dérivé | §5.5 tranché |
+| **O3** | Degré de liberté : `datePivot` et figement dérivé | O1, §5.5 |
 | **O4** | Endpoint, jeux d'essai, canal fichier, inscription série 50 | O2, O3 |
 
-**O0 et O1 ne dépendent d'aucun arbitrage** et sont réalisables dès maintenant.
+**Plus aucun lot n'attend d'arbitrage.** O2 et O4 touchent la série 50, donc ce que lit WinDev ;
+O3 est interne. Sur O4, ne pas oublier le sort des « priorités d'optimisation » annoncées au §3.4
+du contrat et reportées en §5.6 — un champ annoncé sans effet est un rang 8 de plus.
 
 ---
 
