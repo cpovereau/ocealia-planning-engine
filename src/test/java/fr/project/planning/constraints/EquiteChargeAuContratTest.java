@@ -17,6 +17,7 @@ import fr.project.planning.domain.metier.ReferentielComptabiliteActivite;
 import fr.project.planning.domain.reglementaire.RegulatoryParameters;
 import fr.project.planning.domain.ressource.ContratSalarie;
 import fr.project.planning.domain.ressource.SalarieReel;
+import fr.project.planning.domain.workmetrics.JoursDisponiblesSalarie;
 import fr.project.planning.fixtures.TestPlanningRequestFactory;
 import fr.project.planning.scoring.StrategieScoring;
 import fr.project.planning.solution.PlanningProblem;
@@ -59,6 +60,7 @@ import java.util.Map;
 class EquiteChargeAuContratTest {
 
     private static final LocalDate LUNDI = LocalDate.of(2026, 5, 11);
+    private static final long JOURS_DE_LA_SEMAINE = 7;
     private static final String ACTIVITE = "ACT-SOIN";
     private static final String ACTIVITE_HORS_CHARGE = "ACT-FORMATION";
 
@@ -165,6 +167,46 @@ class EquiteChargeAuContratTest {
                 .penalizesBy(0);
     }
 
+    // ---------------------------------------------------------
+    // [Rang 14] Une absence n'est pas du temps disponible non travaillé
+    // ---------------------------------------------------------
+
+    @Test
+    @DisplayName("Absent quatre jours, il fait son contrat en trois : il ne coûte rien")
+    void absentQuatreJours_faireSonContratEnTroisNeCouteRien() {
+        // 35 h par semaine proratisées sur 3 jours disponibles : 900 minutes attendues.
+        // Il en fait 900. Sur l'horizon nu il serait lu à −57 %, soit 470 points de pénalité —
+        // et le moteur le désignerait pour rattraper son propre congé.
+        SalarieReel salarie = salarie("SAL-A", 35.0);
+
+        volet1().given(faits(tolerance(10.0), salarie, minutes(salarie, 15 * 60), 3))
+                .penalizesBy(0);
+    }
+
+    @Test
+    @DisplayName("Absent toute la semaine, il n'est pas le salarié le plus sous-chargé")
+    void absentTouteLaSemaine_nEstPasLePlusSousCharge() {
+        // Sans jour disponible, rien n'est comparable. Le noter −100 % en ferait le premier que
+        // l'équité désigne : il se verrait rattraper son arrêt maladie dès le créneau suivant.
+        SalarieReel salarie = salarie("SAL-B", 35.0);
+
+        volet2().given(faits(tolerance(10.0), salarie, List.of(), 0))
+                .penalizesBy(0);
+        volet1().given(faits(tolerance(10.0), salarie, minutes(salarie, 8 * 60), 0))
+                .penalizesBy(0);
+    }
+
+    @Test
+    @DisplayName("Absent une partie seulement, celui qui ne travaille rien reste jugé")
+    void absentUnePartie_celuiQuiNeTravailleRienResteJuge() {
+        // Il avait trois jours pour travailler et n'a rien fait : c'est exactement ce que
+        // l'équité doit voir. La déduction ne doit pas devenir une excuse générale.
+        SalarieReel salarie = salarie("SAL-C", 35.0);
+
+        volet2().given(faits(tolerance(10.0), salarie, List.of(), 3))
+                .penalizesBy(900);
+    }
+
     // =========================================================
     // Helpers
     // =========================================================
@@ -181,11 +223,23 @@ class EquiteChargeAuContratTest {
 
     private static Object[] faits(PlanningContext contexte, SalarieReel salarie,
                                   List<Creneau> creneaux) {
+        return faits(contexte, salarie, creneaux, JOURS_DE_LA_SEMAINE);
+    }
+
+    /**
+     * [Rang 14] {@code JoursDisponiblesSalarie} est un fait <strong>dérivé</strong> : en
+     * production {@code PlanningProblem} le produit, mais {@code ConstraintVerifier} ne connaît
+     * que les faits qu'on lui donne. L'omettre ferait sortir le salarié de la jointure et la
+     * contrainte ne pèserait plus rien — un test vert pour la mauvaise raison.
+     */
+    private static Object[] faits(PlanningContext contexte, SalarieReel salarie,
+                                  List<Creneau> creneaux, long joursDisponibles) {
         List<Object> faits = new ArrayList<>();
         faits.add(contexte);
         faits.add(referentiel());
         faits.add(RegulatoryParameters.neutre());
         faits.add(salarie);
+        faits.add(new JoursDisponiblesSalarie(salarie.getId(), joursDisponibles));
         faits.addAll(creneaux);
         return faits.toArray();
     }

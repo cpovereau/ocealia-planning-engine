@@ -493,7 +493,7 @@ soit explicitement hors moteur (§ Analyse métier aval).
 | **10** | Contraintes personnelles : lieux, activités, préférences, annualisation | arbitrage — **le Produit décide de la stratégie** sur les préférences, `activitesCompatibles` et `sitesAutorises` ; l'annualisation attend la Production. Que ces champs soient **transmis, mappés et lus par aucune contrainte** est un constat technique, pas un feu vert | Produit / Production |
 | **12** | Fermer les blocs restés délibérément tolérants aux champs inconnus | arbitrage — changement de comportement visible par l'appelant | Métier + WinDev |
 | **13** | Auditer et **garder** `50_ScenarioContract.schema.json` comme `SchemaPublie` garde le schéma de sortie | correctif — rien ne confronte les requêtes au schéma publié, et il a dérivé | Moteur |
-| **14** | L'absence est **tenue par la contrainte et ignorée par la mesure** : `joursObserves` et `minutesAttendues` portent sur l'horizon entier, identiques pour tous | correctif — un salarié revenant de congé est lu « sous son contrat », donc préférable. Le moteur ne place aucun créneau dans l'absence, mais il la **rattrape** de part et d'autre | Moteur |
+| ~~**14**~~ | ~~L'absence est tenue par la contrainte et ignorée par la mesure~~ | ✅ **Clos le 2026-08-17** — la mesure, le classement SC-06 puis le score (lot O0 de SC-04). `joursObserves` est désormais propre à chacun | — |
 
 ~~**Rang 11** — blocs annoncés stricts qui ignorent en silence.~~ ✅ **Traité le 2026-08-13.**
 
@@ -557,6 +557,14 @@ l'horizon déclaré », identique pour tous. Le rendre propre à chacun change c
 tous les scénarios. **Arbitré le 2026-08-17 : c'est un défaut à corriger, pas un arbitrage à
 rendre** — on n'optimise pas un planning en annulant les congés. La série 50 suit le correctif ;
 elle ne le conditionne pas.
+
+✅ **Clos le 2026-08-17, en deux temps.** La mesure et le classement de SC-06 d'abord ; le score
+ensuite, au **lot O0 de SC-04**. Le second temps a dû trancher un point que le constat n'avait pas
+vu : le compte de jours arrive dans la contrainte par une **jointure**, et une jointure est
+*interne* — un salarié sans fait correspondant en sortirait, et l'équité serait silencieusement
+désactivée pour lui. `JoursDisponiblesSalarie` est donc **dérivé** par `PlanningProblem`, jamais
+posé par un service de préparation : ce qu'on ne pose pas ne s'oublie pas. Détail en
+`92_CADRAGE_SCENARIO_SC-04.md` §9.1.
 
 ✅ **Le chantier équité est clos** — sept lots L0 à L6, `92_CADRAGE_WORKMETRICS_EQUITE.md`. Il a
 débloqué SC-05, lui-même clos le 14/08.

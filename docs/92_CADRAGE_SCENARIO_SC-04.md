@@ -209,7 +209,7 @@ SC-05 (`MotifArbitrage`) offrent le modèle de la lecture : le moteur ne refuse 
 
 | Lot | Contenu | Dépend de |
 |---|---|---|
-| **O0** | Aligner `EquiteChargeAuContrat` sur les jours disponibles — second volet du rang 14 | — |
+| ~~**O0**~~ | ~~Aligner `EquiteChargeAuContrat` sur les jours disponibles~~ ✅ **livré le 2026-08-17** | — |
 | **O1** | Agrégation `WorkMetrics` par semaine / mois / période, côté domaine | O0 |
 | **O2** | Restitution des séries agrégées, avant/après, au contrat de sortie | O1, §5.3 |
 | **O3** | Degré de liberté : `datePivot` et figement dérivé | §5.5 tranché |
@@ -221,18 +221,28 @@ SC-05 (`MotifArbitrage`) offrent le modèle de la lecture : le moteur ne refuse 
 
 ## 9. Points ouverts
 
-### 9.1 Le second volet du rang 14
+### 9.1 ~~Le second volet du rang 14~~ — ✅ clos, lot O0 du 2026-08-17
 
-`EquiteChargeAuContrat` appelle `minutesAttendues` avec l'horizon nu : c'est un flux de contraintes
-qui n'a pas les indisponibilités sous la main, et une jointure naïve sur `Indisponibilite`
-multiplierait la pénalité d'un salarié par son nombre d'absences. Le précédent à suivre est
-`ReposHebdomadaire` — un fait de problème préparé en amont, lisible par la contrainte comme par la
-mesure.
+`EquiteChargeAuContrat` appelait `minutesAttendues` avec l'horizon nu, et le score contredisait donc
+la mesure depuis le correctif du matin même. C'est réparé.
 
-La classe est **inerte tant qu'aucune `ToleranceEquite` n'est transmise**, ce qui est le cas de
-toutes les demandes à ce jour : rien de faux n'est produit aujourd'hui. Mais son propre commentaire
-pose que *le score, la réponse et le rang disent la même chose, ou l'un contredirait l'autre* — et
-depuis le 2026-08-17, ils ne le disent plus. **C'est le lot O0, et il n'est pas facultatif.**
+**Ce que la réalisation a dû trancher, et qui n'était pas dans le cadrage.** Le compte de jours
+arrive par une **jointure**, et une jointure OptaPlanner est *interne* : un salarié sans fait
+correspondant sortirait de la contrainte, et l'équité serait **silencieusement désactivée** pour
+lui — pire que le défaut corrigé. Poser le fait depuis les services de préparation, comme
+`ReposHebdomadaire`, exposait exactement à cet oubli.
+
+`JoursDisponiblesSalarie` est donc **dérivé** par `PlanningProblem` lui-même, sur le modèle de
+`getWorkMetrics()` que le projet annotait déjà en getter. Aucun service ne peut l'oublier puisqu'
+aucun ne le pose. Le compte est mémorisé — un fait de problème qui change d'identité entre deux
+lectures corrompt le score — et les trois setters dont il dépend l'invalident, les préparations
+posant les indisponibilités après la construction.
+
+**Le second volet demandait autre chose.** Il notait −100 % le salarié « qui ne travaille rien du
+tout », donc désignait le salarié **absent toute la période** comme le plus sous-chargé de tous : il
+se serait vu rattraper son arrêt maladie dès le premier créneau libre. Il en est exclu. Absent d'une
+partie seulement, il reste jugé — il avait des jours pour travailler et n'a rien fait, ce que
+l'équité doit continuer de voir. **La déduction n'est pas une excuse générale.**
 
 ### 9.2 L'annualisation
 

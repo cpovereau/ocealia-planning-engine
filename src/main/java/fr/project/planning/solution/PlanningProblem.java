@@ -7,6 +7,9 @@ import fr.project.planning.domain.creneau.Creneau;
 import fr.project.planning.domain.repos.ReposHebdomadaire;
 import fr.project.planning.domain.ressource.Indisponibilite;
 import fr.project.planning.domain.ressource.Ressource;
+import fr.project.planning.domain.ressource.SalarieReel;
+import fr.project.planning.domain.workmetrics.JoursDisponibles;
+import fr.project.planning.domain.workmetrics.JoursDisponiblesSalarie;
 import fr.project.planning.domain.workmetrics.WorkMetrics;
 import fr.project.planning.domain.metier.ReferentielComptabiliteActivite;
 import org.optaplanner.core.api.domain.solution.PlanningSolution;
@@ -132,6 +135,51 @@ public class PlanningProblem {
     private List<PerimetreArbitre> perimetresArbitres = List.of();
 
     /**
+     * Jours disponibles par salarié réel — <strong>dérivé</strong>, jamais fourni (lot O0 de
+     * SC-04, second volet du rang 14).
+     *
+     * <p>Aucun service de préparation ne le pose, et c'est délibéré. Une jointure de contrainte
+     * est <em>interne</em> : un salarié sans fait correspondant disparaîtrait de
+     * {@code EquiteChargeAuContrat}, et l'équité serait silencieusement désactivée pour lui —
+     * pire que le défaut corrigé. Le dériver des ressources le rend impossible à oublier.</p>
+     *
+     * <p>Calculé une fois puis mémorisé : les faits de problème doivent garder la même identité
+     * d'un appel à l'autre. Les trois setters dont il dépend l'invalident.</p>
+     */
+    @ProblemFactCollectionProperty
+    public List<JoursDisponiblesSalarie> getJoursDisponiblesSalaries() {
+        if (joursDisponiblesSalaries == null) {
+            joursDisponiblesSalaries = calculerJoursDisponibles();
+        }
+        return joursDisponiblesSalaries;
+    }
+
+    private List<JoursDisponiblesSalarie> calculerJoursDisponibles() {
+        if (ressources == null || planningContext == null
+                || planningContext.getHorizonTemporel() == null) {
+            return List.of();
+        }
+        List<JoursDisponiblesSalarie> derives = new ArrayList<>();
+        for (Ressource ressource : ressources) {
+            if (!(ressource instanceof SalarieReel)) {
+                continue;
+            }
+            derives.add(new JoursDisponiblesSalarie(
+                    ressource.getId(),
+                    JoursDisponibles.pour(ressource.getId(),
+                            planningContext.getHorizonTemporel(), indisponibilites)));
+        }
+        return List.copyOf(derives);
+    }
+
+    /** Le compte dérivé dépend des ressources, de l'horizon et des absences : il les suit. */
+    private void invaliderJoursDisponibles() {
+        this.joursDisponiblesSalaries = null;
+    }
+
+    private List<JoursDisponiblesSalarie> joursDisponiblesSalaries;
+
+    /**
      * Créneaux à affecter.
      */
     @PlanningEntityCollectionProperty
@@ -205,6 +253,7 @@ public class PlanningProblem {
 
     public void setPlanningContext(PlanningContext planningContext) {
         this.planningContext = planningContext;
+        invaliderJoursDisponibles();
     }
 
     public List<Ressource> getRessources() {
@@ -213,6 +262,7 @@ public class PlanningProblem {
 
     public void setRessources(List<Ressource> ressources) {
         this.ressources = ressources;
+        invaliderJoursDisponibles();
     }
 
     public List<Creneau> getCreneaux() {
@@ -229,6 +279,7 @@ public class PlanningProblem {
 
     public void setIndisponibilites(List<Indisponibilite> indisponibilites) {
         this.indisponibilites = indisponibilites != null ? indisponibilites : List.of();
+        invaliderJoursDisponibles();
     }
 
     public List<ReposHebdomadaire> getReposHebdomadaires() {

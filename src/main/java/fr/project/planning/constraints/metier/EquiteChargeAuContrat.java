@@ -8,6 +8,7 @@ import fr.project.planning.domain.metier.ReferentielComptabiliteActivite;
 import fr.project.planning.domain.reglementaire.RegulatoryParameters;
 import fr.project.planning.domain.ressource.SalarieReel;
 import fr.project.planning.domain.workmetrics.EcartAuContrat;
+import fr.project.planning.domain.workmetrics.JoursDisponiblesSalarie;
 import fr.project.planning.scoring.PenaliteKey;
 import fr.project.planning.time.RepartitionPenibilites;
 import fr.project.planning.time.TimeBreakdownCalculator;
@@ -49,6 +50,17 @@ import org.optaplanner.core.api.score.stream.uni.UniConstraintStream;
  * écart de −100 % resterait invisible, et le moteur n'aurait aucune raison de lui donner du
  * travail — alors que c'est exactement la personne que l'équité désigne. Le second volet le
  * rattrape. Même découpage que {@code HeuresMinimumParSemaine}, et pour la même raison.</p>
+ *
+ * <h3>L'absence est déduite de la référence — rang 14, lot O0</h3>
+ * <p>Le contrat se proratise sur les jours où <em>ce</em> salarié était disponible, non sur
+ * l'horizon nu. Sans cela, celui qui revient de congé apparaît sous son contrat, donc préférable,
+ * et cette règle — dont l'objet est précisément de charger qui est sous-chargé — lui ferait
+ * rattraper sa propre absence. <strong>On n'optimise pas un planning en annulant les congés.</strong></p>
+ *
+ * <p>Le compte arrive par {@link JoursDisponiblesSalarie}, déjà agrégé : joindre
+ * {@code Indisponibilite} multiplierait le tuple, et donc la pénalité, par le nombre d'absences de
+ * la personne. Le second volet s'en sert autrement — un salarié sans <em>aucun</em> jour disponible
+ * en est exclu, car « ne travaille rien » suppose d'avoir eu un jour pour travailler.</p>
  *
  * <h3>Aucune borne du cadre général ne bouge</h3>
  * <p>Un écart d'équité favorable n'autorise jamais à dépasser un plafond réglementaire ; l'inverse
@@ -109,11 +121,23 @@ public final class EquiteChargeAuContrat {
                                 (salarie, creneau, contexte, reglementaire) ->
                                         centiemesPonderes(creneau, contexte, reglementaire)))
 
-                .filter((salarie, contexte, centiemes) ->
-                        pointsExcedentaires(salarie, contexte, centiemes) > 0)
+                /*
+                 * [Rang 14] Le contrat se proratise sur les jours où CE salarié était disponible.
+                 *
+                 * Le compte arrive déjà agrégé : joindre Indisponibilite multiplierait le tuple —
+                 * et donc la pénalité — par le nombre d'absences de la personne. Le fait est
+                 * dérivé du PlanningProblem, jamais posé par un service : une jointure est
+                 * interne, et un salarié sans fait correspondant sortirait de la contrainte.
+                 */
+                .join(JoursDisponiblesSalarie.class,
+                        Joiners.equal((salarie, contexte, centiemes) -> salarie.getId(),
+                                JoursDisponiblesSalarie::getSalarieId))
+
+                .filter((salarie, contexte, centiemes, jours) ->
+                        pointsExcedentaires(salarie, contexte, centiemes, jours) > 0)
                 .penalize(HardSoftScore.ONE_SOFT,
-                        (salarie, contexte, centiemes) ->
-                                PENALITE_PAR_POINT * pointsExcedentaires(salarie, contexte, centiemes))
+                        (salarie, contexte, centiemes, jours) -> PENALITE_PAR_POINT
+                                * pointsExcedentaires(salarie, contexte, centiemes, jours))
                 .asConstraint(PenaliteKey.METIER_SOFT_EQUITE_ECART_CONTRAT.name());
     }
 
@@ -137,10 +161,26 @@ public final class EquiteChargeAuContrat {
                                 porteDuTravail(creneau) && compteDansCharge(referentiel, creneau)))
 
                 .join(PlanningContext.class)
-                .filter((salarie, referentiel, contexte) -> contexte.getToleranceEquite()
+
+                /*
+                 * [Rang 14] « Ne travaille rien » suppose d'avoir eu un jour pour travailler.
+                 *
+                 * Un salarié absent TOUTE la fenêtre n'a pas de charge, et ce volet le notait
+                 * −100 % : le plus sous-chargé de tous, donc le premier que l'équité désigne. Il
+                 * se serait vu rattraper son arrêt maladie dès le premier créneau libre.
+                 *
+                 * Absent une partie seulement, il reste jugé : il avait des jours disponibles et
+                 * n'a rien fait, ce que l'équité doit continuer de voir.
+                 */
+                .join(JoursDisponiblesSalarie.class,
+                        Joiners.equal((salarie, referentiel, contexte) -> salarie.getId(),
+                                JoursDisponiblesSalarie::getSalarieId))
+                .filter((salarie, referentiel, contexte, jours) -> jours.getJours() > 0)
+
+                .filter((salarie, referentiel, contexte, jours) -> contexte.getToleranceEquite()
                         .pointsExcedentaires(ECART_SANS_AUCUNE_CHARGE) > 0)
                 .penalize(HardSoftScore.ONE_SOFT,
-                        (salarie, referentiel, contexte) -> PENALITE_PAR_POINT
+                        (salarie, referentiel, contexte, jours) -> PENALITE_PAR_POINT
                                 * contexte.getToleranceEquite()
                                         .pointsExcedentaires(ECART_SANS_AUCUNE_CHARGE))
                 .asConstraint(PenaliteKey.METIER_SOFT_EQUITE_SANS_AFFECTATION.name());
@@ -158,9 +198,17 @@ public final class EquiteChargeAuContrat {
      * l'autre.</p>
      */
     private static int pointsExcedentaires(SalarieReel salarie, PlanningContext contexte,
-                                           long centiemesPonderes) {
-        Double attendues = EcartAuContrat.minutesAttendues(
-                salarie.getContrat(), contexte.getHorizonTemporel());
+                                           long centiemesPonderes,
+                                           JoursDisponiblesSalarie jours) {
+        /*
+         * [Rang 14] La référence porte sur les jours disponibles, non sur l'horizon nu. Sans
+         * cette déduction, un salarié revenant de congé apparaîtrait sous son contrat, et le
+         * score le désignerait pour rattraper sa propre absence.
+         *
+         * À zéro jour disponible, minutesAttendues rend null : rien n'est comparable, donc rien
+         * n'est pénalisé. C'est le bon silence — pas une pénalité de 0 par accident.
+         */
+        Double attendues = EcartAuContrat.minutesAttendues(salarie.getContrat(), jours.getJours());
 
         Double ecart = EcartAuContrat.ecartPourcent(centiemesPonderes / 100.0, attendues);
         return ecart == null ? 0 : contexte.getToleranceEquite().pointsExcedentaires(ecart);
