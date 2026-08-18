@@ -30,9 +30,10 @@ Chacun apporte quelque chose qu'aucun autre n'apporte — ils ne se recouvrent p
 
 **Deux canaux, un seul service.** Appel HTTP direct, et dépôt de fichier dans un répertoire
 surveillé. Les deux entrent dans le même service au même point ; pour SC-02, SC-04 et SC-05, un
-test compare les deux réponses entières à chaque exécution.
+test compare les deux réponses entières à chaque exécution. Un test démarre en outre le
+contexte réel de l'application livrée — celui du `.jar`, et non la configuration de test.
 
-**844 tests**, dont les jeux d'essai de référence des six scénarios et la confrontation du JSON
+**846 tests**, dont les jeux d'essai de référence des six scénarios et la confrontation du JSON
 produit au schéma publié.
 
 ---
@@ -83,10 +84,15 @@ docs/                                  la documentation du moteur
 livraison-produit/                     le dossier remis au service Produit
 ```
 
-**Point d'attention.** Le point d'entrée Spring est
-`com.example.planning.PlanningSolverApplication`, qui scanne `fr.project.planning`. Le reste du
-package `com.example` est un vestige du POC initial : il n'est ni scanné par Spring, ni compris
-dans la suite de tests (`exclude 'com/**'` dans `build.gradle`). Ne pas s'y référer.
+Le point d'entrée est `fr.project.planning.PlanningSolverApplication`. Il ne déclare aucun
+`scanBasePackages` : le scan par défaut part de son propre package, qui est celui du moteur.
+
+> **`com.example` a été retiré le 2026-08-18.** Le point d'entrée y vivait, vestige du POC initial,
+> et devait déclarer `scanBasePackages` pour aller chercher le moteur ailleurs — c'était le seul
+> lien qui tenait le vestige debout. Le reste du package (un domaine, un solveur, un contrôleur de
+> l'époque) n'était ni scanné par Spring, ni compris dans la suite de tests. Le filtre
+> `exclude 'com/**'` de `build.gradle` est parti avec lui : un filtre qui ne filtre plus finit par
+> masquer un test qu'on croyait joué.
 
 ---
 
