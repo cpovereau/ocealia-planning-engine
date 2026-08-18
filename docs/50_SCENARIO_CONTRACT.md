@@ -538,8 +538,12 @@ déséquilibre s’est installé.
 partir de », non « après ». Un pivot hors de l’horizon est accepté et **signalé** — le moteur ne
 refuse pas, il rend visible ce que la demande implique.
 
-🔁 La **liste explicite** de créneaux ajustables est différée (§5.5 du cadrage). Elle s’ajoutera à
-côté de ce champ, pas à sa place.
+🔁 La **liste explicite** de créneaux ajustables **n’est pas encore exposée** — ne l’envoyez pas,
+elle serait ignorée. Sa forme est en revanche arrêtée depuis le 2026-08-18 (§5.5 du cadrage) : un
+champ optionnel `scenarioParameters.creneauxAjustables`, qui viendra **à côté** de `datePivot` et
+non à sa place, en **intersection** avec lui — ajustable = après le pivot *et* dans la liste — et
+borné à un mois. Un appelant qui ne la transmettra pas gardera le comportement décrit ci-dessus,
+inchangé. Ce paragraphe sera remplacé par une ligne du tableau le jour de sa mise en service.
 
 > ⚠️ **Les « priorités d’optimisation » et la « pondération des règles » annoncées jusqu’ici sont
 > retirées.** Le moteur tient qu’on ne pondère pas une mesure dont l’échelle n’est pas calibrée, et

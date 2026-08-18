@@ -22,9 +22,12 @@ import java.time.LocalDate;
  * vu du passé</strong>. Un seul champ, déductible, cohérent avec une période qui couvre du passé et
  * du futur.</p>
  *
- * <p>🔁 La <strong>liste explicite</strong> de créneaux ajustables n'est pas écartée, elle est
- * différée — « ajustable dans un second temps ». Elle s'ajoutera <em>à côté</em> de ce champ, pas à
- * sa place : un appelant qui ne la transmet pas retombera sur le pivot.</p>
+ * <p>🔁 La <strong>liste explicite</strong> de créneaux ajustables est <strong>tranchée
+ * depuis le 2026-08-18</strong> et <strong>pas encore livrée</strong> — lot O5. Elle s'ajoutera
+ * <em>à côté</em> de ce champ, jamais à sa place : champ optionnel {@code creneauxAjustables}, en
+ * <strong>intersection</strong> avec le pivot — ajustable = postérieur au pivot <em>et</em> désigné
+ * — et borné à un mois. Un appelant qui ne la transmet pas retombe sur le pivot seul, tel que
+ * décrit ici.</p>
  *
  * <h3>Ce que le contrat annonçait et qui n'est pas ici</h3>
  * <p>{@code 50_SCENARIO_CONTRACT.md} §3.4 annonçait aussi des « priorités d'optimisation » et une

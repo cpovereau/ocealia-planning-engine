@@ -1,11 +1,16 @@
 # 92 — Cadrage : SC-04, optimisation globale d'un planning existant
 
 > **Statut** : cadrage d'analyse, 2026-08-17, produit à l'ouverture du **rang 9**.
-> **Les six arbitrages de la §5 sont tranchés** (métier, 2026-08-17), et **SC-04 est clos le
-> 2026-08-17** : les cinq lots O0 à O4 sont livrés, le scénario est inscrit au contrat série 50 et
-> accessible par les deux canaux.
+> **Les six arbitrages de la §5 sont tranchés** (métier, 2026-08-17), et **SC-04 est livré depuis
+> le 2026-08-17** : les cinq lots O0 à O4 sont en place, le scénario est inscrit au contrat série 50
+> et accessible par les deux canaux.
 >
-> Ce qui lui reste ne lui appartient pas : le **rang 10** — préférences individuelles — que le
+> **Rouvert le 2026-08-18 sur un point, et un seul** : la liste explicite de créneaux ajustables,
+> différée au §5.5, est tranchée à son tour — bornée à un mois, en **intersection** avec la date
+> pivot. C'est le lot **O5**, qui élargit le contrat d'entrée sans rien retirer : un appelant qui ne
+> transmet pas la liste garde exactement le comportement du 2026-08-17.
+>
+> Ce qui lui reste ensuite ne lui appartient pas : le **rang 10** — préférences individuelles — que le
 > moteur entier attend, et qui pèse ici plus qu'ailleurs (§9.4).
 >
 > Ce cadrage a déjà produit un correctif hors de son périmètre : le **rang 14**, livré le
@@ -173,7 +178,7 @@ Deux exigences distinctes en découlent, et une seule était satisfaite :
 
 Compenser une absence de part et d'autre est une manière de l'annuler : le refus vaut pour les deux.
 
-### 5.5 Tranché — une date pivot, et la liste explicite dans un second temps
+### 5.5 Tranché — une date pivot, puis une liste explicite qui la restreint
 
 Tous les scénarios livrés décident **pour l'appelant** de ce qui est épinglé. SC-04 est le premier
 où ce choix lui revient, et c'est lui qui décide si le résultat est exploitable ou un remaniement
@@ -182,15 +187,61 @@ que personne ne voulait.
 | Forme | Sort |
 |---|---|
 | **Date pivot** — avant = figé, après = ajustable | ✅ **retenue** (métier, 2026-08-17) |
-| **Liste explicite** de créneaux ajustables | reportée — *« ajustable dans un second temps »* |
+| **Liste explicite** de créneaux ajustables | ✅ **retenue** (métier, 2026-08-18) — bornée à un mois, en intersection |
 
-SC-04 sert donc à **corriger la suite au vu du passé** : un seul champ, déductible, cohérent avec
-une période qui couvre du passé et du futur. Le moteur sait déjà épingler créneau par créneau
-depuis le lot S1 de SC-06 ; seule la règle qui désigne manquait.
+SC-04 sert donc à **corriger la suite au vu du passé** : un champ déductible, cohérent avec une
+période qui couvre du passé et du futur. Le moteur sait déjà épingler créneau par créneau depuis le
+lot S1 de SC-06 ; seule la règle qui désigne manquait.
 
-La liste explicite n'est pas écartée, elle est **différée**. Elle reste compatible : elle
-s'ajouterait à côté de la date pivot, pas à sa place, et un appelant qui ne la transmet pas
-retomberait sur le pivot.
+La liste explicite a été tranchée à son tour le **2026-08-18**, dans la forme qui avait été
+annoncée : *à côté* de la date pivot, jamais à sa place. Trois décisions la définissent.
+
+**Conjonction = intersection.** Est ajustable ce qui est **à la fois** postérieur au pivot **et**
+présent dans la liste. Les deux champs n'ont pas la même nature, et c'est pour cela qu'ils se
+composent au lieu de se concurrencer : *la date pivot dit jusqu'où le moteur a le droit d'aller, la
+liste dit ce qu'il a le droit de toucher à l'intérieur.* Une borne et une sélection.
+
+L'union — après le pivot **ou** dans la liste — est écartée : elle rouvrirait le passé sur simple
+désignation, et un créneau passé que personne n'avait couvert redeviendrait garnissable. Le moteur
+inventerait une histoire qui n'a pas eu lieu. Corriger le passé au vu du passé n'est pas SC-04 :
+c'est SC-02 ou SC-03. La substitution — la liste efface le pivot — est écartée aussi : deux formes
+concurrentes du même paramètre finissent toujours par se contredire.
+
+**Bornée à un mois.** La liste ne peut désigner des créneaux répartis sur plus d'un mois. Sur un
+horizon de trois mois elle se compterait en milliers d'identifiants — une charge utile que personne
+ne construit à la main et que personne ne relit. Mais la borne dit surtout une intention : **on juge
+large, on ne remanie qu'étroit.** L'horizon garde sa profondeur, la restitution garde ses trois
+granularités ; seule la zone modifiable est resserrée.
+
+Elle ne s'applique **qu'en présence de la liste**. Sans liste, SC-04 est inchangé : le pivot seul,
+sur toute la profondeur de l'horizon. Ce n'est pas une restriction de SC-04, c'est une propriété de
+son nouveau champ.
+
+**Dépassement = refus.** Une liste qui déborde le mois est une requête mal formée, pas un planning
+impossible. *Le moteur ne refuse pas* vaut pour ce qu'il ne sait pas planifier, non pour ce qu'il ne
+sait pas lire — SC-04 refuse déjà une requête sans `datePivot`. Tronquer en silence serait pire :
+l'appelant lirait un résultat partiel comme un résultat complet.
+
+**Un mois glissant, non calendaire** — *proposition d'écriture, à confirmer au lot O5.* Un mois
+calendaire obligerait à scinder toute demande chevauchant une fin de mois, et produirait des
+contournements plutôt que de la clarté. La borne se lirait donc entre le premier et le dernier
+créneau désignés. Le découpage calendaire de la restitution (`DecoupageTemporel`) est un autre
+objet : il dit comment on rend compte, pas ce qu'on autorise à bouger.
+
+⚠️ **Ce que la liste fait disparaître du compte, et pas du planning.** Toute la restitution de SC-04
+se compte sur les créneaux ajustables — `ScenarioSc04ExecutionService` ouvre sa boucle par
+`if (!creneauxAjustables().contains(id)) continue;`. Sous l'intersection, un créneau **futur, non
+couvert et non listé** devient donc figé sur `RessourceNonAffectee` et **sort de
+`creneauxNonCouverts`** : le trou reste dans le planning, mais le compte cesse de le voir. C'est la
+seule régression que la liste peut introduire, et elle appelle une alerte dédiée au lot O5 — *n
+créneaux futurs non couverts que votre liste laisse gelés*. Ne pas lister, ici, c'est renoncer à
+couvrir ; l'appelant doit le lire dans la réponse, pas le découvrir sur le terrain.
+
+Les autres cas limites se traitent à l'identique de SC-05, tous en WARNING, aucun bloquant :
+identifiants antérieurs au pivot (inertes sous l'intersection, donc à signaler), identifiants
+inconnus du `dataSet` (`CRENEAU_ARBITRE_INTROUVABLE` transposé), liste transmise vide (tout est
+gelé — `AUCUN_CRENEAU_AJUSTABLE` existe déjà). **Absente et vide restent deux choses distinctes** :
+le champ est optionnel, il ne porte donc pas de `@NotEmpty`.
 
 ### 5.6 Tranché — la pondération des règles est reportée, les poids restent fixes
 
@@ -213,9 +264,9 @@ sans effet** : ce serait le rang 8 recommencé, un champ au contrat que rien ne 
 
 ---
 
-## 6. Contrat d'entrée — ✅ inscrit au lot O4
+## 6. Contrat d'entrée — ✅ inscrit au lot O4, élargi au lot O5
 
-Un seul champ nouveau, le degré de liberté (§5.5) :
+Le degré de liberté, et lui seul (§5.5) — en deux champs, dont le second est optionnel :
 
 | Champ | Origine |
 |---|---|
@@ -223,6 +274,7 @@ Un seul champ nouveau, le degré de liberté (§5.5) :
 | `dataSet` complet, planning existant inclus | existant |
 | `dataSet.indisponibilites` | existant — désormais déduit de la mesure |
 | `scenarioParameters.datePivot` | **nouveau** — seul champ à créer. Avant : figé. À partir de : ajustable. §5.5 |
+| `scenarioParameters.creneauxAjustables` | **O5**, optionnel — restreint l'après-pivot aux créneaux désignés. Absent : tout l'après-pivot. Borné à un mois. §5.5 |
 
 `scenarioType: "SC-04"` figure déjà à l'énumération de `50_ScenarioContract.schema.json`.
 
@@ -248,7 +300,7 @@ moyen de savoir si ce sacrifice est consenti.
 
 ---
 
-## 8. Découpage — ✅ les cinq lots sont livrés
+## 8. Découpage — ✅ cinq lots livrés, un sixième ouvert
 
 | Lot | Contenu | Dépend de |
 |---|---|---|
@@ -257,8 +309,13 @@ moyen de savoir si ce sacrifice est consenti.
 | ~~**O2**~~ | ~~Restitution des séries agrégées, avant/après~~ ✅ **livré le 2026-08-17** | O1, §5.3 |
 | ~~**O3**~~ | ~~Degré de liberté : `datePivot` et figement dérivé~~ ✅ **livré le 2026-08-17** | O1, §5.5 |
 | ~~**O4**~~ | ~~Endpoint, jeux d'essai, canal fichier, inscription série 50~~ ✅ **livré le 2026-08-17** | O2, O3 |
+| **O5** | Liste explicite de créneaux ajustables — intersection avec le pivot, bornée à un mois | O3, §5.5 |
 
-**Les cinq lots ont été livrés le 2026-08-17**, dans l'ordre. Sur O4, le sort des « priorités
+**Les cinq premiers lots ont été livrés le 2026-08-17**, dans l'ordre. **O5 est ouvert le
+2026-08-18** par l'arbitrage complet du §5.5 : il n'a de dépendance que sur O3, dont il reprend la
+politique de figement pour y intersecter une sélection.
+
+Sur O4, le sort des « priorités
 d'optimisation » annoncées au §3.4 du contrat a été tranché comme prévu : elles sont **retirées de
 l'annonce**, et non laissées au contrat sans effet — ce qui aurait été un rang 8 de plus.
 
@@ -302,3 +359,12 @@ Le moteur ne verra jamais que ce qu'on lui transmet. Élargir la période élarg
 ne lui apprend rien sur ce qui précède la fenêtre — un changement de contrat, une reprise après
 arrêt long, un solde d'annualisation venu de la paie. C'est la limite assumée du principe §3 : elle
 se déplace avec la fenêtre, elle ne disparaît pas.
+
+### 9.4 Les préférences individuelles — rang 10
+
+SC-04 remanie des périodes entières : il pèse ici plus que partout ailleurs. Le moteur ne sait pas
+qu'un créneau du 22 arrangeait quelqu'un, et `acceptable: true` ne vaut pas accord des intéressés —
+il dit seulement qu'aucun motif éliminatoire n'a été rencontré. La liste explicite du lot O5 en
+atténue la portée sans la traiter : elle donne à l'appelant le moyen de **soustraire** ce qu'il sait
+négocié, ce qui déplace la connaissance des préférences vers lui plutôt que vers le moteur. C'est un
+palliatif utile, pas la réponse. L'arbitre du rang 10 reste le service **Produit**.
