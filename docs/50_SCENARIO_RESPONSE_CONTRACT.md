@@ -1074,7 +1074,99 @@ l'autre, et les voilà tous deux à 32 h — de +14,29 % et −31,43 %, **ils se
 
 ---
 
-## 8. Points d'attention contractuels
+## 9. `optimisation` — Ce que l'optimisation a produit (SC-04 uniquement)
+
+> Inscrit au contrat le 2026-08-17, **lot O2 de SC-04**. Cadrage complet :
+> `92_CADRAGE_SCENARIO_SC-04.md`. Schéma normatif : `Optimisation` dans
+> `50_ScenarioResponse.schema.json`.
+
+**La clé est absente pour tous les autres scénarios**, comme `candidats`, `remplacement` et
+`arbitrage`.
+
+### 9.1 Pourquoi ce bloc existe
+
+`planning` ne restitue que l'**après**. Il ne dit ni d'où l'on vient, ni ce que l'optimisation a
+coûté — or le contrat d'entrée demande explicitement « gains / régressions explicitées ; indicateurs
+comparatifs », et un planning remanié sur une période entière doit pouvoir se justifier devant ceux
+qu'il déplace.
+
+### 9.2 La date pivot est restituée
+
+Elle est le contrat de cette optimisation : ce qui la précède n'a pas pu bouger. La rendre évite à
+l'appelant de recouper sa propre demande pour interpréter le résultat — un fichier d'`outbox` relu
+six mois plus tard porte alors sa propre clé de lecture.
+
+`creneauxFiges` compte aussi les créneaux que **personne ne couvrait** : le passé ne se réécrit pas,
+même quand il est vide, et un besoin non couvert ne le sera pas rétroactivement.
+
+### 9.3 Les séries — l'apport propre de SC-04
+
+Chaque salarié concerné porte ses `tranches` : d'abord les **semaines**, puis les **mois**, puis la
+**période**. Un total sur la période dit *combien* ; la tranche dit **quand**.
+
+Un salarié peut être stable sur la période et avoir vu deux de ses semaines s'inverser — c'est
+exactement ce qu'un total masque, et c'est la raison d'être de ce découpage.
+
+> **Les semaines sont ISO** — le lundi ouvre, comme partout ailleurs dans le moteur. Les mois sont
+> calendaires. Les bords sont **tronqués, jamais étendus** : une tranche qui ne couvre pas toute sa
+> granularité se déclare `partielle`, et ses **volumes bruts** ne se comparent pas à ceux d'une
+> tranche pleine. Son écart au contrat, lui, se compare : il proratise.
+
+> ⚠️ **Ce qui ne se lit pas tranche par tranche.** Les volumes se somment ; les **séries** non.
+> `maxJoursConsecutifsObservees` et `maxNuitsConsecutivesObservees` de `workMetrics` sont observés
+> *à l'intérieur* de leur fenêtre : sept jours consécutifs à cheval sur deux semaines s'y lisent
+> 4 puis 3. **Seule la tranche `PERIODE` porte la série réelle.**
+
+### 9.4 Les absences suivent la tranche
+
+`joursDisponiblesAvant` est le dénominateur de l'écart au contrat **sur cette tranche** : une
+semaine où le salarié a posé deux jours en vaut cinq. Une semaine de congé complet donne `0`, et
+`ecartContratAvantPourcent` vaut alors `null` — le salarié n'y est pas à −100 %, il est **hors de
+comparaison**.
+
+`joursDisponiblesApres` est identique par construction : une optimisation ne déplace pas les congés.
+Il est restitué pour que l'appelant puisse le vérifier.
+
+### 9.5 Les motifs, et ce que « acceptable » veut dire
+
+Même forme que les motifs de SC-05 — `code`, `severite`, `message` : **filtrer sur la sévérité,
+jamais sur le code**.
+
+| Code | Sévérité | Éliminatoire |
+|---|---|---|
+| `PLANNING_NON_CONFORME` | ERROR | oui |
+| `CRENEAU_PERDU` | ERROR | oui |
+| `REGRESSION_INDIVIDUELLE` | WARNING | oui |
+| `INEQUITE_RESIDUELLE` | WARNING | oui |
+| `OPTIMISATION_SANS_EFFET` | INFO | non |
+
+**`REGRESSION_INDIVIDUELLE` est le motif propre à SC-04.** Il est levé dès qu'un salarié sort plus
+loin de son contrat qu'il n'y entrait, sur la période, **en valeur absolue** : passer de −20 % à
+−25 % est une régression au même titre que passer de +20 % à +25 %. Optimiser un total en dégradant
+une personne est la façon la plus ordinaire de produire un planning que personne n'acceptera.
+
+La période fait foi, non les semaines : une semaine dégradée compensée par une autre améliorée n'est
+pas une régression, c'est un rééquilibrage — et c'est ce qu'on demande.
+
+> ⚠️ **`acceptable: true` signifie « au regard de ce que le moteur sait ».** Il ignore les
+> **préférences individuelles** — rang 10, en attente du Produit. Sur un scénario qui remanie une
+> période entière, cette ignorance pèse plus que partout ailleurs : **l'absence de motif ne vaut pas
+> accord des intéressés.**
+
+### 9.6 Deux alertes propres au pivot
+
+| Code | Quand |
+|---|---|
+| `AUCUN_CRENEAU_AJUSTABLE` | pivot postérieur à tous les créneaux : rien ne peut changer |
+| `PLANNING_ENTIEREMENT_REOUVERT` | pivot antérieur à tous les créneaux : le planning est rouvert en entier |
+
+Les deux cas sont **exécutés, pas refusés**. Le second mérite attention : SC-04 promet d'améliorer
+sans reconstruire, et un pivot hors période produit exactement le remaniement que le scénario existe
+pour éviter.
+
+---
+
+## 10. Points d'attention contractuels
 
 **Séparation solveur / API** — la solution OptaPlanner est transformée en `ScenarioResponseDTO` par `ScenarioResponseMapper`. Cette couche garantit la stabilité du contrat API indépendamment des évolutions internes du solveur. Décision documentée dans `20_DECISIONS_CONCEPTION_OPTAPLANNER.md`.
 
@@ -1092,7 +1184,7 @@ est mesurée.
 
 ---
 
-## 9. Évolution prévue
+## 11. Évolution prévue
 
 Ce contrat pourra être enrichi progressivement avec :
 - de nouvelles WorkMetrics (équité, écarts de charge, métriques contractuelles),

@@ -45,6 +45,10 @@
     "arbitrage": {
       "$ref": "#/$defs/Arbitrage",
       "description": "Propre à SC-05 : ce que l'arbitrage a déplacé, et pour qui. Même règle que candidats et remplacement — la clé est ABSENTE partout ailleurs."
+    },
+    "optimisation": {
+      "$ref": "#/$defs/Optimisation",
+      "description": "Propre a SC-04 : ce que l'optimisation a produit, et ce qu'elle a coute a chacun. Meme regle que candidats, remplacement et arbitrage - la cle est ABSENTE partout ailleurs."
     }
   },
   "$defs": {
@@ -1106,6 +1110,163 @@
         },
         "message": {
           "type": "string"
+        }
+      }
+    },
+    "Optimisation": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "[SC-04] Ce que l'optimisation a produit sur la periode. Le bloc planning ne restitue que l'APRES ; SC-04 remanie une periode entiere et doit pouvoir se justifier devant ceux qu'il deplace, ce que le contrat appelle gains / regressions explicitees. ATTENTION : acceptable=true signifie au regard de ce que le moteur sait. Les PREFERENCES INDIVIDUELLES lui echappent (rang 10) - sur un scenario qui remanie une periode entiere, cette ignorance pese plus que partout ailleurs, et l'absence de motif ne vaut pas accord des interesses.",
+      "required": [
+        "datePivot",
+        "creneauxFiges",
+        "creneauxAjustables",
+        "creneauxDeplaces",
+        "creneauxNonCouverts",
+        "acceptable",
+        "motifs",
+        "parSalarie"
+      ],
+      "properties": {
+        "datePivot": {
+          "type": "string",
+          "format": "date",
+          "description": "Premier jour ajustable, tel qu'applique. Ce qui precede n'a pas pu bouger. Restitue pour que la reponse soit lisible seule : un fichier d'outbox relu six mois plus tard porte alors sa propre cle de lecture."
+        },
+        "creneauxFiges": {
+          "type": "integer",
+          "description": "Creneaux epingles parce qu'anterieurs au pivot. Inclut ceux que PERSONNE ne couvrait : le passe ne se reecrit pas, meme quand il est vide, et un besoin non couvert ne le sera pas retroactivement."
+        },
+        "creneauxAjustables": {
+          "type": "integer",
+          "description": "Creneaux rendus au solveur."
+        },
+        "creneauxDeplaces": {
+          "type": "integer",
+          "description": "Creneaux ayant effectivement change de main. Zero declenche le motif OPTIMISATION_SANS_EFFET : sans lui, l'appelant recevrait son propre planning et chercherait ce qui a echoue."
+        },
+        "creneauxNonCouverts": {
+          "type": "integer",
+          "description": "Creneaux ajustables que personne ne couvre a l'arrivee. A distinguer de CRENEAU_PERDU, qui ne compte que ceux dont quelqu'un s'occupait : un creneau qui n'etait deja a personne n'a rien perdu."
+        },
+        "acceptable": {
+          "type": "boolean",
+          "description": "Aucun motif eliminatoire. Le planning est restitue dans tous les cas : le moteur ne refuse pas, il rend visible l'impossible."
+        },
+        "motifs": {
+          "type": "array",
+          "description": "Ce qui disqualifie ce planning, ou le decrit. Filtrer sur la severite, jamais sur le code.",
+          "items": {
+            "$ref": "#/$defs/MotifArbitrage"
+          }
+        },
+        "parSalarie": {
+          "type": "array",
+          "description": "Le mouvement et les series de chaque salarie CONCERNE - ceux qui ont repris ou cede un creneau, et ceux qui en tenaient un d'ajustable. Restituer toute la population noierait le mouvement dans les inchanges.",
+          "items": {
+            "$ref": "#/$defs/SerieSalarie"
+          }
+        }
+      }
+    },
+    "SerieSalarie": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "[SC-04] Ce que l'optimisation a fait d'un salarie. repris/cedes disent le mouvement ; tranches disent ce qu'il a produit. Un salarie peut etre stable sur la periode et avoir vu deux de ses semaines s'inverser : c'est le genre de chose qu'un total masque.",
+      "required": [
+        "ressourceId",
+        "repris",
+        "cedes",
+        "tranches"
+      ],
+      "properties": {
+        "ressourceId": {
+          "type": "string"
+        },
+        "repris": {
+          "type": "integer",
+          "description": "Creneaux qui lui ont ete confies et qu'il n'avait pas."
+        },
+        "cedes": {
+          "type": "integer",
+          "description": "Creneaux qu'il tenait et qui sont passes a quelqu'un d'autre."
+        },
+        "tranches": {
+          "type": "array",
+          "description": "La charge avant/apres, dans l'ordre du decoupage : semaines, puis mois, puis periode.",
+          "items": {
+            "$ref": "#/$defs/TrancheCharge"
+          }
+        }
+      }
+    },
+    "TrancheCharge": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "[SC-04] La charge d'un salarie sur une tranche, avant et apres. C'est l'unite de lecture de SC-04 : sur la semaine du 18, SAL-A passe de -60 % a -5 %. Un total sur la periode dit COMBIEN ; la tranche dit QUAND. Les deux etats sont mesures par le MEME calculateur sur la MEME fenetre - sans quoi une difference de methode se lirait comme un mouvement du planning.",
+      "required": [
+        "granularite",
+        "debut",
+        "fin",
+        "partielle",
+        "joursDisponiblesAvant",
+        "joursDisponiblesApres",
+        "heuresAvant",
+        "heuresApres"
+      ],
+      "properties": {
+        "granularite": {
+          "type": "string",
+          "enum": [
+            "SEMAINE",
+            "MOIS",
+            "PERIODE"
+          ],
+          "description": "Les semaines sont ISO - le lundi ouvre, comme partout ailleurs dans le moteur. Les mois sont calendaires. ATTENTION : les VOLUMES se somment d'une tranche a l'autre, les SERIES non. maxJoursConsecutifs et maxNuitsConsecutives de workMetrics sont observes a l'interieur de leur fenetre, et sept jours consecutifs a cheval sur deux semaines s'y lisent 4 puis 3. Seule la tranche PERIODE porte la serie reelle."
+        },
+        "debut": {
+          "type": "string",
+          "format": "date",
+          "description": "Premier jour de la tranche, jamais avant l'horizon : les bords sont tronques, jamais etendus."
+        },
+        "fin": {
+          "type": "string",
+          "format": "date",
+          "description": "Dernier jour de la tranche, jamais apres l'horizon."
+        },
+        "partielle": {
+          "type": "boolean",
+          "description": "La tranche ne couvre pas toute sa granularite - une semaine ou un mois tronque par le bord de l'horizon. Ses VOLUMES BRUTS ne se comparent pas a ceux d'une tranche pleine ; son ecart au contrat, lui, se compare, puisqu'il proratise."
+        },
+        "joursDisponiblesAvant": {
+          "type": "integer",
+          "description": "Jours de la tranche ou le salarie n'etait pas declare indisponible - le denominateur de son ecart au contrat sur cette tranche. Vaut 0 pour une tranche entierement couverte par une absence."
+        },
+        "joursDisponiblesApres": {
+          "type": "integer",
+          "description": "Identique par construction : une optimisation ne deplace pas les conges. Restitue pour que l'appelant puisse le verifier."
+        },
+        "heuresAvant": {
+          "type": "number",
+          "description": "Heures travaillees avant optimisation, decimales."
+        },
+        "heuresApres": {
+          "type": "number",
+          "description": "Heures travaillees apres optimisation, decimales."
+        },
+        "ecartContratAvantPourcent": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Ecart signe au contrat avant. null si rien n'est comparable : pas de volume contractuel declare, ou AUCUN JOUR DISPONIBLE sur la tranche - un salarie absent toute une semaine n'y est pas a -100 %, il est hors de comparaison."
+        },
+        "ecartContratApresPourcent": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Ecart signe au contrat apres. Une REGRESSION_INDIVIDUELLE est levee quand sa valeur absolue depasse celle d'avant sur la tranche PERIODE : passer de -20 % a -25 % est une regression au meme titre que passer de +20 % a +25 %."
         }
       }
     }

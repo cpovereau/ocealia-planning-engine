@@ -1,15 +1,19 @@
 # 92 — Cadrage : SC-04, optimisation globale d'un planning existant
 
 > **Statut** : cadrage d'analyse, 2026-08-17, produit à l'ouverture du **rang 9**.
-> **Les six arbitrages de la §5 sont tranchés** (métier, 2026-08-17). Plus aucun ne bloque SC-04 :
-> ce qui reste est du travail moteur. Les lots **O0 et O1 sont livrés** le jour même.
+> **Les six arbitrages de la §5 sont tranchés** (métier, 2026-08-17), et **SC-04 est clos le
+> 2026-08-17** : les cinq lots O0 à O4 sont livrés, le scénario est inscrit au contrat série 50 et
+> accessible par les deux canaux.
+>
+> Ce qui lui reste ne lui appartient pas : le **rang 10** — préférences individuelles — que le
+> moteur entier attend, et qui pèse ici plus qu'ailleurs (§9.4).
 >
 > Ce cadrage a déjà produit un correctif hors de son périmètre : le **rang 14**, livré le
 > 2026-08-17, parce qu'on ne peut pas optimiser une période large en lisant les congés comme du
 > temps disponible.
 >
-> Ce document ne modifie ni `50_SCENARIO_CONTRACT.md`, ni le code. Il pose les questions au niveau
-> où elles se tranchent.
+> Ce document a posé les questions au niveau où elles se tranchent ; l'inscription de SC-04 au
+> contrat fonctionnel est portée par le lot **O4**.
 
 ---
 
@@ -23,8 +27,8 @@ et en trois listes : un degré de liberté et des priorités d'optimisation en p
 existant et un « historique des compteurs » en données, un planning optimisé avec gains et
 régressions explicitées en restitution.
 
-Douze lignes au contrat, et rien d'autre — ni schéma, ni endpoint, ni jeu d'essai. **C'est le seul
-scénario annoncé qui n'a jamais été écrit.**
+Douze lignes au contrat, et rien d'autre — ni schéma, ni endpoint, ni jeu d'essai. C'était, jusqu'au
+2026-08-17, **le seul scénario annoncé qui n'ait jamais été écrit**.
 
 ---
 
@@ -93,11 +97,22 @@ Trois conséquences, et elles réorientent tout le chantier :
 | Épingler une partie du planning | ✅ `@PlanningPin`, livré au lot S1 de SC-06 — mais **le moteur décide seul** de ce qui est épinglé (SC-02, SC-05) ; l'appelant ne le désigne pas |
 | Ne pas lire une absence comme une sous-charge | ✅ **livré le 2026-08-17, rang 14** |
 | WorkMetrics agrégés semaine / mois / période | ✅ **livré le 2026-08-17, lot O1** — côté domaine |
-| Ces agrégats **restitués**, avant et après | ❌ lot O2 |
+| Ces agrégats **restitués**, avant et après | ✅ **livré le 2026-08-17, lot O2** — bloc `optimisation` |
 | Un score qui juge l'équité sur cette période | ✅ **livré le 2026-08-17, lot O0** |
 
 `WorkMetricsByRessourceDTO` porte **un seul agrégat par ressource**, borné par `periodeDebut` /
 `periodeFin`. C'était là, et nulle part ailleurs, que se situait le travail de SC-04.
+
+### 4.1 Pourquoi le rang 14 est sorti de ce cadrage
+
+Le moteur ne place aucun créneau dans un congé — la contrainte HARD `METIER_HARD_INDISPONIBILITE`
+y veille depuis l'origine. Mais il proratisait le contrat sur l'horizon **entier** : une absence se
+lisait comme du temps disponible non travaillé, et le salarié revenant de congé apparaissait sous
+son contrat, donc préférable.
+
+Sur une semaine, l'effet est du bruit. **Sur un trimestre, il devient systématique** — et SC-04 ne
+propose rien d'autre que de juger sur un trimestre. Le défaut lui préexistait ; SC-04 le rendait
+inévitable. Il a donc été corrigé avant, non pendant : voir le rang 14 du suivi.
 
 ### 4.2 Ce que le lot O1 a livré
 
@@ -122,17 +137,6 @@ complet ne le montre pas à −100 %** — elle ne le compare à rien.
 > la tranche : sept jours consécutifs à cheval sur deux semaines s'y lisent 4 puis 3. Seule la
 > tranche `PERIODE` porte la série réelle, et c'est elle qu'il faut lire pour juger d'un
 > enchaînement. Un test pin ce comportement pour qu'il ne se prenne jamais pour un défaut.
-
-### 4.1 Pourquoi le rang 14 est sorti de ce cadrage
-
-Le moteur ne place aucun créneau dans un congé — la contrainte HARD `METIER_HARD_INDISPONIBILITE`
-y veille depuis l'origine. Mais il proratisait le contrat sur l'horizon **entier** : une absence se
-lisait comme du temps disponible non travaillé, et le salarié revenant de congé apparaissait sous
-son contrat, donc préférable.
-
-Sur une semaine, l'effet est du bruit. **Sur un trimestre, il devient systématique** — et SC-04 ne
-propose rien d'autre que de juger sur un trimestre. Le défaut lui préexistait ; SC-04 le rendait
-inévitable. Il a donc été corrigé avant, non pendant : voir le rang 14 du suivi.
 
 ---
 
@@ -209,7 +213,7 @@ sans effet** : ce serait le rang 8 recommencé, un champ au contrat que rien ne 
 
 ---
 
-## 6. Contrat d'entrée proposé
+## 6. Contrat d'entrée — ✅ inscrit au lot O4
 
 Un seul champ nouveau, le degré de liberté (§5.5) :
 
@@ -224,32 +228,39 @@ Un seul champ nouveau, le degré de liberté (§5.5) :
 
 ---
 
-## 7. Contrat de sortie proposé
+## 7. Contrat de sortie — ✅ livré au lot O2
 
-Le bloc `arbitrage` de SC-05 est le précédent le plus proche : il publie déjà un avant/après par
-personne, mesuré par le même calcul. SC-04 en demande l'équivalent **par personne et par période**.
+Le bloc `arbitrage` de SC-05 était le précédent le plus proche : il publie un avant/après par
+personne, mesuré par le même calcul. SC-04 en demandait l'équivalent **par personne et par
+période** — c'est le bloc `optimisation`, détaillé au §9 de `50_SCENARIO_RESPONSE_CONTRACT.md`.
 
-Forme envisagée — un bloc `optimisation` portant, pour chaque salarié, la série des agrégats
-`WorkMetrics` par semaine, par mois et sur la période, en deux états. Les motifs disqualifiants de
-SC-05 (`MotifArbitrage`) offrent le modèle de la lecture : le moteur ne refuse pas, il rend visible.
+| Clé | Contenu |
+|---|---|
+| `datePivot` | le contrat de cette optimisation, restitué pour que la réponse soit lisible seule |
+| `creneauxFiges` / `creneauxAjustables` / `creneauxDeplaces` / `creneauxNonCouverts` | ce qui a bougé |
+| `acceptable` + `motifs` | ce qui disqualifie le planning, ou le décrit |
+| `parSalarie[].tranches[]` | **l'apport propre de SC-04** : la charge avant/après, semaine, mois, période |
 
-À détailler au lot de réalisation, une fois §5.5 tranché.
+Le motif `REGRESSION_INDIVIDUELLE` est celui que SC-04 ajoute à la famille : il nomme le salarié qui
+sort plus loin de son contrat qu'il n'y entrait. Optimiser un total en dégradant une personne est la
+façon la plus ordinaire de produire un planning que personne n'acceptera, et le moteur n'a aucun
+moyen de savoir si ce sacrifice est consenti.
 
 ---
 
-## 8. Découpage proposé
+## 8. Découpage — ✅ les cinq lots sont livrés
 
 | Lot | Contenu | Dépend de |
 |---|---|---|
 | ~~**O0**~~ | ~~Aligner `EquiteChargeAuContrat` sur les jours disponibles~~ ✅ **livré le 2026-08-17** | — |
 | ~~**O1**~~ | ~~Agrégation `WorkMetrics` par semaine / mois / période, côté domaine~~ ✅ **livré le 2026-08-17** | O0 |
-| **O2** | Restitution des séries agrégées, avant/après, au contrat de sortie | O1, §5.3 |
-| **O3** | Degré de liberté : `datePivot` et figement dérivé | O1, §5.5 |
-| **O4** | Endpoint, jeux d'essai, canal fichier, inscription série 50 | O2, O3 |
+| ~~**O2**~~ | ~~Restitution des séries agrégées, avant/après~~ ✅ **livré le 2026-08-17** | O1, §5.3 |
+| ~~**O3**~~ | ~~Degré de liberté : `datePivot` et figement dérivé~~ ✅ **livré le 2026-08-17** | O1, §5.5 |
+| ~~**O4**~~ | ~~Endpoint, jeux d'essai, canal fichier, inscription série 50~~ ✅ **livré le 2026-08-17** | O2, O3 |
 
-**Plus aucun lot n'attend d'arbitrage.** O2 et O4 touchent la série 50, donc ce que lit WinDev ;
-O3 est interne. Sur O4, ne pas oublier le sort des « priorités d'optimisation » annoncées au §3.4
-du contrat et reportées en §5.6 — un champ annoncé sans effet est un rang 8 de plus.
+**Les cinq lots ont été livrés le 2026-08-17**, dans l'ordre. Sur O4, le sort des « priorités
+d'optimisation » annoncées au §3.4 du contrat a été tranché comme prévu : elles sont **retirées de
+l'annonce**, et non laissées au contrat sans effet — ce qui aurait été un rang 8 de plus.
 
 ---
 

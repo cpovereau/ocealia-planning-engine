@@ -415,6 +415,64 @@ paths:
   # ─────────────────────────────────────────────────────────────────────────
   # SC-05 — ARBITRAGE D'UN PÉRIMÈTRE COMMUN ENTRE DEUX SALARIÉS
   # ─────────────────────────────────────────────────────────────────────────
+  /scenarios/sc04/solve:
+    post:
+      tags: [Scenarios-Dataset]
+      summary: Optimiser un planning existant sur une période (SC-04)
+      description: |
+        **Mode optimisation** : le moteur relit une période entière et **redistribue** ce qui n'a
+        pas encore eu lieu. Il ne crée aucun besoin.
+
+        **Ce que SC-04 apporte et qu'aucun autre scénario n'apporte : la profondeur temporelle.**
+        Il est le seul à juger une *période* plutôt qu'un instant. Les autres répondent à une
+        question posée sur un moment — une absence, un besoin, un périmètre. SC-04 relit une durée
+        et montre **quand** un déséquilibre s'est installé, grâce au bloc `optimisation` qui rend la
+        charge de chacun semaine par semaine, mois par mois, puis sur la période.
+
+        **La date pivot est le degré de liberté.** Tout ce qui la précède est figé ; à partir d'elle,
+        le solveur décide. Le jour du pivot lui-même est ajustable — « à partir de », non « après ».
+
+        **Le passé ne se réécrit pas, même quand il est vide.** Un créneau antérieur au pivot que
+        personne ne couvrait est épinglé sur `A_AFFECTER` : il ne sera pas couvert rétroactivement.
+
+        ⚠️ **Aucun « historique des compteurs » n'est reçu.** La profondeur est celle de la période
+        demandée, et le moteur **recalcule** tout depuis les créneaux transmis. Rien n'est conservé
+        entre deux appels. **Plus la fenêtre transmise est large, plus la mesure a de sens** — c'est
+        le levier de ce scénario, et il est entre les mains de l'appelant.
+
+        ⚠️ **Sans `planningContext.equite.ecartTolerePourcent`, SC-04 n'a rien vers quoi optimiser.**
+        La contrainte d'équité reste inerte tant qu'aucune tolérance n'est déclarée, et c'est le
+        scénario où cette borne compte le plus.
+
+        **Il n'y a jamais d'erreur.** Quand le planning obtenu est disqualifié, il est rendu tout de
+        même, accompagné des motifs — `optimisation.acceptable` et `optimisation.motifs`. Le moteur
+        ne refuse pas, il rend visible l'impossible.
+
+        Route réelle : `POST /scenarios/sc04/solve`
+        Controller : `ScenarioController.solveSc04()`
+        DTO d'entrée : `Sc04ScenarioRequestDTO` + `Sc04ScenarioParametersDTO`
+        DTO de sortie : `ScenarioResponseDTO`, enrichi du bloc `optimisation`
+
+        Également accessible par le **FileAdapter** (`scenarioType: SC-04`). Les deux canaux entrent
+        dans le même service au même point, et un test compare leurs deux réponses entières.
+      operationId: solveSc04
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Sc04ScenarioRequest'
+      responses:
+        '200':
+          description: Planning optimisé, avec le bloc optimisation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScenarioResponse'
+        '400':
+          description: Requête invalide (JSON mal formé, datePivot absente)
+        '422':
+          description: Requête sémantiquement invalide
   /scenarios/sc05/solve:
     post:
       tags: [Scenarios-Dataset]
@@ -1731,6 +1789,70 @@ components:
     # REQUÊTE — SC-05
     # ──────────────────────────────────────────────
 
+    Sc04ScenarioParameters:
+      type: object
+      description: |
+        Paramètres propres à SC-04. Correspond à `Sc04ScenarioParametersDTO`.
+
+        **Un seul champ, et c'est le degré de liberté.** Tout le reste — période, planning existant,
+        indisponibilités, cadre réglementaire, tolérance d'équité — était déjà au contrat.
+
+        🔁 La **liste explicite** de créneaux ajustables est différée. Elle s'ajoutera à côté de
+        `datePivot`, pas à sa place : un appelant qui ne la transmet pas retombera sur le pivot.
+
+        ⚠️ Les « priorités d'optimisation » et la « pondération des règles » annoncées de longue
+        date au contrat fonctionnel sont **retirées**. Le moteur ne pondère pas une mesure dont
+        l'échelle n'est pas calibrée, et les coefficients de pénibilité ne le sont pas.
+      required: [datePivot]
+      properties:
+        datePivot:
+          type: string
+          format: date
+          description: |
+            Premier jour **ajustable**. Tout ce qui précède est figé, y compris les créneaux que
+            personne ne couvrait — le passé ne se réécrit pas, même quand il est vide.
+
+            Le jour du pivot lui-même est ajustable : « à partir de », non « après ».
+
+            Un pivot hors de l'horizon est **accepté et signalé** : postérieur à tous les créneaux,
+            l'alerte `AUCUN_CRENEAU_AJUSTABLE` dit que la demande n'a pas d'objet ; antérieur à
+            tous, `PLANNING_ENTIEREMENT_REOUVERT` prévient que le planning est rouvert en entier —
+            exactement le remaniement que SC-04 existe pour éviter.
+    Sc04ScenarioRequest:
+      type: object
+      description: |
+        Corps de requête pour SC-04 — optimisation globale d'un planning existant sur une période.
+        Correspond à `Sc04ScenarioRequestDTO`.
+
+        **Ce que le `dataSet` doit porter** :
+
+        - `creneaux` — le **planning complet de la période**, pour tout le monde, chaque créneau
+          servi portant son `ressourceAffecteeId` ;
+        - `referentiels.activites` — nécessaire pour que la charge se calcule (`compteDansCharge`) ;
+        - `indisponibilites` — **déduites de la mesure** : une absence n'est pas du temps disponible
+          non travaillé, et sans elles un salarié revenant de congé paraîtrait sous son contrat.
+
+        ⚠️ **Aucun « historique des compteurs » n'est attendu.** La profondeur est celle de
+        `planningContext.horizon`, que l'appelant élargit à ce qu'il veut voir.
+
+        ⚠️ **Limite connue, commune à tous les scénarios qui résolvent** : `activitesCompatibles`
+        n'est lu par aucune contrainte.
+      required: [requestId, metadata, scenarioParameters]
+      properties:
+        requestId:
+          type: string
+          description: Identifiant unique de la requête pour la traçabilité (obligatoire)
+        metadata:
+          $ref: '#/components/schemas/Metadata'
+        scenarioType:
+          type: string
+          const: SC-04
+        planningContext:
+          $ref: '#/components/schemas/PlanningContext'
+        scenarioParameters:
+          $ref: '#/components/schemas/Sc04ScenarioParameters'
+        dataSet:
+          $ref: '#/components/schemas/DataSet'
     Sc05ScenarioParameters:
       type: object
       additionalProperties: false
@@ -2897,6 +3019,153 @@ components:
       required:
         [creneauId, date, heureDebut, heureFin, dureeMinutes, nature, deplace, tenuParUnTiers]
 
+    Optimisation:
+      type: object
+      description: |
+        **[SC-04]** Ce que l'optimisation a produit sur la période, et ce qu'elle a coûté à chacun.
+
+        Le bloc `planning` ne restitue que l'**après**. SC-04 remanie une période entière et doit
+        pouvoir se justifier devant ceux qu'il déplace — c'est ce que le contrat fonctionnel appelle
+        « gains / régressions explicitées ; indicateurs comparatifs ».
+
+        ⚠️ `acceptable: true` signifie **au regard de ce que le moteur sait**. Les préférences
+        individuelles lui échappent : sur un scénario qui remanie une période entière, l'absence de
+        motif ne vaut pas accord des intéressés.
+      required: [datePivot, creneauxFiges, creneauxAjustables, creneauxDeplaces, creneauxNonCouverts, acceptable, motifs, parSalarie]
+      properties:
+        datePivot:
+          type: string
+          format: date
+          description: |
+            Premier jour ajustable, tel qu'appliqué. Restitué pour que la réponse soit lisible
+            seule : un fichier d'`outbox` relu six mois plus tard porte alors sa propre clé.
+        creneauxFiges:
+          type: integer
+          description: |
+            Créneaux épinglés parce qu'antérieurs au pivot. **Inclut ceux que personne ne
+            couvrait** : un besoin non couvert dans le passé ne le sera pas rétroactivement.
+        creneauxAjustables:
+          type: integer
+          description: Créneaux rendus au solveur.
+        creneauxDeplaces:
+          type: integer
+          description: |
+            Créneaux ayant effectivement changé de main. Zéro déclenche `OPTIMISATION_SANS_EFFET` :
+            sans ce motif, l'appelant recevrait son propre planning et chercherait l'échec.
+        creneauxNonCouverts:
+          type: integer
+          description: |
+            Créneaux ajustables que personne ne couvre à l'arrivée. À distinguer de `CRENEAU_PERDU`,
+            qui ne compte que ceux dont quelqu'un s'occupait : un créneau qui n'était déjà à
+            personne n'a rien perdu.
+        acceptable:
+          type: boolean
+          description: Aucun motif éliminatoire. Le planning est restitué dans tous les cas.
+        motifs:
+          type: array
+          description: Ce qui disqualifie ce planning, ou le décrit. **Filtrer sur la sévérité, jamais sur le code.**
+          items:
+            $ref: '#/components/schemas/MotifArbitrage'
+        parSalarie:
+          type: array
+          description: |
+            Le mouvement et les séries de chaque salarié **concerné** — ceux qui ont repris ou cédé
+            un créneau, et ceux qui en tenaient un d'ajustable. Restituer toute la population
+            noierait le mouvement dans les inchangés.
+          items:
+            $ref: '#/components/schemas/SerieSalarie'
+    SerieSalarie:
+      type: object
+      description: |
+        **[SC-04]** Ce que l'optimisation a fait d'un salarié. Un salarié peut être stable sur la
+        période et avoir vu deux de ses semaines s'inverser : c'est ce qu'un total masque.
+      required: [ressourceId, repris, cedes, tranches]
+      properties:
+        ressourceId:
+          type: string
+        repris:
+          type: integer
+          description: Créneaux qui lui ont été confiés et qu'il n'avait pas.
+        cedes:
+          type: integer
+          description: Créneaux qu'il tenait et qui sont passés à quelqu'un d'autre.
+        tranches:
+          type: array
+          description: 'La charge avant/après, dans l''ordre du découpage : semaines, puis mois, puis période.'
+          items:
+            $ref: '#/components/schemas/TrancheCharge'
+    TrancheCharge:
+      type: object
+      description: |
+        **[SC-04]** La charge d'un salarié sur une tranche, avant et après.
+
+        C'est l'unité de lecture de SC-04 : « sur la semaine du 18, SAL-A passe de −60 % à −5 % ».
+        Un total sur la période dit *combien* ; la tranche dit **quand**.
+
+        Les deux états sont mesurés par le **même calculateur** sur la **même fenêtre** — sans quoi
+        une différence de méthode se lirait comme un mouvement du planning.
+      required: [granularite, debut, fin, partielle, joursDisponiblesAvant, joursDisponiblesApres, heuresAvant, heuresApres]
+      properties:
+        granularite:
+          type: string
+          enum: [SEMAINE, MOIS, PERIODE]
+          description: |
+            Les **semaines sont ISO** — le lundi ouvre, comme partout ailleurs dans le moteur. Les
+            mois sont calendaires.
+
+            ⚠️ Les **volumes** se somment d'une tranche à l'autre, les **séries** non.
+            `maxJoursConsecutifsObservees` et `maxNuitsConsecutivesObservees` de `workMetrics` sont
+            observés *à l'intérieur* de leur fenêtre : sept jours consécutifs à cheval sur deux
+            semaines s'y lisent 4 puis 3. **Seule la tranche `PERIODE` porte la série réelle.**
+        debut:
+          type: string
+          format: date
+          description: 'Premier jour de la tranche, jamais avant l''horizon : les bords sont tronqués, jamais étendus.'
+        fin:
+          type: string
+          format: date
+          description: Dernier jour de la tranche, jamais après l'horizon.
+        partielle:
+          type: boolean
+          description: |
+            La tranche ne couvre pas toute sa granularité — semaine ou mois tronqué par le bord de
+            l'horizon. Ses **volumes bruts** ne se comparent pas à ceux d'une tranche pleine ; son
+            écart au contrat, lui, se compare, puisqu'il proratise.
+        joursDisponiblesAvant:
+          type: integer
+          description: |
+            Jours de la tranche où le salarié n'était pas déclaré indisponible — le dénominateur de
+            son écart au contrat sur cette tranche. Vaut `0` pour une tranche entièrement couverte
+            par une absence.
+        joursDisponiblesApres:
+          type: integer
+          description: |
+            Identique par construction : une optimisation ne déplace pas les congés. Restitué pour
+            que l'appelant puisse le vérifier.
+        heuresAvant:
+          type: number
+          format: double
+          description: Heures travaillées avant optimisation, décimales.
+        heuresApres:
+          type: number
+          format: double
+          description: Heures travaillées après optimisation, décimales.
+        ecartContratAvantPourcent:
+          type: number
+          format: double
+          nullable: true
+          description: |
+            Écart **signé** au contrat avant. `null` si rien n'est comparable : pas de volume
+            contractuel déclaré, ou **aucun jour disponible** sur la tranche — un salarié absent
+            toute une semaine n'y est pas à −100 %, il est **hors de comparaison**.
+        ecartContratApresPourcent:
+          type: number
+          format: double
+          nullable: true
+          description: |
+            Écart **signé** au contrat après. Une `REGRESSION_INDIVIDUELLE` est levée quand sa
+            valeur absolue dépasse celle d'avant sur la tranche `PERIODE` : passer de −20 % à −25 %
+            est une régression au même titre que passer de +20 % à +25 %.
     Arbitrage:
       type: object
       description: |
@@ -3117,6 +3386,14 @@ components:
             En SC-02, `planning` porte le **planning ajusté complet** — l'existant épinglé comme les
             créneaux réaffectés — et non les seuls créneaux touchés. C'est l'inverse de SC-06, qui
             n'émet que les créneaux du besoin.
+        optimisation:
+          allOf:
+            - $ref: '#/components/schemas/Optimisation'
+          description: |
+            **Propre à SC-04.** Ce que l'optimisation a produit, et ce qu'elle a coûté à chacun.
+
+            Même règle que `candidats`, `remplacement` et `arbitrage` — la clé est **absente**, et
+            non vide, pour tous les autres scénarios.
         arbitrage:
           allOf:
             - $ref: '#/components/schemas/Arbitrage'

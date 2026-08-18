@@ -40,6 +40,15 @@ public class ScenarioResponseDTO {
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private ArbitrageDTO arbitrage;
 
+    /**
+     * [Lot O2 de SC-04] Ce que l'optimisation a produit — <strong>propre à SC-04</strong>.
+     *
+     * <p>Même règle que {@code candidats}, {@code remplacement} et {@code arbitrage} : la clé est
+     * omise pour tous les autres scénarios.</p>
+     */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private OptimisationDTO optimisation;
+
     public ScenarioResponseDTO() {
     }
 
@@ -129,5 +138,13 @@ public class ScenarioResponseDTO {
 
     public void setArbitrage(ArbitrageDTO arbitrage) {
         this.arbitrage = arbitrage;
+    }
+
+    public OptimisationDTO getOptimisation() {
+        return optimisation;
+    }
+
+    public void setOptimisation(OptimisationDTO optimisation) {
+        this.optimisation = optimisation;
     }
 }

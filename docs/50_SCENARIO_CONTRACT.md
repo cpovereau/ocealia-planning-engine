@@ -507,28 +507,67 @@ Traiter un **déséquilibre localisé** sans recalcul global.
 
 ---
 
-### 🔴 SC-04 — Optimisation globale d’un planning existant
+### 🟢 SC-04 — Optimisation globale d’un planning existant
+
+> Inscrit au contrat le 2026-08-17, lot O4. Cadrage complet : `92_CADRAGE_SCENARIO_SC-04.md`.
+> Arbitrages métier rendus le 2026-08-17, réalisation en cinq lots O0 à O4.
+> Schémas normatifs : `Sc04ScenarioRequest` et `Optimisation` dans
+> `50_openapi_windev_moteur_v_1.yaml`, bloc de sortie détaillé dans
+> `50_SCENARIO_RESPONSE_CONTRACT.md` §9.
+>
+> **Deux canaux, un seul comportement** : `POST /scenarios/sc04/solve` et le **FileAdapter**
+> (`scenarioType: SC-04`). Ils entrent dans le même service au même point ; un test compare leurs
+> deux réponses entières.
 
 #### 🎯 Intention métier
 
 Améliorer un planning réel **sans le reconstruire entièrement**.
 
+Ce que SC-04 apporte et qu’aucun autre scénario n’apporte est la **profondeur temporelle** : il est
+le seul à juger une *période* plutôt qu’un instant. Les autres répondent à une question posée sur un
+moment — une absence, un besoin, un périmètre. SC-04 relit une durée et montre **quand** un
+déséquilibre s’est installé.
+
 #### Paramètres spécifiques
 
-* degré de liberté (créneaux figés / ajustables) ;
-* priorités d’optimisation ;
-* pondération des règles.
+| Champ | Rôle |
+|---|---|
+| `scenarioParameters.datePivot` | **obligatoire** — premier jour ajustable. Tout ce qui précède est figé |
+
+**Un seul champ, et c’est le degré de liberté.** Le jour du pivot lui-même est ajustable : « à
+partir de », non « après ». Un pivot hors de l’horizon est accepté et **signalé** — le moteur ne
+refuse pas, il rend visible ce que la demande implique.
+
+🔁 La **liste explicite** de créneaux ajustables est différée (§5.5 du cadrage). Elle s’ajoutera à
+côté de ce champ, pas à sa place.
+
+> ⚠️ **Les « priorités d’optimisation » et la « pondération des règles » annoncées jusqu’ici sont
+> retirées.** Le moteur tient qu’on ne pondère pas une mesure dont l’échelle n’est pas calibrée, et
+> les coefficients de pénibilité ne le sont pas (`92_CALIBRATION_PENIBILITE.md`). À poids fixes,
+> SC-04 reste SC-04. Les rouvrir demandera un arbitrage, pas une simple mise au contrat.
 
 #### Données clés transmises
 
-* planning existant complet ;
-* historique des compteurs.
+* **le planning existant complet de la période**, pour tout le monde ;
+* `dataSet.indisponibilites` — déduites de la mesure : une absence n’est pas du temps disponible
+  non travaillé ;
+* `planningContext.equite.ecartTolerePourcent` — **sans elle, SC-04 n’a rien vers quoi optimiser**.
+  La contrainte d’équité reste inerte tant qu’aucune tolérance n’est déclarée, et c’est le scénario
+  où cette borne compte le plus.
+
+> ⚠️ **L’« historique des compteurs » n’est pas une donnée d’entrée.** Elle a longtemps figuré ici,
+> et c’était une erreur de cadrage : la profondeur est celle de la **période demandée**, et le
+> moteur **recalcule** tout depuis les créneaux transmis. Rien n’est conservé entre deux appels.
+> **Plus la fenêtre transmise est large, plus la mesure a de sens** — c’est le levier même de ce
+> scénario, et il est entre les mains de l’appelant.
 
 #### Restitution attendue
 
-* planning optimisé ;
-* gains / régressions explicitées ;
-* indicateurs comparatifs.
+* le planning optimisé, dans `planning` ;
+* le bloc **`optimisation`**, propre à SC-04 : ce qui a bougé, et la charge de chaque salarié
+  concerné **avant et après**, semaine par semaine, mois par mois, puis sur la période ;
+* les **régressions nommées** — `REGRESSION_INDIVIDUELLE` est levée dès qu’un salarié sort plus
+  loin de son contrat qu’il n’y entrait.
 
 ---
 

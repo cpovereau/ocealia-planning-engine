@@ -216,5 +216,24 @@ public enum AlertCode {
      * <p>Ne peut pas être levée sans tolérance déclarée : une borne absente n'est pas une borne à
      * zéro, et le moteur ne juge pas inéquitable un écart que personne ne lui a dit de juger.</p>
      */
-    INEQUITE_RESIDUELLE
+    INEQUITE_RESIDUELLE,
+
+    /**
+     * La date pivot de SC-04 est postérieure à tous les créneaux transmis (lot O3, §5.5).
+     *
+     * <p>Rien n'est ajustable : l'optimisation ne peut rien changer, et le planning est rendu tel
+     * quel avec ses indicateurs. <strong>Le moteur ne refuse pas</strong> — il rend visible que la
+     * demande, telle qu'elle est formulée, n'a pas d'objet.</p>
+     */
+    AUCUN_CRENEAU_AJUSTABLE,
+
+    /**
+     * La date pivot de SC-04 est antérieure à tous les créneaux transmis (lot O3, §5.5).
+     *
+     * <p>Le planning est rouvert en entier. C'est légitime et le moteur l'exécute, mais SC-04
+     * promet d'améliorer un planning existant <strong>sans le reconstruire</strong> : un pivot
+     * placé hors de la période produit exactement le remaniement que le scénario existe pour
+     * éviter, et l'appelant a rarement voulu cela.</p>
+     */
+    PLANNING_ENTIEREMENT_REOUVERT
 }

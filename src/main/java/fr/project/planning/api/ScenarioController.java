@@ -2,6 +2,7 @@ package fr.project.planning.api;
 
 import fr.project.planning.scenarios.dto.Sc02ScenarioRequestDTO;
 import fr.project.planning.scenarios.dto.Sc03ScenarioRequestDTO;
+import fr.project.planning.scenarios.dto.Sc04ScenarioRequestDTO;
 import fr.project.planning.scenarios.dto.Sc05ScenarioRequestDTO;
 import fr.project.planning.scenarios.dto.Sc06ScenarioRequestDTO;
 import fr.project.planning.scenarios.dto.ScenarioRequestDTO;
@@ -9,6 +10,7 @@ import fr.project.planning.scenarios.dto.ScenarioResponseDTO;
 import fr.project.planning.scenarios.service.ScenarioSc01ExecutionService;
 import fr.project.planning.scenarios.service.ScenarioSc02ExecutionService;
 import fr.project.planning.scenarios.service.ScenarioSc03ExecutionService;
+import fr.project.planning.scenarios.service.ScenarioSc04ExecutionService;
 import fr.project.planning.scenarios.service.ScenarioSc05ExecutionService;
 import fr.project.planning.scenarios.service.ScenarioSc06ExecutionService;
 
@@ -46,17 +48,20 @@ public class ScenarioController {
     private final ScenarioSc01ExecutionService scenarioSc01ExecutionService;
     private final ScenarioSc02ExecutionService scenarioSc02ExecutionService;
     private final ScenarioSc03ExecutionService scenarioSc03ExecutionService;
+    private final ScenarioSc04ExecutionService scenarioSc04ExecutionService;
     private final ScenarioSc05ExecutionService scenarioSc05ExecutionService;
     private final ScenarioSc06ExecutionService scenarioSc06ExecutionService;
 
     public ScenarioController(ScenarioSc01ExecutionService scenarioSc01ExecutionService,
                                ScenarioSc02ExecutionService scenarioSc02ExecutionService,
                                ScenarioSc03ExecutionService scenarioSc03ExecutionService,
+                               ScenarioSc04ExecutionService scenarioSc04ExecutionService,
                                ScenarioSc05ExecutionService scenarioSc05ExecutionService,
                                ScenarioSc06ExecutionService scenarioSc06ExecutionService) {
         this.scenarioSc01ExecutionService = scenarioSc01ExecutionService;
         this.scenarioSc02ExecutionService = scenarioSc02ExecutionService;
         this.scenarioSc03ExecutionService = scenarioSc03ExecutionService;
+        this.scenarioSc04ExecutionService = scenarioSc04ExecutionService;
         this.scenarioSc05ExecutionService = scenarioSc05ExecutionService;
         this.scenarioSc06ExecutionService = scenarioSc06ExecutionService;
     }
@@ -116,6 +121,28 @@ public class ScenarioController {
     @PostMapping("/sc02/solve")
     public ScenarioResponseDTO solveSc02(@Valid @RequestBody Sc02ScenarioRequestDTO request) {
         return scenarioSc02ExecutionService.solve(request);
+    }
+
+    /**
+     * POST /scenarios/sc04/solve — Optimisation globale d'un planning existant sur une période.
+     *
+     * Pipeline : dataSet (planning existant complet) + datePivot
+     *            → épinglage de tout ce qui précède le pivot, réouverture de la suite
+     *            → résolution solveur → ScenarioResponseDTO
+     *
+     * L'élément propre de SC-04 est la LARGEUR de la période jugée, non la liberté laissée au
+     * solveur : plus la fenêtre transmise est large, plus la mesure a de sens. Aucun « historique
+     * des compteurs » n'est reçu — il se recalcule depuis les créneaux transmis.
+     *
+     * Le passé ne se réécrit pas, même quand il est vide : un créneau antérieur au pivot que
+     * personne n'avait couvert est épinglé sur A_AFFECTER, et non laissé au solveur.
+     *
+     * La réponse porte un bloc supplémentaire, optimisation, propre à ce scénario : la charge de
+     * chaque salarié avant et après, semaine par semaine, mois par mois, puis sur la période.
+     */
+    @PostMapping("/sc04/solve")
+    public ScenarioResponseDTO solveSc04(@Valid @RequestBody Sc04ScenarioRequestDTO request) {
+        return scenarioSc04ExecutionService.solve(request);
     }
 
     /**

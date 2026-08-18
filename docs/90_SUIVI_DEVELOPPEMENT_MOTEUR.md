@@ -489,7 +489,7 @@ soit explicitement hors moteur (§ Analyse métier aval).
 | Rang | Sujet | Nature du blocage | Qui tranche |
 |---|---|---|---|
 | **8** | Champs au contrat sans effet : `capaciteCible`, structuration des besoins | arbitrage — activer ou retirer — **non traitable avant le 25/08/2026** | Métier + moteur |
-| **9** | SC-04 — un scénario annoncé, jamais écrit | **cadré et entièrement arbitré le 2026-08-17** — `92_CADRAGE_SCENARIO_SC-04.md`. Il ne dépendait pas d'un historique à recevoir : la profondeur est celle de la période demandée, et l'historique se **recalcule**. **Lots O0 et O1 livrés**, **plus aucun arbitrage en attente** : restent O2 (restituer les séries avant/après), O3 (`datePivot`) et O4 (inscription série 50) | Moteur |
+| ~~**9**~~ | ~~SC-04 — un scénario annoncé, jamais écrit~~ | ✅ **Clos le 2026-08-17** — cadré, arbitré et livré le même jour, cinq lots O0 à O4, inscrit au contrat série 50 et accessible par les deux canaux : `92_CADRAGE_SCENARIO_SC-04.md` | — |
 | **10** | Contraintes personnelles : lieux, activités, préférences, annualisation | arbitrage — **le Produit décide de la stratégie** sur les préférences, `activitesCompatibles` et `sitesAutorises` ; l'annualisation attend la Production. Que ces champs soient **transmis, mappés et lus par aucune contrainte** est un constat technique, pas un feu vert | Produit / Production |
 | **12** | Fermer les blocs restés délibérément tolérants aux champs inconnus | arbitrage — changement de comportement visible par l'appelant | Métier + WinDev |
 | **13** | Auditer et **garder** `50_ScenarioContract.schema.json` comme `SchemaPublie` garde le schéma de sortie | correctif — rien ne confronte les requêtes au schéma publié, et il a dérivé | Moteur |
@@ -654,7 +654,7 @@ SC-06), et **SC-04 seul reste sans contrat d'entrée, sans endpoint et sans jeu 
 | Scénario | Intention | Ce qui existe déjà | Ce qui manque |
 |---|---|---|---|
 | ~~**SC-02** — remplacement d'un absent~~ | ~~assurer la continuité en perturbant le moins possible l'existant~~ | ✅ **Clos le 2026-08-13** — six lots S0 à S5, inscrit au contrat série 50, accessible par les deux canaux | — |
-| **SC-04** — optimisation globale d'un planning existant | juger une période, pas une semaine | figement, WorkMetrics, absences déduites, **agrégation semaine / mois / période** (lots O0 et O1, 2026-08-17) | la **restitution** de ces séries avant/après (O2), et le degré de liberté (O3, arbitrage §5.5) |
+| ~~**SC-04** — optimisation globale d'un planning existant~~ | ~~juger une période, pas une semaine~~ | ✅ **Clos le 2026-08-17** — cinq lots O0 à O4, inscrit au contrat série 50, accessible par les deux canaux : `92_CADRAGE_SCENARIO_SC-04.md` | — |
 | ~~**SC-05** — arbitrage entre deux salariés~~ | ~~répartir équitablement un périmètre commun~~ | ✅ **Clos le 2026-08-14** — cinq lots A0 à A4, inscrit au contrat série 50, accessible par les deux canaux : `92_CADRAGE_SCENARIO_SC-05.md` | — |
 
 `92_CADRAGE_DONNEES_AMONT_SCENARIOS.md` §7 le résume : trois familles de données apparaissent dès
@@ -895,12 +895,9 @@ Ordonné par **dépendance**, pas par valeur métier. Les rangs renvoient au bac
 4. **Rang 13** — garder le schéma d'entrée comme le schéma de sortie l'est. Correctif pur, sans
    arbitrage.
 5. **Rang 10** — dès que la Production a rendu ses arbitrages.
-6. **SC-04** — cadré et **entièrement arbitré** le 2026-08-17, `92_CADRAGE_SCENARIO_SC-04.md`.
-   **Lots O0 et O1 livrés le jour même** : la contrainte d'équité est alignée sur les jours
-   disponibles, et les WorkMetrics s'agrègent par semaine, par mois et sur la période — côté
-   domaine. Restent **O2** (restituer ces séries avant/après), **O3** (`datePivot` : avant figé, à
-   partir de ajustable) et **O4** (endpoint, jeux d'essai, canal fichier, série 50). **Aucun
-   n'attend d'arbitrage** ; O2 et O4 touchent ce que lit WinDev.
+6. ~~**SC-04**~~ — **clos le 2026-08-17**, cinq lots O0 à O4, `92_CADRAGE_SCENARIO_SC-04.md`.
+   Cadré, arbitré et livré le même jour. **Les six scénarios annoncés au contrat sont désormais
+   écrits** : il ne reste plus de scénario en attente.
 
 L'explicabilité pédagogique du score (§ 1️⃣) et le nettoyage technique OptaPlanner restent
 souhaitables mais ne conditionnent rien : ils s'intercalent où ils veulent.
