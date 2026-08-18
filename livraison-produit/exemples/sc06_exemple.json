@@ -1,0 +1,244 @@
+{
+  "requestId": "REQ-SC06-REF-001",
+  "metadata": {
+    "clientId": "WINDEV",
+    "timestamp": "2026-05-10T09:00:00",
+    "source": "TEST"
+  },
+  "scenarioType": "SC-06",
+  "planningContext": {
+    "horizon": {
+      "dateDebut": "2026-05-11",
+      "dateFin": "2026-05-17"
+    },
+    "strategieScoring": "ANALYSE_RH"
+  },
+  "scenarioParameters": {
+    "besoin": {
+      "date": "2026-05-13",
+      "creneaux": [
+        {
+          "id": "BES-001",
+          "heureDebut": "14:00",
+          "heureFin": "22:00",
+          "codeActiviteId": "ACT-SOIN",
+          "lieu": "HOPITAL-NORD",
+          "posteComptable": "PC-SOINS"
+        }
+      ]
+    }
+  },
+  "dataSet": {
+    "referentiels": {
+      "activites": [
+        {
+          "codeActiviteId": "ACT-SOIN",
+          "libelle": "Soins infirmiers",
+          "compteDansCharge": true,
+          "genereDetteRepos": false,
+          "estServiceCritique": true
+        },
+        {
+          "codeActiviteId": "ACT-ADMIN",
+          "libelle": "Administratif",
+          "compteDansCharge": true,
+          "genereDetteRepos": false,
+          "estServiceCritique": false
+        }
+      ]
+    },
+    "ressources": {
+      "salaries": [
+        {
+          "id": "SAL-2001",
+          "statut": "CDI",
+          "sitesAutorises": ["HOPITAL-NORD"],
+          "activitesCompatibles": ["ACT-SOIN"],
+          "contrat": {
+            "heuresMoyennesParJour": 7.0,
+            "heuresHebdomadairesHabituelles": 35.0,
+            "joursTravaillesParSemaine": 5,
+            "estAnnualise": false
+          },
+          "contraintesReglementaires": {
+            "amplitudeJournaliereMaximum": 14.0,
+            "reposQuotidienMinimum": 11.0,
+            "heuresMaximumParSemaine": 44.0,
+            "joursConsecutifsMaximum": 6
+          },
+          "travailleJourFerie": true
+        },
+        {
+          "id": "SAL-2002",
+          "statut": "CDI",
+          "sitesAutorises": ["HOPITAL-NORD"],
+          "activitesCompatibles": ["ACT-SOIN"],
+          "contrat": {
+            "heuresMoyennesParJour": 7.0,
+            "heuresHebdomadairesHabituelles": 35.0,
+            "joursTravaillesParSemaine": 5,
+            "estAnnualise": false
+          },
+          "contraintesReglementaires": {
+            "amplitudeJournaliereMaximum": 14.0,
+            "reposQuotidienMinimum": 11.0,
+            "heuresMaximumParSemaine": 44.0,
+            "joursConsecutifsMaximum": 6
+          },
+          "travailleJourFerie": true
+        },
+        {
+          "id": "SAL-2003",
+          "statut": "CDI",
+          "sitesAutorises": ["HOPITAL-NORD"],
+          "activitesCompatibles": ["ACT-SOIN"],
+          "contrat": {
+            "heuresMoyennesParJour": 7.0,
+            "heuresHebdomadairesHabituelles": 35.0,
+            "joursTravaillesParSemaine": 5,
+            "estAnnualise": false
+          },
+          "contraintesReglementaires": {
+            "amplitudeJournaliereMaximum": 14.0,
+            "reposQuotidienMinimum": 11.0,
+            "heuresMaximumParSemaine": 44.0,
+            "joursConsecutifsMaximum": 6
+          },
+          "travailleJourFerie": true
+        },
+        {
+          "id": "SAL-2004",
+          "statut": "CDI",
+          "sitesAutorises": ["HOPITAL-NORD"],
+          "activitesCompatibles": ["ACT-ADMIN"],
+          "contrat": {
+            "heuresMoyennesParJour": 7.0,
+            "heuresHebdomadairesHabituelles": 35.0,
+            "joursTravaillesParSemaine": 5,
+            "estAnnualise": false
+          },
+          "contraintesReglementaires": {
+            "amplitudeJournaliereMaximum": 14.0,
+            "reposQuotidienMinimum": 11.0,
+            "heuresMaximumParSemaine": 44.0,
+            "joursConsecutifsMaximum": 6
+          },
+          "travailleJourFerie": true
+        },
+        {
+          "id": "SAL-2005",
+          "statut": "CDI",
+          "sitesAutorises": ["HOPITAL-NORD"],
+          "activitesCompatibles": ["ACT-SOIN"],
+          "contrat": {
+            "heuresMoyennesParJour": 7.0,
+            "heuresHebdomadairesHabituelles": 35.0,
+            "joursTravaillesParSemaine": 5,
+            "estAnnualise": false
+          },
+          "contraintesReglementaires": {
+            "amplitudeJournaliereMaximum": 14.0,
+            "reposQuotidienMinimum": 11.0,
+            "heuresMaximumParSemaine": 44.0,
+            "joursConsecutifsMaximum": 6
+          },
+          "travailleJourFerie": true
+        }
+      ],
+      "postesVirtuels": [
+        {
+          "id": "PV-001",
+          "type": "POTENTIEL",
+          "capaciteCible": 2400,
+          "activitesAutorisees": ["ACT-SOIN"],
+          "lieuxAutorises": ["HOPITAL-NORD"],
+          "postesComptablesCompatibles": ["PC-SOINS"]
+        }
+      ]
+    },
+    "creneaux": [
+      {
+        "id": "PLN-2001-L",
+        "date": "2026-05-11",
+        "heureDebut": "08:00",
+        "heureFin": "16:00",
+        "lieu": "HOPITAL-NORD",
+        "codeActiviteId": "ACT-SOIN",
+        "ressourceAffecteeId": "SAL-2001"
+      },
+      {
+        "id": "PLN-2001-MA",
+        "date": "2026-05-12",
+        "heureDebut": "08:00",
+        "heureFin": "16:00",
+        "lieu": "HOPITAL-NORD",
+        "codeActiviteId": "ACT-SOIN",
+        "ressourceAffecteeId": "SAL-2001"
+      },
+      {
+        "id": "PLN-2001-ME",
+        "date": "2026-05-13",
+        "heureDebut": "08:00",
+        "heureFin": "12:00",
+        "lieu": "HOPITAL-NORD",
+        "codeActiviteId": "ACT-SOIN",
+        "ressourceAffecteeId": "SAL-2001"
+      },
+      {
+        "id": "PLN-2002-L",
+        "date": "2026-05-11",
+        "heureDebut": "08:00",
+        "heureFin": "16:00",
+        "lieu": "HOPITAL-NORD",
+        "codeActiviteId": "ACT-SOIN",
+        "ressourceAffecteeId": "SAL-2002"
+      },
+      {
+        "id": "PLN-2002-MA",
+        "date": "2026-05-12",
+        "heureDebut": "08:00",
+        "heureFin": "16:00",
+        "lieu": "HOPITAL-NORD",
+        "codeActiviteId": "ACT-SOIN",
+        "ressourceAffecteeId": "SAL-2002"
+      },
+      {
+        "id": "PLN-2003-J",
+        "date": "2026-05-14",
+        "heureDebut": "04:00",
+        "heureFin": "12:00",
+        "lieu": "HOPITAL-NORD",
+        "codeActiviteId": "ACT-SOIN",
+        "ressourceAffecteeId": "SAL-2003"
+      },
+      {
+        "id": "PLN-2004-L",
+        "date": "2026-05-11",
+        "heureDebut": "08:00",
+        "heureFin": "16:00",
+        "lieu": "HOPITAL-NORD",
+        "codeActiviteId": "ACT-ADMIN",
+        "ressourceAffecteeId": "SAL-2004"
+      },
+      {
+        "id": "PLN-2005-L",
+        "date": "2026-05-11",
+        "heureDebut": "08:00",
+        "heureFin": "16:00",
+        "lieu": "HOPITAL-NORD",
+        "codeActiviteId": "ACT-SOIN",
+        "ressourceAffecteeId": "SAL-2005"
+      }
+    ],
+    "indisponibilites": {
+      "items": [
+        {
+          "ressourceId": "SAL-2005",
+          "dateDebut": "2026-05-13",
+          "dateFin": "2026-05-13",
+          "motif": "CONGE_POSE"
+        }
+      ]
+    }
+  }
+}

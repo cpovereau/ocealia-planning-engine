@@ -42,3 +42,8 @@ out/
 /data/file-adapter/outbox/
 /data/file-adapter/archive/
 /data/file-adapter/error/
+
+# Livrable Produit : le programme est reconstruit par preparer-la-livraison.ps1
+livraison-produit/moteur/*.jar
+livraison-produit/data/
+livraison-produit/*.log

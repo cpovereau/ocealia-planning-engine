@@ -1,0 +1,259 @@
+{
+  "requestId": "SC04-REF-0001",
+  "metadata": {
+    "clientId": "WINDEV",
+    "timestamp": "2026-05-11T08:00:00Z",
+    "source": "TEST"
+  },
+  "scenarioType": "SC-04",
+  "planningContext": {
+    "horizon": {
+      "dateDebut": "2026-05-11",
+      "dateFin": "2026-05-24"
+    },
+    "strategieScoring": "ANALYSE_RH",
+    "equite": {
+      "ecartTolerePourcent": 10.0
+    }
+  },
+  "scenarioParameters": {
+    "datePivot": "2026-05-18"
+  },
+  "dataSet": {
+    "referentiels": {
+      "activites": [
+        {
+          "codeActiviteId": "ACT-SOIN",
+          "libelle": "Soins infirmiers",
+          "compteDansCharge": true,
+          "genereDetteRepos": false,
+          "estServiceCritique": true
+        }
+      ]
+    },
+    "ressources": {
+      "salaries": [
+        {
+          "id": "SAL-A",
+          "statut": "CDI",
+          "sitesAutorises": [
+            "HOPITAL-NORD"
+          ],
+          "activitesCompatibles": [
+            "ACT-SOIN"
+          ],
+          "contrat": {
+            "heuresHebdomadairesHabituelles": 20.0
+          },
+          "contraintesReglementaires": {
+            "amplitudeJournaliereMaximum": 14.0,
+            "reposQuotidienMinimum": 11.0,
+            "heuresMaximumParSemaine": 44.0,
+            "joursConsecutifsMaximum": 6
+          }
+        },
+        {
+          "id": "SAL-B",
+          "statut": "CDI",
+          "sitesAutorises": [
+            "HOPITAL-NORD"
+          ],
+          "activitesCompatibles": [
+            "ACT-SOIN"
+          ],
+          "contrat": {
+            "heuresHebdomadairesHabituelles": 20.0
+          },
+          "contraintesReglementaires": {
+            "amplitudeJournaliereMaximum": 14.0,
+            "reposQuotidienMinimum": 11.0,
+            "heuresMaximumParSemaine": 44.0,
+            "joursConsecutifsMaximum": 6
+          }
+        }
+      ]
+    },
+    "creneaux": [
+      {
+        "id": "PASSE-MATIN-0",
+        "date": "2026-05-11",
+        "heureDebut": "08:00",
+        "heureFin": "12:00",
+        "lieu": "HOPITAL-NORD",
+        "codeActiviteId": "ACT-SOIN",
+        "ressourceAffecteeId": "SAL-A"
+      },
+      {
+        "id": "PASSE-APREM-0",
+        "date": "2026-05-11",
+        "heureDebut": "13:00",
+        "heureFin": "17:00",
+        "lieu": "HOPITAL-NORD",
+        "codeActiviteId": "ACT-SOIN",
+        "ressourceAffecteeId": "SAL-B"
+      },
+      {
+        "id": "PASSE-MATIN-1",
+        "date": "2026-05-12",
+        "heureDebut": "08:00",
+        "heureFin": "12:00",
+        "lieu": "HOPITAL-NORD",
+        "codeActiviteId": "ACT-SOIN",
+        "ressourceAffecteeId": "SAL-A"
+      },
+      {
+        "id": "PASSE-APREM-1",
+        "date": "2026-05-12",
+        "heureDebut": "13:00",
+        "heureFin": "17:00",
+        "lieu": "HOPITAL-NORD",
+        "codeActiviteId": "ACT-SOIN",
+        "ressourceAffecteeId": "SAL-B"
+      },
+      {
+        "id": "PASSE-MATIN-2",
+        "date": "2026-05-13",
+        "heureDebut": "08:00",
+        "heureFin": "12:00",
+        "lieu": "HOPITAL-NORD",
+        "codeActiviteId": "ACT-SOIN",
+        "ressourceAffecteeId": "SAL-A"
+      },
+      {
+        "id": "PASSE-APREM-2",
+        "date": "2026-05-13",
+        "heureDebut": "13:00",
+        "heureFin": "17:00",
+        "lieu": "HOPITAL-NORD",
+        "codeActiviteId": "ACT-SOIN",
+        "ressourceAffecteeId": "SAL-B"
+      },
+      {
+        "id": "PASSE-MATIN-3",
+        "date": "2026-05-14",
+        "heureDebut": "08:00",
+        "heureFin": "12:00",
+        "lieu": "HOPITAL-NORD",
+        "codeActiviteId": "ACT-SOIN",
+        "ressourceAffecteeId": "SAL-A"
+      },
+      {
+        "id": "PASSE-APREM-3",
+        "date": "2026-05-14",
+        "heureDebut": "13:00",
+        "heureFin": "17:00",
+        "lieu": "HOPITAL-NORD",
+        "codeActiviteId": "ACT-SOIN",
+        "ressourceAffecteeId": "SAL-B"
+      },
+      {
+        "id": "PASSE-MATIN-4",
+        "date": "2026-05-15",
+        "heureDebut": "08:00",
+        "heureFin": "12:00",
+        "lieu": "HOPITAL-NORD",
+        "codeActiviteId": "ACT-SOIN",
+        "ressourceAffecteeId": "SAL-A"
+      },
+      {
+        "id": "PASSE-APREM-4",
+        "date": "2026-05-15",
+        "heureDebut": "13:00",
+        "heureFin": "17:00",
+        "lieu": "HOPITAL-NORD",
+        "codeActiviteId": "ACT-SOIN",
+        "ressourceAffecteeId": "SAL-B"
+      },
+      {
+        "id": "FUTUR-MATIN-0",
+        "date": "2026-05-18",
+        "heureDebut": "08:00",
+        "heureFin": "12:00",
+        "lieu": "HOPITAL-NORD",
+        "codeActiviteId": "ACT-SOIN",
+        "ressourceAffecteeId": "SAL-A"
+      },
+      {
+        "id": "FUTUR-APREM-0",
+        "date": "2026-05-18",
+        "heureDebut": "13:00",
+        "heureFin": "17:00",
+        "lieu": "HOPITAL-NORD",
+        "codeActiviteId": "ACT-SOIN",
+        "ressourceAffecteeId": "SAL-A"
+      },
+      {
+        "id": "FUTUR-MATIN-1",
+        "date": "2026-05-19",
+        "heureDebut": "08:00",
+        "heureFin": "12:00",
+        "lieu": "HOPITAL-NORD",
+        "codeActiviteId": "ACT-SOIN",
+        "ressourceAffecteeId": "SAL-A"
+      },
+      {
+        "id": "FUTUR-APREM-1",
+        "date": "2026-05-19",
+        "heureDebut": "13:00",
+        "heureFin": "17:00",
+        "lieu": "HOPITAL-NORD",
+        "codeActiviteId": "ACT-SOIN",
+        "ressourceAffecteeId": "SAL-A"
+      },
+      {
+        "id": "FUTUR-MATIN-2",
+        "date": "2026-05-20",
+        "heureDebut": "08:00",
+        "heureFin": "12:00",
+        "lieu": "HOPITAL-NORD",
+        "codeActiviteId": "ACT-SOIN",
+        "ressourceAffecteeId": "SAL-A"
+      },
+      {
+        "id": "FUTUR-APREM-2",
+        "date": "2026-05-20",
+        "heureDebut": "13:00",
+        "heureFin": "17:00",
+        "lieu": "HOPITAL-NORD",
+        "codeActiviteId": "ACT-SOIN",
+        "ressourceAffecteeId": "SAL-A"
+      },
+      {
+        "id": "FUTUR-MATIN-3",
+        "date": "2026-05-21",
+        "heureDebut": "08:00",
+        "heureFin": "12:00",
+        "lieu": "HOPITAL-NORD",
+        "codeActiviteId": "ACT-SOIN",
+        "ressourceAffecteeId": "SAL-A"
+      },
+      {
+        "id": "FUTUR-APREM-3",
+        "date": "2026-05-21",
+        "heureDebut": "13:00",
+        "heureFin": "17:00",
+        "lieu": "HOPITAL-NORD",
+        "codeActiviteId": "ACT-SOIN",
+        "ressourceAffecteeId": "SAL-A"
+      },
+      {
+        "id": "FUTUR-MATIN-4",
+        "date": "2026-05-22",
+        "heureDebut": "08:00",
+        "heureFin": "12:00",
+        "lieu": "HOPITAL-NORD",
+        "codeActiviteId": "ACT-SOIN",
+        "ressourceAffecteeId": "SAL-A"
+      },
+      {
+        "id": "FUTUR-APREM-4",
+        "date": "2026-05-22",
+        "heureDebut": "13:00",
+        "heureFin": "17:00",
+        "lieu": "HOPITAL-NORD",
+        "codeActiviteId": "ACT-SOIN",
+        "ressourceAffecteeId": "SAL-A"
+      }
+    ]
+  }
+}

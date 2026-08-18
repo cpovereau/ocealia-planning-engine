@@ -1,0 +1,542 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.org/schema/scenario-contract.schema.json",
+  "title": "ScenarioContract",
+  "description": "Contrat JSON d'alimentation du moteur de planification. Document en cours d’alignement avec les contrats JSON stabilisés. La source de vérité actuelle est constituée par les schémas JSON par scénario. RANG 11 — le moteur REFUSE tout champ qu'il ne connaît pas : réponse 400 UNKNOWN_FIELD portant le chemin JSON complet du champ fautif et la liste des noms acceptés à cet endroit, sur les deux canaux HTTP et FileAdapter. Deux exceptions nommées : les quatre champs de créneau marqués OBSOLÈTE ci-dessous, encore acceptés et ignorés le temps de la migration ; et quelques blocs restés délibérément tolérants (enveloppe de requête, dataSet, salaries, postesVirtuels, paramètres SC-03), qui ne prétendent pas le contraire.",
+  "type": "object",
+  "required": [
+    "requestId",
+    "metadata",
+    "scenarioType",
+    "planningContext",
+    "scenarioParameters",
+    "dataSet"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "requestId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Identifiant de la demande, repris tel quel dans la réponse. Déclaré obligatoire par 50_openapi_windev_moteur_v_1.yaml depuis l'origine et absent de ce schéma jusqu'au lot L3 du chantier équité : fermé sur additionalProperties, ce schéma rejetait donc TOUTE requête valide. Constaté en cherchant pourquoi coefficientsPenibilite n'y figurait pas non plus."
+    },
+    "metadata": {
+      "type": "object",
+      "required": [
+        "clientId",
+        "timestamp"
+      ],
+      "additionalProperties": true,
+      "description": "Provenance de la demande. Bloc délibérément tolérant, comme l'enveloppe de requête.",
+      "properties": {
+        "clientId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "Horodatage de la demande, ISO-8601."
+        },
+        "source": {
+          "type": "string",
+          "description": "Système émetteur, par exemple WINDEV."
+        }
+      }
+    },
+    "scenarioType": {
+      "type": "string",
+      "enum": [
+        "SC-01",
+        "SC-02",
+        "SC-03",
+        "SC-04",
+        "SC-05",
+        "SC-06"
+      ],
+      "description": "Identifiant du scénario métier. SC-02 : remplacement d'un salarié absent — l'absent est désigné par scenarioParameters.salarieAbsentId et l'absence elle-même portée par dataSet.indisponibilites ; schéma Sc02ScenarioRequest dans 50_openapi_windev_moteur_v_1.yaml. SC-05 : arbitrage d'un périmètre commun entre deux salariés — les deux sont désignés par scenarioParameters.salarieAId et salarieBId, et le périmètre transmis dans scenarioParameters.creneauxArbitres ; schéma Sc05ScenarioRequest dans le même fichier. SC-06 : désignation de la ressource la plus à même de couvrir un besoin — son besoin est porté par scenarioParameters.besoin, schéma Sc06ScenarioRequest dans le même fichier. SC-04 : optimisation globale d'un planning existant sur une periode — le degre de liberte tient en deux champs : scenarioParameters.datePivot (obligatoire) borne - avant elle tout est fige, a partir d'elle le solveur decide - et scenarioParameters.creneauxAjustables (optionnel) selectionne, en INTERSECTION avec le pivot : est ajustable ce qui est a la fois posterieur au pivot ET designe. La liste ne rouvre jamais le passe, et la zone remaniable qu'elle ouvre est bornee a un mois glissant. Absente, tout l'apres-pivot est ajustable. Aucun historique des compteurs n'est attendu, la profondeur est celle de planningContext.horizon et le moteur recalcule depuis les creneaux transmis ; schema Sc04ScenarioRequest dans 50_openapi_windev_moteur_v_1.yaml."
+    },
+    "planningContext": {
+      "type": "object",
+      "required": [
+        "horizon",
+        "strategieScoring"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "coefficientsPenibilite": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "[Équité L1] Ce que vaut une heure selon quand elle est travaillée, en heures ordinaires — l'heure ordinaire vaut 1 et ne se transmet pas. Facultatif : absent, heuresPonderees vaut heuresTravaillees, et le moteur se tait plutôt que d'inventer une échelle. Un bloc transmis qui ne pondère rien lève COEFFICIENTS_PENIBILITE_SANS_EFFET. [Équité L3] Les coefficients doivent DÉCROÎTRE le long de l'ordre de dominance NUIT > DIMANCHE > FERIE : une minute cumulant deux pénibilités est attribuée à la dominante, et si celle-ci pèse moins, cumuler allège l'heure au lieu de l'alourdir. Une échelle qui contredit cet ordre lève COEFFICIENTS_PENIBILITE_INCOHERENTS (WARNING) sans être refusée. Une valeur négative est refusée (422). Ces valeurs se calibrent sur des plannings réels : voir 92_CALIBRATION_PENIBILITE.md.",
+          "properties": {
+            "nuit": {
+              "type": "number",
+              "minimum": 0,
+              "description": "Ce que vaut une heure de nuit."
+            },
+            "dimanche": {
+              "type": "number",
+              "minimum": 0,
+              "description": "Ce que vaut une heure de dimanche non nocturne."
+            },
+            "ferie": {
+              "type": "number",
+              "minimum": 0,
+              "description": "Ce que vaut une heure de jour férié ni nocturne ni dominicale."
+            }
+          }
+        },
+        "regulatoryParameters": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "[S8.0] Cadre réglementaire de la résolution. Facultatif : absent, le moteur applique la plage de nuit légale par défaut (22:00-06:00) et déduit les jours fériés de ce que le dataset déclare.",
+          "properties": {
+            "heureDebutNuit": {
+              "type": "string",
+              "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+              "description": "Début de la plage de nuit. À transmettre avec heureFinNuit : une borne seule est ignorée et tracée en WARN, car mélanger une borne déclarée avec une borne par défaut produirait un intervalle que personne n'a voulu."
+            },
+            "heureFinNuit": {
+              "type": "string",
+              "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+              "description": "Fin de la plage de nuit. Voir heureDebutNuit."
+            },
+            "joursFeries": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "date"
+              },
+              "description": "Calendrier des jours fériés de la période. SOURCE DE VÉRITÉ dès qu'il est présent : il l'emporte sur isJourFerie porté par les créneaux et sur holidayDates en SC-01, sans fusion — une divergence est tracée en WARN, jamais silencieusement absorbée. Une liste VIDE signifie « aucun jour férié » et fait autorité tout autant ; c'est l'absence du champ qui laisse le moteur déduire. Seule forme permettant de qualifier correctement un créneau traversant minuit, un drapeau porté par le créneau ne disant pas lequel des deux jours civils est férié."
+            }
+          }
+        },
+        "horizon": {
+          "type": "object",
+          "required": [
+            "dateDebut",
+            "dateFin"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "dateDebut": {
+              "type": "string",
+              "format": "date"
+            },
+            "dateFin": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        },
+        "strategieScoring": {
+          "type": "string",
+          "enum": [
+            "EXPLOITATION",
+            "ANALYSE_RH",
+            "AUDIT"
+          ]
+        },
+        "seuils": {
+          "type": "object",
+          "additionalProperties": false
+        },
+        "equite": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "[Equite L5] A partir de quel ecart au contrat l'encadrement estime qu'il y a inequite. FACULTATIF, et il l'est pour de bon : absent, la contrainte d'equite ne pese rien et le score est exactement celui d'avant le lot L5. Le moteur MESURE l'ecart et le restitue (workMetrics.ecartContratPourcent) ; il ne le sanctionne que si on lui dit a partir de quand. Meme logique que le seuil de surcharge de SC-02.",
+          "properties": {
+            "ecartTolerePourcent": {
+              "type": "number",
+              "minimum": 0,
+              "description": "Ecart au volume contractuel, en points de pourcentage, au-dela duquel le moteur penalise. La VALEUR ABSOLUE de l'ecart est comparee a cette tolerance : la sous-charge compte autant que la surcharge, sans quoi le moteur eviterait de surcharger sans jamais reequilibrer. 0 signifie 'tout ecart compte'. Une valeur negative est refusee (422) : une tolerance decrit une marge, pas une exigence."
+            }
+          }
+        }
+      }
+    },
+    "scenarioParameters": {
+      "type": "object",
+      "description": "Paramètres spécifiques au scénario",
+      "additionalProperties": true
+    },
+    "dataSet": {
+      "type": "object",
+      "required": [
+        "creneaux",
+        "ressources"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "creneaux": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Creneau"
+          }
+        },
+        "referentiels": {
+          "type": "object",
+          "description": "Référentiels client, dont activites[] qui porte compteDansCharge, genereDetteRepos et estServiceCritique. Décrit en détail dans 50_openapi_windev_moteur_v_1.yaml (schéma Referentiels), qui fait autorité. Déclaré ici parce que ce schéma ferme dataSet : sans cette entrée, une requête SC-02, SC-03 ou SC-06 conforme serait rejetée.",
+          "additionalProperties": true
+        },
+        "indisponibilites": {
+          "type": "object",
+          "description": "Périodes d'indisponibilité individuelles, lues par la contrainte HARD METIER_HARD_INDISPONIBILITE. C'est ce bloc, et lui seul, qui décrit l'ABSENCE de SC-02 : salarieAbsentId dit de qui il s'agit, ces périodes disent quand. Aucun champ nouveau n'a été créé pour l'absence — conserver une source unique évite les divergences.",
+          "additionalProperties": false,
+          "properties": {
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "ressourceId",
+                  "dateDebut",
+                  "dateFin"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "ressourceId": {
+                    "type": "string"
+                  },
+                  "dateDebut": {
+                    "type": "string",
+                    "format": "date",
+                    "description": "Premier jour d'absence, jour plein."
+                  },
+                  "dateFin": {
+                    "type": "string",
+                    "format": "date",
+                    "description": "Dernier jour d'absence, jour plein — inclus. Un créneau traversant minuit est recouvert dès qu'il empiète sur la période, même d'une minute."
+                  },
+                  "motif": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "ressources": {
+          "type": "object",
+          "required": [
+            "salaries"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "salaries": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Salarie"
+              }
+            },
+            "postesVirtuels": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/PosteVirtuel"
+              },
+              "description": "Liste de postes virtuels fournis par l'utilisateur (ex: POTENTIEL) ou par le système."
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "Creneau": {
+      "type": "object",
+      "required": [
+        "id",
+        "date",
+        "heureDebut",
+        "heureFin",
+        "lieu",
+        "activite"
+      ],
+      "additionalProperties": false,
+      "description": "Créneau à affecter. La nuit et le dimanche sont calculés par le moteur — intersection avec la plage de nuit réglementaire, jour de la semaine — et les drapeaux du créneau n'y changent rien. Le jour férié fait exception depuis le lot S7.9 : SC-03 et SC-06 ne transmettant aucun calendrier, isJourFerie en est la seule source et fait donc autorité.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Identifiant du créneau. Requis et unique sur l'ensemble du scénario, toutes origines confondues — exigence technique du solveur (@PlanningId), pas un simple confort de lecture. L'appelant le renseigne dans tous les cas : clé primaire de sa base (Id_Journee) pour un créneau servi, identifiant dédié (BES-00X) pour un besoin sans ligne en base. Un même scénario peut mêler les deux natures (cas de SC-03). Le moteur traite cette valeur comme une chaîne opaque : il la transporte et la restitue à l'identique dans planning.jours[].creneaux[].id, sans jamais l'interpréter. La convention de préfixe est lue par l'appelant seul. Voir 20_DECISIONS_CONCEPTION_OPTAPLANNER.md — Identité des créneaux et clé de réintégration WinDev."
+        },
+        "date": {
+          "type": "string",
+          "format": "date",
+          "description": "Date de référence du créneau (jour de début si traversée de minuit)."
+        },
+        "heureDebut": {
+          "type": "string",
+          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+          "description": "Heure de début (HH:MM)."
+        },
+        "heureFin": {
+          "type": "string",
+          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+          "description": "Heure de fin (HH:MM). Si heureFin < heureDebut, le créneau traverse minuit."
+        },
+        "lieu": {
+          "type": "string",
+          "description": "Code site/lieu. Sert aux compatibilités ressource/lieu si utilisées par le moteur."
+        },
+        "codeActiviteId": {
+          "type": "string",
+          "description": "Identifiant d'activité du logiciel de planning (clé de jointure). Recommandé. Si absent, le moteur peut utiliser un fallback sur 'activite' (mode dev/compat)."
+        },
+        "activite": {
+          "type": "string",
+          "description": "Libellé d'affichage de l'activité (non utilisé comme clé de jointure si codeActiviteId est fourni)."
+        },
+        "posteComptable": {
+          "type": "string",
+          "description": "Code poste comptable (optionnel). Sert aux compatibilités ressource/poste comptable si utilisées."
+        },
+        "priorite": {
+          "type": "integer",
+          "minimum": 0,
+          "deprecated": true,
+          "description": "OBSOLÈTE — champ retiré de CreneauInputDTO en Phase 10C. Encore accepté et silencieusement ignoré à la désérialisation ; ne plus émettre."
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "IMPOSE",
+            "GENERE"
+          ],
+          "deprecated": true,
+          "description": "OBSOLÈTE — champ retiré de CreneauInputDTO en Phase 10C, et retiré de 'required'. Le moteur qualifie lui-même l'origine du créneau : IMPOSE pour un créneau reçu, GENERE pour un créneau qu'il produit. Encore accepté et silencieusement ignoré ; ne plus émettre."
+        },
+        "isJourFerie": {
+          "type": "boolean",
+          "description": "[S7.9] SOURCE DE VÉRITÉ pour SC-03 et SC-06, qui ne transmettent aucun calendrier de jours fériés. Une date déclarée fériée par au moins un créneau l'est pour la journée entière et pour tous les salariés : une déclaration partielle est donc réparée, pas subie. Deux règles en dépendent — l'interdiction (JourFerieRefuse, HARD, via travailleJourFerie) et la valorisation (pénalité de pénibilité et workMetrics.heuresJourFerie). Non transmis vaut non férié. Limite : un créneau traversant minuit n'est rattaché qu'à sa date de début. SC-01 n'utilise pas ce champ — son calendrier est porté par scenarioParameters.holidayDates."
+        },
+        "isReposHebdo": {
+          "type": "boolean",
+          "deprecated": true,
+          "description": "OBSOLÈTE — absent de CreneauInputDTO. Encore accepté et silencieusement ignoré à la désérialisation ; ne plus émettre. Le repos hebdomadaire est qualifié par le référentiel d'activités (ReferentielComptabiliteActivite), pas par ce drapeau."
+        },
+        "segmentNuit": {
+          "type": "boolean",
+          "description": "INDICATIF (non réglementaire). La vérité 'nuit' est calculée par intersection temporelle avec la plage de nuit de RegulatoryParameters."
+        },
+        "axesOrganisationnels": {
+          "type": "object",
+          "deprecated": true,
+          "description": "OBSOLÈTE — champ retiré de CreneauInputDTO en Phase 10C (la classe AxesOrganisationnelsDTO a été supprimée). Encore accepté et silencieusement ignoré ; ne plus émettre.",
+          "properties": {
+            "directionIds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "serviceIds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "lieuIds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "posteComptableIds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "groupeBesoinId": {
+          "type": "string"
+        },
+        "blocJourId": {
+          "type": "string"
+        },
+        "ordreDansBloc": {
+          "type": "integer"
+        },
+        "estSegmentDePause": {
+          "type": "boolean"
+        },
+        "ressourceAffecteeId": {
+          "type": "string",
+          "description": "[Lot S1] Ressource qui sert déjà ce créneau. Renseigné lorsque le créneau relève d'un planning existant transmis comme fait acquis : le scénario le fige alors, et le solveur ne peut plus le modifier. Requis sur tous les créneaux du dataSet en SC-06. En SC-02, c'est ce champ qui distingue les créneaux à remplacer — ceux du salarié absent que son absence recouvre — de l'existant à préserver ; une ressource introuvable dans le dataset y fait rejeter la demande, plutôt que de laisser un créneau glisser en besoin nu. Sans objet en SC-01 et SC-03, où le champ est ignoré."
+        }
+      }
+    },
+    "Salarie": {
+      "type": "object",
+      "required": [
+        "id",
+        "statut",
+        "sitesAutorises",
+        "activitesCompatibles"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "statut": {
+          "type": "string"
+        },
+        "sitesAutorises": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "activitesCompatibles": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Liste des idActivitePlanning compatibles (ex: 10101...). Doit être cohérente avec 'codeActiviteId' des créneaux."
+        },
+        "axesOrganisationnels": {
+          "$ref": "#/definitions/AxesOrganisationnels",
+          "deprecated": true,
+          "description": "OBSOLÈTE — champ retiré de SalarieInputDTO en Phase 10C. Encore accepté et silencieusement ignoré ; ne plus émettre."
+        },
+        "contratTravail": {
+          "type": "object",
+          "deprecated": true,
+          "description": "OBSOLÈTE — champ retiré de SalarieInputDTO en Phase 10C (la classe ContratTravailDTO a été supprimée). Un bloc 'contrat' salarié est prévu au lot L4 du cadrage 92, avec une structure différente. Ne plus émettre.",
+          "properties": {
+            "dateDebut": {
+              "type": "string"
+            },
+            "dateFin": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "dureeMoyenneHeuresParJour": {
+              "type": "number"
+            }
+          }
+        },
+        "contraintesReglementaires": {
+          "type": "object",
+          "description": "Plafonds auxquels le salarié est soumis — prescriptif. Tous les seuils sont individuels : trois salariés = trois jeux de valeurs. Pour désactiver une limite, OMETTRE le champ. Une valeur 0 est lue à la lettre : un maximum à 0 interdit tout, un minimum à 0 n'exige rien. Exception : reposHebdomadaireFenetreJours est une taille et non une borne, il est pris en compte à partir de 1.",
+          "properties": {
+            "heuresMinimumParJour": {
+              "type": "number"
+            },
+            "heuresMaximumParJour": {
+              "type": "number"
+            },
+            "amplitudeJournaliereMaximum": {
+              "type": "number"
+            },
+            "reposQuotidienMinimum": {
+              "type": "number"
+            },
+            "heuresMinimumParSemaine": {
+              "type": "number"
+            },
+            "heuresMaximumParSemaine": {
+              "type": "number"
+            },
+            "nuitsMaximumParSemaine": {
+              "type": "integer"
+            },
+            "joursConsecutifsMaximum": {
+              "type": "integer"
+            },
+            "nuitsConsecutivesMaximum": {
+              "type": "integer",
+              "description": "[Lot S7.0] Nuits consécutives autorisées. Seuil précédemment global et jamais alimenté."
+            },
+            "joursReposMinimumApresNuits": {
+              "type": "integer",
+              "description": "[Lot S7.0] Jours calendaires de repos exigés après une séquence de nuits."
+            },
+            "dimanchesTravaillesMaximum": {
+              "type": "integer",
+              "description": "[Lot S7.0] Dimanches travaillés autorisés sur la période de résolution."
+            },
+            "reposHebdomadaireFenetreJours": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "[Lot S7.0] Largeur de la fenêtre glissante de repos hebdomadaire (jours). Taille et non borne : une valeur 0 laisse la contrainte inactive. À transmettre avec reposHebdomadaireJoursOffMinimum : seuls, ces deux champs ne décrivent aucune règle."
+            },
+            "reposHebdomadaireJoursOffMinimum": {
+              "type": "integer",
+              "description": "[Lot S7.0] Jours non travaillés exigés dans la fenêtre ci-dessus."
+            }
+          }
+        },
+        "contrat": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "[Lot S2] Ce que le salarié fait normalement — descriptif. Ne pas confondre avec contraintesReglementaires, qui est prescriptif. Les dates de contrat sont volontairement absentes : le filtrage des salariés hors contrat relève de l'appelant.",
+          "properties": {
+            "heuresMoyennesParJour": {
+              "type": "number"
+            },
+            "heuresHebdomadairesHabituelles": {
+              "type": "number"
+            },
+            "joursTravaillesParSemaine": {
+              "type": "integer"
+            },
+            "estAnnualise": {
+              "type": "boolean"
+            }
+          }
+        }
+      }
+    },
+    "PosteVirtuel": {
+      "type": "object",
+      "required": [
+        "id",
+        "type",
+        "capaciteCible",
+        "activitesAutorisees",
+        "lieuxAutorises",
+        "postesComptablesCompatibles"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "POTENTIEL",
+            "REVELE"
+          ]
+        },
+        "capaciteCible": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Capacité cible sur la période (en minutes ou heures selon convention scénario)."
+        },
+        "activitesAutorisees": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Liste des idActivitePlanning autorisés (ex: 10101...)."
+        },
+        "lieuxAutorises": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "postesComptablesCompatibles": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,1274 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ScenarioResponse.schema.json",
+  "title": "ScenarioResponse",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "scenarioType",
+    "solverResult",
+    "planning",
+    "workMetrics",
+    "solutionSummary",
+    "diagnostics"
+  ],
+  "properties": {
+    "scenarioType": {
+      "type": "string"
+    },
+    "solverResult": {
+      "$ref": "#/$defs/SolverResult"
+    },
+    "planning": {
+      "$ref": "#/$defs/ScenarioPlanning"
+    },
+    "workMetrics": {
+      "$ref": "#/$defs/WorkMetrics"
+    },
+    "solutionSummary": {
+      "$ref": "#/$defs/SolutionSummary"
+    },
+    "diagnostics": {
+      "$ref": "#/$defs/Diagnostics"
+    },
+    "candidats": {
+      "type": "array",
+      "description": "Propre à SC-06 : manières de couvrir le besoin, classées, trois au plus. La clé est ABSENTE — et non vide — pour SC-01 et SC-03 : une réponse sans classement ne doit pas laisser croire à une capacité inexistante.",
+      "items": {
+        "$ref": "#/$defs/Candidat"
+      }
+    },
+    "remplacement": {
+      "$ref": "#/$defs/Remplacement",
+      "description": "Propre à SC-02 : les conséquences de l'absence. Même règle que candidats — la clé est ABSENTE partout ailleurs."
+    },
+    "arbitrage": {
+      "$ref": "#/$defs/Arbitrage",
+      "description": "Propre à SC-05 : ce que l'arbitrage a déplacé, et pour qui. Même règle que candidats et remplacement — la clé est ABSENTE partout ailleurs."
+    },
+    "optimisation": {
+      "$ref": "#/$defs/Optimisation",
+      "description": "Propre a SC-04 : ce que l'optimisation a produit, et ce qu'elle a coute a chacun. Meme regle que candidats, remplacement et arbitrage - la cle est ABSENTE partout ailleurs."
+    }
+  },
+  "$defs": {
+    "Arbitrage": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "[SC-05] Ce que l'arbitrage a déplacé, et ce qu'il en coûte à chacun. Le bloc planning ne restitue que l'APRÈS ; SC-05 rend une répartition qui doit se justifier ligne à ligne devant les intéressés, et une justification sans terme de comparaison n'en est pas une. Les compteurs découpent le périmètre selon CE QUI EST ARRIVÉ à chaque créneau ; un créneau resté chez son titulaire n'entre dans aucun des trois, et c'est le cas le plus fréquent.",
+      "required": [
+        "ressourcesArbitrees",
+        "creneauxArbitres",
+        "creneauxDeplaces",
+        "creneauxEpinglesSurUnTiers",
+        "creneauxNonCouverts",
+        "acceptable",
+        "motifs",
+        "parSalarie",
+        "details"
+      ],
+      "properties": {
+        "ressourcesArbitrees": {
+          "type": "array",
+          "description": "Salariés entre lesquels l'arbitrage a porté, DANS L'ORDRE OÙ L'APPELANT LES A NOMMÉS — salarieAId puis salarieBId. Un ENSEMBLE, de taille deux aujourd'hui : le « deux » ne vit que dans le contrat d'entrée, le moteur ne sait pas combien ils sont. L'ouverture à N élargira ce tableau sans rien changer au calcul.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "creneauxArbitres": {
+          "type": "integer",
+          "description": "Créneaux du périmètre EFFECTIVEMENT soumis au solveur. Peut être inférieur à la taille de scenarioParameters.creneauxArbitres lorsque celui-ci nomme des créneaux absents du dataSet ou écartés avant résolution — une alerte CRENEAU_ARBITRE_INTROUVABLE le dit alors, et les nomme."
+        },
+        "creneauxDeplaces": {
+          "type": "integer",
+          "description": "Ceux qui ont changé de main."
+        },
+        "creneauxEpinglesSurUnTiers": {
+          "type": "integer",
+          "description": "Ceux qui n'ont pas pu bouger parce qu'une personne étrangère à l'arbitrage les tient. CE N'EST PAS UN ÉCHEC : on ne retire pas son travail à quelqu'un qui n'a rien demandé. L'alerte CRENEAU_ARBITRE_TENU_PAR_UN_TIERS les nomme."
+        },
+        "creneauxNonCouverts": {
+          "type": "integer",
+          "description": "Ceux que personne ne tient au bout du compte. Le moteur ne refuse pas — il rend visible ce qu'il n'a pas su couvrir."
+        },
+        "acceptable": {
+          "type": "boolean",
+          "description": "false dès qu'un motif éliminatoire est levé. La répartition est RENDUE QUAND MÊME : c'est la moins mauvaise, et jamais une erreur. ATTENTION — true signifie « acceptable au regard de ce que le moteur sait », et il ne connaît pas les préférences des intéressés : l'absence de motif ne vaut pas accord des deux salariés."
+        },
+        "motifs": {
+          "type": "array",
+          "description": "Ce qui disqualifie la répartition, ou la décrit. Tableau VIDE — et non clé absente — quand rien n'est à signaler.",
+          "items": {
+            "$ref": "#/$defs/MotifArbitrage"
+          }
+        },
+        "parSalarie": {
+          "type": "array",
+          "description": "L'avant et l'après de chaque salarié arbitré, dans l'ordre de ressourcesArbitrees.",
+          "items": {
+            "$ref": "#/$defs/MouvementSalarie"
+          }
+        },
+        "details": {
+          "type": "array",
+          "description": "Le sort de chaque créneau du périmètre, trié par date puis heure de début. Y COMPRIS ceux que l'arbitrage n'a pas déplacés : un arbitrage qui n'a rien changé est une information, pas un silence.",
+          "items": {
+            "$ref": "#/$defs/CreneauArbitre"
+          }
+        }
+      }
+    },
+    "MouvementSalarie": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "[SC-05] Ce que l'arbitrage a changé pour l'un des salariés arbitrés. Deux lectures qui ne se déduisent pas l'une de l'autre : les compteurs disent combien d'objets ont changé de main, les heures et l'écart disent ce qui a réellement été déplacé — reprendre huit heures et en céder une fait « un repris, un cédé » et n'a rien d'un échange équilibré.",
+      "required": [
+        "ressourceId",
+        "creneauxRepris",
+        "creneauxCedes",
+        "heuresAvant",
+        "heuresApres"
+      ],
+      "properties": {
+        "ressourceId": {
+          "type": "string"
+        },
+        "creneauxRepris": {
+          "type": "integer",
+          "description": "Créneaux du périmètre qu'il tient au bout de l'arbitrage et qu'il ne tenait pas avant."
+        },
+        "creneauxCedes": {
+          "type": "integer",
+          "description": "Créneaux du périmètre qu'il tenait et qu'il ne tient plus."
+        },
+        "heuresAvant": {
+          "type": "number",
+          "description": "Heures travaillées sur l'horizon AVANT arbitrage, en heures décimales — heures brutes, même unité que workMetrics.byRessource."
+        },
+        "heuresApres": {
+          "type": "number",
+          "description": "Les mêmes APRÈS arbitrage."
+        },
+        "ecartContratAvantPourcent": {
+          "type": "number",
+          "description": "Écart SIGNÉ à son contrat avant arbitrage, en points de pourcentage. C'est la seule des deux grandeurs qui soit COMPARABLE ENTRE DEUX PERSONNES : deux salariés à 32 h ne sont pas dans la même situation si l'un est à 35 h de contrat et l'autre à 24 h. CLÉ OMISE lorsque le contrat ne déclare aucun volume hebdomadaire — une borne absente n'est pas une borne à zéro."
+        },
+        "ecartContratApresPourcent": {
+          "type": "number",
+          "description": "Le même écart APRÈS arbitrage. C'est la comparaison des deux qui dit si l'arbitrage a rapproché ou éloigné. Les deux sont mesurés PAR LE MÊME CALCUL : deux mesures obtenues autrement se compareraient mal, et une différence de méthode se lirait comme un mouvement."
+        }
+      }
+    },
+    "CreneauArbitre": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "[SC-05] Le sort d'un créneau du périmètre : à qui il était, à qui il est. Contrairement à CreneauRemplace, où ressourceAvantId désigne toujours le même absent, chaque créneau a ici son propre titulaire d'avant — et c'est précisément ce que l'arbitrage déplace.",
+      "required": [
+        "creneauId",
+        "date",
+        "heureDebut",
+        "heureFin",
+        "dureeMinutes",
+        "nature",
+        "deplace",
+        "tenuParUnTiers"
+      ],
+      "properties": {
+        "creneauId": {
+          "type": "string"
+        },
+        "creneauOrigineId": {
+          "type": "string",
+          "description": "Créneau dont celui-ci est un morceau. CLÉ OMISE pour un créneau qui n'a pas été découpé."
+        },
+        "date": {
+          "type": "string",
+          "format": "date",
+          "description": "Jour de DÉBUT du créneau. Un créneau traversant minuit n'est rattaché qu'à celui-là."
+        },
+        "heureDebut": {
+          "type": "string"
+        },
+        "heureFin": {
+          "type": "string",
+          "description": "Le lendemain si elle n'est pas postérieure au début."
+        },
+        "dureeMinutes": {
+          "type": "integer",
+          "description": "Durée telle que portée par le créneau, jamais recalculée."
+        },
+        "ressourceAvantId": {
+          "type": "string",
+          "description": "Qui tenait le créneau dans le planning transmis. CLÉ OMISE si personne ne le tenait — un besoin nu est aussi du travail à répartir."
+        },
+        "ressourceApresId": {
+          "type": "string",
+          "description": "Qui le tient au bout de l'arbitrage. CLÉ OMISE si personne."
+        },
+        "nature": {
+          "type": "string",
+          "enum": [
+            "SALARIE",
+            "POSTE_VIRTUEL",
+            "NON_COUVERT"
+          ],
+          "description": "Ce qui couvre le créneau au bout du compte."
+        },
+        "deplace": {
+          "type": "boolean",
+          "description": "Le créneau a changé de main. Restitué plutôt que déduit de la comparaison des deux identifiants, ce qui obligerait l'appelant à traiter lui-même le cas du créneau qui n'était à personne."
+        },
+        "tenuParUnTiers": {
+          "type": "boolean",
+          "description": "Le créneau est resté épinglé parce qu'une personne étrangère à l'arbitrage le tient. Il n'a donc PAS PU bouger, et ce n'est pas un échec de l'arbitrage."
+        }
+      }
+    },
+    "MotifArbitrage": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "[SC-05] Une raison attachée à la répartition rendue. Même forme que MotifCandidat et que Alert — code, severite, message — afin que le client applique partout la même règle de lecture : IL FILTRE SUR LA SÉVÉRITÉ, PAS SUR LE CODE. Un motif éliminatoire entraîne acceptable = false ; la répartition reste restituée.",
+      "required": [
+        "code",
+        "severite",
+        "message"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "enum": [
+            "REPARTITION_NON_CONFORME",
+            "CRENEAU_ARBITRE_PERDU",
+            "INEQUITE_RESIDUELLE",
+            "ARBITRAGE_SANS_EFFET"
+          ],
+          "description": "REPARTITION_NON_CONFORME (ERROR, éliminatoire) — la répartition viole au moins une contrainte impérative, le détail est au scoreBreakdown. CRENEAU_ARBITRE_PERDU (ERROR, éliminatoire) — un créneau que quelqu'un assurait ne trouve plus personne ; à distinguer d'un créneau qui n'était déjà à personne, lequel n'a rien perdu. INEQUITE_RESIDUELLE (WARNING, éliminatoire) — l'écart au contrat reste au-delà de la tolérance déclarée ; le périmètre remis en jeu ne contenait pas de quoi y ramener tout le monde, et l'élargir est une décision d'encadrement. ARBITRAGE_SANS_EFFET (INFO, NON éliminatoire) — aucun créneau n'a changé de main."
+        },
+        "severite": {
+          "type": "string",
+          "enum": [
+            "INFO",
+            "WARNING",
+            "ERROR"
+          ]
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    "Remplacement": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "[SC-02] Ce que l'absence a libéré, et ce qu'il en est advenu. Deux lectures qui ne se déduisent pas l'une de l'autre : les compteurs disent combien d'objets du planning ont changé de main, les volumes en heures disent ce que l'absence a réellement coûté. Les volumes se recomposent — heuresLiberees = heuresReprises + heuresSurPosteVirtuel + heuresNonCouvertes, et heuresAPourvoir = heuresSurPosteVirtuel + heuresNonCouvertes.",
+      "required": [
+        "salarieAbsentId",
+        "creneauxLiberes",
+        "creneauxRepris",
+        "creneauxPartiellementRepris",
+        "heuresLiberees",
+        "heuresReprises",
+        "heuresSurPosteVirtuel",
+        "heuresNonCouvertes",
+        "heuresAPourvoir",
+        "details",
+        "surchargeParRessource"
+      ],
+      "properties": {
+        "salarieAbsentId": {
+          "type": "string",
+          "description": "Salarié dont l'absence a motivé le scénario, tel que scenarioParameters le désignait."
+        },
+        "creneauxLiberes": {
+          "type": "integer",
+          "description": "Créneaux D'ORIGINE rendus au solveur par l'absence. Le découpage éventuel ne le gonfle pas : un créneau coupé en trois reste un créneau libéré."
+        },
+        "creneauxRepris": {
+          "type": "integer",
+          "description": "Repris DE BOUT EN BOUT par des salariés réels."
+        },
+        "creneauxPartiellementRepris": {
+          "type": "integer",
+          "description": "Un salarié réel en a pris une part sans prendre le tout. Ni repris ni abandonnés : les ranger d'un côté ou de l'autre ferait mentir les deux décomptes."
+        },
+        "heuresLiberees": {
+          "type": "number",
+          "description": "Volume total que l'absence a rendu au solveur, en heures décimales — la situation « avant »."
+        },
+        "heuresReprises": {
+          "type": "number",
+          "description": "Volume que des salariés réels assurent au bout du compte — la situation « après »."
+        },
+        "heuresSurPosteVirtuel": {
+          "type": "number",
+          "description": "Volume garé sur un poste fictif. Toujours 0 quand scenarioParameters.posteVirtuelAutorise n'est pas demandé : le poste virtuel ne s'invite jamais de lui-même."
+        },
+        "heuresNonCouvertes": {
+          "type": "number",
+          "description": "Volume restitué sans aucune ressource."
+        },
+        "heuresAPourvoir": {
+          "type": "number",
+          "description": "Heures que PERSONNE DE RÉEL ne couvre — poste virtuel compris. Du point de vue de l'encadrement la question est « combien me reste-t-il à staffer », et la réponse est la même que les heures soient garées sur un poste fictif ou laissées vides. Le planning dit OÙ elles sont, ce total dit COMBIEN il y en a."
+        },
+        "details": {
+          "type": "array",
+          "description": "Le sort de chaque morceau restitué, y compris ceux que personne n'a repris : un remplacement qui n'a pas eu lieu est une information, pas un silence.",
+          "items": {
+            "$ref": "#/$defs/CreneauRemplace"
+          }
+        },
+        "surchargeParRessource": {
+          "type": "array",
+          "description": "Ce que le remplacement change à la charge de ceux qui l'assurent. Vide quand personne n'a rien repris.",
+          "items": {
+            "$ref": "#/$defs/SurchargeRessource"
+          }
+        }
+      }
+    },
+    "CreneauRemplace": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "[SC-02] Un morceau de créneau libéré et son sort. Un créneau couvert en deux fois apparaît en deux entrées, dont les identifiants sont dérivés du sien — <id>#S1, <id>#S2 — et qui portent alors creneauOrigineId. Un créneau repris en entier par une seule personne garde son identifiant inchangé, comme s'il n'avait jamais été découpé.",
+      "required": [
+        "creneauId",
+        "date",
+        "heureDebut",
+        "heureFin",
+        "dureeMinutes",
+        "ressourceAvantId",
+        "nature"
+      ],
+      "properties": {
+        "creneauId": {
+          "type": "string"
+        },
+        "creneauOrigineId": {
+          "type": "string",
+          "description": "Créneau dont celui-ci est un morceau. CLÉ OMISE — et non rendue nulle — pour un créneau qui n'a pas été découpé. Elle existe pour que le rattachement ne repose jamais sur l'analyse d'une chaîne de caractères."
+        },
+        "date": {
+          "type": "string",
+          "format": "date",
+          "description": "Jour de DÉBUT du créneau. Un créneau traversant minuit n'est rattaché qu'à celui-là."
+        },
+        "heureDebut": {
+          "type": "string"
+        },
+        "heureFin": {
+          "type": "string",
+          "description": "Le lendemain si elle n'est pas postérieure au début."
+        },
+        "dureeMinutes": {
+          "type": "integer",
+          "description": "Durée telle que portée par le créneau, jamais recalculée."
+        },
+        "ressourceAvantId": {
+          "type": "string",
+          "description": "Salarié absent à qui le créneau était affecté."
+        },
+        "ressourceApresId": {
+          "type": "string",
+          "description": "Qui le reprend. CLÉ OMISE lorsque personne ne le reprend — jamais rendue nulle."
+        },
+        "nature": {
+          "type": "string",
+          "enum": [
+            "SALARIE",
+            "POSTE_VIRTUEL",
+            "NON_COUVERT"
+          ],
+          "description": "Ce qui couvre le créneau au bout du compte. POSTE_VIRTUEL et NON_COUVERT sont deux réponses distinctes à la même situation, et toutes deux comptent dans heuresAPourvoir."
+        }
+      }
+    },
+    "SurchargeRessource": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "[SC-02] Ce qu'un remplacement change à la charge de celui qui l'assure, un jour donné. Une entrée par salarié réel et par jour où il reprend quelque chose ; la mesure hebdomadaire y est répétée telle quelle pour deux jours d'une même semaine, chaque ligne se lisant seule. « Avant » est la situation qu'on aurait eue sans remplacement, c'est-à-dire le planning épinglé du salarié : le delta est donc exactement ce que l'absence lui a coûté.",
+      "required": [
+        "ressourceId",
+        "date",
+        "heuresJour",
+        "heuresSemaine"
+      ],
+      "properties": {
+        "ressourceId": {
+          "type": "string"
+        },
+        "date": {
+          "type": "string",
+          "format": "date"
+        },
+        "heuresJour": {
+          "$ref": "#/$defs/ImpactMesure"
+        },
+        "heuresSemaine": {
+          "$ref": "#/$defs/ImpactMesure",
+          "description": "Semaine calendaire lundi → dimanche contenant ce jour."
+        }
+      }
+    },
+    "Candidat": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rang",
+        "conforme",
+        "couvertureComplete",
+        "nature",
+        "affectations"
+      ],
+      "description": "Une manière de couvrir le besoin, et son rang. Un candidat est une solution, pas une personne : l'affectation complète des créneaux du besoin. Classement par paliers : conformité → couverture complète → une seule personne et salarié réel d'abord → personne déjà en poste ce jour-là → score SOFT → charge rapportée au volume hebdomadaire habituel.",
+      "properties": {
+        "rang": {
+          "type": "integer",
+          "description": "1 = la solution la plus favorable"
+        },
+        "conforme": {
+          "type": "boolean",
+          "description": "false si une règle éliminatoire est violée. Ces solutions sont restituées et classées en dernier, jamais masquées : le moteur ne refuse pas, il rend visible l'impossible."
+        },
+        "couvertureComplete": {
+          "type": "boolean"
+        },
+        "nature": {
+          "type": "string",
+          "enum": [
+            "MONO_RESSOURCE",
+            "COMPOSEE",
+            "RESSOURCE_A_POURVOIR"
+          ]
+        },
+        "affectations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AffectationCandidat"
+          }
+        },
+        "impacts": {
+          "type": "array",
+          "description": "Une entrée par ressource RÉELLE mobilisée. Vide pour une solution portée par un poste virtuel, qui ne porte ni contrat ni contraintes individuelles.",
+          "items": {
+            "$ref": "#/$defs/ImpactCandidat"
+          }
+        },
+        "motifs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/MotifCandidat"
+          }
+        }
+      }
+    },
+    "AffectationCandidat": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "creneauId",
+        "ressourceId"
+      ],
+      "properties": {
+        "creneauId": {
+          "type": "string"
+        },
+        "ressourceId": {
+          "type": "string",
+          "description": "A_AFFECTER si aucune ressource ne prend ce créneau en charge"
+        },
+        "activite": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "lieu": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "heureDebut": {
+          "type": "string"
+        },
+        "heureFin": {
+          "type": "string"
+        }
+      }
+    },
+    "ImpactMesure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "avant",
+        "apres",
+        "delta",
+        "depassement"
+      ],
+      "description": "Grandeur mesurée avant et après affectation du besoin, en heures décimales. ATTENTION : un dépassement signalé décrit une conséquence, il ne garantit pas qu'une contrainte la sanctionne. Depuis le lot S7.6, les trois mesures sont adossées à une contrainte ; vérifier 90_SUIVI_DEVELOPPEMENT_MOTEUR.md avant d'en faire une règle de gestion.",
+      "properties": {
+        "avant": {
+          "type": "number"
+        },
+        "apres": {
+          "type": "number"
+        },
+        "delta": {
+          "type": "number"
+        },
+        "plafond": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "La borne à laquelle la grandeur est comparée, ou null si aucune n'a été transmise — une limite absente n'est pas une limite à zéro. ATTENTION, deux notions distinctes selon le scénario : en SC-06 c'est la limite RÉGLEMENTAIRE INDIVIDUELLE du salarié, portée par son bloc contraintesReglementaires ; en SC-02 c'est le SEUIL DE CONFORT DÉCLARÉ PAR LA DEMANDE (surchargeMaxHeuresJour / surchargeMaxHeuresSemaine), propre à cette situation et non à la personne. Les bornes individuelles gardent leurs propres contraintes et leurs propres lignes au scoreBreakdown."
+        },
+        "depassement": {
+          "type": "boolean"
+        }
+      }
+    },
+    "ImpactCandidat": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ressourceId",
+        "amplitudeJournaliere",
+        "heuresJour",
+        "heuresSemaine",
+        "joursConsecutifs"
+      ],
+      "properties": {
+        "ressourceId": {
+          "type": "string"
+        },
+        "amplitudeJournaliere": {
+          "$ref": "#/$defs/ImpactMesure"
+        },
+        "heuresJour": {
+          "$ref": "#/$defs/ImpactMesure"
+        },
+        "heuresSemaine": {
+          "$ref": "#/$defs/ImpactMesure"
+        },
+        "heuresHabituellesSemaine": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "joursConsecutifs": {
+          "$ref": "#/$defs/ImpactMesure",
+          "description": "[Equite L4] Serie de jours travailles d'affilee contenant le jour du besoin, avant et apres affectation. Palier 5 du classement : ne pas rappeler qui enchaine. EN JOURS, seule mesure de ce bloc a ne pas etre en heures ; plafond reprend joursConsecutifsMaximum du salarie."
+        },
+        "ecartContratPourcent": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "[Equite L4] Ecart SIGNE au volume contractuel apres affectation, en pourcentage. Palier 6 du classement. Mesure sur les heures PONDEREES par la penibilite et sur la fenetre transmise. Negatif : en dessous du contrat, ce qui rend la personne preferable. Absent quand le contrat ne declare pas de volume : rien n'est alors comparable, et le candidat est classe en dernier de ce palier."
+        }
+      }
+    },
+    "MotifCandidat": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "severite"
+      ],
+      "description": "Même forme que diagnostics.alerts[] : le client filtre sur la sévérité, pas sur le code.",
+      "properties": {
+        "code": {
+          "type": "string",
+          "enum": [
+            "REPOS_QUOTIDIEN_INSUFFISANT",
+            "HEURES_HEBDO_DEPASSEES",
+            "JOUR_FERIE_NON_AUTORISE",
+            "INDISPONIBILITE",
+            "CHEVAUCHEMENT",
+            "NUITS_CONSECUTIVES_DEPASSEES",
+            "REPOS_APRES_NUITS_INSUFFISANT",
+            "REPOS_HEBDOMADAIRE_GLISSANT_INSUFFISANT",
+            "SEMAINE_SANS_JOUR_DE_REPOS",
+            "DUREE_JOURNALIERE_DEPASSEE",
+            "NUITS_HEBDOMADAIRES_DEPASSEES",
+            "AMPLITUDE_DEPASSEE",
+            "JOURS_CONSECUTIFS_DEPASSES",
+            "DIMANCHES_TRAVAILLES_DEPASSES",
+            "NUIT_SALARIE_NON_NUIT",
+            "RAPPEL_SUR_REPOS",
+            "BESOIN_PARTIELLEMENT_COUVERT",
+            "AUCUNE_RESSOURCE_ELIGIBLE"
+          ]
+        },
+        "severite": {
+          "type": "string",
+          "enum": [
+            "INFO",
+            "WARNING",
+            "ERROR"
+          ]
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    "SolverResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "score",
+        "scoreBreakdown"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "SOLVED",
+            "UNSOLVED",
+            "ERROR"
+          ]
+        },
+        "score": {
+          "$ref": "#/$defs/Score"
+        },
+        "scoreBreakdown": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ScoreBreakdownItem"
+          }
+        }
+      }
+    },
+    "Score": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "hard",
+        "soft"
+      ],
+      "properties": {
+        "hard": {
+          "type": "integer"
+        },
+        "soft": {
+          "type": "integer"
+        }
+      }
+    },
+    "ScoreBreakdownItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "penaliteKey",
+        "unit",
+        "quantity",
+        "weightedImpact"
+      ],
+      "properties": {
+        "penaliteKey": {
+          "type": "string"
+        },
+        "unit": {
+          "type": "string",
+          "enum": [
+            "OCCURRENCE",
+            "JOUR",
+            "MINUTE_PONDEREE"
+          ]
+        },
+        "quantity": {
+          "type": "number"
+        },
+        "weightedImpact": {
+          "type": "integer"
+        }
+      }
+    },
+    "ScenarioPlanning": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "idSalarie",
+        "jours"
+      ],
+      "properties": {
+        "idSalarie": {
+          "type": "string"
+        },
+        "jours": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/JourPlanning"
+          }
+        }
+      }
+    },
+    "JourPlanning": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "date",
+        "creneaux"
+      ],
+      "properties": {
+        "date": {
+          "type": "string",
+          "format": "date"
+        },
+        "creneaux": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CreneauPlanning"
+          }
+        }
+      }
+    },
+    "CreneauPlanning": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "activite",
+        "heureDebut",
+        "heureFin",
+        "duree",
+        "ressourceAffecteeId"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Identifiant du créneau, restitué à l'identique de l'entrée. Chaîne opaque : le moteur ne l'interprète pas. Clé de réintégration côté appelant. Les créneaux générés par le moteur portent le préfixe SC01- et ne désignent aucune ligne en base."
+        },
+        "lieu": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Lieu reçu en entrée, restitué sans normalisation. null si le créneau n'en portait pas — cas des créneaux générés par le moteur."
+        },
+        "activite": {
+          "type": "string"
+        },
+        "heureDebut": {
+          "type": "string"
+        },
+        "heureFin": {
+          "type": "string"
+        },
+        "duree": {
+          "type": "string"
+        },
+        "nature": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "ressourceAffecteeId": {
+          "type": "string"
+        }
+      }
+    },
+    "WorkMetrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "byRessource",
+        "global"
+      ],
+      "properties": {
+        "byRessource": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/WorkMetricsByRessource"
+          }
+        },
+        "global": {
+          "$ref": "#/$defs/GlobalWorkMetrics"
+        }
+      }
+    },
+    "WorkMetricsByRessource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "resourceId",
+        "periodeDebut",
+        "periodeFin",
+        "heuresTravaillees",
+        "heuresNuit",
+        "heuresJourFerie",
+        "heuresReposHebdoTravaille",
+        "nbDimanchesTravailles",
+        "maxJoursConsecutifsObservees",
+        "maxNuitsConsecutivesObservees",
+        "nbCreneauxNuitNonNuit",
+        "heuresPonderees",
+        "joursObserves"
+      ],
+      "properties": {
+        "resourceId": {
+          "type": "string"
+        },
+        "periodeDebut": {
+          "type": "string",
+          "format": "date"
+        },
+        "periodeFin": {
+          "type": "string",
+          "format": "date"
+        },
+        "heuresTravaillees": {
+          "type": "number"
+        },
+        "heuresNuit": {
+          "type": "number",
+          "description": "Heures situées dans la plage de nuit. Se recoupe avec heuresJourFerie et le dimanche : une nuit du dimanche est comptée dans les deux. Pour une mesure sans recouvrement, voir heuresPonderees."
+        },
+        "heuresJourFerie": {
+          "type": "number"
+        },
+        "heuresReposHebdoTravaille": {
+          "type": "number"
+        },
+        "nbDimanchesTravailles": {
+          "type": "integer"
+        },
+        "maxJoursConsecutifsObservees": {
+          "type": "integer"
+        },
+        "maxNuitsConsecutivesObservees": {
+          "type": "integer"
+        },
+        "nbCreneauxNuitNonNuit": {
+          "type": "integer",
+          "description": "Créneaux de nuit confiés à un salarié qui n'est pas déclaré travailleur de nuit. Restitué depuis la phase 8 ; ce schéma ne le déclarait pas, et un client validant sa réponse la voyait rejetée."
+        },
+        "heuresPonderees": {
+          "type": "number",
+          "description": "[Équité L1] Charge ramenée à l'unité commune de l'heure ordinaire. Chaque minute est pondérée par le coefficient de SA SEULE catégorie de pénibilité — celle que la dominance retient — de sorte qu'une nuit du dimanche n'est jamais comptée deux fois. C'est cette grandeur, et non heuresTravaillees, qui rend deux personnes comparables : on ne juge l'équité qu'à pénibilité équivalente. ATTENTION : sans coefficients transmis dans planningContext.coefficientsPenibilite, elle vaut exactement heuresTravaillees — le moteur n'invente pas d'échelle, il applique le neutre et le signale par une alerte COEFFICIENTS_PENIBILITE_PAR_DEFAUT."
+        },
+        "joursObserves": {
+          "type": "integer",
+          "description": "[Équité L2] Jours de l'HORIZON DÉCLARÉ OÙ CE SALARIÉ ÉTAIT DISPONIBLE — le dénominateur de ecartContratPourcent, qui rapporte le contrat hebdomadaire à cette durée. PROPRE À CHAQUE SALARIÉ : les indisponibilités déclarées en sont déduites. Un salarié absent une semaine sur deux en observe 7 quand ses collègues en observent 14. Sans cette déduction l'absence se lirait comme du temps disponible non travaillé, et le salarié revenant de congé apparaîtrait sous son contrat, donc préférable. Un poste virtuel, sans contrat, garde la largeur brute de la fenêtre. Vaut 0 pour un salarié absent toute la fenêtre, et ecartContratPourcent est alors null : il n'est pas à -100 %, il est hors de comparaison. À ne pas confondre avec periodeDebut/periodeFin, qui bornent les créneaux effectivement reçus : l'horizon dit sur quelle fenêtre le moteur a jugé, ces deux dates disent ce que les données couvraient. Plus la fenêtre est large, plus l'écart au contrat a de sens."
+        },
+        "ecartContratPourcent": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "[Équité L2] Écart SIGNÉ entre la charge pondérée et le volume contractuel attendu sur la fenêtre, en pourcentage. Positif : au-dessus de son contrat. Négatif : en dessous — et cela doit le rendre PRÉFÉRABLE, pas seulement « non exclu » ; sans écart signé le moteur éviterait de surcharger sans jamais rééquilibrer. La comparaison se fait au contrat de chacun, jamais à la moyenne du groupe, qui mettrait un temps partiel perpétuellement « sous la moyenne ». null si le salarié ne déclare pas de volume hebdomadaire : rien n'est alors comparable, et le moteur préfère ne rien dire plutôt que de supposer."
+        },
+        "partNuits": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "[Équité L2] Part des heures de nuit dans le volume contractuel attendu, en pourcentage. Rapportée au contrat comme les heures : un salarié à 50 % doit une part de nuits proportionnée à son contrat."
+        },
+        "partDimanches": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "[Équité L2] Part des heures de dimanche non nocturnes, en pourcentage du contrat."
+        },
+        "partFeries": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "[Équité L2] Part des heures de jour férié ni nocturnes ni dominicales, en pourcentage du contrat."
+        }
+      }
+    },
+    "GlobalWorkMetrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "nbCreneaux",
+        "nbCreneauxNonAffectes",
+        "heuresTravailleesTotales",
+        "heuresNuitTotales",
+        "heuresJourFerieTotales"
+      ],
+      "properties": {
+        "nbCreneaux": {
+          "type": "integer"
+        },
+        "nbCreneauxNonAffectes": {
+          "type": "integer"
+        },
+        "heuresTravailleesTotales": {
+          "type": "number"
+        },
+        "heuresNuitTotales": {
+          "type": "number"
+        },
+        "heuresJourFerieTotales": {
+          "type": "number"
+        }
+      }
+    },
+    "SolutionSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "nbCreneaux",
+        "nbCreneauxAffectes",
+        "nbCreneauxNonAffectes",
+        "nbRessourcesMobilisees",
+        "heuresTravailleesTotales"
+      ],
+      "properties": {
+        "nbCreneaux": {
+          "type": "integer"
+        },
+        "nbCreneauxAffectes": {
+          "type": "integer"
+        },
+        "nbCreneauxNonAffectes": {
+          "type": "integer"
+        },
+        "nbRessourcesMobilisees": {
+          "type": "integer"
+        },
+        "heuresTravailleesTotales": {
+          "type": "number"
+        }
+      }
+    },
+    "Diagnostics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "alerts",
+        "assignmentDiagnostics",
+        "ignoredCreneaux"
+      ],
+      "properties": {
+        "alerts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Alert"
+          }
+        },
+        "assignmentDiagnostics": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AssignmentDiagnostic"
+          }
+        },
+        "ignoredCreneaux": {
+          "$ref": "#/$defs/IgnoredCreneaux"
+        }
+      }
+    },
+    "Alert": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "message"
+      ],
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "severity": {
+          "type": "string",
+          "enum": [
+            "INFO",
+            "WARNING",
+            "ERROR"
+          ],
+          "description": "Gravite de l'alerte. INFO = configuration atypique mais valide, ne pas restituer comme une anomalie. Absent = interpreter comme WARNING."
+        },
+        "date": {
+          "type": "string",
+          "format": "date"
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    "AssignmentDiagnostic": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "creneauId",
+        "date",
+        "heureDebut",
+        "heureFin",
+        "activite",
+        "status",
+        "reasonCode",
+        "message"
+      ],
+      "properties": {
+        "creneauId": {
+          "type": "string"
+        },
+        "date": {
+          "type": "string",
+          "format": "date"
+        },
+        "heureDebut": {
+          "type": "string"
+        },
+        "heureFin": {
+          "type": "string"
+        },
+        "activite": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "UNCOVERED",
+            "IMPOSSIBLE_TO_ASSIGN",
+            "VIRTUAL_ASSIGNED"
+          ]
+        },
+        "reasonCode": {
+          "type": "string",
+          "enum": [
+            "NO_RESOURCE_ASSIGNED",
+            "NO_COMPATIBLE_RESOURCE",
+            "POSTE_VIRTUEL_ASSIGNED"
+          ]
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    "IgnoredCreneaux": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Compteurs de creneaux signales avant resolution, et depuis le lot S8.4 leur detail. Le nom du bloc, herite, laisse croire que tout ce qu'il compte est perdu : c'est faux de aucuneRessourceDansDataset, dont les creneaux partent au solveur. details[].exclu tranche.",
+      "required": [
+        "horsHorizon",
+        "aucuneRessourceDansDataset",
+        "activiteInconnue",
+        "details"
+      ],
+      "properties": {
+        "horsHorizon": {
+          "type": "integer"
+        },
+        "aucuneRessourceDansDataset": {
+          "type": "integer"
+        },
+        "activiteInconnue": {
+          "type": "integer"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CreneauIgnore"
+          }
+        }
+      }
+    },
+    "CreneauIgnore": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "[S8.4] Un creneau signale par la preparation, et ce que le moteur en a fait.",
+      "required": [
+        "creneauId",
+        "motif",
+        "exclu",
+        "message"
+      ],
+      "properties": {
+        "creneauId": {
+          "type": "string"
+        },
+        "date": {
+          "type": "string",
+          "format": "date"
+        },
+        "motif": {
+          "type": "string",
+          "enum": [
+            "HORS_HORIZON",
+            "ACTIVITE_INCONNUE",
+            "AUCUNE_RESSOURCE_DANS_DATASET",
+            "MARQUEUR_REPOS_NON_RATTACHE"
+          ]
+        },
+        "exclu": {
+          "type": "boolean",
+          "description": "true si le creneau n'a pas atteint le solveur et ne figure pas dans la reponse."
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    "Optimisation": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "[SC-04] Ce que l'optimisation a produit sur la periode. Le bloc planning ne restitue que l'APRES ; SC-04 remanie une periode entiere et doit pouvoir se justifier devant ceux qu'il deplace, ce que le contrat appelle gains / regressions explicitees. ATTENTION : acceptable=true signifie au regard de ce que le moteur sait. Les PREFERENCES INDIVIDUELLES lui echappent (rang 10) - sur un scenario qui remanie une periode entiere, cette ignorance pese plus que partout ailleurs, et l'absence de motif ne vaut pas accord des interesses.",
+      "required": [
+        "datePivot",
+        "creneauxFiges",
+        "creneauxAjustables",
+        "creneauxDeplaces",
+        "creneauxNonCouverts",
+        "acceptable",
+        "motifs",
+        "parSalarie"
+      ],
+      "properties": {
+        "datePivot": {
+          "type": "string",
+          "format": "date",
+          "description": "Premier jour ajustable, tel qu'applique. Ce qui precede n'a pas pu bouger. Restitue pour que la reponse soit lisible seule : un fichier d'outbox relu six mois plus tard porte alors sa propre cle de lecture."
+        },
+        "creneauxFiges": {
+          "type": "integer",
+          "description": "Creneaux epingles parce qu'anterieurs au pivot. Inclut ceux que PERSONNE ne couvrait : le passe ne se reecrit pas, meme quand il est vide, et un besoin non couvert ne le sera pas retroactivement."
+        },
+        "creneauxAjustables": {
+          "type": "integer",
+          "description": "Creneaux rendus au solveur."
+        },
+        "creneauxDeplaces": {
+          "type": "integer",
+          "description": "Creneaux ayant effectivement change de main. Zero declenche le motif OPTIMISATION_SANS_EFFET : sans lui, l'appelant recevrait son propre planning et chercherait ce qui a echoue."
+        },
+        "creneauxNonCouverts": {
+          "type": "integer",
+          "description": "Creneaux ajustables que personne ne couvre a l'arrivee. A distinguer de CRENEAU_PERDU, qui ne compte que ceux dont quelqu'un s'occupait : un creneau qui n'etait deja a personne n'a rien perdu."
+        },
+        "acceptable": {
+          "type": "boolean",
+          "description": "Aucun motif eliminatoire. Le planning est restitue dans tous les cas : le moteur ne refuse pas, il rend visible l'impossible."
+        },
+        "motifs": {
+          "type": "array",
+          "description": "Ce qui disqualifie ce planning, ou le decrit. Filtrer sur la severite, jamais sur le code.",
+          "items": {
+            "$ref": "#/$defs/MotifArbitrage"
+          }
+        },
+        "parSalarie": {
+          "type": "array",
+          "description": "Le mouvement et les series de chaque salarie CONCERNE - ceux qui ont repris ou cede un creneau, et ceux qui en tenaient un d'ajustable. Restituer toute la population noierait le mouvement dans les inchanges.",
+          "items": {
+            "$ref": "#/$defs/SerieSalarie"
+          }
+        }
+      }
+    },
+    "SerieSalarie": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "[SC-04] Ce que l'optimisation a fait d'un salarie. repris/cedes disent le mouvement ; tranches disent ce qu'il a produit. Un salarie peut etre stable sur la periode et avoir vu deux de ses semaines s'inverser : c'est le genre de chose qu'un total masque.",
+      "required": [
+        "ressourceId",
+        "repris",
+        "cedes",
+        "tranches"
+      ],
+      "properties": {
+        "ressourceId": {
+          "type": "string"
+        },
+        "repris": {
+          "type": "integer",
+          "description": "Creneaux qui lui ont ete confies et qu'il n'avait pas."
+        },
+        "cedes": {
+          "type": "integer",
+          "description": "Creneaux qu'il tenait et qui sont passes a quelqu'un d'autre."
+        },
+        "tranches": {
+          "type": "array",
+          "description": "La charge avant/apres, dans l'ordre du decoupage : semaines, puis mois, puis periode.",
+          "items": {
+            "$ref": "#/$defs/TrancheCharge"
+          }
+        }
+      }
+    },
+    "TrancheCharge": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "[SC-04] La charge d'un salarie sur une tranche, avant et apres. C'est l'unite de lecture de SC-04 : sur la semaine du 18, SAL-A passe de -60 % a -5 %. Un total sur la periode dit COMBIEN ; la tranche dit QUAND. Les deux etats sont mesures par le MEME calculateur sur la MEME fenetre - sans quoi une difference de methode se lirait comme un mouvement du planning.",
+      "required": [
+        "granularite",
+        "debut",
+        "fin",
+        "partielle",
+        "joursDisponiblesAvant",
+        "joursDisponiblesApres",
+        "heuresAvant",
+        "heuresApres"
+      ],
+      "properties": {
+        "granularite": {
+          "type": "string",
+          "enum": [
+            "SEMAINE",
+            "MOIS",
+            "PERIODE"
+          ],
+          "description": "Les semaines sont ISO - le lundi ouvre, comme partout ailleurs dans le moteur. Les mois sont calendaires. ATTENTION : les VOLUMES se somment d'une tranche a l'autre, les SERIES non. maxJoursConsecutifs et maxNuitsConsecutives de workMetrics sont observes a l'interieur de leur fenetre, et sept jours consecutifs a cheval sur deux semaines s'y lisent 4 puis 3. Seule la tranche PERIODE porte la serie reelle."
+        },
+        "debut": {
+          "type": "string",
+          "format": "date",
+          "description": "Premier jour de la tranche, jamais avant l'horizon : les bords sont tronques, jamais etendus."
+        },
+        "fin": {
+          "type": "string",
+          "format": "date",
+          "description": "Dernier jour de la tranche, jamais apres l'horizon."
+        },
+        "partielle": {
+          "type": "boolean",
+          "description": "La tranche ne couvre pas toute sa granularite - une semaine ou un mois tronque par le bord de l'horizon. Ses VOLUMES BRUTS ne se comparent pas a ceux d'une tranche pleine ; son ecart au contrat, lui, se compare, puisqu'il proratise."
+        },
+        "joursDisponiblesAvant": {
+          "type": "integer",
+          "description": "Jours de la tranche ou le salarie n'etait pas declare indisponible - le denominateur de son ecart au contrat sur cette tranche. Vaut 0 pour une tranche entierement couverte par une absence."
+        },
+        "joursDisponiblesApres": {
+          "type": "integer",
+          "description": "Identique par construction : une optimisation ne deplace pas les conges. Restitue pour que l'appelant puisse le verifier."
+        },
+        "heuresAvant": {
+          "type": "number",
+          "description": "Heures travaillees avant optimisation, decimales."
+        },
+        "heuresApres": {
+          "type": "number",
+          "description": "Heures travaillees apres optimisation, decimales."
+        },
+        "ecartContratAvantPourcent": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Ecart signe au contrat avant. null si rien n'est comparable : pas de volume contractuel declare, ou AUCUN JOUR DISPONIBLE sur la tranche - un salarie absent toute une semaine n'y est pas a -100 %, il est hors de comparaison."
+        },
+        "ecartContratApresPourcent": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Ecart signe au contrat apres. Une REGRESSION_INDIVIDUELLE est levee quand sa valeur absolue depasse celle d'avant sur la tranche PERIODE : passer de -20 % a -25 % est une regression au meme titre que passer de +20 % a +25 %."
+        }
+      }
+    }
+  }
+}

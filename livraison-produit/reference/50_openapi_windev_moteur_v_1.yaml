@@ -1,0 +1,3492 @@
+openapi: 3.1.0
+info:
+  title: API Moteur de planification
+  version: 1.0.0
+  description: |
+    Contrat OpenAPI V1 – intégration WinDev ↔ moteur de planification.
+
+    ## Principes structurants
+
+    - Même contrat métier JSON pour mode fichier et mode API.
+    - La réponse HTTP expose directement `ScenarioResponseDTO` (pas d'enveloppe requestId/status).
+    - L'enveloppe `requestId/status/response` est propre au FileAdapter — elle ne fait pas partie de ce contrat.
+
+    ## Distinction des deux pipelines
+
+    **SC-01 — Mode paramétrique** (`/scenarios/sc01/solve`)
+    - L'appelant fournit des paramètres de génération (`scenarioParameters`).
+    - Le moteur **génère les créneaux** avant de résoudre.
+    - `dataSet.creneaux` est ignoré par le DatasetBuilder SC-01.
+
+    **SC-02, SC-03, SC-06 — Mode dataset-driven** (`/scenarios/sc02|sc03|sc06/solve`)
+    - L'appelant fournit directement les créneaux dans `dataSet.creneaux`.
+    - Le moteur **consomme le dataset fourni** sans phase de génération.
+
+    Ce qu'ils font du dataset les sépare : SC-03 décide de tout, **SC-02 épingle l'existant** et ne
+    décide que des créneaux de l'absent, SC-06 épingle tout et ne fait que classer.
+
+    ## Un champ inconnu est refusé (rang 11)
+
+    Le contrat d'entrée **refuse tout champ qu'il ne connaît pas**, sur les deux canaux — HTTP et
+    FileAdapter. La réponse porte `UNKNOWN_FIELD`, le **chemin JSON complet** du champ fautif et la
+    liste des noms acceptés à cet endroit.
+
+    Cette règle était annoncée depuis longtemps sans être appliquée : retirer un
+    `@JsonIgnoreProperties` d'un DTO ne rend rien strict, Spring Boot désactivant
+    `FAIL_ON_UNKNOWN_PROPERTIES`. Un appelant en avance sur le moteur recevait donc un `200` et
+    repartait convaincu d'avoir été entendu.
+
+    **Deux exceptions, nommées et volontaires :**
+
+    - les quatre champs de créneau marqués obsolètes — `priorite`, `type`, `isReposHebdo`,
+      `axesOrganisationnels` — restent **acceptés et ignorés** le temps de la migration. Ce ne sont
+      pas des inconnus, ce sont des retraités déclarés ; le jour où le contrat les retire vraiment,
+      ils basculent en refus ;
+    - quelques blocs restent délibérément tolérants — l'enveloppe de requête, `dataSet`, les
+      salariés, les postes virtuels et les paramètres SC-03. Ils ne prétendent pas le contraire.
+
+    ## Champs obligatoires de traçabilité (depuis Phase 4.1)
+
+    Toute requête doit inclure `requestId` (String non vide) et `metadata`
+    (`clientId` + `timestamp` obligatoires, `source` optionnel).
+    L'absence de l'un de ces champs provoque une réponse `400 INVALID_REQUEST`.
+
+    ## Écarts résiduels (code réel vs documents de cadrage)
+
+    - `PlanningContextDTO` : seuls `horizon` et `strategieScoring` sont portés
+      en V1. `resolutionType`, `regulatoryParameters`, `seuils` sont définis dans
+      les documents de cadrage mais **non présents dans le DTO** actuel.
+    - `activitesCompatibles` est transporté mais **lu par aucune contrainte** : le moteur
+      n'oppose pas l'activité à une affectation. Sensible pour SC-02, qui affecte réellement.
+      Voir `90_SUIVI_DEVELOPPEMENT_MOTEUR.md`, rang 10 du backlog.
+    - `capaciteCible` d'un poste virtuel est transporté mais **ne borne rien** : rang 8 du
+      même backlog.
+
+servers:
+  - url: https://moteur.example.local/api/v1
+    description: Exemple d'URL de base (à confirmer avec l'équipe infrastructure)
+
+tags:
+  - name: Health
+    description: Vérification de disponibilité du service
+  - name: Scenarios-Parametric
+    description: |
+      Mode paramétrique — le moteur génère les créneaux (SC-01).
+      Pipeline : scenarioParameters → génération créneaux → résolution solveur.
+  - name: Scenarios-Dataset
+    description: |
+      Mode dataset-driven — les créneaux sont fournis dans le corps (SC-02, SC-03, SC-06).
+      Pipeline : dataSet.creneaux → résolution solveur directe.
+
+paths:
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # HEALTH
+  # ─────────────────────────────────────────────────────────────────────────
+  /scenarios/ping:
+    get:
+      tags: [Health]
+      summary: Ping technique
+      description: |
+        Route exposée par `ScenarioController.ping()`.
+        Attention : la route réelle est `/scenarios/ping`, pas `/health/ping`.
+      operationId: ping
+      responses:
+        '200':
+          description: Service joignable — retourne la chaîne littérale "OK"
+          content:
+            text/plain:
+              schema:
+                type: string
+                const: OK
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # SC-01 — MODE PARAMÉTRIQUE (avec génération de créneaux)
+  # ─────────────────────────────────────────────────────────────────────────
+  /scenarios/sc01/solve:
+    post:
+      tags: [Scenarios-Parametric]
+      summary: Résoudre un scénario paramétrique SC-01
+      description: |
+        **Mode paramétrique** : les créneaux sont générés par le moteur à partir
+        de `scenarioParameters` (amplitude, heure de début, jours travaillés…).
+        `dataSet.creneaux` est ignoré par le DatasetBuilder.
+
+        Route réelle : `POST /scenarios/sc01/solve`
+        Controller : `ScenarioController.solveSc01()`
+        DTO d'entrée : `ScenarioRequestDTO` + `Sc01ScenarioParametersDTO`
+        DTO de sortie : `ScenarioResponseDTO`
+      operationId: solveSc01
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Sc01ScenarioRequest'
+            examples:
+              sc01_minimal:
+                summary: Exemple SC-01 minimal
+                value:
+                  requestId: REQ-20260401-SC01-001
+                  metadata:
+                    clientId: CLIENT-WINDEV
+                    timestamp: '2026-04-01T08:00:00Z'
+                    source: WINDEV
+                  scenarioType: SC-01
+                  planningContext:
+                    strategieScoring: EXPLOITATION
+                    horizon:
+                      dateDebut: '2026-04-01'
+                      dateFin: '2026-04-07'
+                  scenarioParameters:
+                    resourceRef:
+                      kind: SALARIE
+                      id: SAL001
+                    shiftStart: '08:00'
+                    shiftEndAlert: '17:00'
+                    dailyAmplitudeHours: 7.5
+                    workedDays:
+                      - MONDAY
+                      - TUESDAY
+                      - WEDNESDAY
+                      - THURSDAY
+                      - FRIDAY
+                  dataSet:
+                    ressources:
+                      salaries:
+                        - id: SAL001
+                          activitesCompatibles:
+                            - ACT-SOIN
+                      postesVirtuels: []
+      responses:
+        '200':
+          description: Résolution effectuée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScenarioResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /scenarios/sc01/solve/file:
+    post:
+      tags: [Scenarios-Parametric]
+      summary: Résoudre SC-01 et retourner le résultat en pièce jointe JSON
+      description: |
+        Identique à `POST /scenarios/sc01/solve` mais retourne la réponse avec
+        un en-tête `Content-Disposition: attachment; filename="SC-01-result-<dateDebut>-<dateFin>.json"`.
+
+        Route réelle : `POST /scenarios/sc01/solve/file`
+        Controller : `ScenarioController.solveSc01File()`
+        Même DTO d'entrée et de sortie que `/scenarios/sc01/solve`.
+      operationId: solveSc01File
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Sc01ScenarioRequest'
+      responses:
+        '200':
+          description: Résultat retourné en pièce jointe JSON
+          headers:
+            Content-Disposition:
+              description: |
+                `attachment; filename="SC-01-result-<dateDebut>-<dateFin>.json"`
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScenarioResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # SC-02 — REMPLACEMENT D'UN SALARIÉ ABSENT (dataset-driven, existant épinglé)
+  # ─────────────────────────────────────────────────────────────────────────
+  /scenarios/sc02/solve:
+    post:
+      tags: [Scenarios-Dataset]
+      summary: Remplacer un salarié absent (SC-02)
+      description: |
+        **Mode réparation** : un salarié est absent, ses créneaux sont orphelins. Le moteur cherche
+        qui les reprend, **en perturbant le moins possible l'existant**.
+
+        **L'existant est un fait, jamais une variable.** Seuls les créneaux du salarié absent que
+        son absence recouvre sont rendus au solveur. Tout le reste du planning transmis est
+        **épinglé** — y compris les créneaux de l'absent situés hors de sa période d'absence. Le
+        solveur le voit, les contraintes le mesurent, mais aucune affectation existante n'est
+        déplacée pour faire de la place.
+
+        Le prix est assumé : le moteur répondra « à pourvoir » là où un échange entre deux collègues
+        aurait suffi. Remanier le planning des présents est une décision d'encadrement, pas une
+        décision de moteur.
+
+        **Il n'y a jamais zéro solution.** Ce qui n'a pu être couvert est chiffré et restitué comme
+        volume à pourvoir : le moteur ne refuse pas, il rend visible l'impossible.
+
+        ⚠️ **La réponse peut contenir plus de créneaux que la demande** — voir le schéma
+        `CreneauRemplace`.
+
+        Route réelle : `POST /scenarios/sc02/solve`
+        Controller : `ScenarioController.solveSc02()`
+        DTO d'entrée : `Sc02ScenarioRequestDTO` + `Sc02ScenarioParametersDTO`
+        DTO de sortie : `ScenarioResponseDTO`, enrichi du bloc `remplacement`
+
+        Également accessible par le **FileAdapter** (`scenarioType: SC-02`). Les deux canaux
+        entrent dans le même service au même point, et un test compare leurs deux réponses
+        entières : l'un ne peut pas devenir une variante silencieuse de l'autre.
+      operationId: solveSc02
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Sc02ScenarioRequest'
+            examples:
+              sc02_minimal:
+                summary: Une absence d'un jour, un remplaçant possible
+                value:
+                  requestId: REQ-20260512-SC02-001
+                  metadata:
+                    clientId: CLIENT-WINDEV
+                    timestamp: '2026-05-11T09:00:00Z'
+                    source: WINDEV
+                  scenarioType: SC-02
+                  planningContext:
+                    strategieScoring: ANALYSE_RH
+                    horizon:
+                      dateDebut: '2026-05-11'
+                      dateFin: '2026-05-17'
+                  scenarioParameters:
+                    salarieAbsentId: SAL-MARIE
+                    surchargeMaxHeuresJour: 10.0
+                    surchargeMaxHeuresSemaine: 40.0
+                  dataSet:
+                    referentiels:
+                      activites:
+                        - codeActiviteId: ACT-SOIN
+                          compteDansCharge: true
+                          genereDetteRepos: false
+                          estServiceCritique: true
+                    ressources:
+                      salaries:
+                        - id: SAL-MARIE
+                          activitesCompatibles: [ACT-SOIN]
+                          contrat:
+                            heuresHebdomadairesHabituelles: 35.0
+                          contraintesReglementaires:
+                            reposQuotidienMinimum: 11.0
+                        - id: SAL-PAUL
+                          activitesCompatibles: [ACT-SOIN]
+                          contrat:
+                            heuresHebdomadairesHabituelles: 35.0
+                          contraintesReglementaires:
+                            reposQuotidienMinimum: 11.0
+                      postesVirtuels: []
+                    creneaux:
+                      - id: PLN-MARIE-MER
+                        date: '2026-05-13'
+                        heureDebut: '08:00'
+                        heureFin: '16:00'
+                        codeActiviteId: ACT-SOIN
+                        lieu: HOPITAL-NORD
+                        ressourceAffecteeId: SAL-MARIE
+                    indisponibilites:
+                      items:
+                        - ressourceId: SAL-MARIE
+                          dateDebut: '2026-05-13'
+                          dateFin: '2026-05-13'
+                          motif: ARRET_MALADIE
+      responses:
+        '200':
+          description: |
+            Conséquences de l'absence. Le bloc `remplacement` porte le sort de chaque morceau
+            restitué, les volumes en heures avant / après, et ce que le remplacement coûte à ceux
+            qui l'assurent.
+
+            Des heures restées à pourvoir **ne sont pas un échec** : c'est la réponse attendue quand
+            personne n'est disponible. Elles sont signalées par une alerte
+            `HEURES_RESTANT_A_POURVOIR`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScenarioResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          description: |
+            Requête bien formée mais incohérente (`BUSINESS_ERROR`). Cas les plus fréquents :
+            créneau du `dataSet` portant un `ressourceAffecteeId` introuvable parmi les ressources
+            transmises, `scenarioType` autre que `SC-02`, `dataSet` absent.
+
+            À ne pas confondre avec les 400 : `salarieAbsentId` manquant est rejeté par la
+            validation (`INVALID_REQUEST`), et un paramètre inconnu dans `scenarioParameters` —
+            bloc **strict** — par la désérialisation (`UNKNOWN_FIELD`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # SC-03 — MODE DATASET-DRIVEN (sans génération de créneaux)
+  # ─────────────────────────────────────────────────────────────────────────
+  /scenarios/sc03/solve:
+    post:
+      tags: [Scenarios-Dataset]
+      summary: Résoudre un scénario dataset-driven SC-03
+      description: |
+        **Mode dataset-driven** : les créneaux sont fournis directement dans
+        `dataSet.creneaux`. Aucune génération n'est effectuée.
+
+        Route réelle : `POST /scenarios/sc03/solve`
+        Controller : `ScenarioController.solveSc03()`
+        DTO d'entrée : `Sc03ScenarioRequestDTO` + `Sc03ScenarioParametersDTO`
+        DTO de sortie : `ScenarioResponseDTO`
+      operationId: solveSc03
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Sc03ScenarioRequest'
+            examples:
+              sc03_minimal:
+                summary: Exemple SC-03 minimal
+                value:
+                  requestId: REQ-20260401-SC03-001
+                  metadata:
+                    clientId: CLIENT-WINDEV
+                    timestamp: '2026-04-01T08:00:00Z'
+                    source: WINDEV
+                  scenarioType: SC-03
+                  planningContext:
+                    strategieScoring: EXPLOITATION
+                    horizon:
+                      dateDebut: '2026-04-01'
+                      dateFin: '2026-04-07'
+                  scenarioParameters:
+                    prioriteCouverture: NORMALE
+                  dataSet:
+                    referentiels:
+                      activites:
+                        - codeActiviteId: ACT-SOIN
+                          compteDansCharge: true
+                          genereDetteRepos: false
+                          estServiceCritique: false
+                    ressources:
+                      salaries:
+                        - id: SAL001
+                          activitesCompatibles:
+                            - ACT-SOIN
+                      postesVirtuels: []
+                    creneaux:
+                      - id: CRN-001
+                        date: '2026-04-01'
+                        heureDebut: '08:00'
+                        heureFin: '16:00'
+                        codeActiviteId: ACT-SOIN
+                        isJourFerie: false
+      responses:
+        '200':
+          description: Résolution effectuée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScenarioResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # SC-05 — ARBITRAGE D'UN PÉRIMÈTRE COMMUN ENTRE DEUX SALARIÉS
+  # ─────────────────────────────────────────────────────────────────────────
+  /scenarios/sc04/solve:
+    post:
+      tags: [Scenarios-Dataset]
+      summary: Optimiser un planning existant sur une période (SC-04)
+      description: |
+        **Mode optimisation** : le moteur relit une période entière et **redistribue** ce qui n'a
+        pas encore eu lieu. Il ne crée aucun besoin.
+
+        **Ce que SC-04 apporte et qu'aucun autre scénario n'apporte : la profondeur temporelle.**
+        Il est le seul à juger une *période* plutôt qu'un instant. Les autres répondent à une
+        question posée sur un moment — une absence, un besoin, un périmètre. SC-04 relit une durée
+        et montre **quand** un déséquilibre s'est installé, grâce au bloc `optimisation` qui rend la
+        charge de chacun semaine par semaine, mois par mois, puis sur la période.
+
+        **La date pivot est le degré de liberté.** Tout ce qui la précède est figé ; à partir d'elle,
+        le solveur décide. Le jour du pivot lui-même est ajustable — « à partir de », non « après ».
+
+        **Le passé ne se réécrit pas, même quand il est vide.** Un créneau antérieur au pivot que
+        personne ne couvrait est épinglé sur `A_AFFECTER` : il ne sera pas couvert rétroactivement.
+
+        ⚠️ **Aucun « historique des compteurs » n'est reçu.** La profondeur est celle de la période
+        demandée, et le moteur **recalcule** tout depuis les créneaux transmis. Rien n'est conservé
+        entre deux appels. **Plus la fenêtre transmise est large, plus la mesure a de sens** — c'est
+        le levier de ce scénario, et il est entre les mains de l'appelant.
+
+        ⚠️ **Sans `planningContext.equite.ecartTolerePourcent`, SC-04 n'a rien vers quoi optimiser.**
+        La contrainte d'équité reste inerte tant qu'aucune tolérance n'est déclarée, et c'est le
+        scénario où cette borne compte le plus.
+
+        **Il n'y a jamais d'erreur.** Quand le planning obtenu est disqualifié, il est rendu tout de
+        même, accompagné des motifs — `optimisation.acceptable` et `optimisation.motifs`. Le moteur
+        ne refuse pas, il rend visible l'impossible.
+
+        Route réelle : `POST /scenarios/sc04/solve`
+        Controller : `ScenarioController.solveSc04()`
+        DTO d'entrée : `Sc04ScenarioRequestDTO` + `Sc04ScenarioParametersDTO`
+        DTO de sortie : `ScenarioResponseDTO`, enrichi du bloc `optimisation`
+
+        Également accessible par le **FileAdapter** (`scenarioType: SC-04`). Les deux canaux entrent
+        dans le même service au même point, et un test compare leurs deux réponses entières.
+      operationId: solveSc04
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Sc04ScenarioRequest'
+      responses:
+        '200':
+          description: Planning optimisé, avec le bloc optimisation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScenarioResponse'
+        '400':
+          description: Requête invalide (JSON mal formé, datePivot absente)
+        '422':
+          description: Requête sémantiquement invalide
+  /scenarios/sc05/solve:
+    post:
+      tags: [Scenarios-Dataset]
+      summary: Arbitrer un périmètre commun entre deux salariés (SC-05)
+      description: |
+        **Mode arbitrage** : deux salariés se partagent un même périmètre de travail. Le moteur le
+        **redistribue** entre eux — il ne crée aucun besoin, il réaffecte ce qui existe.
+
+        **SC-05 rend une répartition, pas un podium.** À la différence de SC-06 qui classe des
+        possibilités, le solveur résout : c'est le **score** qui arbitre, et l'équité l'atteint par
+        la contrainte de tolérance, exactement comme pour SC-02.
+
+        **Le périmètre est transmis, jamais déduit.** L'appelant liste les créneaux à arbitrer dans
+        `scenarioParameters.creneauxArbitres`. Un périmètre déduit trop large déplacerait des
+        créneaux que personne ne voulait bouger ; trop étroit, il rendrait l'arbitrage sans effet —
+        et dans les deux cas l'appelant ne verrait pas pourquoi. **Désigner le périmètre est de la
+        responsabilité de l'appelant.**
+
+        **Un créneau du périmètre tenu par un tiers est épinglé, jamais repris.** Le tiers n'a rien
+        demandé ; on ne lui retire pas son travail pour équilibrer deux autres personnes. Une alerte
+        `CRENEAU_ARBITRE_TENU_PAR_UN_TIERS` le nomme, et l'arbitrage porte sur ce qui reste.
+
+        **Hors du périmètre, rien ne bouge** — y compris les autres créneaux des deux salariés
+        arbitrés. Le planning complet est exigé pour que les bornes hebdomadaires soient
+        vérifiables, pas pour être remanié.
+
+        **Il n'y a jamais d'erreur.** Quand aucune répartition n'est acceptable, la **moins
+        mauvaise** est rendue, accompagnée des motifs qui la disqualifient — `arbitrage.acceptable`
+        et `arbitrage.motifs`. Le moteur ne refuse pas, il rend visible l'impossible.
+
+        ⚠️ **Comme SC-06, SC-05 exige le planning complet de la période pour les deux salariés.**
+        Sans lui, les bornes hebdomadaires sont invérifiables et le moteur déclarerait conforme une
+        répartition qui ne l'est pas.
+
+        Route réelle : `POST /scenarios/sc05/solve`
+        Controller : `ScenarioController.solveSc05()`
+        DTO d'entrée : `Sc05ScenarioRequestDTO` + `Sc05ScenarioParametersDTO`
+        DTO de sortie : `ScenarioResponseDTO`, enrichi du bloc `arbitrage`
+
+        Également accessible par le **FileAdapter** (`scenarioType: SC-05`). Les deux canaux entrent
+        dans le même service au même point, et un test compare leurs deux réponses entières.
+      operationId: solveSc05
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Sc05ScenarioRequest'
+            examples:
+              sc05_minimal:
+                summary: Un créneau à arbitrer entre deux salariés inégalement chargés
+                value:
+                  requestId: REQ-20260514-SC05-001
+                  metadata:
+                    clientId: CLIENT-WINDEV
+                    timestamp: '2026-05-11T09:00:00Z'
+                    source: WINDEV
+                  scenarioType: SC-05
+                  planningContext:
+                    strategieScoring: ANALYSE_RH
+                    horizon:
+                      dateDebut: '2026-05-11'
+                      dateFin: '2026-05-17'
+                    equite:
+                      ecartTolerePourcent: 10.0
+                  scenarioParameters:
+                    salarieAId: SAL-A
+                    salarieBId: SAL-B
+                    creneauxArbitres: [PLN-ARB-V]
+                  dataSet:
+                    referentiels:
+                      activites:
+                        - codeActiviteId: ACT-SOIN
+                          compteDansCharge: true
+                          genereDetteRepos: false
+                          estServiceCritique: true
+                    ressources:
+                      salaries:
+                        - id: SAL-A
+                          activitesCompatibles: [ACT-SOIN]
+                          contrat:
+                            heuresHebdomadairesHabituelles: 35.0
+                        - id: SAL-B
+                          activitesCompatibles: [ACT-SOIN]
+                          contrat:
+                            heuresHebdomadairesHabituelles: 35.0
+                    creneaux:
+                      - id: PLN-A-LUN
+                        date: '2026-05-11'
+                        heureDebut: '08:00'
+                        heureFin: '16:00'
+                        codeActiviteId: ACT-SOIN
+                        lieu: HOPITAL-NORD
+                        ressourceAffecteeId: SAL-A
+                      - id: PLN-ARB-V
+                        date: '2026-05-15'
+                        heureDebut: '08:00'
+                        heureFin: '16:00'
+                        codeActiviteId: ACT-SOIN
+                        lieu: HOPITAL-NORD
+                        ressourceAffecteeId: SAL-A
+      responses:
+        '200':
+          description: |
+            La répartition proposée, et ce qu'elle change pour chacun. Le bloc `arbitrage` porte le
+            sort de chaque créneau du périmètre et l'écart au contrat **avant / après** de chaque
+            salarié arbitré — c'est la comparaison des deux qui justifie l'arbitrage devant les
+            intéressés.
+
+            Une répartition **disqualifiée est rendue quand même**, avec ses motifs : c'est la moins
+            mauvaise, et jamais une erreur. Une inéquité que le périmètre ne permettait pas de
+            résorber est de surcroît signalée par une alerte `INEQUITE_RESIDUELLE` nominative.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScenarioResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          description: |
+            Requête bien formée mais incohérente (`BUSINESS_ERROR`). Cas les plus fréquents :
+            `salarieAId` et `salarieBId` désignant **le même salarié** — arbitrer quelqu'un avec
+            lui-même n'a pas d'objet —, créneau du `dataSet` portant un `ressourceAffecteeId`
+            introuvable, `scenarioType` autre que `SC-05`, `dataSet` absent.
+
+            À ne pas confondre avec les 400 : `salarieAId`, `salarieBId` ou `creneauxArbitres`
+            manquants ou vides sont rejetés par la validation (`INVALID_REQUEST`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /scenarios/sc06/solve:
+    post:
+      tags: [Scenarios-Dataset]
+      summary: Désigner la ressource la plus à même de couvrir un besoin (SC-06)
+      description: |
+        **Mode désignation** : parmi les ressources dont le planning de la semaine est transmis,
+        le moteur classe les manières de couvrir un besoin de 1 à n créneaux sur une même journée.
+
+        Il **n'appelle pas le solveur**. SC-06 classe des possibilités au lieu d'en chercher une :
+        énumération exhaustive des candidats éligibles, chacun évalué sans recherche. D'où trois
+        propriétés qu'une résolution heuristique ne garantit pas — **déterminisme** (même entrée,
+        même podium), **exhaustivité** (aucun candidat éligible oublié) et **explicabilité**
+        (un motif attaché à chaque rang).
+
+        Le moteur **insère, il ne redistribue pas** : `dataSet.creneaux` est intégralement figé.
+
+        Route réelle : `POST /scenarios/sc06/solve`
+        Controller : `ScenarioController.solveSc06()`
+        DTO d'entrée : `Sc06ScenarioRequestDTO` + `Sc06ScenarioParametersDTO`
+        DTO de sortie : `ScenarioResponseDTO`, enrichi du bloc `candidats[]`
+
+        Également accessible par le **FileAdapter** (`scenarioType: SC-06`).
+      operationId: solveSc06
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Sc06ScenarioRequest'
+            examples:
+              sc06_minimal:
+                summary: Un besoin d'un créneau, deux candidats possibles
+                value:
+                  requestId: REQ-20260511-SC06-001
+                  metadata:
+                    clientId: CLIENT-WINDEV
+                    timestamp: '2026-05-10T09:00:00Z'
+                    source: WINDEV
+                  scenarioType: SC-06
+                  planningContext:
+                    strategieScoring: ANALYSE_RH
+                    horizon:
+                      dateDebut: '2026-05-11'
+                      dateFin: '2026-05-17'
+                  scenarioParameters:
+                    besoin:
+                      date: '2026-05-13'
+                      creneaux:
+                        - id: BES-001
+                          heureDebut: '14:00'
+                          heureFin: '22:00'
+                          codeActiviteId: ACT-SOIN
+                          lieu: HOPITAL-NORD
+                  dataSet:
+                    referentiels:
+                      activites:
+                        - codeActiviteId: ACT-SOIN
+                          compteDansCharge: true
+                          genereDetteRepos: false
+                          estServiceCritique: true
+                    ressources:
+                      salaries:
+                        - id: SAL-2001
+                          activitesCompatibles: [ACT-SOIN]
+                          contrat:
+                            heuresHebdomadairesHabituelles: 35.0
+                            joursTravaillesParSemaine: 5
+                            estAnnualise: false
+                          contraintesReglementaires:
+                            amplitudeJournaliereMaximum: 14.0
+                            reposQuotidienMinimum: 11.0
+                            heuresMaximumParSemaine: 44.0
+                            joursConsecutifsMaximum: 6
+                      postesVirtuels: []
+                    creneaux:
+                      - id: PLN-2001-ME
+                        date: '2026-05-13'
+                        heureDebut: '08:00'
+                        heureFin: '12:00'
+                        codeActiviteId: ACT-SOIN
+                        lieu: HOPITAL-NORD
+                        ressourceAffecteeId: SAL-2001
+      responses:
+        '200':
+          description: |
+            Podium produit. Le bloc `candidats[]` porte au plus trois solutions classées.
+
+            Une liste plus courte n'est pas une anomalie : elle signifie qu'il n'existe pas
+            davantage de manières distinctes de couvrir ce besoin.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScenarioResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          description: |
+            Requête bien formée mais incohérente. Cas les plus fréquents :
+            horizon ne couvrant pas la semaine pleine du besoin, créneau du `dataSet` sans
+            `ressourceAffecteeId`, activité du besoin absente du référentiel, ressource affectée
+            introuvable, dataset sans salarié.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+
+  responses:
+    BadRequest:
+      description: |
+        Requête invalide — structure, typage, champ obligatoire manquant ou champ inconnu.
+
+        Codes possibles : `INVALID_REQUEST` (Bean Validation), `UNKNOWN_FIELD` (champ absent du
+        contrat), `MALFORMED_JSON` (JSON non parseable).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            invalidRequest:
+              summary: Champ obligatoire manquant (Bean Validation)
+              value:
+                error:
+                  code: INVALID_REQUEST
+                  message: Validation failed
+                  details:
+                    - field: requestId
+                      message: requestId est obligatoire
+                    - field: metadata.clientId
+                      message: metadata.clientId est obligatoire
+            unknownField:
+              summary: Champ absent du contrat d'entrée
+              value:
+                error:
+                  code: UNKNOWN_FIELD
+                  message: "Champ inconnu du contrat d'entrée : 'dataSet.creneaux[1].couleur'"
+                  details:
+                    - field: dataSet.creneaux[1].couleur
+                      message: >-
+                        Champ non reconnu. Champs acceptés à ce niveau : activite, blocJourId,
+                        codeActiviteId, date, estSegmentDePause, groupeBesoinId, heureDebut,
+                        heureFin, id, isJourFerie, lieu, ordreDansBloc, posteComptable,
+                        ressourceAffecteeId, segmentNuit
+            malformedJson:
+              summary: JSON non parseable
+              value:
+                error:
+                  code: MALFORMED_JSON
+                  message: JSON invalide ou mal formé
+                  details: []
+    UnprocessableEntity:
+      description: |
+        Requête techniquement valide mais incohérente métier.
+        Code : `BUSINESS_ERROR`. Le champ `details` est toujours vide pour ce code —
+        le message décrit la violation métier.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            businessError:
+              summary: Violation de règle métier
+              value:
+                error:
+                  code: BUSINESS_ERROR
+                  message: "[SC-03] dataSet.creneaux est requis et ne peut pas être vide."
+                  details: []
+    InternalServerError:
+      description: Erreur technique interne non anticipée.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            unexpected:
+              value:
+                error:
+                  code: INTERNAL_ERROR
+                  message: Une erreur interne est survenue
+                  details: []
+
+  schemas:
+
+    # ──────────────────────────────────────────────
+    # TRAÇABILITÉ (ENTRÉE — OBLIGATOIRE)
+    # ──────────────────────────────────────────────
+
+    Metadata:
+      type: object
+      description: |
+        Métadonnées de traçabilité transmises par l'appelant à chaque requête.
+        Correspond à `MetadataDTO`.
+        `clientId` et `timestamp` sont obligatoires (Bean Validation `@NotBlank`).
+      properties:
+        clientId:
+          type: string
+          description: Identifiant de l'appelant (ex. code application WinDev)
+        timestamp:
+          type: string
+          description: Horodatage ISO-8601 côté appelant (ex. "2026-03-31T09:30:00Z")
+        source:
+          type: string
+          description: Système source optionnel (ex. "WINDEV")
+      required: [clientId, timestamp]
+
+    # ──────────────────────────────────────────────
+    # CONTEXTE DE PLANIFICATION
+    # ──────────────────────────────────────────────
+
+    Horizon:
+      type: object
+      description: |
+        Fenêtre temporelle de la résolution.
+        Correspond à `HorizonDTO` (dateDebut, dateFin sont des LocalDate sérialisés en ISO-8601).
+      properties:
+        dateDebut:
+          type: string
+          format: date
+        dateFin:
+          type: string
+          format: date
+      required: [dateDebut, dateFin]
+
+    PlanningContext:
+      type: object
+      description: |
+        Cadre de la résolution transmis à chaque requête.
+        Correspond à `PlanningContextDTO`.
+
+        ⚠️ Écart document/code : `resolutionType` et `seuils` sont présents dans les documents
+        de cadrage et dans le domaine (`PlanningContext` interne), mais **pas dans
+        `PlanningContextDTO`**.
+
+        [S8.0] `regulatoryParameters` **est désormais implémenté** — voir la propriété ci-dessous.
+
+        [S7.9] Conséquence longtemps passée inaperçue : les trois scénarios construisaient
+        `RegulatoryParameters.neutre()`, dont le calendrier de jours fériés est **vide**. Aucune
+        minute n'était donc jamais comptée comme fériée — ni au score, ni dans
+        `workMetrics.heuresJourFerie`, resté à 0.0 depuis l'origine.
+
+        Le calendrier est désormais reconstitué à partir de ce que le contrat porte déjà :
+        `scenarioParameters.holidayDates` pour SC-01, le drapeau `isJourFerie` des créneaux pour
+        SC-03 et SC-06. Reste hors contrat la **plage de nuit**, figée à 22:00–06:00, et le
+        rattachement d'un créneau traversant minuit à sa seule date de début. Les lever suppose
+        d'ouvrir `planningContext.regulatoryParameters` — cible inchangée.
+      properties:
+        strategieScoring:
+          type: string
+          enum: [EXPLOITATION, ANALYSE_RH, AUDIT]
+          description: |
+            Stratégie d'évaluation du score.
+            Correspond à `StrategieScoring` (enum Java).
+        horizon:
+          $ref: '#/components/schemas/Horizon'
+        regulatoryParameters:
+          $ref: '#/components/schemas/RegulatoryParameters'
+          description: |
+            [S8.0] Cadre réglementaire de la résolution. **Facultatif.**
+        coefficientsPenibilite:
+          $ref: '#/components/schemas/CoefficientsPenibilite'
+          description: |
+            [Équité L1] Ce que vaut une heure selon quand elle est travaillée. **Facultatif.**
+        equite:
+          $ref: '#/components/schemas/Equite'
+          description: |
+            [Équité L5] À partir de quel écart au contrat il y a inéquité. **Facultatif.**
+      required: [strategieScoring, horizon]
+
+    Equite:
+      type: object
+      description: |
+        [Équité L5] À partir de quel écart au contrat l'encadrement estime qu'il y a inéquité.
+
+        **Mesurer n'est pas sanctionner.** Le moteur mesure l'écart au contrat depuis le lot L2 et
+        le restitue dans `workMetrics.byRessource.ecartContratPourcent` : la mesure *décrit* une
+        répartition, elle ne statue pas qu'elle est mauvaise. Un écart de 5 % gêne-t-il ? de 20 % ?
+        Le moteur n'en sait rien, et la réponse n'est pas la même d'un client à l'autre.
+
+        ⚠️ **Bloc facultatif, et il l'est pour de bon** : absent, la contrainte d'équité ne pèse
+        rien et le score est **exactement** celui d'avant le lot L5. C'est le cas de toutes les
+        demandes à ce jour — les coefficients de pénibilité qui pondèrent cet écart ne sont pas
+        encore calibrés (`92_CALIBRATION_PENIBILITE.md`), et peser une mesure dont l'échelle reste
+        à établir reviendrait à deviner deux fois.
+
+        Même logique que `scenarioParameters.surchargeMaxHeuresJour` de SC-02 : c'est l'encadrement
+        qui dit à partir de quand une situation gêne.
+      properties:
+        ecartTolerePourcent:
+          type: number
+          format: double
+          minimum: 0
+          description: |
+            Écart au volume contractuel, en **points de pourcentage**, au-delà duquel le moteur
+            pénalise — SOFT, jamais éliminatoire.
+
+            La **valeur absolue** de l'écart est comparée à cette tolérance : la sous-charge compte
+            autant que la surcharge, sans quoi le moteur éviterait de surcharger sans jamais
+            rééquilibrer. `0` signifie « tout écart compte ». Une valeur négative est **refusée**
+            (`422 BUSINESS_ERROR`) : une tolérance décrit une marge, pas une exigence.
+
+    CoefficientsPenibilite:
+      type: object
+      description: |
+        [Équité L1] Ce que vaut une heure selon quand elle est travaillée.
+
+        Sert à rendre comparables des heures qui ne le sont pas : **on ne juge l'équité qu'à
+        pénibilité équivalente**. Huit heures un mardi et huit heures un dimanche ne sont pas la
+        même chose, et ne doivent pas entrer dans la même addition sans être ramenées à une unité
+        commune. **L'heure ordinaire est cette unité** : son coefficient vaut 1 et ne se transmet
+        pas.
+
+        **Une minute ne relève que d'une catégorie** — celle que la dominance retient,
+        `NUIT > DIMANCHE > FERIE` — de sorte que ces coefficients ne se multiplient jamais entre
+        eux. Une nuit du dimanche est pondérée comme une nuit, une fois.
+
+        ⚠️ **Chaque coefficient absent vaut 1.** Le bloc entier absent laisse `heuresPonderees`
+        égal à `heuresTravaillees` : le moteur n'invente pas une échelle que seule la simulation
+        peut établir, et **ne le signale pas** — c'est le cas de toutes les demandes tant que les
+        coefficients ne sont pas calibrés, et une alerte sur cent pour cent des réponses ne serait
+        pas un signal. En revanche, un bloc **transmis** qui ne pondère rien lève
+        `COEFFICIENTS_PENIBILITE_SANS_EFFET` : là, quelqu'un a cru configurer quelque chose.
+
+        Une valeur négative est **refusée** (`422 BUSINESS_ERROR`) : une pénibilité ne s'allège
+        pas. Une valeur inférieure à 1 reste acceptée — c'est un choix d'échelle, pas une
+        incohérence.
+
+        ⚠️ **[Équité L3] Les coefficients doivent décroître le long de l'ordre de dominance.**
+        Une minute cumulant deux pénibilités est attribuée à la dominante ; si celle-ci pèse moins
+        que la catégorie qu'elle absorbe, cumuler **allège** l'heure au lieu de l'alourdir. Avec
+        `dimanche = 1.2` et `ferie = 2.0`, une minute travaillée un dimanche férié pèse 1.2 quand
+        la même minute un férié ordinaire pèse 2.0. Le moteur ne refuse pas — l'échelle décrit
+        quelque chose, elle se contredit seulement elle-même — il lève
+        `COEFFICIENTS_PENIBILITE_INCOHERENTS` (`WARNING`) en nommant le couple fautif.
+
+        Ces valeurs se calibrent sur des plannings réels, elles ne se choisissent pas sur le
+        papier : protocole dans `92_CALIBRATION_PENIBILITE.md`.
+      properties:
+        nuit:
+          type: number
+          format: double
+          description: Ce que vaut une heure de nuit, en heures ordinaires.
+        dimanche:
+          type: number
+          format: double
+          description: Ce que vaut une heure de dimanche non nocturne.
+        ferie:
+          type: number
+          format: double
+          description: Ce que vaut une heure de jour férié ni nocturne ni dominicale.
+
+    RegulatoryParameters:
+      type: object
+      description: |
+        [S8.0] Plage de nuit et calendrier des jours fériés applicables à la résolution.
+        Correspond à `RegulatoryParametersDTO`.
+
+        Bloc annoncé de longue date par cette spécification et jamais implémenté : les trois
+        scénarios construisaient des valeurs par défaut, dont un calendrier de jours fériés
+        **vide** — ce qui a rendu la valorisation du férié inopérante jusqu'au lot S7.9a.
+
+        Tous les champs sont facultatifs. Absents, le moteur applique la plage de nuit légale par
+        défaut et déduit les jours fériés de ce que le dataset déclare.
+      properties:
+        heureDebutNuit:
+          type: string
+          pattern: '^([01]\d|2[0-3]):[0-5]\d$'
+          description: |
+            Début de la plage de nuit. Défaut : `22:00`.
+
+            **À transmettre avec `heureFinNuit`.** Une borne seule est ignorée et tracée en WARN :
+            mélanger une borne déclarée avec une borne par défaut produirait un intervalle que
+            personne n'a voulu.
+        heureFinNuit:
+          type: string
+          pattern: '^([01]\d|2[0-3]):[0-5]\d$'
+          description: |
+            Fin de la plage de nuit. Défaut : `06:00`. Voir `heureDebutNuit`.
+        joursFeries:
+          type: array
+          items:
+            type: string
+            format: date
+          description: |
+            Calendrier des jours fériés de la période.
+
+            **Source de vérité dès qu'il est présent** : il l'emporte sur `isJourFerie` porté par
+            les créneaux et sur `scenarioParameters.holidayDates` en SC-01. Aucune fusion — une
+            divergence est tracée en WARN, jamais silencieusement absorbée, car fusionner rendrait
+            fériée une date que l'appelant n'a pas retenue.
+
+            Une liste **vide** signifie « aucun jour férié sur la période » et fait autorité tout
+            autant ; c'est l'**absence** du champ qui laisse le moteur déduire.
+
+            C'est la seule forme permettant de qualifier correctement un créneau **traversant
+            minuit** : un drapeau porté par le créneau ne dit pas lequel des deux jours civils est
+            férié.
+
+    # ──────────────────────────────────────────────
+    # RESSOURCES (ENTRÉE)
+    # ──────────────────────────────────────────────
+
+    ContraintesReglementaires:
+      type: object
+      description: |
+        Contraintes réglementaires individuelles d'un salarié.
+        Correspond à `ContraintesReglementairesDTO`.
+
+        **Tous les seuils sont individuels** : trois salariés = trois jeux de valeurs.
+
+        Pour désactiver une limite, **omettre le champ**. Une valeur `0` est lue à la
+        lettre : un maximum à 0 interdit tout, un minimum à 0 n'exige rien. Une valeur
+        négative est ignorée et tracée en WARN.
+
+        Exception : `reposHebdomadaireFenetreJours` est une **taille**, pas une borne —
+        il est pris en compte à partir de 1 jour.
+
+        Les cinq derniers champs ont été rapatriés au lot S7.0 depuis des seuils globaux
+        qui n'étaient jamais alimentés. Leur contrainte est réactivée un lot à la fois :
+        se reporter à `90_SUIVI_DEVELOPPEMENT_MOTEUR.md` pour l'état exact de chacune
+        avant d'en faire une règle de gestion.
+      properties:
+        heuresMinimumParJour:
+          type: number
+          description: Borne basse journalière (heures)
+        heuresMaximumParJour:
+          type: number
+          description: Borne haute journalière (heures)
+        amplitudeJournaliereMaximum:
+          type: number
+          description: Amplitude max entre 1er et dernier créneau (heures)
+        reposQuotidienMinimum:
+          type: number
+          description: Repos minimum entre deux journées consécutives (heures)
+        heuresMinimumParSemaine:
+          type: number
+        heuresMaximumParSemaine:
+          type: number
+        nuitsMaximumParSemaine:
+          type: integer
+        joursConsecutifsMaximum:
+          type: integer
+        nuitsConsecutivesMaximum:
+          type: integer
+          description: '[S7.0] Nuits consécutives autorisées'
+        joursReposMinimumApresNuits:
+          type: integer
+          description: '[S7.0] Jours calendaires de repos exigés après une séquence de nuits'
+        dimanchesTravaillesMaximum:
+          type: integer
+          description: '[S7.0] Dimanches travaillés autorisés sur la période'
+        reposHebdomadaireFenetreJours:
+          type: integer
+          description: >-
+            [S7.0] Largeur de la fenêtre glissante (jours). Indissociable de
+            reposHebdomadaireJoursOffMinimum : transmis seul, il ne décrit aucune règle
+            et la contrainte reste inactive.
+        reposHebdomadaireJoursOffMinimum:
+          type: integer
+          description: '[S7.0] Jours non travaillés exigés dans la fenêtre ci-dessus'
+
+    SalarieInput:
+      type: object
+      description: |
+        Salarié réel transmis dans le dataSet.
+        Correspond à `SalarieInputDTO`.
+
+        Noms canoniques V1 : `sitesAutorises`, `activitesCompatibles`.
+        Alias acceptés en entrée (rétrocompatibilité WinDev SC-01) :
+        - `lieuxAutorises` → alias de `sitesAutorises`
+        - `activitesAutorisees` → alias de `activitesCompatibles`
+
+        Note : WinDev SC-01 peut envoyer des champs supplémentaires (`type`, `capaciteCible`)
+        qui sont silencieusement ignorés par le moteur.
+      properties:
+        id:
+          type: string
+        statut:
+          type: string
+          description: Statut du salarié (valeur libre, non validée en V1)
+        sitesAutorises:
+          type: array
+          items:
+            type: string
+          description: "Alias JSON accepté : 'lieuxAutorises'"
+        activitesCompatibles:
+          type: array
+          items:
+            type: string
+          description: "Alias JSON accepté : 'activitesAutorisees'"
+        postesComptablesCompatibles:
+          type: array
+          items:
+            type: string
+        contraintesReglementaires:
+          $ref: '#/components/schemas/ContraintesReglementaires'
+        contrat:
+          $ref: '#/components/schemas/ContratSalarie'
+        travailDeNuit:
+          type: string
+          description: |
+            Statut travail de nuit. Valeurs connues : "permanent", "occasionnel".
+            Null si non travailleur de nuit.
+
+            Reste à la racine du salarié : ce champ est exploité par une contrainte depuis la
+            Phase 3, le déplacer dans `contrat` romprait SC-03 sans contrepartie.
+        heureDebutNuit:
+          type: string
+          pattern: '^([01]\d|2[0-3]):[0-5]\d$'
+          description: Heure de début de nuit individuelle (override du paramètre réglementaire global)
+        heureFinNuit:
+          type: string
+          pattern: '^([01]\d|2[0-3]):[0-5]\d$'
+          description: Heure de fin de nuit individuelle
+        travailleJourFerie:
+          type: boolean
+          description: Autorisation individuelle de travailler les jours fériés
+      required: [id]
+
+    ContratSalarie:
+      type: object
+      description: |
+        [Lot S2] Ce que le salarié **fait normalement** — bloc descriptif.
+
+        À ne pas confondre avec `contraintesReglementaires`, qui décrit ce à quoi il **est
+        soumis** : le premier est descriptif, le second prescriptif.
+
+        Contrat strict : tout champ inconnu est rejeté. Les **dates de début et de fin de
+        contrat** sont volontairement absentes — le filtrage des salariés hors contrat à la date
+        visée relève de l'appelant, en amont du moteur.
+
+        Transporté et mappé ; aucune contrainte ne le lit à ce jour. Exploité par le classement
+        SC-06 (palier de départage) et par les impacts restitués.
+      properties:
+        heuresMoyennesParJour:
+          type: number
+          format: double
+          description: Durée journalière travaillée moyenne, en heures
+        heuresHebdomadairesHabituelles:
+          type: number
+          format: double
+          description: |
+            Durée hebdomadaire habituelle, en heures.
+
+            **Toujours transmettre cette valeur.** En SC-06, un salarié qui ne la déclare pas est
+            classé en dernier au palier de départage : à égalité par ailleurs, le moteur préfère
+            la personne dont il peut mesurer l'impact.
+        joursTravaillesParSemaine:
+          type: integer
+          description: |
+            Nombre de jours travaillés par semaine. **Défaut 5** appliqué par le moteur si absent.
+
+            La valeur brute reste néanmoins distinguable d'une valeur transmise : le défaut
+            accompagne l'information manquante, il ne l'écrase pas.
+        estAnnualise:
+          type: boolean
+          description: |
+            Salarié annualisé. **Transporté, non exploité à ce jour.**
+
+            Cible : un dépassement hebdomadaire est moins grave pour un salarié annualisé, le
+            critère se déplaçant vers le cumul d'heures excédentaires sur la période
+            d'annualisation. Deux données manquent encore au contrat pour ce calcul — les bornes
+            de la période et le cumul à date.
+
+            Absent ⇒ lu comme « non annualisé ». Un vide ne vaut jamais autorisation.
+
+    PosteVirtuelInput:
+      type: object
+      description: |
+        Poste virtuel transmis dans le dataSet.
+        Correspond à `PosteVirtuelInputDTO`.
+
+        Noms canoniques V1 : `activitesCompatibles`, `sitesAutorises`.
+        Alias acceptés en entrée (rétrocompatibilité) :
+        - `activitesAutorisees` → `activitesCompatibles`
+        - `lieuxAutorises` → `sitesAutorises`
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          description: Type de poste virtuel (valeur libre, non validée en V1)
+        capaciteCible:
+          type: integer
+          description: Capacité cible du poste (nombre de créneaux couverts simultanément)
+        activitesCompatibles:
+          type: array
+          items:
+            type: string
+          description: "Activités compatibles. Alias accepté : 'activitesAutorisees'"
+        sitesAutorises:
+          type: array
+          items:
+            type: string
+          description: "Sites / lieux autorisés. Alias accepté : 'lieuxAutorises'"
+        postesComptablesCompatibles:
+          type: array
+          items:
+            type: string
+      required: [id]
+
+    Ressources:
+      type: object
+      description: "Correspond à 'RessourcesDTO'."
+      properties:
+        salaries:
+          type: array
+          items:
+            $ref: '#/components/schemas/SalarieInput'
+        postesVirtuels:
+          type: array
+          items:
+            $ref: '#/components/schemas/PosteVirtuelInput'
+      required: [salaries, postesVirtuels]
+
+    # ──────────────────────────────────────────────
+    # CRÉNEAUX (ENTRÉE — SC-03)
+    # ──────────────────────────────────────────────
+
+    CreneauInput:
+      type: object
+      description: |
+        Créneau entrant (WinDev → moteur).
+        Correspond à `CreneauInputDTO`.
+
+        Un créneau peut traverser minuit : dans ce cas `heureFin < heureDebut`
+        et `date` représente le jour de début.
+
+        `activite` est déprécié — utiliser `codeActiviteId`. Le moteur accepte
+        les deux en fallback.
+
+        Les champs Phase 5 (`groupeBesoinId`, `blocJourId`, `ordreDansBloc`,
+        `estSegmentDePause`) sont transportés en V1 mais non exploités avant Phase 5.
+
+        ⚠️ `duree` et `isReposHebdo` sont dans l'ancienne spec YAML mais **absents
+        de `CreneauInputDTO`** — ne pas utiliser.
+      properties:
+        id:
+          type: string
+          description: |
+            Identifiant du créneau. **Requis et unique** sur l'ensemble du scénario,
+            quelle que soit l'origine du créneau — exigence technique du solveur
+            (`@PlanningId`), pas un simple confort de lecture.
+
+            L'appelant le renseigne dans tous les cas :
+              - créneau servi, enregistré en base → sa clé primaire (`Id_Journee`) ;
+              - besoin à couvrir, sans ligne en base → un identifiant dédié (`BES-00X`).
+
+            Un même scénario peut mêler les deux natures (cas de SC-03).
+
+            Le moteur traite cette valeur comme une **chaîne opaque** : il la transporte
+            et la restitue à l'identique dans `planning.jours[].creneaux[].id`, sans jamais
+            l'interpréter. La convention de préfixe est lue par l'appelant seul.
+        date:
+          type: string
+          format: date
+          description: Date du créneau (jour de début si traverse minuit)
+        heureDebut:
+          type: string
+          pattern: '^([01]\d|2[0-3]):[0-5]\d$'
+        heureFin:
+          type: string
+          pattern: '^([01]\d|2[0-3]):[0-5]\d$'
+        lieu:
+          type: string
+          description: Identifiant du lieu / site
+        codeActiviteId:
+          type: string
+          description: Identifiant canonique de l'activité (référentiel)
+        activite:
+          type: string
+          description: |
+            ⚠️ DÉPRÉCIÉ. Fallback si `codeActiviteId` est absent.
+            Sera supprimé dans une version ultérieure.
+        posteComptable:
+          type: string
+          description: Code du poste comptable associé
+        isJourFerie:
+          type: boolean
+          description: |
+            [S7.9] **Source de vérité du jour férié** pour SC-03 et SC-06, qui ne transmettent
+            aucun calendrier.
+
+            Une date déclarée fériée par **au moins un** créneau l'est pour la journée entière
+            et pour tous les salariés : une déclaration partielle est réparée, pas subie.
+
+            Deux règles en dépendent : l'**interdiction** (`JourFerieRefuse`, HARD, croisée
+            avec `travailleJourFerie` du salarié) et la **valorisation** (pénalité de pénibilité
+            et `workMetrics.heuresJourFerie`). Non transmis vaut non férié.
+
+            Limite : un créneau traversant minuit n'est rattaché qu'à sa **date de début**.
+
+            SC-01 n'utilise pas ce champ — son calendrier est porté par
+            `scenarioParameters.holidayDates`.
+        segmentNuit:
+          type: boolean
+          description: |
+            Indique explicitement que ce créneau est un segment de nuit.
+            Si null, le moteur calcule par intersection avec la plage réglementaire.
+        groupeBesoinId:
+          type: string
+          description: "[Phase 5] Identifiant du groupe de besoin"
+        blocJourId:
+          type: string
+          description: "[Phase 5] Identifiant du bloc journalier"
+        ordreDansBloc:
+          type: integer
+          description: "[Phase 5] Position du créneau dans son bloc"
+        estSegmentDePause:
+          type: boolean
+          description: "[Phase 5] Vrai si ce créneau représente une pause segmentée"
+        ressourceAffecteeId:
+          type: string
+          description: |
+            [Lot S1] Identifiant de la ressource qui sert déjà ce créneau.
+
+            Renseigné lorsque le créneau relève d'un **planning existant** transmis comme fait
+            acquis. Le scénario décide alors de figer ce créneau : le solveur le voit, les
+            contraintes l'évaluent, mais aucune décision ne peut le modifier.
+
+            - **SC-06** : requis sur tous les créneaux du `dataSet`. Un créneau de planning sans
+              affectation n'a pas de sens et la requête est refusée.
+            - **SC-01 / SC-03** : sans objet. Le champ est ignoré, tous les créneaux restent des
+              variables de décision.
+      required: [id, date, heureDebut, heureFin, codeActiviteId]
+
+    # ──────────────────────────────────────────────
+    # RÉFÉRENTIELS ET INDISPONIBILITÉS (ENTRÉE)
+    # ──────────────────────────────────────────────
+
+    ReferentielActivite:
+      type: object
+      description: |
+        Une activité dans le référentiel transmis par WinDev.
+        Correspond à `ReferentielActiviteDTO`.
+
+        `genereDetteRepos` est lu par `DetteReposSurReposHebdomadaire` (SOFT) : travailler son
+        jour de repos hebdomadaire n'est pénalisé que si l'activité ouvre une dette de repos
+        compensateur.
+      properties:
+        codeActiviteId:
+          type: string
+        libelle:
+          type: string
+        compteDansCharge:
+          type: boolean
+          description: "Vrai si l'activité compte dans la charge de travail"
+        genereDetteRepos:
+          type: boolean
+          description: "Vrai si l'activité génère une dette de repos compensateur"
+        estServiceCritique:
+          type: boolean
+      required: [codeActiviteId]
+
+    Referentiels:
+      type: object
+      description: |
+        Bloc référentiels du dataSet.
+        Correspond à `ReferentielsDTO`.
+
+        [S7.9b] Porte en outre les identifiants d'activité qui désignent un **repos
+        hebdomadaire**. Ils vivent ici et non sur le créneau parce que le repos hebdomadaire est
+        qualifié par le référentiel d'activités.
+      properties:
+        activites:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReferentielActivite'
+        codeActiviteReposHebdomadaire:
+          type: string
+          description: |
+            [S7.9b] Identifiant d'activité désignant un **repos hebdomadaire (RH)**.
+
+            Cet identifiant **change d'un client à l'autre** : le moteur n'en connaît aucun en
+            dur, et « RH » n'est pas un mot réservé. C'est cette déclaration, et elle seule, qui
+            fait qu'un créneau est reconnu comme repos.
+
+            Un créneau porteur de ce code, avec son `ressourceAffecteeId`, dit **quel jour ce
+            salarié-là se repose** — n'importe quel jour de la semaine, pas seulement le
+            week-end. Il est retiré du problème : le solveur ne l'affecte pas, ne le compte pas
+            dans la charge, et les contraintes physiques ne le voient pas. Il est **restitué tel
+            quel** dans `planning`, l'appelant rechargeant la réponse pour réafficher son
+            planning complet.
+
+            Non déclaré, aucun créneau n'est un marqueur et le calendrier retombe entièrement
+            sur le repli **samedi = RH, dimanche = RHD**, appliqué par salarié et par semaine.
+        codeActiviteReposHebdomadaireDimanche:
+          type: string
+          description: |
+            [S7.9b] Identifiant d'activité désignant un **repos hebdomadaire dominical (RHD)**.
+            Même portée que `codeActiviteReposHebdomadaire`.
+
+    IndisponibiliteItem:
+      type: object
+      description: |
+        Une période d'indisponibilité individuelle d'un salarié.
+        Correspond à `IndisponibiliteItemDTO`.
+
+        **Exploité** : la contrainte HARD `METIER_HARD_INDISPONIBILITE` interdit toute affectation
+        qui la recouvre, ne serait-ce qu'en partie. Les bornes sont des **jours pleins** — un
+        créneau du 3 mars 22:00 → 06:00 est bien recouvert par une absence du 4 mars.
+
+        C'est également ce bloc, et lui seul, qui **décrit l'absence** de SC-02 :
+        `scenarioParameters.salarieAbsentId` désigne de qui il s'agit, cette période dit quand.
+      properties:
+        ressourceId:
+          type: string
+        dateDebut:
+          type: string
+          format: date
+        dateFin:
+          type: string
+          format: date
+        motif:
+          type: string
+      required: [ressourceId, dateDebut, dateFin]
+
+    Indisponibilites:
+      type: object
+      description: |
+        Bloc indisponibilités du dataSet.
+        Correspond à `IndisponibilitesDTO`.
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/IndisponibiliteItem'
+
+    # ──────────────────────────────────────────────
+    # DATASET
+    # ──────────────────────────────────────────────
+
+    DataSet:
+      type: object
+      description: |
+        Correspond à `DataSetDTO`.
+        `creneaux` est obligatoire pour SC-02, SC-03 et SC-06, ignoré pour SC-01.
+
+        `referentiels` et `indisponibilites` sont **structurellement optionnels**, mais chaque
+        scénario dit ce qu'il en attend :
+
+        - `referentiels.activites` conditionne le calcul de la charge (`compteDansCharge`) et la
+          qualification du repos hebdomadaire ;
+        - `indisponibilites.items` est lu par la contrainte HARD `METIER_HARD_INDISPONIBILITE`, et
+          **porte l'absence** en SC-02 — sans lui, ce scénario ne libère aucun créneau.
+      properties:
+        ressources:
+          $ref: '#/components/schemas/Ressources'
+        creneaux:
+          type: array
+          items:
+            $ref: '#/components/schemas/CreneauInput'
+          description: |
+            Créneaux fournis directement (SC-03). Ignorés pour SC-01.
+        referentiels:
+          $ref: '#/components/schemas/Referentiels'
+        indisponibilites:
+          $ref: '#/components/schemas/Indisponibilites'
+      required: [ressources]
+
+    # ──────────────────────────────────────────────
+    # PARAMÈTRES SPÉCIFIQUES SC-01
+    # ──────────────────────────────────────────────
+
+    ResourceRef:
+      type: object
+      description: |
+        Référence à une ressource cible (salarié ou poste virtuel).
+        Correspond à `ResourceRefDTO`.
+      properties:
+        kind:
+          type: string
+          enum: [SALARIE, POSTE_VIRTUEL]
+        id:
+          type: string
+      required: [kind, id]
+
+    LunchBreak:
+      type: object
+      description: |
+        Pause déjeuner optionnelle pour SC-01.
+        Correspond à `LunchBreakDTO`.
+      properties:
+        start:
+          type: string
+          pattern: '^([01]\d|2[0-3]):[0-5]\d$'
+        end:
+          type: string
+          pattern: '^([01]\d|2[0-3]):[0-5]\d$'
+      required: [start, end]
+
+    Sc01ScenarioParameters:
+      type: object
+      description: |
+        Paramètres de génération de créneaux pour SC-01.
+        Correspond à `Sc01ScenarioParametersDTO`.
+
+        L'horizon de génération est celui de `planningContext.horizon`.
+        La ressource cible est identifiée par `resourceRef` (non plus `salarieId`).
+
+        ⚠️ Écarts avec l'ancienne spec YAML :
+        - `salarieId` remplacé par `resourceRef` (kind + id)
+        - `dateDebut` / `dateFin` supprimés (portés par planningContext.horizon)
+        - `heureDebutPoste` renommé `shiftStart`
+        - `amplitudeJournaliereHeures` renommé `dailyAmplitudeHours`
+        - Ajout : `shiftEndAlert`, `lunchBreak`, `holidayDates`
+      properties:
+        resourceRef:
+          $ref: '#/components/schemas/ResourceRef'
+          description: Ressource cible de la génération (salarié ou poste virtuel)
+        shiftStart:
+          type: string
+          pattern: '^([01]\d|2[0-3]):[0-5]\d$'
+          description: Heure de début de poste
+        shiftEndAlert:
+          type: string
+          pattern: '^([01]\d|2[0-3]):[0-5]\d$'
+          description: |
+            Heure de fin de poste (borne d'alerte). Si la génération dépasse
+            cette borne, une alerte `SHIFT_END_EXCEEDED` est émise.
+        dailyAmplitudeHours:
+          type: number
+          description: Amplitude journalière incluant la pause éventuelle (ex. 7.5)
+        lunchBreak:
+          $ref: '#/components/schemas/LunchBreak'
+          description: Pause déjeuner à exclure de l'amplitude (optionnelle)
+        workedDays:
+          type: array
+          items:
+            type: string
+            enum: [MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY]
+          description: Jours travaillés dans la semaine
+        holidayDates:
+          type: array
+          items:
+            type: string
+            format: date
+          description: |
+            Jours fériés de la période. Aucun créneau n'y est généré.
+
+            [S7.9] Ce calendrier alimente désormais aussi `RegulatoryParameters` : si un créneau
+            se trouve malgré tout sur l'une de ces dates, ses minutes sont comptées comme
+            fériées, au score comme dans `workMetrics.heuresJourFerie`.
+        codeActiviteId:
+          type: string
+          minLength: 1
+          description: |
+            Code activité porté par les créneaux générés, exprimé dans le vocabulaire du
+            client. Doit figurer dans `dataSet.referentiels.activites` — sans quoi les
+            créneaux ne comptent pas dans la charge (alerte `UNKNOWN_ACTIVITY`).
+
+            **Optionnel pendant la transition.** Absent, le moteur applique son code
+            historique `travail` et retourne l'alerte `ACTIVITY_CODE_DEFAULTED` (WARNING).
+            Ce repli est transitoire : le champ deviendra obligatoire.
+      required:
+        - resourceRef
+        - shiftStart
+        - shiftEndAlert
+        - dailyAmplitudeHours
+        - workedDays
+
+    # ──────────────────────────────────────────────
+    # PARAMÈTRES SPÉCIFIQUES SC-03
+    # ──────────────────────────────────────────────
+
+    Sc03ScenarioParameters:
+      type: object
+      description: |
+        Paramètres complémentaires pour SC-03.
+        Correspond à `Sc03ScenarioParametersDTO`.
+
+        ⚠️ Écart avec l'ancienne spec YAML : ce bloc n'est pas vide.
+        Il contient `prioriteCouverture` et `periode` (optionnels).
+        `prioriteCouverture` est transporté pour traçabilité — non exploité
+        par le solveur avant Phase 8.
+      properties:
+        prioriteCouverture:
+          type: string
+          enum: [NORMALE, HAUTE, CRITIQUE]
+          description: Niveau de priorité global de couverture (non exploité avant Phase 8)
+        periode:
+          $ref: '#/components/schemas/Horizon'
+          description: |
+            Période de planification optionnelle. Si null, `planningContext.horizon` fait foi.
+
+    # ──────────────────────────────────────────────
+    # ENVELOPPES DE REQUÊTE
+    # ──────────────────────────────────────────────
+
+    Sc01ScenarioRequest:
+      type: object
+      description: |
+        Corps de requête pour SC-01 — mode paramétrique.
+        Correspond à `ScenarioRequestDTO`.
+
+        Pipeline : `scenarioParameters` → génération des créneaux (ScenarioDatasetBuilderSc01)
+        → résolution solveur → `ScenarioResponseDTO`.
+
+        `dataSet.creneaux` est ignoré par le builder SC-01 (un log WARN est émis
+        si des créneaux sont fournis).
+      properties:
+        requestId:
+          type: string
+          description: Identifiant unique de la requête pour la traçabilité (obligatoire)
+        metadata:
+          $ref: '#/components/schemas/Metadata'
+        scenarioType:
+          type: string
+          const: SC-01
+        planningContext:
+          $ref: '#/components/schemas/PlanningContext'
+        scenarioParameters:
+          $ref: '#/components/schemas/Sc01ScenarioParameters'
+        dataSet:
+          $ref: '#/components/schemas/DataSet'
+      required: [requestId, metadata, scenarioType, planningContext, scenarioParameters, dataSet]
+
+    Sc03ScenarioRequest:
+      type: object
+      description: |
+        Corps de requête pour SC-03 — mode dataset-driven.
+        Correspond à `Sc03ScenarioRequestDTO`.
+
+        Pipeline : `dataSet.creneaux` (fournis par l'appelant) → résolution solveur
+        → `ScenarioResponseDTO`. Aucune génération de créneaux n'est effectuée.
+
+        `dataSet.creneaux` est obligatoire et ne peut pas être vide.
+        `scenarioParameters` est optionnel (prioriteCouverture et periode transportés
+        pour traçabilité, non exploités avant Phase 8).
+      properties:
+        requestId:
+          type: string
+          description: Identifiant unique de la requête pour la traçabilité (obligatoire)
+        metadata:
+          $ref: '#/components/schemas/Metadata'
+        scenarioType:
+          type: string
+          const: SC-03
+        planningContext:
+          $ref: '#/components/schemas/PlanningContext'
+        scenarioParameters:
+          $ref: '#/components/schemas/Sc03ScenarioParameters'
+        dataSet:
+          allOf:
+            - $ref: '#/components/schemas/DataSet'
+            - type: object
+              required: [ressources, creneaux]
+              properties:
+                creneaux:
+                  type: array
+                  minItems: 1
+                  items:
+                    $ref: '#/components/schemas/CreneauInput'
+      required: [requestId, metadata, scenarioType, planningContext, dataSet]
+
+    # ──────────────────────────────────────────────
+    # REQUÊTE — SC-02
+    # ──────────────────────────────────────────────
+
+    Sc02ScenarioParameters:
+      type: object
+      additionalProperties: false
+      description: |
+        Paramètres du scénario SC-02. Correspond à `Sc02ScenarioParametersDTO`.
+
+        **Bloc strict** : tout champ inconnu est rejeté — `400 UNKNOWN_FIELD`, avec le chemin du
+        paramètre en cause — jamais ignoré en silence. Un paramètre transporté que personne
+        n'exploite est pire qu'un paramètre absent : l'appelant le renseigne et croit l'avoir dit.
+        Ce bloc n'expose donc que ce que le moteur honore aujourd'hui ; les paramètres prévus au
+        cadrage (`remplacantsAutorises`, `decoupageAutorise`) arriveront avec les lots qui les
+        mettent en œuvre, et sont **refusés d'ici là**.
+      properties:
+        salarieAbsentId:
+          type: string
+          minLength: 1
+          description: |
+            Salarié dont l'absence motive le scénario. **Obligatoire.**
+
+            Il ne sert **pas** à la contrainte : l'absence elle-même est portée par
+            `dataSet.indisponibilites`, déjà tenu par la contrainte HARD
+            `METIER_HARD_INDISPONIBILITE`. Il sert à savoir **de quelle absence** le moteur doit
+            tirer les conséquences — donc quels créneaux libérer, et quoi restituer.
+
+            👉 Aucun champ nouveau n'est demandé pour décrire l'absence : conserver une source
+            unique évite les divergences.
+        posteVirtuelAutorise:
+          type: boolean
+          default: false
+          description: |
+            Autorise le report des heures non couvertes sur un poste fictif du `dataSet`.
+
+            Absent vaut **refus** : le poste virtuel ne s'invite jamais de lui-même, il faut
+            l'avoir demandé. Les heures non couvertes reviennent alors sans ressource.
+
+            Dans les deux cas elles comptent dans `remplacement.heuresAPourvoir` — poste virtuel et
+            heures à pourvoir sont deux réponses distinctes à la même situation, pas une solution et
+            son repli.
+
+            ⚠️ `capaciteCible` du poste virtuel n'est lu par aucune contrainte : la capacité
+            déclarée **ne bornera pas** le volume qu'on y gare.
+        surchargeMaxHeuresJour:
+          type: number
+          format: double
+          description: |
+            Charge journalière au-delà de laquelle l'encadrement estime un remplaçant en surcharge,
+            en heures décimales.
+
+            Borne de **confort**, propre à cette demande — à ne pas confondre avec les bornes
+            réglementaires individuelles du salarié, qui gardent leur rôle et restent HARD. Son
+            dépassement est pesé au score et signalé par une alerte
+            `SURCHARGE_ACCEPTABLE_DEPASSEE`, **jamais éliminatoire** : le moteur préfère confier un
+            remplacement en surcharge plutôt que de laisser des heures à pourvoir.
+
+            Absent : aucun seuil journalier, donc aucun dépassement de ce côté. Une borne absente
+            n'est pas une borne à zéro.
+        surchargeMaxHeuresSemaine:
+          type: number
+          format: double
+          description: |
+            Même chose sur la semaine calendaire lundi → dimanche. Les deux seuils sont
+            **indépendants** : une longue journée dans une semaine creuse ne franchit que le
+            premier, une semaine chargée faite de journées ordinaires que le second.
+      required: [salarieAbsentId]
+
+    Sc02ScenarioRequest:
+      type: object
+      description: |
+        Corps de requête pour SC-02 — remplacement d'un salarié absent.
+        Correspond à `Sc02ScenarioRequestDTO`.
+
+        **Ce que le `dataSet` doit porter** :
+
+        - `creneaux` — le planning existant, chaque créneau servi portant son
+          `ressourceAffecteeId`. C'est de là que sortent à la fois les créneaux à remplacer (ceux
+          de l'absent) et l'existant à préserver (tous les autres) ;
+        - `indisponibilites.items` — **l'absence elle-même**, sur le salarié désigné par
+          `salarieAbsentId`. Sans elle le moteur ne sait pas quand il est absent, ne libère aucun
+          créneau, et le dit par une alerte `AUCUNE_ABSENCE_DECLAREE` : un vide ne vaut pas absence
+          sur tout l'horizon ;
+        - `referentiels.activites` — nécessaire pour que la charge se calcule
+          (`compteDansCharge`).
+
+        **Ce qui est décidé, et ce qui ne l'est pas.** Seuls les créneaux de l'absent que son
+        absence recouvre portent une décision. Un créneau de l'absent situé **hors** de sa période
+        d'absence lui reste, épinglé.
+
+        ⚠️ **Limite connue** : `activitesCompatibles` n'est lu par aucune contrainte. Un salarié
+        peut donc se voir confier un créneau dont il ne pratique pas l'activité. Les seules règles
+        qui écartent réellement un remplaçant sont, à ce jour, le chevauchement physique,
+        l'indisponibilité et le jour férié refusé.
+      properties:
+        requestId:
+          type: string
+          description: Identifiant unique de la requête pour la traçabilité (obligatoire)
+        metadata:
+          $ref: '#/components/schemas/Metadata'
+        scenarioType:
+          type: string
+          const: SC-02
+        planningContext:
+          $ref: '#/components/schemas/PlanningContext'
+        scenarioParameters:
+          $ref: '#/components/schemas/Sc02ScenarioParameters'
+        dataSet:
+          allOf:
+            - $ref: '#/components/schemas/DataSet'
+            - type: object
+              required: [ressources, creneaux]
+              properties:
+                creneaux:
+                  type: array
+                  minItems: 1
+                  items:
+                    $ref: '#/components/schemas/CreneauInput'
+      required: [requestId, metadata, scenarioType, planningContext, scenarioParameters, dataSet]
+
+    # ──────────────────────────────────────────────
+    # REQUÊTE — SC-05
+    # ──────────────────────────────────────────────
+
+    Sc04ScenarioParameters:
+      type: object
+      description: |
+        Paramètres propres à SC-04. Correspond à `Sc04ScenarioParametersDTO`.
+
+        **Deux champs, et c'est le degré de liberté.** Tout le reste — période, planning existant,
+        indisponibilités, cadre réglementaire, tolérance d'équité — était déjà au contrat.
+
+        **`datePivot` borne, `creneauxAjustables` sélectionne.** Les deux champs n'ont pas la même
+        nature, et c'est pour cela qu'ils se composent au lieu de se concurrencer : la date pivot
+        dit jusqu'où le moteur a le droit d'aller, la liste dit ce qu'il a le droit de toucher à
+        l'intérieur. La conjonction est une **intersection** — est ajustable ce qui est à la fois
+        postérieur au pivot **et** désigné.
+
+        ⚠️ Les « priorités d'optimisation » et la « pondération des règles » annoncées de longue
+        date au contrat fonctionnel sont **retirées**. Le moteur ne pondère pas une mesure dont
+        l'échelle n'est pas calibrée, et les coefficients de pénibilité ne le sont pas.
+      required: [datePivot]
+      properties:
+        datePivot:
+          type: string
+          format: date
+          description: |
+            Premier jour **ajustable**. Tout ce qui précède est figé, y compris les créneaux que
+            personne ne couvrait — le passé ne se réécrit pas, même quand il est vide.
+
+            Le jour du pivot lui-même est ajustable : « à partir de », non « après ».
+
+            Un pivot hors de l'horizon est **accepté et signalé** : postérieur à tous les créneaux,
+            l'alerte `AUCUN_CRENEAU_AJUSTABLE` dit que la demande n'a pas d'objet ; antérieur à
+            tous, `PLANNING_ENTIEREMENT_REOUVERT` prévient que le planning est rouvert en entier —
+            exactement le remaniement que SC-04 existe pour éviter.
+        creneauxAjustables:
+          type: array
+          items:
+            type: string
+          description: |
+            Identifiants des créneaux du `dataSet` que le solveur a le droit de déplacer —
+            **optionnel**, et purement **restrictif** : la liste rétrécit l'après-pivot, elle ne
+            rouvre jamais le passé.
+
+            **Absent, vide et renseigné sont trois demandes différentes.** Absent, tout
+            l'après-pivot est ajustable — c'est le comportement de SC-04 depuis son écriture, et il
+            n'a pas changé. Vide, plus rien ne l'est, et `AUCUN_CRENEAU_AJUSTABLE` le dit. Le champ
+            n'a donc pas de contrainte « non vide » : omettre et vider n'expriment pas la même
+            chose.
+
+            **La zone remaniable est bornée à un mois glissant**, mesurée du premier au dernier
+            créneau qui bougera effectivement — donc postérieur au pivot et dans l'horizon. Un
+            dépassement est refusé en **422** : une liste hors borne n'est pas un planning
+            impossible, c'est une requête mal formée, et la tronquer en silence rendrait un
+            résultat partiel que vous liriez comme complet. Un créneau désigné hors horizon ou
+            antérieur au pivot ne gonfle pas cette amplitude — il a sa propre alerte.
+
+            ⚠️ **Ne pas lister, c'est renoncer à couvrir.** Un créneau postérieur au pivot, que
+            personne ne couvre et que la liste ne désigne pas, reste un trou définitif — et comme
+            tout le bloc `optimisation` se compte sur les créneaux ajustables, il **n'apparaît pas**
+            dans `creneauxNonCouverts`. L'alerte `CRENEAU_FUTUR_NON_COUVERT_GELE` existe pour que
+            ce trou ne se découvre pas sur le terrain.
+
+            Alertes propres à ce champ : `CRENEAU_AJUSTABLE_INTROUVABLE` (identifiant absent du
+            dataset), `CRENEAU_AJUSTABLE_ANTERIEUR_AU_PIVOT` (désigné mais figé, le plus souvent le
+            signe d'un pivot mal placé), `CRENEAU_FUTUR_NON_COUVERT_GELE`.
+    Sc04ScenarioRequest:
+      type: object
+      description: |
+        Corps de requête pour SC-04 — optimisation globale d'un planning existant sur une période.
+        Correspond à `Sc04ScenarioRequestDTO`.
+
+        **Ce que le `dataSet` doit porter** :
+
+        - `creneaux` — le **planning complet de la période**, pour tout le monde, chaque créneau
+          servi portant son `ressourceAffecteeId` ;
+        - `referentiels.activites` — nécessaire pour que la charge se calcule (`compteDansCharge`) ;
+        - `indisponibilites` — **déduites de la mesure** : une absence n'est pas du temps disponible
+          non travaillé, et sans elles un salarié revenant de congé paraîtrait sous son contrat.
+
+        ⚠️ **Aucun « historique des compteurs » n'est attendu.** La profondeur est celle de
+        `planningContext.horizon`, que l'appelant élargit à ce qu'il veut voir.
+
+        ⚠️ **Limite connue, commune à tous les scénarios qui résolvent** : `activitesCompatibles`
+        n'est lu par aucune contrainte.
+      required: [requestId, metadata, scenarioParameters]
+      properties:
+        requestId:
+          type: string
+          description: Identifiant unique de la requête pour la traçabilité (obligatoire)
+        metadata:
+          $ref: '#/components/schemas/Metadata'
+        scenarioType:
+          type: string
+          const: SC-04
+        planningContext:
+          $ref: '#/components/schemas/PlanningContext'
+        scenarioParameters:
+          $ref: '#/components/schemas/Sc04ScenarioParameters'
+        dataSet:
+          $ref: '#/components/schemas/DataSet'
+    Sc05ScenarioParameters:
+      type: object
+      additionalProperties: false
+      description: |
+        Paramètres du scénario SC-05. Correspond à `Sc05ScenarioParametersDTO`.
+
+        **Bloc strict** : tout champ inconnu est rejeté — `400 UNKNOWN_FIELD` — jamais ignoré en
+        silence.
+
+        **Deux champs annoncés de longue date n'existent pas**, et c'est délibéré :
+
+        - `objectif` — il se **déduit** de ce que l'appelant transmet. L'équité de charge est dite
+          par `planningContext.equite.ecartTolerePourcent`, la minimisation de surcharge par les
+          seuils de SC-02. Un enum qui double des paramètres existants finit par les contredire.
+          Il reviendra **quand le moteur connaîtra les préférences**, avec la seule valeur qui ne se
+          déduira pas d'un paramètre ;
+        - `autoriserDesequilibre` — remplacé par `ecartTolerePourcent`, qui dit **de combien** là où
+          un booléen ne disait pas jusqu'où. « Équité stricte » se transmet comme une tolérance
+          à `0`.
+
+        **Aucun champ nouveau hors de ce bloc** : le planning existant, les contrats, les
+        indisponibilités, le cadre réglementaire, la tolérance d'équité et l'échelle de pénibilité
+        étaient déjà au contrat et déjà lus.
+      properties:
+        salarieAId:
+          type: string
+          minLength: 1
+          description: |
+            Premier des deux salariés entre lesquels arbitrer. **Obligatoire.**
+
+            Doit être **distinct** de `salarieBId` : arbitrer quelqu'un avec lui-même n'a pas
+            d'objet, et le moteur y répondrait par une répartition inchangée que l'appelant lirait
+            comme un refus silencieux. Deux identifiants identiques → `422`.
+
+            Un salarié absent du `dataSet` n'interrompt pas le scénario : il est signalé par une
+            alerte `SALARIE_ARBITRE_INTROUVABLE`, et l'arbitrage se fait sans lui.
+        salarieBId:
+          type: string
+          minLength: 1
+          description: |
+            Second des deux salariés. **Obligatoire**, et distinct du premier.
+
+            👉 Le moteur, lui, raisonne sur un **ensemble** de ressources autorisées et ne sait pas
+            combien elles sont. La limite à deux est une règle de **ce bloc**, pas une hypothèse de
+            calcul : l'ouverture à N élargira le contrat d'entrée sans réécrire le moteur.
+        creneauxArbitres:
+          type: array
+          minItems: 1
+          items:
+            type: string
+          description: |
+            Identifiants des créneaux du `dataSet` remis en jeu. **Obligatoire et non vide.**
+
+            Le périmètre est **transmis, jamais déduit**. Les identifiants sont ceux que l'appelant
+            a lui-même transmis dans `dataSet.creneaux`.
+
+            Un identifiant que le problème ne contient pas — absent du `dataSet`, ou écarté avant
+            résolution pour activité inconnue ou date hors horizon — est signalé par une alerte
+            `CRENEAU_ARBITRE_INTROUVABLE` qui le nomme. L'arbitrage porte alors sur les autres, et
+            `arbitrage.creneauxArbitres` compte le périmètre **effectivement** soumis.
+      required: [salarieAId, salarieBId, creneauxArbitres]
+
+    Sc05ScenarioRequest:
+      type: object
+      description: |
+        Corps de requête pour SC-05 — arbitrage d'un périmètre commun entre deux salariés.
+        Correspond à `Sc05ScenarioRequestDTO`.
+
+        **Ce que le `dataSet` doit porter** :
+
+        - `creneaux` — le **planning complet de la période** pour les deux salariés, chaque créneau
+          servi portant son `ressourceAffecteeId`. C'est de là que sortent à la fois le périmètre à
+          arbitrer et l'existant à préserver ;
+        - `referentiels.activites` — nécessaire pour que la charge se calcule (`compteDansCharge`).
+
+        **Ce qui est décidé, et ce qui ne l'est pas.** Seuls les créneaux **du périmètre** tenus par
+        l'un des deux salariés portent une décision. Ceux du périmètre tenus par un tiers sont
+        épinglés et signalés ; tout le reste du planning est épinglé sans commentaire.
+
+        👉 Un créneau du périmètre porté par un **poste virtuel** est remis en jeu : un poste virtuel
+        n'est le travail de personne, et l'épingler rendrait sans effet un créneau que l'appelant a
+        désigné.
+
+        👉 `planningContext.equite.ecartTolerePourcent` n'est pas obligatoire, mais **sans lui le
+        moteur ne juge aucun écart inéquitable** : la contrainte d'équité reste inerte, et aucune
+        alerte `INEQUITE_RESIDUELLE` ne peut être levée. Une borne absente n'est pas une borne à
+        zéro.
+
+        ⚠️ **Limite connue, commune à tous les scénarios qui résolvent** : `activitesCompatibles`
+        n'est lu par aucune contrainte. Un salarié peut donc se voir confier un créneau dont il ne
+        pratique pas l'activité. Les contraintes personnelles — indisponibilité récurrente,
+        incompatibilité entre personnes, activités autorisées — ne sont pas encore au périmètre du
+        moteur.
+      properties:
+        requestId:
+          type: string
+          description: Identifiant unique de la requête pour la traçabilité (obligatoire)
+        metadata:
+          $ref: '#/components/schemas/Metadata'
+        scenarioType:
+          type: string
+          const: SC-05
+        planningContext:
+          $ref: '#/components/schemas/PlanningContext'
+        scenarioParameters:
+          $ref: '#/components/schemas/Sc05ScenarioParameters'
+        dataSet:
+          allOf:
+            - $ref: '#/components/schemas/DataSet'
+            - type: object
+              required: [ressources, creneaux]
+              properties:
+                creneaux:
+                  type: array
+                  minItems: 1
+                  items:
+                    $ref: '#/components/schemas/CreneauInput'
+      required: [requestId, metadata, scenarioType, planningContext, scenarioParameters, dataSet]
+
+    # ──────────────────────────────────────────────
+    # REQUÊTE — SC-06
+    # ──────────────────────────────────────────────
+
+    BesoinCreneau:
+      type: object
+      description: |
+        Un créneau du besoin à couvrir. Correspond à `BesoinCreneauDTO`.
+
+        Volontairement distinct de `CreneauInput`, pour deux raisons structurelles :
+        - **pas de `date`** — elle est portée une seule fois par le besoin, ce qui rend
+          l'invariant « tous les créneaux du besoin tombent le même jour » impossible à violer ;
+        - **pas de `ressourceAffecteeId`** — un besoin est la question posée, jamais une
+          affectation. Le champ n'existe pas, donc ne peut pas être renseigné par mégarde.
+
+        Contrat strict : tout champ inconnu est rejeté.
+      properties:
+        id:
+          type: string
+          description: |
+            Identifiant du créneau de besoin, fourni par l'appelant, unique sur tout le scénario.
+            Convention : préfixe dédié (`BES-00X`). Chaîne opaque pour le moteur, restituée
+            à l'identique.
+        heureDebut:
+          type: string
+          pattern: '^([01]\d|2[0-3]):[0-5]\d$'
+        heureFin:
+          type: string
+          pattern: '^([01]\d|2[0-3]):[0-5]\d$'
+          description: Peut être antérieure à `heureDebut` — le créneau traverse alors minuit.
+        codeActiviteId:
+          type: string
+          description: |
+            Activité à servir. **Doit figurer au référentiel transmis**, faute de quoi la requête
+            est refusée : une activité inconnue ne pèse sur aucune règle, et le besoin serait
+            couvert sans jamais avoir été évalué.
+        lieu:
+          type: string
+          description: |
+            Lieu où servir l'activité. **Transporté et restitué ; ne restreint pas les candidats.**
+            `sitesAutorises` n'est exploité par aucune contrainte ni aucun filtre à ce jour.
+        posteComptable:
+          type: string
+        segmentNuit:
+          type: boolean
+        isJourFerie:
+          type: boolean
+          description: |
+            [S7.9] Même portée que sur `CreneauInput` : source de vérité du jour férié pour
+            SC-06, planning figé et besoin confondus.
+      required: [id, heureDebut, heureFin, codeActiviteId]
+
+    Besoin:
+      type: object
+      description: |
+        Le besoin à couvrir : de 1 à n créneaux, **tous sur la même journée**.
+        Correspond à `BesoinDTO`.
+      properties:
+        date:
+          type: string
+          format: date
+          description: Jour du besoin, commun à tous ses créneaux.
+        creneaux:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/BesoinCreneau'
+      required: [date, creneaux]
+
+    Sc06ScenarioParameters:
+      type: object
+      description: |
+        Paramètres du scénario SC-06. Correspond à `Sc06ScenarioParametersDTO`.
+
+        Un seul paramètre : le besoin. Le nombre de solutions restituées n'est pas paramétrable —
+        trois, toujours.
+      properties:
+        besoin:
+          $ref: '#/components/schemas/Besoin'
+      required: [besoin]
+
+    Sc06ScenarioRequest:
+      type: object
+      description: |
+        Corps de requête pour SC-06 — désignation de la ressource la plus à même de couvrir
+        un besoin. Correspond à `Sc06ScenarioRequestDTO`.
+
+        **Principe structurant** — deux populations de créneaux, de statuts opposés :
+
+        - `dataSet.creneaux` = le passé, **intégralement figé**. Chaque créneau porte son
+          `ressourceAffecteeId`. Le moteur n'y touche pas : il insère, il ne redistribue pas.
+        - `scenarioParameters.besoin` = la question posée, **seule variable de décision**.
+
+        **Trois exigences de l'appelant**, sans lesquelles la requête est refusée :
+
+        1. `planningContext.horizon` couvre **exactement la semaine calendaire lundi → dimanche**
+           contenant la date du besoin, pour **toutes** les ressources candidates. Une semaine
+           tronquée sous-évalue le total hebdomadaire, ne détecte aucun dépassement, et
+           déclarerait conformes des candidats qui ne le sont pas.
+        2. Tout créneau du `dataSet` porte son `ressourceAffecteeId`.
+        3. L'activité du besoin figure au référentiel transmis.
+
+        **Convention sur les limites** : pour désactiver une contrainte individuelle, **omettre
+        le champ** — ne jamais envoyer `0`. Une valeur `0` active la contrainte avec un seuil nul.
+        Le moteur émet un avertissement dans ses journaux mais ne corrige pas : corriger
+        reviendrait à deviner l'intention.
+      properties:
+        requestId:
+          type: string
+          description: Identifiant unique de la requête pour la traçabilité (obligatoire)
+        metadata:
+          $ref: '#/components/schemas/Metadata'
+        scenarioType:
+          type: string
+          const: SC-06
+        planningContext:
+          $ref: '#/components/schemas/PlanningContext'
+        scenarioParameters:
+          $ref: '#/components/schemas/Sc06ScenarioParameters'
+        dataSet:
+          allOf:
+            - $ref: '#/components/schemas/DataSet'
+            - type: object
+              required: [referentiels, ressources]
+      required: [requestId, metadata, scenarioType, planningContext, scenarioParameters, dataSet]
+
+    # ──────────────────────────────────────────────
+    # RÉPONSE — SOLVERRESULT
+    # ──────────────────────────────────────────────
+
+    Score:
+      type: object
+      description: "Correspond à 'ScoreDTO'."
+      properties:
+        hard:
+          type: integer
+          description: Score dur (violations de contraintes physiques/légales)
+        soft:
+          type: integer
+          description: Score doux (violations de contraintes métier/préférences)
+      required: [hard, soft]
+
+    ScoreBreakdownItem:
+      type: object
+      description: "Correspond à 'ScoreBreakdownItemDTO'."
+      properties:
+        penaliteKey:
+          type: string
+          description: Identifiant de la contrainte pénalisée
+        unit:
+          type: string
+          enum: [OCCURRENCE, MINUTE_PONDEREE, JOUR, UNKNOWN]
+          description: "Unité de mesure de la pénalité (enum ScoreBreakdownUnit)"
+        quantity:
+          type: number
+          description: Quantité observée (nombre d'occurrences, de minutes, etc.)
+        weightedImpact:
+          type: integer
+          description: Impact pondéré sur le score total
+      required: [penaliteKey, unit, quantity, weightedImpact]
+
+    SolverResult:
+      type: object
+      description: "Correspond à 'SolverResultDTO'."
+      properties:
+        status:
+          type: string
+          description: |
+            Statut de la résolution. Valeurs connues : "FEASIBLE", "INFEASIBLE",
+            "OPTIMAL". Non validé par enum en V1 — le code sérialise une String libre.
+        score:
+          $ref: '#/components/schemas/Score'
+        scoreBreakdown:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScoreBreakdownItem'
+      required: [status, score]
+
+    # ──────────────────────────────────────────────
+    # RÉPONSE — PLANNING
+    # ──────────────────────────────────────────────
+
+    PlanningCreneau:
+      type: object
+      description: |
+        Créneau dans la vue planning de la réponse.
+        Correspond à `CreneauPlanningDTO`.
+        `ressourceAffecteeId` vaut "A_AFFECTER" si le créneau n'est pas couvert
+        (jamais null — pseudo-ressource `RessourceNonAffectee`).
+        `nature` est un champ de qualification du créneau (enum `CreneauNature`).
+        `id` et `lieu` sont des données reçues restituées à l'identique : le moteur ne les
+        interprète pas et ne les normalise pas.
+      properties:
+        id:
+          type: string
+          description: |
+            Identifiant du créneau, restitué tel que reçu. Chaîne opaque pour le moteur —
+            la convention de préfixe appartient à l'appelant, qui l'utilise pour rattacher
+            chaque créneau à sa ligne d'origine.
+            Les créneaux générés par le moteur (SC-01) portent le préfixe
+            `SC01-<date>-<séquence>` et ne désignent aucune ligne en base.
+        lieu:
+          type: string
+          nullable: true
+          description: |
+            Lieu reçu en entrée, restitué sans normalisation.
+            null si le créneau n'en portait pas — cas des créneaux générés par le moteur.
+        activite:
+          type: string
+        heureDebut:
+          type: string
+          description: Format HH:mm (sérialisé par @JsonFormat)
+        heureFin:
+          type: string
+          description: Format HH:mm (sérialisé par @JsonFormat)
+        duree:
+          type: string
+          description: Format HH:MM (chaîne calculée)
+        nature:
+          type: string
+          enum: [TRAVAIL, REPOS, FERIE, ABSENCE, IMPOSE]
+          description: "Nature du créneau (enum CreneauNature)"
+        ressourceAffecteeId:
+          type: string
+          description: |
+            Identifiant de la ressource affectée. "A_AFFECTER" si non couvert.
+      required: [id, activite, heureDebut, heureFin, duree, ressourceAffecteeId]
+
+    PlanningDay:
+      type: object
+      description: "Correspond à 'JourPlanningDTO'."
+      properties:
+        date:
+          type: string
+          format: date
+        creneaux:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanningCreneau'
+      required: [date, creneaux]
+
+    ScenarioPlanning:
+      type: object
+      description: |
+        Vue planning de la réponse.
+        Correspond à `ScenarioPlanningDTO`.
+        `idSalarie` peut être null pour SC-03 multi-ressources (non confirmé par le code).
+      properties:
+        idSalarie:
+          type: string
+          description: |
+            Identifiant du salarié (SC-01). Peut être absent ou null en SC-03.
+            ⚠️ Hypothèse : à confirmer avec l'équipe sur la structure SC-03 réelle.
+        jours:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanningDay'
+      required: [jours]
+
+    # ──────────────────────────────────────────────
+    # RÉPONSE — WORKMETRICS
+    # ──────────────────────────────────────────────
+
+    WorkMetricsByRessource:
+      type: object
+      description: |
+        Métriques de travail par ressource.
+        Correspond à `WorkMetricsByRessourceDTO`.
+        `nbCreneauxNuitNonNuit` est un indicateur Phase 8 : créneaux de nuit
+        affectés à un salarié non travailleur de nuit.
+      properties:
+        resourceId:
+          type: string
+        periodeDebut:
+          type: string
+          format: date
+        periodeFin:
+          type: string
+          format: date
+        heuresTravaillees:
+          type: number
+        heuresNuit:
+          type: number
+        heuresJourFerie:
+          type: number
+        heuresReposHebdoTravaille:
+          type: number
+          description: Heures de repos hebdomadaire effectivement travaillées
+        nbDimanchesTravailles:
+          type: integer
+        maxJoursConsecutifsObservees:
+          type: integer
+        maxNuitsConsecutivesObservees:
+          type: integer
+        nbCreneauxNuitNonNuit:
+          type: integer
+          description: "[Phase 8] Créneaux de nuit affectés à un non-travailleur de nuit"
+        heuresPonderees:
+          type: number
+          format: double
+          description: |
+            [Équité L1] Charge ramenée à l'unité commune de l'heure ordinaire.
+
+            Chaque minute est pondérée par le coefficient de **sa seule** catégorie de pénibilité —
+            celle que la dominance retient — de sorte qu'une nuit du dimanche n'est jamais comptée
+            deux fois. C'est cette grandeur, et non `heuresTravaillees`, qui rend deux personnes
+            comparables.
+
+            ⚠️ **Sans `planningContext.coefficientsPenibilite`, elle vaut exactement
+            `heuresTravaillees`.** Deux valeurs identiques ne veulent donc pas dire « aucune
+            pénibilité » mais « aucune pondération demandée ».
+
+            À ne pas confondre avec `heuresNuit` et `heuresJourFerie`, qui comptent des
+            intersections **brutes et se recouvrent** : une nuit du dimanche figure dans les deux.
+        joursObserves:
+          type: integer
+          description: |
+            [Équité L2] Jours de l'horizon déclaré **où ce salarié était disponible** — le
+            dénominateur de `ecartContratPourcent`, qui rapporte le contrat hebdomadaire à cette
+            durée.
+
+            **Propre à chaque salarié** : les indisponibilités déclarées en sont déduites. Un
+            salarié absent une semaine sur deux en observe 7 quand ses collègues en observent 14.
+            Sans cette déduction, l'absence se lirait comme du temps disponible non travaillé : le
+            salarié revenant de congé apparaîtrait sous son contrat, donc préférable, et le moteur
+            lui rattraperait son absence. Un poste virtuel, sans contrat, garde la largeur brute.
+
+            Vaut 0 pour un salarié absent toute la fenêtre — `ecartContratPourcent` est alors
+            `null` : il n'est pas à -100 %, il est hors de comparaison.
+
+            À ne pas confondre avec `periodeDebut` / `periodeFin`, qui bornent les créneaux
+            effectivement reçus : l'horizon dit **sur quelle fenêtre le moteur a jugé**, ces deux
+            dates disent ce que les données couvraient. Plus la fenêtre est large, plus l'écart au
+            contrat a de sens.
+        ecartContratPourcent:
+          type: number
+          format: double
+          nullable: true
+          description: |
+            [Équité L2] Écart **signé** entre la charge pondérée et le volume contractuel attendu
+            sur la fenêtre, en pourcentage.
+
+            Positif : au-dessus de son contrat. **Négatif : en dessous — et cela doit le rendre
+            préférable**, pas seulement « non exclu ». Sans écart signé, le moteur se contenterait
+            d'éviter de surcharger : il ne rééquilibrerait jamais.
+
+            La comparaison se fait **au contrat de chacun**, jamais à la moyenne du groupe, qui
+            mettrait un temps partiel perpétuellement « sous la moyenne ». Un salarié à 30 h à qui
+            l'on demande 35 h est à +16,7 % ; un salarié à 35 h à qui l'on demande 40 h est à
+            +14,3 % — le second est le moins sollicité, bien qu'il travaille cinq heures de plus.
+
+            `null` si le salarié ne déclare pas de volume hebdomadaire : rien n'est alors
+            comparable, et le moteur préfère ne rien dire plutôt que de supposer.
+        partNuits:
+          type: number
+          format: double
+          nullable: true
+          description: |
+            [Équité L2] Part des heures de nuit dans le volume contractuel attendu, en pourcentage.
+            Rapportée au contrat comme les heures : un salarié à 50 % doit une part de nuits
+            proportionnée à son contrat, et huit heures de nuit ne pèsent pas pareil chez lui et
+            chez un temps plein.
+        partDimanches:
+          type: number
+          format: double
+          nullable: true
+          description: "[Équité L2] Part des heures de dimanche non nocturnes, en % du contrat."
+        partFeries:
+          type: number
+          format: double
+          nullable: true
+          description: "[Équité L2] Part des heures de jour férié ni nocturnes ni dominicales, en % du contrat."
+      required: [resourceId]
+
+    WorkMetricsGlobal:
+      type: object
+      description: "Correspond à 'GlobalWorkMetricsDTO'."
+      properties:
+        nbCreneaux:
+          type: integer
+        nbCreneauxNonAffectes:
+          type: integer
+        heuresTravailleesTotales:
+          type: number
+        heuresNuitTotales:
+          type: number
+        heuresJourFerieTotales:
+          type: number
+      required: [nbCreneaux, nbCreneauxNonAffectes]
+
+    WorkMetrics:
+      type: object
+      description: "Correspond à 'WorkMetricsDTO'."
+      properties:
+        byRessource:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkMetricsByRessource'
+        global:
+          $ref: '#/components/schemas/WorkMetricsGlobal'
+      required: [byRessource, global]
+
+    # ──────────────────────────────────────────────
+    # RÉPONSE — SOLUTIONSUMMARY
+    # ──────────────────────────────────────────────
+
+    SolutionSummary:
+      type: object
+      description: |
+        Résumé synthétique de la solution.
+        Correspond à `SolutionSummaryDTO`.
+
+        ⚠️ Écart corrigé : l'ancienne spec avait `nbPostesVirtuelsUtilises`.
+        Le code réel expose `nbRessourcesMobilisees` (toutes ressources confondues).
+      properties:
+        nbCreneaux:
+          type: integer
+          description: Nombre total de créneaux soumis au solveur
+        nbCreneauxAffectes:
+          type: integer
+        nbCreneauxNonAffectes:
+          type: integer
+          description: Créneaux affectés à la pseudo-ressource "A_AFFECTER"
+        nbRessourcesMobilisees:
+          type: integer
+          description: Nombre de ressources réelles ou virtuelles effectivement utilisées
+        heuresTravailleesTotales:
+          type: number
+      required: [nbCreneaux, nbCreneauxAffectes, nbCreneauxNonAffectes]
+
+    # ──────────────────────────────────────────────
+    # RÉPONSE — DIAGNOSTICS
+    # ──────────────────────────────────────────────
+
+    ScenarioAlert:
+      type: object
+      description: |
+        Alerte émise lors de la génération ou de la préparation du dataset.
+        Correspond à `ScenarioAlertDTO`.
+
+        Codes connus :
+        - `SHIFT_END_EXCEEDED` (WARNING) — fin de poste au-delà de la borne d'alerte
+        - `LUNCH_BREAK_OUTSIDE_AMPLITUDE` (WARNING) — pause midi incohérente, un seul créneau généré
+        - `INSUFFICIENT_WEEKLY_REST` (ERROR) — aucun jour de repos hebdomadaire configurable
+        - `TOO_MANY_NON_WORKED_DAYS` (INFO) — jours non travaillés au-delà du repos hebdomadaire
+        - `UNKNOWN_ACTIVITY` (ERROR) — code activité des créneaux générés absent du
+          référentiel injecté ; émise sans `date` car elle porte sur le dataset
+        - `ACTIVITY_CODE_DEFAULTED` (WARNING) — aucun `codeActiviteId` déclaré en SC-01 :
+          le moteur a appliqué son code historique `travail` ; émise sans `date`
+
+        [S8.4] Les six codes ci-dessus n'étaient émis que par SC-01. SC-03 et SC-06 restituaient
+        `alerts: []` en dur : tout ce que leur préparation constatait — y compris les décisions
+        prises **à la place** de l'appelant — ne partait que dans les journaux du serveur.
+        Les codes suivants sont communs aux trois scénarios :
+
+        - `PLAGE_NUIT_PAR_DEFAUT` (WARNING) — la plage de nuit déclarée est inexploitable
+          (une seule borne, ou deux bornes identiques) et la plage légale 22:00–06:00 lui a
+          été substituée. Le score s'en trouve déplacé ; émise sans `date`
+        - `CALENDRIER_FERIES_DIVERGENT` (WARNING) — `regulatoryParameters.joursFeries` fait
+          autorité et diverge du dataset : des dates marquées fériées par les créneaux ne
+          seront ni valorisées ni refusées comme fériées. Le message les énumère ; sans `date`
+        - `CRENEAUX_ECARTES_AVANT_SOLVEUR` (WARNING) — des créneaux n'ont pas atteint le
+          solveur ; le détail est dans `ignoredCreneaux.details` ; émise sans `date`
+        - `AUCUN_CRENEAU_A_RESOUDRE` (ERROR) — aucun créneau n'a survécu aux partitions :
+          la résolution porte sur un problème vide ; émise sans `date`
+        - `AUCUNE_RESSOURCE_DANS_DATASET` (ERROR) — ni salarié ni poste virtuel : tous les
+          créneaux reviendront non affectés, quelle que soit la demande ; émise sans `date`
+        - `RESSOURCE_SANS_ID` (WARNING) — une ressource du dataset n'a pas d'identifiant :
+          son comportement solveur n'est pas garanti et elle n'est pas retrouvable dans la
+          réponse ; émise sans `date`
+
+        Le champ `severity` porte la gravité : une alerte `INFO` signale une configuration
+        atypique mais valide et ne doit pas être restituée comme une anomalie.
+        Champ optionnel pour compatibilité ascendante — absent, il doit être interprété
+        comme `WARNING`.
+      properties:
+        code:
+          type: string
+          description: Code machine de l'alerte
+        severity:
+          type: string
+          enum: [INFO, WARNING, ERROR]
+          description: |
+            Gravité de l'alerte.
+            `INFO` = configuration atypique mais valide, aucune action requise.
+            `WARNING` = configuration acceptée mais dégradée ou hors borne d'alerte.
+            `ERROR` = configuration incohérente, résultat à considérer avec réserve.
+        date:
+          type: string
+          format: date
+          description: |
+            Date concernée par l'alerte. Champ optionnel : lorsque l'alerte porte sur
+            le dataset ou la configuration et non sur un jour, la clé est **omise** de
+            la réponse — elle n'est jamais sérialisée à `null`.
+
+            Pour les alertes portant sur la configuration hebdomadaire
+            (`INSUFFICIENT_WEEKLY_REST`, `TOO_MANY_NON_WORKED_DAYS`), il s'agit du
+            début de l'horizon : l'alerte est émise une seule fois, quel que soit
+            le nombre de semaines couvertes.
+        message:
+          type: string
+          description: Message lisible
+      required: [code, message]
+
+    AssignmentDiagnostic:
+      type: object
+      description: |
+        Diagnostic d'affectation pour un créneau non couvert ou virtuellement affecté.
+        Correspond à `AssignmentDiagnosticDTO`.
+        Les champs (`date`, `heureDebut`, etc.) sont des String dans le DTO Java.
+      properties:
+        creneauId:
+          type: string
+        date:
+          type: string
+          description: Date (String, format ISO-8601)
+        heureDebut:
+          type: string
+        heureFin:
+          type: string
+        activite:
+          type: string
+        status:
+          type: string
+          description: |
+            Statut de l'affectation.
+            Valeurs attendues (non enum Java) : UNCOVERED, VIRTUAL_ASSIGNED,
+            IMPOSSIBLE_TO_ASSIGN.
+        reasonCode:
+          type: string
+          description: |
+            Code de raison. Valeurs attendues : NO_RESOURCE_ASSIGNED,
+            POSTE_VIRTUEL_ASSIGNED, NO_COMPATIBLE_RESOURCE, JOUR_FERIE_NON_COUVERT.
+        message:
+          type: string
+      required: [creneauId, status, reasonCode, message]
+
+    CreneauIgnore:
+      type: object
+      description: |
+        [S8.4] Un créneau signalé par la préparation, et ce que le moteur en a fait.
+
+        Les compteurs seuls ne permettaient pas de dire *quels* créneaux manquaient :
+        la seule trace nominative partait dans les journaux du serveur.
+      properties:
+        creneauId:
+          type: string
+          description: Identifiant reçu, restitué tel quel — clé de rapprochement avec la demande
+        date:
+          type: string
+          format: date
+          description: Jour du créneau. Clé omise si le créneau n'en portait pas
+        motif:
+          type: string
+          enum: [HORS_HORIZON, ACTIVITE_INCONNUE, AUCUNE_RESSOURCE_DANS_DATASET, MARQUEUR_REPOS_NON_RATTACHE]
+          description: |
+            Ce qui a été constaté — jamais ce qui en a été fait, qui dépend du scénario.
+        exclu:
+          type: boolean
+          description: |
+            true si le créneau n'a pas atteint le solveur et ne figure pas dans la réponse.
+            Un même motif n'a pas les mêmes suites partout : une activité inconnue exclut en
+            SC-03, qui partitionne, et n'exclut pas en SC-01, qui mesure sans écarter.
+            AUCUNE_RESSOURCE_DANS_DATASET n'exclut jamais.
+        message:
+          type: string
+          description: Phrase lisible, reprenant la valeur en cause
+      required: [creneauId, motif, exclu, message]
+
+    IgnoredCreneaux:
+      type: object
+      description: |
+        Compteurs de créneaux signalés avant la phase de résolution, et depuis le lot S8.4
+        leur détail. Correspond à `IgnoredCreneauxDTO`.
+
+        Le nom du bloc, hérité, laisse croire que tout ce qu'il compte est perdu : c'est faux
+        d'un des trois compteurs. `details[].exclu` tranche, cas par cas.
+
+        Note : `aucuneRessourceDansDataset` accepte l'alias JSON `sansRessource`
+        en lecture (rétrocompatibilité).
+      properties:
+        horsHorizon:
+          type: integer
+          description: Créneaux hors de l'horizon de planification
+        activiteInconnue:
+          type: integer
+          description: Créneaux dont l'activité est absente du référentiel
+        aucuneRessourceDansDataset:
+          type: integer
+          description: |
+            Créneaux dont aucune ressource du dataset ne déclare l'activité.
+            Ces créneaux ne sont PAS écartés : ils partent au solveur.
+        details:
+          type: array
+          items:
+            $ref: '#/components/schemas/CreneauIgnore'
+          description: |
+            [S8.4] Quels créneaux, et pourquoi. Toujours présent, éventuellement vide.
+            Peut contenir des entrées qu'aucun des trois compteurs ne totalise —
+            MARQUEUR_REPOS_NON_RATTACHE notamment.
+      required: [horsHorizon, activiteInconnue, aucuneRessourceDansDataset, details]
+
+    Diagnostics:
+      type: object
+      description: "Correspond à 'DiagnosticsDTO'."
+      properties:
+        alerts:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScenarioAlert'
+          description: Alertes émises pendant la génération / préparation du dataset
+        assignmentDiagnostics:
+          type: array
+          items:
+            $ref: '#/components/schemas/AssignmentDiagnostic'
+          description: Diagnostics par créneau non affecté ou virtuellement couvert
+        ignoredCreneaux:
+          $ref: '#/components/schemas/IgnoredCreneaux'
+      required: [alerts, assignmentDiagnostics, ignoredCreneaux]
+
+    # ──────────────────────────────────────────────
+    # RÉPONSE GLOBALE
+    # ──────────────────────────────────────────────
+
+    ImpactMesure:
+      type: object
+      description: |
+        [Lot S5] Une grandeur mesurée avant et après affectation du besoin, en **heures
+        décimales** — même unité que `workMetrics.byRessource`.
+
+        ⚠️ **Un dépassement signalé n'est pas une règle appliquée.** Ce bloc décrit des
+        conséquences ; il ne préjuge pas de ce que le moteur sanctionne. `heuresJour` est ainsi
+        mesuré et son plafond restitué, alors qu'aucune contrainte ne lit encore
+        `heuresMaximumParJour`.
+      properties:
+        avant:
+          type: number
+          format: double
+          description: Situation sans le besoin — le planning existant seul.
+        apres:
+          type: number
+          format: double
+          description: Situation avec la part du besoin confiée à cette ressource.
+        delta:
+          type: number
+          format: double
+          description: "`apres` − `avant`"
+        plafond:
+          type: number
+          format: double
+          nullable: true
+          description: |
+            La borne à laquelle la grandeur est comparée, ou `null` si aucune n'a été transmise.
+            Une limite absente n'est pas une limite à zéro.
+
+            ⚠️ **Deux notions distinctes selon le scénario** :
+
+            - **SC-06** — la limite **réglementaire individuelle** du salarié, portée par son bloc
+              `contraintesReglementaires` ;
+            - **SC-02** — le **seuil de confort déclaré par la demande**
+              (`surchargeMaxHeuresJour` / `surchargeMaxHeuresSemaine`), propre à cette situation et
+              non à la personne.
+
+            Les mélanger dans un même champ aurait rendu le chiffre illisible. En SC-02, les bornes
+            individuelles du salarié gardent leurs propres contraintes et leurs propres lignes au
+            `scoreBreakdown`.
+        depassement:
+          type: boolean
+          description: "`apres` dépasse `plafond`. Toujours `false` si `plafond` est null."
+      required: [avant, apres, delta, depassement]
+
+    ImpactCandidat:
+      type: object
+      description: |
+        [Lot S5] Ce que le besoin coûte à une ressource. Une entrée par ressource **réelle**
+        mobilisée.
+
+        Un poste virtuel n'y figure pas : il ne porte ni contrat ni contraintes individuelles.
+        Une solution `RESSOURCE_A_POURVOIR` a donc des impacts **vides** — ce n'est pas une
+        omission.
+      properties:
+        ressourceId:
+          type: string
+        amplitudeJournaliere:
+          $ref: '#/components/schemas/ImpactMesure'
+        heuresJour:
+          $ref: '#/components/schemas/ImpactMesure'
+        heuresSemaine:
+          $ref: '#/components/schemas/ImpactMesure'
+        heuresHabituellesSemaine:
+          type: number
+          format: double
+          nullable: true
+          description: Volume hebdomadaire habituel déclaré au contrat, en heures.
+        joursConsecutifs:
+          $ref: '#/components/schemas/ImpactMesure'
+          description: |
+            [Équité L4] Série de jours travaillés d'affilée **contenant le jour du besoin**, avant
+            et après affectation. Palier 5 du classement : *ne pas rappeler qui enchaîne*.
+
+            ⚠️ **En jours** — seule mesure de ce bloc à ne pas être en heures. `plafond` reprend
+            `joursConsecutifsMaximum` du salarié. `avant` vaut 0 quand la personne ne travaille pas
+            ce jour-là : le besoin la ferait alors entrer dans une série.
+
+            Le critère porte sur la série que le besoin prolongerait, et non sur la plus longue de
+            la fenêtre : celle-là est acquise, et aucun choix ne la change.
+        ecartContratPourcent:
+          type: number
+          format: double
+          nullable: true
+          description: |
+            [Équité L4] Écart **signé** au volume contractuel après affectation, en pourcentage.
+            Palier 6 du classement — l'équité proprement dite.
+
+            Mesuré sur les heures **pondérées** par la pénibilité : *on ne juge l'équité qu'à
+            pénibilité équivalente*. Sans `coefficientsPenibilite` transmis, la pondération est
+            neutre et cet écart se recoupe avec `heuresSemaine.apres` et
+            `heuresHabituellesSemaine`.
+
+            Négatif : la personne est **en dessous** de son contrat, ce qui la rend *préférable* —
+            pas seulement « non exclue ». `null` quand le contrat ne déclare pas de volume : rien
+            n'est alors comparable, et le candidat est classé en dernier de ce palier plutôt que
+            crédité d'un écart favorable.
+      required: [ressourceId, amplitudeJournaliere, heuresJour, heuresSemaine, joursConsecutifs]
+
+    AffectationCandidat:
+      type: object
+      description: |
+        Un créneau du besoin et la ressource proposée pour le servir.
+        C'est la réponse attendue de SC-06 : une identité, l'activité à servir, le lieu.
+      properties:
+        creneauId:
+          type: string
+          description: Identifiant du créneau de besoin, restitué à l'identique.
+        ressourceId:
+          type: string
+          description: "`A_AFFECTER` si aucune ressource ne prend ce créneau en charge."
+        activite:
+          type: string
+        lieu:
+          type: string
+        heureDebut:
+          type: string
+        heureFin:
+          type: string
+      required: [creneauId, ressourceId]
+
+    MotifCandidat:
+      type: object
+      description: |
+        Raison expliquant la conformité ou le rang d'un candidat.
+
+        Même forme que `diagnostics.alerts[]` : le client filtre sur la **sévérité**, pas sur le
+        code. Un motif `ERROR` sur une règle éliminatoire entraîne `conforme = false`.
+
+        Codes éliminatoires : `REPOS_QUOTIDIEN_INSUFFISANT`, `HEURES_HEBDO_DEPASSEES`,
+        `JOUR_FERIE_NON_AUTORISE`, `INDISPONIBILITE`, `CHEVAUCHEMENT`,
+        `NUITS_CONSECUTIVES_DEPASSEES`, `REPOS_APRES_NUITS_INSUFFISANT`,
+        `REPOS_HEBDOMADAIRE_GLISSANT_INSUFFISANT`, `SEMAINE_SANS_JOUR_DE_REPOS`,
+        `DUREE_JOURNALIERE_DEPASSEE`, `NUITS_HEBDOMADAIRES_DEPASSEES`.
+
+        Codes informatifs : `AMPLITUDE_DEPASSEE`, `JOURS_CONSECUTIFS_DEPASSES`,
+        `DIMANCHES_TRAVAILLES_DEPASSES`, `NUIT_SALARIE_NON_NUIT`, `RAPPEL_SUR_REPOS`,
+        `BESOIN_PARTIELLEMENT_COUVERT`, `AUCUNE_RESSOURCE_ELIGIBLE`.
+      properties:
+        code:
+          type: string
+        severite:
+          type: string
+          enum: [INFO, WARNING, ERROR]
+        message:
+          type: string
+      required: [code, severite]
+
+    Candidat:
+      type: object
+      description: |
+        [SC-06] Une manière de couvrir le besoin, et son rang.
+
+        Un candidat n'est pas une personne mais une **solution** : l'affectation complète des
+        créneaux du besoin. Lorsqu'une seule personne couvre tout — le cas préféré — la
+        distinction s'efface, mais elle est nécessaire dès qu'un besoin se répartit.
+
+        **Ordre de classement**, palier par palier, chacun ne départageant que les ex æquo du
+        précédent : conformité → couverture complète → une seule personne, salarié réel avant
+        poste virtuel → personne déjà en poste ce jour-là → score SOFT → charge rapportée au
+        volume hebdomadaire habituel.
+      properties:
+        rang:
+          type: integer
+          description: 1 = la solution la plus favorable.
+        conforme:
+          type: boolean
+          description: |
+            `false` si la solution viole une règle éliminatoire — voir `motifs`.
+
+            Ces solutions sont **restituées et classées en dernier**, jamais masquées :
+            le moteur ne refuse pas, il rend visible l'impossible.
+        couvertureComplete:
+          type: boolean
+          description: "`false` si une partie du besoin reste sur `A_AFFECTER`."
+        nature:
+          type: string
+          enum: [MONO_RESSOURCE, COMPOSEE, RESSOURCE_A_POURVOIR]
+        affectations:
+          type: array
+          items:
+            $ref: '#/components/schemas/AffectationCandidat'
+        impacts:
+          type: array
+          items:
+            $ref: '#/components/schemas/ImpactCandidat'
+        motifs:
+          type: array
+          items:
+            $ref: '#/components/schemas/MotifCandidat'
+      required: [rang, conforme, couvertureComplete, nature, affectations]
+
+    CreneauRemplace:
+      type: object
+      description: |
+        [SC-02] Un morceau de créneau libéré, et son sort.
+
+        Un créneau apparaît ici **quel que soit son sort**, y compris lorsqu'il n'a trouvé
+        personne : un remplacement qui n'a pas eu lieu est une information, pas un silence.
+
+        ⚠️ **La réponse peut contenir plus de créneaux que la demande.** Un créneau couvert en deux
+        fois ressort en deux entrées, dont les identifiants sont dérivés du sien — `<id>#S1`,
+        `<id>#S2` — et qui portent alors `creneauOrigineId`. Un créneau repris en entier par une
+        seule personne **garde son identifiant inchangé**, comme s'il n'avait jamais été découpé :
+        c'est le cas courant.
+      properties:
+        creneauId:
+          type: string
+          description: Identifiant du créneau, restitué tel qu'il a été reçu.
+        creneauOrigineId:
+          type: string
+          description: |
+            Créneau dont celui-ci est un morceau. **Clé omise** — et non rendue nulle — pour un
+            créneau qui n'a pas été découpé. Elle existe pour que le rattachement ne repose jamais
+            sur l'analyse d'une chaîne de caractères.
+        date:
+          type: string
+          format: date
+          description: Jour de **début** du créneau.
+        heureDebut:
+          type: string
+        heureFin:
+          type: string
+          description: Le lendemain si elle n'est pas postérieure au début.
+        dureeMinutes:
+          type: integer
+          description: Durée telle que portée par le créneau, jamais recalculée.
+        ressourceAvantId:
+          type: string
+          description: Salarié absent à qui le créneau était affecté.
+        ressourceApresId:
+          type: string
+          description: |
+            Qui le reprend. **Clé omise** lorsque personne ne le reprend — jamais rendue nulle.
+        nature:
+          type: string
+          enum: [SALARIE, POSTE_VIRTUEL, NON_COUVERT]
+          description: |
+            Ce qui couvre le créneau au bout du compte. `POSTE_VIRTUEL` et `NON_COUVERT` sont deux
+            réponses **distinctes** à la même situation — des heures que personne de réel ne
+            couvre — et toutes deux comptent dans `heuresAPourvoir`.
+      required: [creneauId, date, heureDebut, heureFin, dureeMinutes, ressourceAvantId, nature]
+
+    SurchargeRessource:
+      type: object
+      description: |
+        [SC-02] Ce qu'un remplacement change à la charge de celui qui l'assure, un jour donné.
+
+        Une entrée par salarié réel et par jour où il reprend quelque chose. La mesure hebdomadaire
+        y est répétée telle quelle pour deux jours d'une même semaine : chaque ligne se lit seule,
+        « ce jour-là, il passe à tant d'heures dans la journée et tant dans la semaine ».
+
+        « **Avant** » est la situation qu'on aurait eue sans remplacement, c'est-à-dire le planning
+        **épinglé** du salarié ; le delta est donc exactement ce que l'absence lui a coûté.
+
+        `ImpactMesure` est repris tel quel de SC-06 : la grandeur restituée pour un candidat et
+        celle restituée pour un remplaçant sont la même grandeur. Attention toutefois au `plafond`,
+        qui ne désigne pas la même chose dans les deux scénarios — voir `ImpactMesure`.
+      properties:
+        ressourceId:
+          type: string
+        date:
+          type: string
+          format: date
+        heuresJour:
+          $ref: '#/components/schemas/ImpactMesure'
+        heuresSemaine:
+          $ref: '#/components/schemas/ImpactMesure'
+      required: [ressourceId, date, heuresJour, heuresSemaine]
+
+    # ──────────────────────────────────────────────
+    # RÉPONSE — bloc arbitrage (SC-05)
+    # ──────────────────────────────────────────────
+
+    MotifArbitrage:
+      type: object
+      description: |
+        [SC-05] Une raison attachée à la répartition rendue.
+
+        Même forme que `MotifCandidat` et que `Alert` — `code`, `severite`, `message` — afin que le
+        client applique partout la même règle de lecture : **il filtre sur la sévérité, pas sur le
+        code.**
+
+        Un motif éliminatoire entraîne `arbitrage.acceptable = false`. **La répartition reste
+        restituée** : le moteur ne refuse pas, il rend visible l'impossible.
+      properties:
+        code:
+          type: string
+          enum:
+            - REPARTITION_NON_CONFORME
+            - CRENEAU_ARBITRE_PERDU
+            - INEQUITE_RESIDUELLE
+            - ARBITRAGE_SANS_EFFET
+          description: |
+            - `REPARTITION_NON_CONFORME` (ERROR, **éliminatoire**) — au moins une contrainte
+              impérative est violée ; le détail est dans `solverResult.scoreBreakdown` ;
+            - `CRENEAU_ARBITRE_PERDU` (ERROR, **éliminatoire**) — un créneau que quelqu'un assurait
+              ne trouve plus personne. À distinguer d'un créneau qui n'était **déjà** à personne :
+              celui-là n'a rien perdu ;
+            - `INEQUITE_RESIDUELLE` (WARNING, **éliminatoire**) — l'écart au contrat reste au-delà
+              de la tolérance déclarée. Le périmètre remis en jeu ne contenait pas de quoi y ramener
+              tout le monde : ce n'est pas un défaut du moteur, et l'élargir est une décision
+              d'encadrement ;
+            - `ARBITRAGE_SANS_EFFET` (INFO, **non éliminatoire**) — aucun créneau n'a changé de
+              main. La répartition transmise n'a pas pu être améliorée.
+        severite:
+          type: string
+          enum: [INFO, WARNING, ERROR]
+        message:
+          type: string
+      required: [code, severite, message]
+
+    MouvementSalarie:
+      type: object
+      description: |
+        [SC-05] Ce que l'arbitrage a changé pour l'un des salariés arbitrés.
+
+        **Deux lectures, qui ne se déduisent pas l'une de l'autre.** Les compteurs disent combien
+        d'objets ont changé de main ; les heures et l'écart disent ce qui a réellement été déplacé.
+        Reprendre huit heures et en céder une fait « un repris, un cédé », et n'a rien d'un échange
+        équilibré.
+
+        **L'écart au contrat est la seule des deux grandeurs comparable entre deux personnes** :
+        deux salariés à 32 h ne sont pas dans la même situation si l'un est à 35 h de contrat et
+        l'autre à 24 h.
+      properties:
+        ressourceId:
+          type: string
+        creneauxRepris:
+          type: integer
+          description: Créneaux du périmètre qu'il tient au bout de l'arbitrage et qu'il ne tenait pas avant.
+        creneauxCedes:
+          type: integer
+          description: Créneaux du périmètre qu'il tenait et qu'il ne tient plus.
+        heuresAvant:
+          type: number
+          format: double
+          description: |
+            Heures travaillées sur l'horizon **avant** arbitrage, en heures décimales — heures
+            brutes, même unité que `workMetrics.byRessource`.
+        heuresApres:
+          type: number
+          format: double
+          description: Les mêmes **après** arbitrage.
+        ecartContratAvantPourcent:
+          type: number
+          format: double
+          description: |
+            Écart **signé** à son contrat avant arbitrage, en points de pourcentage.
+
+            Clé **omise** lorsque le contrat ne déclare aucun volume hebdomadaire : rien n'est alors
+            comparable, et le moteur préfère ne rien dire plutôt que de supposer.
+        ecartContratApresPourcent:
+          type: number
+          format: double
+          description: |
+            Le même écart **après** arbitrage. C'est la comparaison des deux qui dit si l'arbitrage
+            a rapproché ou éloigné.
+
+            👉 Les deux sont mesurés **par le même calcul**. Deux mesures obtenues autrement se
+            compareraient mal, et une différence de méthode se lirait comme un mouvement.
+      required: [ressourceId, creneauxRepris, creneauxCedes, heuresAvant, heuresApres]
+
+    CreneauArbitre:
+      type: object
+      description: |
+        [SC-05] Le sort d'un créneau du périmètre : à qui il était, à qui il est.
+
+        Contrairement à `CreneauRemplace`, où `ressourceAvantId` désigne toujours le même absent,
+        chaque créneau a ici **son propre titulaire d'avant** — et c'est précisément ce que
+        l'arbitrage déplace.
+
+        Un créneau du périmètre figure ici **quel que soit son sort** : déplacé, inchangé, épinglé
+        sur un tiers, ou resté à pourvoir. Un arbitrage qui n'a rien changé est une information, pas
+        un silence.
+      properties:
+        creneauId:
+          type: string
+        creneauOrigineId:
+          type: string
+          description: |
+            Créneau dont celui-ci est un morceau. Clé **omise** pour un créneau qui n'a pas été
+            découpé.
+        date:
+          type: string
+          format: date
+          description: Jour de **début** du créneau. Un créneau traversant minuit n'est rattaché qu'à celui-là.
+        heureDebut:
+          type: string
+        heureFin:
+          type: string
+          description: Le lendemain si elle n'est pas postérieure au début.
+        dureeMinutes:
+          type: integer
+          description: Durée telle que portée par le créneau, jamais recalculée.
+        ressourceAvantId:
+          type: string
+          description: |
+            Qui tenait le créneau dans le planning transmis. Clé **omise** si personne ne le tenait —
+            un besoin nu est aussi du travail à répartir.
+        ressourceApresId:
+          type: string
+          description: Qui le tient au bout de l'arbitrage. Clé **omise** si personne.
+        nature:
+          type: string
+          enum: [SALARIE, POSTE_VIRTUEL, NON_COUVERT]
+          description: Ce qui couvre le créneau au bout du compte.
+        deplace:
+          type: boolean
+          description: |
+            Le créneau a changé de main. Restitué plutôt que déduit de la comparaison des deux
+            identifiants, ce qui obligerait l'appelant à traiter lui-même le cas du créneau qui
+            n'était à personne.
+        tenuParUnTiers:
+          type: boolean
+          description: |
+            Le créneau est resté épinglé parce qu'une personne **étrangère à l'arbitrage** le tient.
+            Il n'a donc **pas pu** bouger, et ce n'est pas un échec de l'arbitrage.
+      required:
+        [creneauId, date, heureDebut, heureFin, dureeMinutes, nature, deplace, tenuParUnTiers]
+
+    Optimisation:
+      type: object
+      description: |
+        **[SC-04]** Ce que l'optimisation a produit sur la période, et ce qu'elle a coûté à chacun.
+
+        Le bloc `planning` ne restitue que l'**après**. SC-04 remanie une période entière et doit
+        pouvoir se justifier devant ceux qu'il déplace — c'est ce que le contrat fonctionnel appelle
+        « gains / régressions explicitées ; indicateurs comparatifs ».
+
+        ⚠️ `acceptable: true` signifie **au regard de ce que le moteur sait**. Les préférences
+        individuelles lui échappent : sur un scénario qui remanie une période entière, l'absence de
+        motif ne vaut pas accord des intéressés.
+      required: [datePivot, creneauxFiges, creneauxAjustables, creneauxDeplaces, creneauxNonCouverts, acceptable, motifs, parSalarie]
+      properties:
+        datePivot:
+          type: string
+          format: date
+          description: |
+            Premier jour ajustable, tel qu'appliqué. Restitué pour que la réponse soit lisible
+            seule : un fichier d'`outbox` relu six mois plus tard porte alors sa propre clé.
+        creneauxFiges:
+          type: integer
+          description: |
+            Créneaux épinglés parce qu'antérieurs au pivot. **Inclut ceux que personne ne
+            couvrait** : un besoin non couvert dans le passé ne le sera pas rétroactivement.
+        creneauxAjustables:
+          type: integer
+          description: Créneaux rendus au solveur.
+        creneauxDeplaces:
+          type: integer
+          description: |
+            Créneaux ayant effectivement changé de main. Zéro déclenche `OPTIMISATION_SANS_EFFET` :
+            sans ce motif, l'appelant recevrait son propre planning et chercherait l'échec.
+        creneauxNonCouverts:
+          type: integer
+          description: |
+            Créneaux ajustables que personne ne couvre à l'arrivée. À distinguer de `CRENEAU_PERDU`,
+            qui ne compte que ceux dont quelqu'un s'occupait : un créneau qui n'était déjà à
+            personne n'a rien perdu.
+        acceptable:
+          type: boolean
+          description: Aucun motif éliminatoire. Le planning est restitué dans tous les cas.
+        motifs:
+          type: array
+          description: Ce qui disqualifie ce planning, ou le décrit. **Filtrer sur la sévérité, jamais sur le code.**
+          items:
+            $ref: '#/components/schemas/MotifArbitrage'
+        parSalarie:
+          type: array
+          description: |
+            Le mouvement et les séries de chaque salarié **concerné** — ceux qui ont repris ou cédé
+            un créneau, et ceux qui en tenaient un d'ajustable. Restituer toute la population
+            noierait le mouvement dans les inchangés.
+          items:
+            $ref: '#/components/schemas/SerieSalarie'
+    SerieSalarie:
+      type: object
+      description: |
+        **[SC-04]** Ce que l'optimisation a fait d'un salarié. Un salarié peut être stable sur la
+        période et avoir vu deux de ses semaines s'inverser : c'est ce qu'un total masque.
+      required: [ressourceId, repris, cedes, tranches]
+      properties:
+        ressourceId:
+          type: string
+        repris:
+          type: integer
+          description: Créneaux qui lui ont été confiés et qu'il n'avait pas.
+        cedes:
+          type: integer
+          description: Créneaux qu'il tenait et qui sont passés à quelqu'un d'autre.
+        tranches:
+          type: array
+          description: 'La charge avant/après, dans l''ordre du découpage : semaines, puis mois, puis période.'
+          items:
+            $ref: '#/components/schemas/TrancheCharge'
+    TrancheCharge:
+      type: object
+      description: |
+        **[SC-04]** La charge d'un salarié sur une tranche, avant et après.
+
+        C'est l'unité de lecture de SC-04 : « sur la semaine du 18, SAL-A passe de −60 % à −5 % ».
+        Un total sur la période dit *combien* ; la tranche dit **quand**.
+
+        Les deux états sont mesurés par le **même calculateur** sur la **même fenêtre** — sans quoi
+        une différence de méthode se lirait comme un mouvement du planning.
+      required: [granularite, debut, fin, partielle, joursDisponiblesAvant, joursDisponiblesApres, heuresAvant, heuresApres]
+      properties:
+        granularite:
+          type: string
+          enum: [SEMAINE, MOIS, PERIODE]
+          description: |
+            Les **semaines sont ISO** — le lundi ouvre, comme partout ailleurs dans le moteur. Les
+            mois sont calendaires.
+
+            ⚠️ Les **volumes** se somment d'une tranche à l'autre, les **séries** non.
+            `maxJoursConsecutifsObservees` et `maxNuitsConsecutivesObservees` de `workMetrics` sont
+            observés *à l'intérieur* de leur fenêtre : sept jours consécutifs à cheval sur deux
+            semaines s'y lisent 4 puis 3. **Seule la tranche `PERIODE` porte la série réelle.**
+        debut:
+          type: string
+          format: date
+          description: 'Premier jour de la tranche, jamais avant l''horizon : les bords sont tronqués, jamais étendus.'
+        fin:
+          type: string
+          format: date
+          description: Dernier jour de la tranche, jamais après l'horizon.
+        partielle:
+          type: boolean
+          description: |
+            La tranche ne couvre pas toute sa granularité — semaine ou mois tronqué par le bord de
+            l'horizon. Ses **volumes bruts** ne se comparent pas à ceux d'une tranche pleine ; son
+            écart au contrat, lui, se compare, puisqu'il proratise.
+        joursDisponiblesAvant:
+          type: integer
+          description: |
+            Jours de la tranche où le salarié n'était pas déclaré indisponible — le dénominateur de
+            son écart au contrat sur cette tranche. Vaut `0` pour une tranche entièrement couverte
+            par une absence.
+        joursDisponiblesApres:
+          type: integer
+          description: |
+            Identique par construction : une optimisation ne déplace pas les congés. Restitué pour
+            que l'appelant puisse le vérifier.
+        heuresAvant:
+          type: number
+          format: double
+          description: Heures travaillées avant optimisation, décimales.
+        heuresApres:
+          type: number
+          format: double
+          description: Heures travaillées après optimisation, décimales.
+        ecartContratAvantPourcent:
+          type: number
+          format: double
+          nullable: true
+          description: |
+            Écart **signé** au contrat avant. `null` si rien n'est comparable : pas de volume
+            contractuel déclaré, ou **aucun jour disponible** sur la tranche — un salarié absent
+            toute une semaine n'y est pas à −100 %, il est **hors de comparaison**.
+        ecartContratApresPourcent:
+          type: number
+          format: double
+          nullable: true
+          description: |
+            Écart **signé** au contrat après. Une `REGRESSION_INDIVIDUELLE` est levée quand sa
+            valeur absolue dépasse celle d'avant sur la tranche `PERIODE` : passer de −20 % à −25 %
+            est une régression au même titre que passer de +20 % à +25 %.
+    Arbitrage:
+      type: object
+      description: |
+        [SC-05] Ce que l'arbitrage a déplacé, et ce qu'il en coûte à chacun.
+
+        Le bloc `planning` ne restitue que l'**après**. SC-05 rend une répartition qui doit se
+        justifier **ligne à ligne devant les intéressés**, et une justification sans terme de
+        comparaison n'en est pas une.
+
+        **Les compteurs ne se recomposent pas comme ceux de SC-02.** Ils découpent le périmètre
+        selon **ce qui est arrivé** à chaque créneau, et un créneau resté chez son titulaire n'entre
+        dans aucun des trois — c'est le cas le plus fréquent, et le moins intéressant.
+      properties:
+        ressourcesArbitrees:
+          type: array
+          items:
+            type: string
+          description: |
+            Salariés entre lesquels l'arbitrage a porté, **dans l'ordre où l'appelant les a
+            nommés** — `salarieAId` puis `salarieBId`.
+
+            👉 Un **ensemble**, de taille deux aujourd'hui : le moteur ne sait pas combien ils sont.
+            L'ouverture à N élargira ce tableau sans rien changer au calcul.
+        creneauxArbitres:
+          type: integer
+          description: |
+            Créneaux du périmètre **effectivement soumis** au solveur. Peut être inférieur à la
+            taille de `scenarioParameters.creneauxArbitres` — une alerte
+            `CRENEAU_ARBITRE_INTROUVABLE` nomme alors les manquants.
+        creneauxDeplaces:
+          type: integer
+          description: Ceux qui ont changé de main.
+        creneauxEpinglesSurUnTiers:
+          type: integer
+          description: |
+            Ceux qui n'ont pas pu bouger parce qu'une personne étrangère à l'arbitrage les tient.
+            **Ce n'est pas un échec** : on ne retire pas son travail à quelqu'un qui n'a rien
+            demandé. L'alerte `CRENEAU_ARBITRE_TENU_PAR_UN_TIERS` les nomme.
+        creneauxNonCouverts:
+          type: integer
+          description: |
+            Ceux que personne ne tient au bout du compte. Le moteur ne refuse pas — il rend visible
+            ce qu'il n'a pas su couvrir.
+        acceptable:
+          type: boolean
+          description: |
+            `false` dès qu'un motif éliminatoire est levé. **La répartition est rendue quand
+            même** : c'est la moins mauvaise, et jamais une erreur.
+
+            ⚠️ `true` signifie « acceptable **au regard de ce que le moteur sait** ». Il ne connaît
+            pas les préférences des intéressés, ni leurs contraintes personnelles : l'absence de
+            motif ne vaut pas accord des deux salariés.
+        motifs:
+          type: array
+          items:
+            $ref: '#/components/schemas/MotifArbitrage'
+          description: |
+            Ce qui disqualifie la répartition, ou la décrit. Tableau **vide** — et non clé absente —
+            quand rien n'est à signaler.
+        parSalarie:
+          type: array
+          items:
+            $ref: '#/components/schemas/MouvementSalarie'
+          description: L'avant et l'après de chaque salarié arbitré, dans l'ordre de `ressourcesArbitrees`.
+        details:
+          type: array
+          items:
+            $ref: '#/components/schemas/CreneauArbitre'
+          description: |
+            Le sort de chaque créneau du périmètre, trié par date puis heure de début. **Y compris**
+            ceux que l'arbitrage n'a pas déplacés.
+      required:
+        - ressourcesArbitrees
+        - creneauxArbitres
+        - creneauxDeplaces
+        - creneauxEpinglesSurUnTiers
+        - creneauxNonCouverts
+        - acceptable
+        - motifs
+        - parSalarie
+        - details
+
+    Remplacement:
+      type: object
+      description: |
+        [SC-02] Ce que l'absence a libéré, et ce qu'il en est advenu.
+
+        **Deux lectures, qui ne se déduisent pas l'une de l'autre.** Les compteurs de créneaux
+        disent combien d'objets du planning ont changé de main ; les volumes en heures disent ce que
+        l'absence a réellement coûté. Un créneau de huit heures et un créneau d'une heure pèsent
+        pareil dans le premier décompte, et pas du tout dans le second.
+
+        Les volumes se recomposent, et l'appelant peut le vérifier :
+
+        ```
+        heuresLiberees  = heuresReprises + heuresSurPosteVirtuel + heuresNonCouvertes
+        heuresAPourvoir = heuresSurPosteVirtuel + heuresNonCouvertes
+        ```
+      properties:
+        salarieAbsentId:
+          type: string
+          description: Salarié dont l'absence a motivé le scénario, tel que la demande le désignait.
+        creneauxLiberes:
+          type: integer
+          description: |
+            Créneaux **d'origine** rendus au solveur par l'absence. Le découpage ne le gonfle pas :
+            un créneau coupé en trois reste un créneau libéré.
+        creneauxRepris:
+          type: integer
+          description: Repris **de bout en bout** par des salariés réels.
+        creneauxPartiellementRepris:
+          type: integer
+          description: |
+            Un salarié réel en a pris une part sans prendre le tout. Ni repris ni abandonnés : les
+            ranger d'un côté ou de l'autre ferait mentir les deux décomptes.
+        heuresLiberees:
+          type: number
+          format: double
+          description: |
+            Volume total que l'absence a rendu au solveur, en heures décimales — la situation
+            « avant ».
+        heuresReprises:
+          type: number
+          format: double
+          description: |
+            Volume que des salariés réels assurent au bout du compte — la situation « après ».
+        heuresSurPosteVirtuel:
+          type: number
+          format: double
+          description: |
+            Volume garé sur un poste fictif. Toujours 0 quand `posteVirtuelAutorise` n'a pas été
+            demandé : le poste virtuel ne s'invite jamais de lui-même.
+        heuresNonCouvertes:
+          type: number
+          format: double
+          description: Volume restitué sans aucune ressource.
+        heuresAPourvoir:
+          type: number
+          format: double
+          description: |
+            Heures que **personne de réel** ne couvre — poste virtuel compris. Du point de vue de
+            l'encadrement la question est « combien me reste-t-il à staffer », et la réponse est la
+            même que les heures soient garées sur un poste fictif ou laissées vides.
+
+            Le bloc `planning` dit **où** elles sont ; ce total dit **combien** il y en a. Les deux
+            sont nécessaires et ne se déduisent pas l'un de l'autre.
+        details:
+          type: array
+          description: Le sort de chaque morceau restitué, y compris ceux que personne n'a repris.
+          items:
+            $ref: '#/components/schemas/CreneauRemplace'
+        surchargeParRessource:
+          type: array
+          description: |
+            Ce que le remplacement change à la charge de ceux qui l'assurent. Vide quand personne
+            n'a rien repris.
+          items:
+            $ref: '#/components/schemas/SurchargeRessource'
+      required:
+        - salarieAbsentId
+        - creneauxLiberes
+        - creneauxRepris
+        - creneauxPartiellementRepris
+        - heuresLiberees
+        - heuresReprises
+        - heuresSurPosteVirtuel
+        - heuresNonCouvertes
+        - heuresAPourvoir
+        - details
+        - surchargeParRessource
+
+    ScenarioResponse:
+      type: object
+      description: |
+        Corps de réponse HTTP 200 pour SC-01, SC-02, SC-03, SC-05 et SC-06.
+        Correspond directement à `ScenarioResponseDTO` — pas d'enveloppe transport.
+        L'enveloppe `{requestId, status, response}` est propre au FileAdapter
+        et ne s'applique pas à ce contrat API.
+      properties:
+        scenarioType:
+          type: string
+          description: Valeur reflétée depuis la requête (SC-01, SC-02, SC-03, SC-05 ou SC-06)
+        solverResult:
+          $ref: '#/components/schemas/SolverResult'
+        planning:
+          $ref: '#/components/schemas/ScenarioPlanning'
+        workMetrics:
+          $ref: '#/components/schemas/WorkMetrics'
+        solutionSummary:
+          $ref: '#/components/schemas/SolutionSummary'
+        diagnostics:
+          $ref: '#/components/schemas/Diagnostics'
+        candidats:
+          type: array
+          description: |
+            **Propre à SC-06.** Manières de couvrir le besoin, classées, trois au plus.
+
+            La clé est **absente** — et non vide — pour SC-01 et SC-03 : une réponse sans
+            classement ne doit pas laisser croire à une capacité inexistante.
+
+            En SC-06, `planning` et `workMetrics` décrivent la **solution de rang 1, et elle
+            seule** : `planning` ne porte que les créneaux du besoin, `workMetrics` que les
+            ressources qu'elle mobilise. Le planning existant n'est pas réémis — l'appelant le
+            possède déjà.
+          items:
+            $ref: '#/components/schemas/Candidat'
+        remplacement:
+          allOf:
+            - $ref: '#/components/schemas/Remplacement'
+          description: |
+            **Propre à SC-02.** Les conséquences de l'absence : ce qu'elle a libéré, qui l'a repris,
+            et ce qu'il reste à staffer.
+
+            Même règle que `candidats` — la clé est **absente**, et non vide, pour tous les autres
+            scénarios : une réponse ne doit pas gagner un bloc vide qui laisserait croire à une
+            capacité inexistante.
+
+            En SC-02, `planning` porte le **planning ajusté complet** — l'existant épinglé comme les
+            créneaux réaffectés — et non les seuls créneaux touchés. C'est l'inverse de SC-06, qui
+            n'émet que les créneaux du besoin.
+        optimisation:
+          allOf:
+            - $ref: '#/components/schemas/Optimisation'
+          description: |
+            **Propre à SC-04.** Ce que l'optimisation a produit, et ce qu'elle a coûté à chacun.
+
+            Même règle que `candidats`, `remplacement` et `arbitrage` — la clé est **absente**, et
+            non vide, pour tous les autres scénarios.
+        arbitrage:
+          allOf:
+            - $ref: '#/components/schemas/Arbitrage'
+          description: |
+            **Propre à SC-05.** Ce que l'arbitrage a déplacé, et ce qu'il en coûte à chacun.
+
+            Même règle que `candidats` et `remplacement` — la clé est **absente**, et non vide, pour
+            tous les autres scénarios.
+
+            Comme en SC-02, `planning` porte le **planning ajusté complet**. Mais il ne restitue que
+            l'**après** : c'est `arbitrage.parSalarie` qui donne l'avant, et la comparaison des deux
+            est ce qui rend la répartition justifiable ligne à ligne devant les intéressés.
+      required: [scenarioType, solverResult, planning, workMetrics, solutionSummary, diagnostics]
+
+    # ──────────────────────────────────────────────
+    # ERREURS
+    # ──────────────────────────────────────────────
+
+    ErrorDetail:
+      type: object
+      description: Détail d'une erreur de validation.
+      properties:
+        field:
+          type: string
+          description: Chemin JSON du champ en erreur (ex. dataSet.creneaux[0].codeActiviteId)
+        message:
+          type: string
+      required: [message]
+
+    ErrorBody:
+      type: object
+      properties:
+        code:
+          type: string
+          description: |
+            Code machine de l'erreur.
+            Valeurs V1 : INVALID_REQUEST (400), UNKNOWN_FIELD (400), MALFORMED_JSON (400),
+            BUSINESS_ERROR (422), INTERNAL_ERROR (500).
+
+            `UNKNOWN_FIELD` distingue un champ absent du contrat d'un JSON mal formé : la syntaxe
+            est parfaite, c'est le contrat qui ne connaît pas ce nom. `details[0].field` porte le
+            **chemin JSON complet** — `dataSet.creneaux[1].couleur` — et son `message` la liste des
+            noms acceptés à cet endroit.
+        message:
+          type: string
+        details:
+          type: array
+          items:
+            $ref: '#/components/schemas/ErrorDetail'
+      required: [code, message, details]
+
+    ErrorResponse:
+      type: object
+      description: |
+        Corps des réponses d'erreur (400, 422, 500).
+        Le `requestId` de la requête n'est pas répercuté dans la réponse d'erreur
+        en mode API — il appartient à la couche appelante de faire la corrélation.
+        En mode FileAdapter, la corrélation est assurée par l'enveloppe transport.
+      properties:
+        error:
+          $ref: '#/components/schemas/ErrorBody'
+      required: [error]
