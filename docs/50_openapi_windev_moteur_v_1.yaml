@@ -1794,11 +1794,14 @@ components:
       description: |
         Paramètres propres à SC-04. Correspond à `Sc04ScenarioParametersDTO`.
 
-        **Un seul champ, et c'est le degré de liberté.** Tout le reste — période, planning existant,
+        **Deux champs, et c'est le degré de liberté.** Tout le reste — période, planning existant,
         indisponibilités, cadre réglementaire, tolérance d'équité — était déjà au contrat.
 
-        🔁 La **liste explicite** de créneaux ajustables est différée. Elle s'ajoutera à côté de
-        `datePivot`, pas à sa place : un appelant qui ne la transmet pas retombera sur le pivot.
+        **`datePivot` borne, `creneauxAjustables` sélectionne.** Les deux champs n'ont pas la même
+        nature, et c'est pour cela qu'ils se composent au lieu de se concurrencer : la date pivot
+        dit jusqu'où le moteur a le droit d'aller, la liste dit ce qu'il a le droit de toucher à
+        l'intérieur. La conjonction est une **intersection** — est ajustable ce qui est à la fois
+        postérieur au pivot **et** désigné.
 
         ⚠️ Les « priorités d'optimisation » et la « pondération des règles » annoncées de longue
         date au contrat fonctionnel sont **retirées**. Le moteur ne pondère pas une mesure dont
@@ -1818,6 +1821,37 @@ components:
             l'alerte `AUCUN_CRENEAU_AJUSTABLE` dit que la demande n'a pas d'objet ; antérieur à
             tous, `PLANNING_ENTIEREMENT_REOUVERT` prévient que le planning est rouvert en entier —
             exactement le remaniement que SC-04 existe pour éviter.
+        creneauxAjustables:
+          type: array
+          items:
+            type: string
+          description: |
+            Identifiants des créneaux du `dataSet` que le solveur a le droit de déplacer —
+            **optionnel**, et purement **restrictif** : la liste rétrécit l'après-pivot, elle ne
+            rouvre jamais le passé.
+
+            **Absent, vide et renseigné sont trois demandes différentes.** Absent, tout
+            l'après-pivot est ajustable — c'est le comportement de SC-04 depuis son écriture, et il
+            n'a pas changé. Vide, plus rien ne l'est, et `AUCUN_CRENEAU_AJUSTABLE` le dit. Le champ
+            n'a donc pas de contrainte « non vide » : omettre et vider n'expriment pas la même
+            chose.
+
+            **La zone remaniable est bornée à un mois glissant**, mesurée du premier au dernier
+            créneau qui bougera effectivement — donc postérieur au pivot et dans l'horizon. Un
+            dépassement est refusé en **422** : une liste hors borne n'est pas un planning
+            impossible, c'est une requête mal formée, et la tronquer en silence rendrait un
+            résultat partiel que vous liriez comme complet. Un créneau désigné hors horizon ou
+            antérieur au pivot ne gonfle pas cette amplitude — il a sa propre alerte.
+
+            ⚠️ **Ne pas lister, c'est renoncer à couvrir.** Un créneau postérieur au pivot, que
+            personne ne couvre et que la liste ne désigne pas, reste un trou définitif — et comme
+            tout le bloc `optimisation` se compte sur les créneaux ajustables, il **n'apparaît pas**
+            dans `creneauxNonCouverts`. L'alerte `CRENEAU_FUTUR_NON_COUVERT_GELE` existe pour que
+            ce trou ne se découvre pas sur le terrain.
+
+            Alertes propres à ce champ : `CRENEAU_AJUSTABLE_INTROUVABLE` (identifiant absent du
+            dataset), `CRENEAU_AJUSTABLE_ANTERIEUR_AU_PIVOT` (désigné mais figé, le plus souvent le
+            signe d'un pivot mal placé), `CRENEAU_FUTUR_NON_COUVERT_GELE`.
     Sc04ScenarioRequest:
       type: object
       description: |

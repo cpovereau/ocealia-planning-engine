@@ -533,17 +533,33 @@ déséquilibre s’est installé.
 | Champ | Rôle |
 |---|---|
 | `scenarioParameters.datePivot` | **obligatoire** — premier jour ajustable. Tout ce qui précède est figé |
+| `scenarioParameters.creneauxAjustables` | **optionnel** — restreint l’après-pivot aux créneaux désignés. Absent : tout l’après-pivot |
 
-**Un seul champ, et c’est le degré de liberté.** Le jour du pivot lui-même est ajustable : « à
-partir de », non « après ». Un pivot hors de l’horizon est accepté et **signalé** — le moteur ne
-refuse pas, il rend visible ce que la demande implique.
+**Deux champs, et c’est le degré de liberté.** Le jour du pivot lui-même est ajustable : « à partir
+de », non « après ». Un pivot hors de l’horizon est accepté et **signalé** — le moteur ne refuse
+pas, il rend visible ce que la demande implique.
 
-🔁 La **liste explicite** de créneaux ajustables **n’est pas encore exposée** — ne l’envoyez pas,
-elle serait ignorée. Sa forme est en revanche arrêtée depuis le 2026-08-18 (§5.5 du cadrage) : un
-champ optionnel `scenarioParameters.creneauxAjustables`, qui viendra **à côté** de `datePivot` et
-non à sa place, en **intersection** avec lui — ajustable = après le pivot *et* dans la liste — et
-borné à un mois. Un appelant qui ne la transmettra pas gardera le comportement décrit ci-dessus,
-inchangé. Ce paragraphe sera remplacé par une ligne du tableau le jour de sa mise en service.
+**`datePivot` borne, `creneauxAjustables` sélectionne.** Les deux n’ont pas la même nature, et c’est
+pour cela qu’ils se composent au lieu de se concurrencer : *la date pivot dit jusqu’où le moteur a
+le droit d’aller, la liste dit ce qu’il a le droit de toucher à l’intérieur.* La conjonction est une
+**intersection** — est ajustable ce qui est à la fois postérieur au pivot **et** désigné. La liste
+ne peut donc que **restreindre** : elle n’atteint jamais le passé, car rouvrir un créneau passé que
+personne n’avait couvert ferait inventer au moteur une histoire qui n’a pas eu lieu.
+
+**Absent, vide et renseigné sont trois demandes différentes.** Ne pas transmettre la liste rouvre
+tout l’après-pivot — c’est le comportement de SC-04 depuis son écriture, et il n’a pas changé. La
+transmettre vide ne rouvre rien, et `AUCUN_CRENEAU_AJUSTABLE` le dit.
+
+**La zone remaniable est bornée à un mois glissant**, mesurée du premier au dernier créneau qui
+bougera effectivement — donc postérieur au pivot et dans l’horizon. On juge large, on ne remanie
+qu’étroit : l’horizon garde sa profondeur et la restitution ses trois granularités, seule la zone
+modifiable est resserrée. Un dépassement est refusé en **422**.
+
+> ⚠️ **Ne pas lister, c’est renoncer à couvrir.** Un créneau postérieur au pivot que personne ne
+> couvre et que la liste ne désigne pas reste un trou définitif — et comme tout le bloc
+> `optimisation` se compte sur les créneaux ajustables, il **n’apparaît pas** dans
+> `creneauxNonCouverts`. Le trou reste dans le planning ; le compte cesse de le voir. L’alerte
+> `CRENEAU_FUTUR_NON_COUVERT_GELE` existe pour qu’il ne se découvre pas sur le terrain.
 
 > ⚠️ **Les « priorités d’optimisation » et la « pondération des règles » annoncées jusqu’ici sont
 > retirées.** Le moteur tient qu’on ne pondère pas une mesure dont l’échelle n’est pas calibrée, et

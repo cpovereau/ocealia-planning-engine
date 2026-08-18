@@ -5,10 +5,11 @@
 > le 2026-08-17** : les cinq lots O0 à O4 sont en place, le scénario est inscrit au contrat série 50
 > et accessible par les deux canaux.
 >
-> **Rouvert le 2026-08-18 sur un point, et un seul** : la liste explicite de créneaux ajustables,
-> différée au §5.5, est tranchée à son tour — bornée à un mois, en **intersection** avec la date
-> pivot. C'est le lot **O5**, qui élargit le contrat d'entrée sans rien retirer : un appelant qui ne
-> transmet pas la liste garde exactement le comportement du 2026-08-17.
+> **Rouvert puis reclos le 2026-08-18** sur un point, et un seul : la liste explicite de créneaux
+> ajustables, différée au §5.5, est tranchée à son tour — bornée à un mois glissant, en
+> **intersection** avec la date pivot — et livrée au lot **O5** le jour même. Elle élargit le
+> contrat d'entrée sans rien retirer : un appelant qui ne transmet pas la liste garde exactement le
+> comportement du 2026-08-17.
 >
 > Ce qui lui reste ensuite ne lui appartient pas : le **rang 10** — préférences individuelles — que le
 > moteur entier attend, et qui pèse ici plus qu'ailleurs (§9.4).
@@ -222,10 +223,13 @@ impossible. *Le moteur ne refuse pas* vaut pour ce qu'il ne sait pas planifier, 
 sait pas lire — SC-04 refuse déjà une requête sans `datePivot`. Tronquer en silence serait pire :
 l'appelant lirait un résultat partiel comme un résultat complet.
 
-**Un mois glissant, non calendaire** — *proposition d'écriture, à confirmer au lot O5.* Un mois
+**Un mois glissant, non calendaire** — confirmé (métier, 2026-08-18). Un mois
 calendaire obligerait à scinder toute demande chevauchant une fin de mois, et produirait des
-contournements plutôt que de la clarté. La borne se lirait donc entre le premier et le dernier
-créneau désignés. Le découpage calendaire de la restitution (`DecoupageTemporel`) est un autre
+contournements plutôt que de la clarté. La borne se lit entre le premier et le dernier créneau
+qui **bougeront effectivement** — donc postérieurs au pivot et dans l'horizon. Un créneau désigné
+mais figé, ou écarté avant résolution, ne gonfle pas l'amplitude : sans quoi un appelant
+transmettant trois mois de dataset sous un horizon de deux semaines se verrait refuser une demande
+que le moteur aurait de toute façon restreinte à deux semaines. Le découpage calendaire de la restitution (`DecoupageTemporel`) est un autre
 objet : il dit comment on rend compte, pas ce qu'on autorise à bouger.
 
 ⚠️ **Ce que la liste fait disparaître du compte, et pas du planning.** Toute la restitution de SC-04
@@ -233,8 +237,8 @@ se compte sur les créneaux ajustables — `ScenarioSc04ExecutionService` ouvre 
 `if (!creneauxAjustables().contains(id)) continue;`. Sous l'intersection, un créneau **futur, non
 couvert et non listé** devient donc figé sur `RessourceNonAffectee` et **sort de
 `creneauxNonCouverts`** : le trou reste dans le planning, mais le compte cesse de le voir. C'est la
-seule régression que la liste peut introduire, et elle appelle une alerte dédiée au lot O5 — *n
-créneaux futurs non couverts que votre liste laisse gelés*. Ne pas lister, ici, c'est renoncer à
+seule régression que la liste peut introduire, et le lot O5 lui a donné son alerte dédiée,
+`CRENEAU_FUTUR_NON_COUVERT_GELE`. Ne pas lister, ici, c'est renoncer à
 couvrir ; l'appelant doit le lire dans la réponse, pas le découvrir sur le terrain.
 
 Les autres cas limites se traitent à l'identique de SC-05, tous en WARNING, aucun bloquant :
@@ -300,7 +304,7 @@ moyen de savoir si ce sacrifice est consenti.
 
 ---
 
-## 8. Découpage — ✅ cinq lots livrés, un sixième ouvert
+## 8. Découpage — ✅ les six lots sont livrés
 
 | Lot | Contenu | Dépend de |
 |---|---|---|
@@ -309,11 +313,11 @@ moyen de savoir si ce sacrifice est consenti.
 | ~~**O2**~~ | ~~Restitution des séries agrégées, avant/après~~ ✅ **livré le 2026-08-17** | O1, §5.3 |
 | ~~**O3**~~ | ~~Degré de liberté : `datePivot` et figement dérivé~~ ✅ **livré le 2026-08-17** | O1, §5.5 |
 | ~~**O4**~~ | ~~Endpoint, jeux d'essai, canal fichier, inscription série 50~~ ✅ **livré le 2026-08-17** | O2, O3 |
-| **O5** | Liste explicite de créneaux ajustables — intersection avec le pivot, bornée à un mois | O3, §5.5 |
+| ~~**O5**~~ | ~~Liste explicite de créneaux ajustables — intersection avec le pivot, bornée à un mois~~ ✅ **livré le 2026-08-18** | O3, §5.5 |
 
-**Les cinq premiers lots ont été livrés le 2026-08-17**, dans l'ordre. **O5 est ouvert le
-2026-08-18** par l'arbitrage complet du §5.5 : il n'a de dépendance que sur O3, dont il reprend la
-politique de figement pour y intersecter une sélection.
+**Les cinq premiers lots ont été livrés le 2026-08-17**, dans l'ordre. **O5 a été livré le
+2026-08-18**, le jour de l'arbitrage qui l'ouvrait : il n'avait de dépendance que sur O3, dont il
+reprend la politique de figement pour y intersecter une sélection.
 
 Sur O4, le sort des « priorités
 d'optimisation » annoncées au §3.4 du contrat a été tranché comme prévu : elles sont **retirées de

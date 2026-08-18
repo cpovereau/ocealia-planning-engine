@@ -235,5 +235,42 @@ public enum AlertCode {
      * placé hors de la période produit exactement le remaniement que le scénario existe pour
      * éviter, et l'appelant a rarement voulu cela.</p>
      */
-    PLANNING_ENTIEREMENT_REOUVERT
+    PLANNING_ENTIEREMENT_REOUVERT,
+
+    /**
+     * {@code scenarioParameters.creneauxAjustables} désigne des créneaux absents du dataset, ou qui
+     * en ont été écartés avant le solveur (lot O5, §5.5).
+     *
+     * <p>Jumelle de {@link #CRENEAU_ARBITRE_INTROUVABLE} pour SC-04, et pour la même raison : la
+     * sélection est transmise, jamais déduite. Sans cette alerte, une liste dont la moitié des
+     * identifiants ne correspond à rien produirait une optimisation bien plus étroite que demandée,
+     * sans que personne ne voie pourquoi.</p>
+     */
+    CRENEAU_AJUSTABLE_INTROUVABLE,
+
+    /**
+     * {@code scenarioParameters.creneauxAjustables} désigne des créneaux antérieurs à la date
+     * pivot (lot O5, §5.5).
+     *
+     * <p>La conjonction des deux champs est une <strong>intersection</strong> : la liste restreint
+     * l'après-pivot, elle ne rouvre pas le passé. Ces identifiants sont donc sans effet. Le moteur
+     * ne les refuse pas — désigner un créneau passé est une erreur de bonne foi, souvent le signe
+     * d'un pivot mal placé — mais il ne les applique pas en silence.</p>
+     */
+    CRENEAU_AJUSTABLE_ANTERIEUR_AU_PIVOT,
+
+    /**
+     * Des créneaux postérieurs au pivot, que personne ne couvre, sont gelés parce que la sélection
+     * ne les désigne pas (lot O5, §5.5).
+     *
+     * <p>C'est la seule régression que la liste explicite peut introduire, et elle est sournoise :
+     * toute la restitution de SC-04 se compte sur les créneaux ajustables, donc ces besoins
+     * <strong>sortent du décompte {@code creneauxNonCouverts}</strong>. Le trou reste dans le
+     * planning ; le compte cesse de le voir.</p>
+     *
+     * <p>Ne pas lister, ici, c'est renoncer à couvrir. C'est une décision recevable — l'appelant
+     * sait peut-être que ces besoins sont pourvus ailleurs — mais elle doit se lire dans la
+     * réponse, et non se découvrir sur le terrain.</p>
+     */
+    CRENEAU_FUTUR_NON_COUVERT_GELE
 }

@@ -2,6 +2,8 @@ package fr.project.planning.fileadapter.scenario;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import fr.project.planning.scenarios.dto.OptimisationDTO;
 import fr.project.planning.scenarios.dto.ScenarioResponseDTO;
 import fr.project.planning.scenarios.dto.SerieSalarieDTO;
@@ -82,6 +84,23 @@ class Sc04FileScenarioExecutionFacadeTest {
         SerieSalarieDTO premier = optimisation.parSalarie().get(0);
         assertFalse(premier.tranches().isEmpty(),
                 "Les séries sont l'apport de SC-04 : les perdre en route le viderait de son objet.");
+    }
+
+    @Test
+    @DisplayName("La sélection franchit la voie fichier — un canal qui l'ignorerait rouvrirait tout")
+    void laSelectionFranchitLaVoieFichier() throws Exception {
+        // Le risque n'est pas qu'un canal échoue, c'est qu'il réussisse trop : un adaptateur qui
+        // perdrait creneauxAjustables rendrait un planning entièrement rouvert, plausible et faux.
+        JsonNode requete = payload(REFERENCE);
+        ArrayNode selection = ((ObjectNode) requete.get("scenarioParameters"))
+                .putArray("creneauxAjustables");
+        selection.add("FUTUR-MATIN-0");
+        selection.add("FUTUR-MATIN-1");
+
+        OptimisationDTO optimisation = dispatcher.dispatch(requete).getOptimisation();
+
+        assertEquals(2, optimisation.creneauxAjustables());
+        assertEquals(18, optimisation.creneauxFiges());
     }
 
     private JsonNode payload(Path fixture) throws Exception {
