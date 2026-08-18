@@ -50,11 +50,36 @@ class CorpusDocumentaireTest {
     private static final Path DOCS = Path.of("docs");
     private static final Path INDEX = DOCS.resolve("00_INDEX_DOCUMENTATION.md");
 
+    /** La racine du dépôt, pour ses seuls {@code .md} : {@code README.md} et ce qui l'accompagne. */
+    private static final Path RACINE = Path.of(".");
+
     /** Un nom de document cité dans un texte : `92_CADRAGE_SCENARIO_SC-06.md`, chemin compris. */
     private static final Pattern CITATION = Pattern.compile("[\\w./\\-]*[\\w\\-]+\\.md");
 
     /** Où un document peut être cité : le corpus lui-même, et le code qui s'y réfère. */
     private static final List<Path> RACINES_CITANTES = List.of(DOCS, Path.of("src"));
+
+    /**
+     * Les {@code .md} de la racine du dépôt sont <strong>cités et citants</strong>, sans être
+     * soumis à la convention de nommage ni à l'index — {@code README.md} n'est pas un document du
+     * moteur, c'est sa porte d'entrée.
+     *
+     * <p>Ajouté le 2026-08-18, après que ce garde-fou a laissé le README dériver pendant des mois :
+     * il annonçait cinq scénarios de test disparus, une arborescence en {@code com.example}, et
+     * renvoyait vers un document inexistant. La garde ne veillait que sur {@code docs/} et
+     * {@code src/} — la racine était un angle mort, et c'est précisément le fichier qu'un nouvel
+     * arrivant ouvre en premier.</p>
+     */
+    private static List<Path> documentsRacine() {
+        try (Stream<Path> s = Files.list(RACINE)) {
+            return s.filter(Files::isRegularFile)
+                    .filter(p -> p.getFileName().toString().endsWith(".md"))
+                    .sorted()
+                    .toList();
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
 
     // ---------------------------------------------------------
     // 1. La convention de nommage
@@ -93,6 +118,7 @@ class CorpusDocumentaireTest {
         for (Path racine : RACINES_CITANTES) {
             parcourir(racine).forEach(p -> existants.add(p.getFileName().toString()));
         }
+        documentsRacine().forEach(p -> existants.add(p.getFileName().toString()));
 
         List<String> morts = new ArrayList<>();
         for (Path fichier : citants()) {
@@ -158,7 +184,7 @@ class CorpusDocumentaireTest {
 
     /** Tous les fichiers texte susceptibles de citer un document. */
     private static List<Path> citants() {
-        List<Path> fichiers = new ArrayList<>();
+        List<Path> fichiers = new ArrayList<>(documentsRacine());
         for (Path racine : RACINES_CITANTES) {
             parcourir(racine)
                     .filter(p -> {

@@ -210,20 +210,29 @@ Chaque instance de WorkMetrics est **liée à :**
 
 ---
 
-### 4.3 Indicateurs liés au référentiel contractuel (cible)
+### 4.3 Indicateurs liés au référentiel contractuel
 
-| Champ                            | Type    | Description                                                  | Implémenté |
-| -------------------------------- | ------- | ------------------------------------------------------------ | ---------- |
-| `nbDimanchesTravailles`          | Integer | Nombre de dimanches calendaires travaillés                   |     V2     |
-| `nbCreneauxReposHebdoDetteRepos` | Integer | Nombre de créneaux sur repos hebdomadaire générant une dette |     V2     |
+**Ce qui est calculé aujourd'hui :**
 
-⚠️ Cette section décrit des métriques cibles.
-Elles ne sont pas implémentées à ce stade du moteur et
-nécessitent une définition préalable du temps contractuel côté métier.
+| Champ                            | Type    | Description                                                  | État |
+| -------------------------------- | ------- | ------------------------------------------------------------ | ---- |
+| `nbDimanchesTravailles`          | Integer | Nombre de dimanches calendaires travaillés                   | calculé et **restitué** |
+| `nbCreneauxReposHebdoDetteRepos` | Integer | Nombre de créneaux sur repos hebdomadaire générant une dette | calculé, **non restitué** — il vit dans le domaine, il n'a pas de champ au contrat de sortie |
 
-| `heuresSupplementaires`          | Decimal | Heures au‑delà du contrat                                    |            |
-| `heuresComplementaires`          | Decimal | Heures complémentaires (temps partiel)                       |            |
-| `depassementContingentHS`        | Decimal | Heures au‑delà du contingent                                 |            |
+**Ce qui reste une cible**, et le demeure pour la même raison qu'à l'écriture de ce document : la
+définition du contingent d'heures supplémentaires n'appartient pas au moteur.
+
+| Champ                     | Type    | Description                            |
+| ------------------------- | ------- | -------------------------------------- |
+| `heuresSupplementaires`   | Decimal | Heures au‑delà du contrat              |
+| `heuresComplementaires`   | Decimal | Heures complémentaires (temps partiel) |
+| `depassementContingentHS` | Decimal | Heures au‑delà du contingent           |
+
+> *Corrigé le 2026-08-18.* Cette section classait les deux premières métriques en « V2, non
+> implémentées », et faisait porter à toutes le même préalable — « une définition du temps
+> contractuel côté métier ». Ce préalable a été levé depuis (§5.3) : `nbDimanchesTravailles` est
+> restitué et figure au schéma publié. Un tableau qui annonce non implémenté ce que le moteur
+> calcule est aussi trompeur que l'inverse.
 
 ---
 
@@ -497,22 +506,31 @@ qu'elle est mauvaise. La pénalisation est une contrainte SOFT distincte, livré
 
 ---
 
-### 5.3 Référentiel contractuel (V4 – spécifique contexte français)
+### 5.3 Référentiel contractuel — ✅ livré, sous d'autres noms
 
-Ces métriques expriment un **écart relatif au temps contractuel de référence**, sans interprétation juridique.
+Ces métriques expriment un **écart relatif au temps contractuel de référence**, sans interprétation
+juridique. Elles étaient prévues ici sous les noms `deltaMinutesParRapportAuContractuel` et
+`ratioChargeContractuelle`, conditionnées à une définition du temps contractuel « côté métier ».
 
-| Champ                                 | Type    | Description                                                        |
-| ------------------------------------- | ------- | ------------------------------------------------------------------ |
-| `deltaMinutesParRapportAuContractuel` | Decimal | Écart entre minutes travaillées et temps contractuel de référence  |
-| `ratioChargeContractuelle`            | Decimal | Rapport charge réelle / charge contractuelle                       |
+**Ce pré-requis a été levé, et la capacité existe** — depuis le chantier équité, et elle est
+aujourd'hui centrale : SC-04, SC-05 et SC-06 s'appuient tous dessus. Le temps contractuel arrive par
+`contrat.heuresHebdomadairesHabituelles`, et l'écart est publié :
 
-**Pré-requis :**
-- définition du temps contractuel côté métier (hors moteur)
-- injection de cette information comme fait immuable
+| Champ restitué          | Ce qu'il dit |
+|---|---|
+| `ecartContratPourcent`  | l'écart relatif au contrat, en pourcentage. `null` quand il n'y a rien à comparer |
+| `joursObserves`         | **le dénominateur** : les jours de l'horizon où ce salarié était disponible, indisponibilités déclarées déduites |
 
-**Objectif :**
-- rendre visibles les écarts
-- préparer l’analyse métier (sans statuer sur la légalité)
+Les deux noms initialement prévus n'ont pas été retenus : un ratio et un delta disent la même chose
+deux fois, et publier le dénominateur vaut mieux que publier deux quotients — l'appelant peut
+refaire le calcul, et surtout **voir sur quoi le moteur a jugé**.
+
+> **Ce qui reste ouvert n'est pas le contrat, c'est l'annualisation.** Le moteur compare à un
+> contrat *hebdomadaire* rapporté à la fenêtre observée. Un solde annualisé venu de la paie n'est ni
+> transmis ni lu — `contrat.salarieAnnualise` est transporté sans lecteur. C'est le rang 10, et son
+> arbitre est la Production.
+>
+> *Section corrigée le 2026-08-18 : elle annonçait comme cible lointaine une capacité livrée.*
 
 ---
 

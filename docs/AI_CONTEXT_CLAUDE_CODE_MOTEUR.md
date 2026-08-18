@@ -1,5 +1,26 @@
 # Contexte de travail pour Claude Code — Moteur de planification
 
+> ## ⚠️ Relu le 2026-08-18 — ce document est daté, et voici ce qui en tient
+>
+> Il a été écrit **après la phase 4 du plan de migration**, à une époque où SC-01 était le seul
+> scénario opérationnel. Le moteur en porte six aujourd'hui, tous exposés par les deux canaux.
+>
+> **Ce qui ne tient plus :**
+> - l'ancrage sur « la phase en cours » du plan de migration — ce plan est achevé, le pilotage se
+>   fait par les **rangs** de `90_SUIVI_DEVELOPPEMENT_MOTEUR.md` ;
+> - « ne pas activer SC-03 » — SC-03 est livré depuis longtemps, comme SC-02, SC-04, SC-05 et SC-06 ;
+> - « SC-01 est le socle de stabilité actuel » — le socle est désormais la suite complète, plus de
+>   huit cents tests, et le contrat publié de la série 50.
+>
+> **Ce qui tient, et qui est la raison de garder ce document :** ne pas réinterpréter seul
+> l'architecture cible, ne pas introduire de refactoring transverse non demandé, ne pas affaiblir un
+> test pour faire passer un changement, ne pas déplacer la logique métier dans le contrôleur.
+> Ces règles n'ont jamais été enfreintes et n'ont pas vieilli.
+>
+> **À lire à la place, pour l'état du jour :** `README.md` à la racine du dépôt,
+> `docs/00_INDEX_DOCUMENTATION.md`, et `docs/90_SUIVI_DEVELOPPEMENT_MOTEUR.md` pour ce qui est
+> ouvert.
+
 ## Rôle de ce document
 
 Ce fichier donne à Claude Code le **contexte d’architecture**, les **invariants à respecter** et les **règles de modification autorisées** pour intervenir sur le moteur de planification après la phase 4 du plan de migration temporaire WinDev → moteur.
@@ -130,7 +151,7 @@ Sans demande explicite, Claude Code ne doit jamais :
 - supprimer ou affaiblir des tests existants pour faire passer un changement ;
 - introduire un refactoring transversal non demandé ;
 - déplacer la logique métier dans le controller si elle doit vivre dans un mapper, builder, service ou domaine ;
-- activer SC-03 tant que la phase dédiée ne l’exige pas.
+- ~~activer SC-03 tant que la phase dédiée ne l’exige pas~~ — caduc : SC-03 est livré.
 
 ---
 

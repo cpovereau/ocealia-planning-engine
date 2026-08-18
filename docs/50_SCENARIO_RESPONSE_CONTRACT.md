@@ -1153,16 +1153,32 @@ pas une régression, c'est un rééquilibrage — et c'est ce qu'on demande.
 > période entière, cette ignorance pèse plus que partout ailleurs : **l'absence de motif ne vaut pas
 > accord des intéressés.**
 
-### 9.6 Deux alertes propres au pivot
+### 9.6 Les alertes propres au degré de liberté
+
+Deux portent sur la **date pivot** :
 
 | Code | Quand |
 |---|---|
-| `AUCUN_CRENEAU_AJUSTABLE` | pivot postérieur à tous les créneaux : rien ne peut changer |
+| `AUCUN_CRENEAU_AJUSTABLE` | rien n'est ajustable — pivot postérieur à tous les créneaux, ou sélection vide, ou sélection entièrement antérieure au pivot. Le message dit laquelle des trois |
 | `PLANNING_ENTIEREMENT_REOUVERT` | pivot antérieur à tous les créneaux : le planning est rouvert en entier |
 
 Les deux cas sont **exécutés, pas refusés**. Le second mérite attention : SC-04 promet d'améliorer
 sans reconstruire, et un pivot hors période produit exactement le remaniement que le scénario existe
 pour éviter.
+
+Trois portent sur `scenarioParameters.creneauxAjustables` (lot O5) :
+
+| Code | Quand |
+|---|---|
+| `CRENEAU_AJUSTABLE_INTROUVABLE` | la sélection nomme des créneaux absents du dataset, ou écartés avant le solveur. Jumelle de `CRENEAU_ARBITRE_INTROUVABLE` pour SC-05, et pour la même raison : sans elle, une optimisation bien plus étroite que demandée passerait inaperçue |
+| `CRENEAU_AJUSTABLE_ANTERIEUR_AU_PIVOT` | la sélection nomme des créneaux antérieurs au pivot. La conjonction est une **intersection** : ces identifiants sont sans effet, et c'est le plus souvent le pivot qui est mal placé |
+| `CRENEAU_FUTUR_NON_COUVERT_GELE` | des créneaux postérieurs au pivot, que personne ne couvre, sont gelés parce que la sélection ne les désigne pas |
+
+> ⚠️ **La dernière signale la seule régression que la sélection peut introduire.** Tout le bloc
+> `optimisation` se compte sur les créneaux ajustables : un besoin futur non couvert et non désigné
+> **n'apparaît pas dans `creneauxNonCouverts`**. Le trou reste dans le planning ; le compte cesse de
+> le voir. Ne pas lister, c'est renoncer à couvrir — une décision recevable, qui doit se lire dans
+> la réponse et non se découvrir sur le terrain.
 
 ---
 

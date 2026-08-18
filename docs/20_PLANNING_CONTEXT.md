@@ -235,13 +235,13 @@ Aucune règle ne s'applique en dehors des horizons déclarés dans le contexte.
 
 Le `PlanningContext` est consommé ou utilisé par plusieurs composants.
 
-| Composant                              | Rôle du PlanningContext                                              |
-| -------------------------------------- | -------------------------------------------------------------------- |
-| `ScenarioDatasetBuilder`               | cadre de construction du monde solveur                               |
-| `PlanningProblem` / `PlanningSolution` | portage du contexte de résolution                                    |
-| `ConstraintProvider`                   | lecture des seuils / stratégie / horizons                            |
-| `WorkMetricsCalculator`                | bornage des calculs post-résolution                                  |
-| `ScenarioResponseMapper`               | contextualisation et restitution (sans impact sur la logique métier) |
+| Composant | Rôle du PlanningContext |
+|---|---|
+| `ScenarioDatasetBuilderSc01` (SC-01) · `ScenarioDatasetPreparationService` (SC-02 à SC-06) | cadre de construction du monde solveur |
+| `PlanningProblem` | portage du contexte de résolution — c'est la classe annotée `@PlanningSolution`, et la seule |
+| `ConstraintProvider` | lecture des seuils / stratégie / horizons |
+| `WorkMetricsCalculator` | bornage des calculs post-résolution |
+| `ScenarioResponseMapper` | contextualisation et restitution (sans impact sur la logique métier) |
 
 Le `PlanningContext` ne remplace aucun de ces composants.
 Il fournit un cadre partagé entre eux.

@@ -123,12 +123,18 @@ Un PlanningProblem contient notamment :
 
 ## Définition
 
-La **PlanningSolution** est la solution produite par le solveur.
+La **PlanningSolution** est la solution produite par le solveur. C'est un concept OptaPlanner —
+l'annotation `@PlanningSolution` — et non une classe du moteur.
+
+Dans ce projet, elle est portée par **`PlanningProblem`**, et par elle seule : le solveur reçoit une
+copie non résolue de cette classe et en rend une résolue. Il n'existe pas de classe distincte pour
+le résultat, et en chercher une est une erreur fréquente à la lecture des diagrammes.
 
 Elle contient :
 
 - les créneaux avec leur ressource affectée
 - le score calculé par OptaPlanner
+- les faits de problème, dont certains que `PlanningProblem` dérive lui-même
 
 ## Statut
 

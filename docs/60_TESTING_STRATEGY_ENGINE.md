@@ -169,24 +169,35 @@ Est invalide par construction tout test qui :
 Tous les objets de test doivent être créés via le package :
 
 ```
-fr.project.planning.testfixtures
+fr.project.planning.fixtures
 ```
 
 Aucun `new()` métier n’est autorisé hors de ce package.
+
+> *Corrigé le 2026-08-18 : ce document nommait `fr.project.planning.testfixtures`, qui n'a jamais
+> existé.*
 
 ---
 
 ### 4.2 Factories officielles
 
-Les factories de référence incluent notamment :
+Elles vivent toutes dans `fr.project.planning.fixtures` :
 
-- `TestPlanningContextFactory`
-- `TestRessourceFactory`
-- `TestReferentielMetierFactory`
-- `TestCreneauFactory`
-- `TestPlanningProblemFactory`
+| Factory | Ce qu'elle construit |
+|---|---|
+| `TestPlanningContextFactory` | le contexte de résolution |
+| `TestRessourceFactory` | salariés réels et postes virtuels |
+| `TestReferentielFactory` | le référentiel de comptabilité d'activité |
+| `TestRegulatoryParametersFactory` | le cadre réglementaire |
+| `TestCreneauFactory` | les créneaux |
+| `TestPlanningRequestFactory` | la requête complète, assemblée depuis les précédentes |
 
 Cette liste est **extensible mais contrôlée**.
+
+> *Corrigé le 2026-08-18.* Ce document a longtemps nommé `TestReferentielMetierFactory` et
+> `TestPlanningProblemFactory` — deux noms qui n'ont jamais existé sous cette forme — et omettait
+> `TestRegulatoryParametersFactory`. Une liste de fixtures fausse envoie celui qui la lit écrire la
+> sienne, ce que la §4.1 interdit précisément.
 
 ---
 

@@ -78,7 +78,7 @@ l'appelant en repart avec une réponse 200 et la conviction d'avoir été entend
 | Exception | Pourquoi |
 |---|---|
 | `priorite`, `type`, `isReposHebdo`, `axesOrganisationnels` sur un créneau | Le schéma publié les déclare « encore accepté et silencieusement ignoré ; ne plus émettre ». Ce ne sont pas des inconnus, ce sont des **retraités déclarés** : refuser une requête pour un champ que le contrat dit d'ignorer casserait une migration en cours |
-| L'enveloppe de requête, `dataSet`, les salariés, les postes virtuels, les paramètres SC-03 | Ces blocs restent tolérants. Ils **ne prétendent pas le contraire** — c'est ce qui les distingue du défaut ci-dessus. Les fermer serait un changement de comportement pour SC-01, SC-03 et SC-06, à décider avec l'appelant |
+| Les enveloppes de requête de **SC-02 à SC-06**, `dataSet`, les salariés, les postes virtuels, les paramètres SC-03 — **neuf classes**, recomptées le 2026-08-18 | Ces blocs restent tolérants. Ils **ne prétendent pas le contraire** — c'est ce qui les distingue du défaut ci-dessus. Les fermer serait un changement de comportement visible côté appelant, à décider avec lui (rang 12). Seule l'enveloppe de SC-01 est stricte : la tolérance des autres est un héritage de recopie, non un choix |
 
 ---
 

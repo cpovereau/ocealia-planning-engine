@@ -25,13 +25,13 @@ flowchart LR
 
 A[ScenarioContract] --> B[Validation du contrat]
 
-B --> C[ScenarioDatasetBuilder]
+B --> C[Preparation du dataset]
 
 C --> D[PlanningProblem]
 
 D --> E[OptaPlanner Solver]
 
-E --> F[PlanningSolution]
+E --> F[PlanningProblem resolu]
 
 F --> G[WorkMetricsCalculator]
 
@@ -45,14 +45,20 @@ H --> I
 ### Lecture
 
 1. Le **ScenarioContract** est reçu par l’API.
-2. Le contrat est **validé** (schema + cohérence minimale).
-3. Le **DatasetBuilder** construit le monde solveur.
+2. Le contrat est **validé** (schéma + cohérence minimale).
+3. La **préparation** construit le monde solveur — `ScenarioDatasetBuilderSc01` pour SC-01,
+   `ScenarioDatasetPreparationService` pour les cinq autres (`20_DATASET_BUILDER.md` §9).
 4. Le **PlanningProblem** est transmis au solveur.
 5. **OptaPlanner** calcule une solution.
-6. La **PlanningSolution** obtenue est analysée.
+6. Le **PlanningProblem résolu** est analysé.
 7. Les **WorkMetrics** sont calculées post-résolution.
 8. Le **ResponseMapper** construit la réponse API.
 9. Le moteur renvoie un **ScenarioResponseDTO**.
+
+> *Diagrammes corrigés le 2026-08-18.* Ils nommaient une classe `PlanningSolution` qui n'existe pas :
+> le moteur n'a **qu'une** classe de solution, `PlanningProblem`, porteuse de l'annotation
+> `@PlanningSolution` — le solveur en rend une copie résolue. Et ils faisaient passer les six
+> scénarios par `ScenarioDatasetBuilder`, alors qu'un seul l'emprunte.
 
 ---
 
@@ -69,13 +75,13 @@ B[PlanningContext]
 end
 
 subgraph BUILD_WORLD
-C[ScenarioDatasetBuilder]
+C[Preparation du dataset]
 end
 
 subgraph SOLVER
 D[PlanningProblem]
 E[OptaPlanner Solver]
-F[PlanningSolution]
+F[PlanningProblem resolu]
 end
 
 subgraph POST_PROCESS
@@ -128,13 +134,15 @@ des WorkMetrics.
 
 **BUILD_WORLD**
 
-- `ScenarioDatasetBuilder` : traduction contrôlée du contrat vers le monde solveur
+- **Préparation du dataset** : traduction contrôlée du contrat vers le monde solveur —
+  `ScenarioDatasetBuilderSc01` pour SC-01, `ScenarioDatasetPreparationService` pour SC-02 à SC-06
 
 **SOLVER**
 
-- `PlanningProblem` : modèle OptaPlanner
+- `PlanningProblem` : le modèle OptaPlanner, et **la seule classe de solution du moteur** — c'est
+  elle qui porte `@PlanningSolution`. Le solveur en reçoit une copie non résolue et en rend une
+  résolue ; il n'existe pas de seconde classe pour le résultat
 - `Solver` : moteur d’optimisation
-- `PlanningSolution` : solution produite
 
 **POST_PROCESS**
 
@@ -179,12 +187,12 @@ Le moteur repose sur quatre responsabilités distinctes :
 
 Ces responsabilités correspondent aux composants suivants :
 
-| Couche       | Composant              |
-|--------------|------------------------|
-| Construction | ScenarioDatasetBuilder |
-| Optimisation | OptaPlanner Solver     |
-| Analyse      | WorkMetricsCalculator  |
-| Exposition   | ScenarioResponseMapper |
+| Couche       | Composant                                                    |
+|--------------|--------------------------------------------------------------|
+| Construction | `ScenarioDatasetBuilderSc01` · `ScenarioDatasetPreparationService` |
+| Optimisation | OptaPlanner Solver                                           |
+| Analyse      | `WorkMetricsCalculator`                                      |
+| Exposition   | `ScenarioResponseMapper`                                     |
 
 Chaque couche possède une responsabilité unique.
 
@@ -192,13 +200,21 @@ Chaque couche possède une responsabilité unique.
 
 ## Unicité du constructeur du monde solveur
 
-Le `ScenarioDatasetBuilder` est **le seul composant autorisé**
-à construire les objets du monde solveur :
+**La couche de construction est la seule autorisée** à construire les objets du monde solveur :
 - `PlanningProblem`
 - entités de planning
 - faits immuables
 
-Aucune autre couche ne doit modifier ces structures.
+Elle a deux implémentations, et deux seulement : `ScenarioDatasetBuilderSc01` pour SC-01,
+`ScenarioDatasetPreparationService` pour les cinq autres scénarios. Aucune autre couche ne doit
+modifier ces structures.
+
+> Une exception à connaître, et elle confirme la règle : `PlanningProblem` **dérive lui-même**
+> certains faits de problème plutôt que de les recevoir — `JoursDisponiblesSalarie` en est un. Le
+> motif est explicite : un fait posé par les services de préparation peut être oublié par l'un
+> d'eux, et une jointure OptaPlanner étant *interne*, l'oubli désactiverait silencieusement une
+> contrainte pour le salarié concerné. Un fait qu'aucun service ne pose est un fait qu'aucun
+> service ne peut oublier.
 
 ---
 

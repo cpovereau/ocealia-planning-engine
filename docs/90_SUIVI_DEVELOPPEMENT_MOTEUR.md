@@ -497,12 +497,18 @@ soit explicitement hors moteur (§ Analyse métier aval).
 
 ~~**Rang 11** — blocs annoncés stricts qui ignorent en silence.~~ ✅ **Traité le 2026-08-13.**
 
-**Rang 12, ce qu'il reste du 11.** Six blocs déclarent ouvertement `ignoreUnknown = true` et
-laissent donc encore passer un champ inconnu : l'enveloppe de requête des quatre scénarios,
-`dataSet`, `salaries[]`, `postesVirtuels[]` et les paramètres SC-03. **Ils ne mentent pas** — c'est
-ce qui les distinguait du rang 11 — mais ils gardent une zone de silence. Les fermer demande de
-nommer ce que chacun tolère, et se voit immédiatement côté appelant : c'est un arbitrage, pas un
-correctif.
+**Rang 12, ce qu'il reste du 11.** **Neuf** classes déclarent ouvertement `ignoreUnknown = true` et
+laissent donc encore passer un champ inconnu : les enveloppes de requête de SC-02 à SC-06 (cinq),
+`DataSetDTO`, `SalarieInputDTO`, `PosteVirtuelInputDTO` et `Sc03ScenarioParametersDTO`. **Elles ne
+mentent pas** — c'est ce qui les distinguait du rang 11 — mais elles gardent une zone de silence.
+Les fermer demande de nommer ce que chacune tolère, et se voit immédiatement côté appelant : c'est
+un arbitrage, pas un correctif.
+
+> ⚠️ **Le rang grandit tout seul.** Il en comptait six à son ouverture ; chaque scénario écrit
+> depuis a ajouté son enveloppe tolérante, par simple imitation de la précédente — SC-05, puis
+> SC-04 le 2026-08-18. C'est la façon la plus discrète dont une dette augmente : personne ne décide
+> de l'aggraver, on recopie le voisin. Compté à nouveau le 2026-08-18, et **l'enveloppe de SC-01 est
+> la seule stricte**, ce qui montre que la tolérance n'était pas un choix mais un héritage.
 
 Le cas le plus tentant est `Sc03ScenarioParametersDTO`, symétrique de celui de SC-02 qui a motivé
 le rang 11 : un intégrateur qui envoie à SC-03 un paramètre inexistant reçoit encore un 200.

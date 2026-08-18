@@ -2,6 +2,11 @@
 
 Ce document décrit le rôle, le périmètre et les invariants des composants de type `ScenarioDatasetBuilder` dans le moteur de planification.
 
+> **Portée réelle, au 2026-08-18.** Un seul builder existe — `ScenarioDatasetBuilderSc01`. Les cinq
+> autres scénarios passent par `ScenarioDatasetPreparationService`, une préparation commune
+> paramétrée par une politique d'affectation. Les invariants décrits ici valent pour les deux ;
+> la §9 explique pourquoi le projet a convergé plutôt que multiplié.
+
 Il sert de référence pour toute brique chargée de transformer un **contrat d’entrée scénario** en un **monde solveur exploitable**.
 
 ---
@@ -68,8 +73,8 @@ Le `DatasetBuilder` s’insère dans une chaîne de responsabilité claire :
 ```text
 ScenarioContract
 → validation contrat
-→ ScenarioDatasetBuilder
-→ PlanningProblem / PlanningSolution initiale
+→ ScenarioDatasetBuilderSc01 (SC-01) | ScenarioDatasetPreparationService (SC-02 a SC-06)
+→ PlanningProblem  (non resolu — c'est lui qui porte @PlanningSolution)
 → Solver
 → WorkMetricsCalculator
 → ScenarioResponseMapper
@@ -392,22 +397,32 @@ Cette séparation est essentielle pour éviter tout couplage direct entre l’AP
 
 ---
 
-## 9. Variantes par scénario
+## 9. Variantes par scénario — ce que le projet a fait, et qui n'est pas ce qui était prévu
 
-Chaque scénario peut nécessiter un builder dédié.
+Ce document anticipait **un builder par scénario** : `ScenarioDatasetBuilderSc01`,
+`ScenarioDatasetBuilderSc02`, et ainsi de suite. Cela n'a pas eu lieu, et il faut le dire ici,
+sinon un lecteur cherche des classes qui n'existent pas.
 
-Exemples :
-- `ScenarioDatasetBuilderSc01`
-- `ScenarioDatasetBuilderSc02`
-- etc.
+**Un seul builder a été écrit** — `ScenarioDatasetBuilderSc01`, qui sert SC-01. Les cinq autres
+scénarios passent par `ScenarioDatasetPreparationService`, une préparation **commune**, à laquelle
+chacun fournit une `PolitiqueAffectationCreneau`.
 
-Principe :
+**Pourquoi cette convergence.** En écrivant SC-02, puis SC-03, il est apparu que les scénarios
+dataset-driven ne divergeaient que sur **un seul point** : ce qu'ils font de l'affectation déjà
+portée par un créneau d'entrée. SC-03 l'ignore et laisse tout ouvert ; SC-02 fige l'existant et ne
+libère que les créneaux de l'absent ; SC-06 fige tout ; SC-04 fige ce qui précède la date pivot ;
+SC-05 ne libère que le périmètre arbitré. Tout le reste — validation, partition des créneaux hors
+horizon, mapping des ressources, construction du contexte — était identique mot pour mot.
+
+Cinq builders auraient donc été cinq copies d'un même code avec une ligne de différence, et cette
+ligne aurait fini par diverger cinq fois. La politique est le seul point de variation, et c'est
+donc le seul que les scénarios fournissent.
+
+Le principe énoncé ici reste vrai, simplement porté par une autre pièce :
 - un scénario peut changer la forme du dataset attendu,
 - mais ne doit pas remettre en cause les invariants globaux du moteur.
 
-Autrement dit :
-- le builder varie,
-- le moteur reste stable.
+Autrement dit : **la politique varie, le moteur reste stable.**
 
 ---
 

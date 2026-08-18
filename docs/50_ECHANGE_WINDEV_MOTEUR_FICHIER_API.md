@@ -5,14 +5,18 @@
 # 📌 1. Contexte
 
 Le moteur de planification OptaPlanner est désormais capable de :
-- recevoir un contrat d’entrée structuré (**SC-01, SC-02, SC-03, SC-06**) ;
+- recevoir un contrat d’entrée structuré (**les six scénarios, SC-01 à SC-06**) ;
 - exécuter un pipeline complet de résolution ;
 - restituer une réponse métier stabilisée (`ScenarioResponseDTO`).
 
-> **Les quatre scénarios exposés voyagent par les deux canaux.** Le FileAdapter route sur le champ
+> **Les six scénarios voyagent par les deux canaux.** Le FileAdapter route sur le champ
 > `scenarioType` ; chaque scénario y est branché à la même façade qui sert la voie HTTP, et non à
-> une variante. SC-06 a rejoint le canal fichier à son lot S6, SC-02 au sien (S5), tous deux avec
-> le test de symétrie qui va avec.
+> une variante. SC-06 a rejoint le canal fichier à son lot S6, SC-02 au sien (S5), SC-05 et SC-04
+> aux leurs — les trois derniers avec le **test de symétrie** qui compare les deux réponses
+> entières.
+>
+> *Mis à jour le 2026-08-18 : ce paragraphe annonçait quatre scénarios. SC-05 puis SC-04 ont été
+> écrits depuis, et le rang 9 est clos.*
 
 L’intégration avec le logiciel WinDev doit maintenant être industrialisée.
 
@@ -347,7 +351,7 @@ Arborescence standard recommandée :
 
 - `timestamp` : UTC ISO compact
 - `clientId` : identifiant client
-- `scenario` : SC-01, SC-02, SC-03, SC-06
+- `scenario` : SC-01 à SC-06
 - `requestId` : identifiant unique de requête
 
 ---

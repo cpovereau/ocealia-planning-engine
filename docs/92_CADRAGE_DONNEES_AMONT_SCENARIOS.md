@@ -366,7 +366,7 @@ Ordonné par dépendance, pas par valeur métier. Chaque lot est livrable seul.
 | **L5** | Renommage `contraintesReglementaires` → `contraintesMetier` avec alias | 6.6 ✅ | Contrat + DTO + domaine + docs |
 | **L6** | Contraintes métier : compléter les 2 manquantes, rapatrier les 3 seuils globaux | L5, 6.5 | Contrat + domaine + 3 contraintes |
 | **L7** | Activation progressive des règles | L6 | Une règle à la fois, avec évaluation du scoring |
-| **L8** | Planning existant + créneaux figés | — | Ouvre SC-02 et SC-04 — **socle livré 2026-08-10** (lot S1 de SC-06) : `ressourceAffecteeId`, `@PlanningPin`, mapping. Reste à câbler dans les scénarios eux-mêmes |
+| ~~**L8**~~ | ~~Planning existant + créneaux figés~~ ✅ **clos le 2026-08-17** | — | Socle livré 2026-08-10 (lot S1 de SC-06) : `ressourceAffecteeId`, `@PlanningPin`, mapping. Câblé depuis dans **les quatre scénarios qui en ont besoin** — SC-02 fige l'existant, SC-05 le périmètre hors arbitrage, SC-06 tout, SC-04 l'avant-pivot. Le point de variation est la `PolitiqueAffectationCreneau`, et lui seul |
 
 **L1 et L2 sont immédiatement actionnables** — arbitrages tranchés, aucune dépendance, périmètre
 réduit. L2 corrige de surcroît un écart avéré.
